@@ -20,12 +20,8 @@ const InternalsSection = () => {
       <Text>
         mock-evm: {evmConnector?.name ?? "null"} ({evmConnector?.chainPlatform ?? "—"})
       </Text>
-      <View
-        style={{ backgroundColor: "#f6f6f6", padding: 8, borderRadius: 4, marginTop: 8 }}
-      >
-        <Text style={{ fontFamily: "monospace" }}>
-          {JSON.stringify(snapshot, null, 2)}
-        </Text>
+      <View style={{ backgroundColor: "#f6f6f6", padding: 8, borderRadius: 4, marginTop: 8 }}>
+        <Text style={{ fontFamily: "monospace" }}>{JSON.stringify(snapshot, null, 2)}</Text>
       </View>
     </View>
   );

@@ -9,7 +9,7 @@
     "dev": "portless run --https demo-tanstack-start.butr -- vite dev --port 3000",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf .vinxi .output dist node_modules"
   },

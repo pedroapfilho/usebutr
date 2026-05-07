@@ -1,7 +1,7 @@
 {
   "name": "demo-next",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "scripts": {
     "dev": "portless run --https demo-next.butr -- next dev --turbopack",
     "build": "next build",

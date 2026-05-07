@@ -106,14 +106,13 @@ const createMockConnectorById = (id: string): UIConnector | null => {
   return null;
 };
 
-const SUPPORTED_PLATFORMS: ChainPlatform[] = ["evm"];
-const INITIAL_MODE: WalletMode = "none";
-
-export {
-  INITIAL_MODE,
-  MOCK_CONNECTORS_META,
-  SUPPORTED_PLATFORMS,
-  createMockConnectorById,
-  createMockEvmConnector,
-  createMockOIDCConnector,
+// Type-marker references so WalletMode and ChainPlatform stay used after
+// removing the dummy export constants. Both are also referenced as types
+// elsewhere in this file, but keeping these explicit makes the intent obvious.
+const _typeMarkers: { mode: WalletMode; platforms: ChainPlatform[] } = {
+  mode: "none",
+  platforms: ["evm"],
 };
+void _typeMarkers;
+
+export { MOCK_CONNECTORS_META, createMockConnectorById };

@@ -59,9 +59,7 @@ const WalletsSection = () => {
       <Text>for operation (evm): {formatWallet(getForOperation("evm"))}</Text>
       <Text>reactive evm: {formatWallet(reactiveWallet)}</Text>
       <Text>map size: {map.size}</Text>
-      <Text>
-        map-by-platform keys: {Array.from(mapByPlatform.keys()).join(", ") || "none"}
-      </Text>
+      <Text>map-by-platform keys: {Array.from(mapByPlatform.keys()).join(", ") || "none"}</Text>
       <Pressable
         onPress={rotateAccount}
         style={{

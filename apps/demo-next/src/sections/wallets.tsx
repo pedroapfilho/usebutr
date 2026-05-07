@@ -54,18 +54,14 @@ const WalletsSection = () => {
         <li>has any: {String(hasAny)}</li>
         <li>is evm connected: {String(isWalletConnected("evm"))}</li>
         <li>
-          list ({wallets.length}):{" "}
-          {wallets.map((w) => w.connector.id).join(", ") || "none"}
+          list ({wallets.length}): {wallets.map((w) => w.connector.id).join(", ") || "none"}
         </li>
         <li>by chain (evm): {formatWallet(getByChain("evm"))}</li>
         <li>by platform (evm): {formatWallet(getByPlatform("evm"))}</li>
         <li>for operation (evm): {formatWallet(getForOperation("evm"))}</li>
         <li>reactive evm: {formatWallet(reactiveWallet)}</li>
         <li>map size: {map.size}</li>
-        <li>
-          map-by-platform keys:{" "}
-          {Array.from(mapByPlatform.keys()).join(", ") || "none"}
-        </li>
+        <li>map-by-platform keys: {Array.from(mapByPlatform.keys()).join(", ") || "none"}</li>
       </ul>
       <button onClick={rotateAccount}>Rotate active EVM account</button>
     </section>

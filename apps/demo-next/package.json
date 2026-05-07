@@ -1,0 +1,26 @@
+{
+  "name": "demo-next",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "portless run --https demo-next.butr -- next dev --turbopack",
+    "build": "next build",
+    "start": "portless run --https demo-next.butr -- next start",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .next node_modules"
+  },
+  "dependencies": {
+    "butr": "workspace:*",
+    "next": "^16.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^25.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0"
+  }
+}

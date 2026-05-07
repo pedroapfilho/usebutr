@@ -1,5 +1,5 @@
 {
-  "name": "acme",
+  "name": "butr-monorepo",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,9 +11,6 @@
     "typecheck": "turbo run typecheck",
     "build": "turbo run build",
     "clean": "turbo run clean && rm -rf node_modules",
-    "db:generate": "turbo run db:generate",
-    "db:push": "turbo run db:push",
-    "db:seed": "turbo run db:seed",
     "test": "turbo run test",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",

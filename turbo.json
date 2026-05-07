@@ -6,16 +6,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
-      "env": [
-        "API_URL",
-        "BETTER_AUTH_URL",
-        "BETTER_AUTH_SECRET",
-        "CORS_ORIGINS",
-        "DATABASE_URL",
-        "NEXT_PUBLIC_API_URL",
-        "TRUSTED_ORIGINS"
-      ]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "lint": {
       "dependsOn": ["^build"],
@@ -53,18 +44,6 @@
     },
     "clean": {
       "cache": false
-    },
-    "db:generate": {
-      "cache": false,
-      "env": ["DATABASE_URL"]
-    },
-    "db:push": {
-      "cache": false,
-      "env": ["DATABASE_URL"]
-    },
-    "db:seed": {
-      "cache": false,
-      "env": ["DATABASE_URL"]
     }
   }
 }

@@ -1,0 +1,4 @@
+
+> landing@1.0.0 typecheck /Users/pedroapfilho/dev/acme-monorepo/apps/landing
+> tsc --noEmit
+

@@ -1,0 +1,6 @@
+
+> api@0.0.0 lint /Users/pedroapfilho/dev/acme-monorepo/apps/api
+> oxlint src
+
+Found 0 warnings and 0 errors.
+Finished in 1.3s on 16 files using 14 threads.

@@ -1,0 +1,4 @@
+
+> api@0.0.0 typecheck /Users/pedroapfilho/dev/acme-monorepo/apps/api
+> tsc --noEmit
+

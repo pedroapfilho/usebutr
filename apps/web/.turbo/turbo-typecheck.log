@@ -1,0 +1,4 @@
+
+> web@1.0.0 typecheck /Users/pedroapfilho/dev/acme-monorepo/apps/web
+> tsc --noEmit
+

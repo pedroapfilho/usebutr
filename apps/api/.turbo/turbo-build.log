@@ -1,0 +1,122 @@
+
+> api@0.0.0 build /Users/pedroapfilho/dev/acme-monorepo/apps/api
+> tsdown
+
+[34mℹ[39m [34mtsdown v0.21.10[39m powered by [38;2;255;126;23mrolldown v1.0.0-rc.17[39m
+[34mℹ[39m config file: [4m/Users/pedroapfilho/dev/acme-monorepo/apps/api/tsdown.config.ts[24m 
+[34mℹ[39m entry: [34msrc/index.ts[39m
+[34mℹ[39m target: [34mnode22[39m
+[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[34mℹ[39m Build start
+[34mℹ[39m Cleaning 34 files
+[34mℹ[39m Hint: consider adding [34mdeps.onlyBundle[39m option to avoid unintended bundling of dependencies, or set [34mdeps.onlyBundle: false[39m to disable this hint.
+See more at [4mhttps://tsdown.dev/options/dependencies#deps-onlybundle[24m
+Detected dependencies in bundle:
+- [34m@prisma/debug[39m
+- [34m@prisma/driver-adapter-utils[39m
+- [34mpostgres-array[39m
+- [34mpg-types[39m
+- [34mpostgres-date[39m
+- [34mxtend[39m
+- [34mpostgres-interval[39m
+- [34mpostgres-bytea[39m
+- [34mpg-int8[39m
+- [34mpg[39m
+- [34mpg-connection-string[39m
+- [34mpg-protocol[39m
+- [34mpg-cloudflare[39m
+- [34msplit2[39m
+- [34mpgpass[39m
+- [34mpg-pool[39m
+- [34m@prisma/adapter-pg[39m
+- [34m@prisma/client-runtime-utils[39m
+- [34m@prisma/client[39m
+- [34mpino-std-serializers[39m
+- [34mpino[39m
+- [34m@pinojs/redact[39m
+- [34mquick-format-unescaped[39m
+- [34matomic-sleep[39m
+- [34msonic-boom[39m
+- [34mon-exit-leak-free[39m
+- [34mthread-stream[39m
+- [34msafe-stable-stringify[39m
+- [34mpostal-mime[39m
+- [34msvix[39m
+- [34muuid[39m
+- [34mstandardwebhooks[39m
+- [34m@stablelib/base64[39m
+- [34mfast-sha256[39m
+- [34mresend[39m
+- [34mprismjs[39m
+- [34mmarked[39m
+- [34mtailwindcss[39m
+- [34mreact-email[39m
+- [34mbetter-auth[39m
+- [34m@noble/hashes[39m
+- [34mjose[39m
+- [34m@better-auth/utils[39m
+- [34m@noble/ciphers[39m
+- [34m@better-auth/core[39m
+- [34mbetter-call[39m
+- [34mrou3[39m
+- [34mdefu[39m
+- [34m@better-fetch/fetch[39m
+- [34m@better-auth/telemetry[39m
+- [34m@better-auth/prisma-adapter[39m
+- [34m@better-auth/kysely-adapter[39m
+- [34mkysely[39m
+- [34m@better-auth/memory-adapter[39m
+- [34m@opentelemetry/api[39m
+- [34m@opentelemetry/semantic-conventions[39m
+- [34mreact[39m
+- [34mprettier[39m
+- [34mdomelementtype[39m
+- [34mdomhandler[39m
+- [34mleac[39m
+- [34mpeberminta[39m
+- [34mparseley[39m
+- [34mselderee[39m
+- [34m@selderee/plugin-htmlparser2[39m
+- [34mentities[39m
+- [34mhtmlparser2[39m
+- [34mdom-serializer[39m
+- [34mdeepmerge[39m
+- [34mhtml-to-text[39m
+- [34m@react-email/render[39m
+- [34mreact-dom[39m
+[34mℹ[39m [2mdist/[22m[1mindex.mjs[22m                                                       [2m  3.58 MB[22m
+[34mℹ[39m [2mdist/[22mindex.mjs.map                                                   [2m  6.16 MB[22m
+[34mℹ[39m [2mdist/[22mquery_compiler_fast_bg.postgresql.wasm-base64-sQats2Ut.mjs.map  [2m  4.90 MB[22m
+[34mℹ[39m [2mdist/[22mquery_compiler_fast_bg.postgresql.wasm-base64-sQats2Ut.mjs      [2m  4.90 MB[22m
+[34mℹ[39m [2mdist/[22mserver.node-D6AE3Za3.mjs.map                                    [2m  1.94 MB[22m
+[34mℹ[39m [2mdist/[22mserver.node-D6AE3Za3.mjs                                        [2m  1.09 MB[22m
+[34mℹ[39m [2mdist/[22mnode-BivvR2_8.mjs.map                                           [2m919.36 kB[22m [2m│ gzip: 224.52 kB[22m
+[34mℹ[39m [2mdist/[22mnode-BivvR2_8.mjs                                               [2m522.79 kB[22m [2m│ gzip: 154.59 kB[22m
+[34mℹ[39m [2mdist/[22mcompiled-query-QDhWTL5F.mjs.map                                 [2m338.52 kB[22m [2m│ gzip:  49.20 kB[22m
+[34mℹ[39m [2mdist/[22mdist-Dk0i0F-U.mjs.map                                           [2m329.98 kB[22m [2m│ gzip:  51.46 kB[22m
+[34mℹ[39m [2mdist/[22mmigrator-CVfj9o-J.mjs.map                                       [2m191.66 kB[22m [2m│ gzip:  27.55 kB[22m
+[34mℹ[39m [2mdist/[22mcompiled-query-QDhWTL5F.mjs                                     [2m189.18 kB[22m [2m│ gzip:  30.30 kB[22m
+[34mℹ[39m [2mdist/[22mdist-Dk0i0F-U.mjs                                               [2m181.45 kB[22m [2m│ gzip:  30.81 kB[22m
+[34mℹ[39m [2mdist/[22mfactory-Bg7FEB8h.mjs.map                                        [2m165.61 kB[22m [2m│ gzip:  37.15 kB[22m
+[34mℹ[39m [2mdist/[22mreact-BTFHglfO.mjs.map                                          [2m 94.76 kB[22m [2m│ gzip:  21.50 kB[22m
+[34mℹ[39m [2mdist/[22mmigrator-CVfj9o-J.mjs                                           [2m 84.13 kB[22m [2m│ gzip:  13.97 kB[22m
+[34mℹ[39m [2mdist/[22mesm-OoXpmROR.mjs.map                                            [2m 82.22 kB[22m [2m│ gzip:  18.10 kB[22m
+[34mℹ[39m [2mdist/[22mfactory-Bg7FEB8h.mjs                                            [2m 70.19 kB[22m [2m│ gzip:  16.73 kB[22m
+[34mℹ[39m [2mdist/[22mreact-BTFHglfO.mjs                                              [2m 55.45 kB[22m [2m│ gzip:  12.87 kB[22m
+[34mℹ[39m [2mdist/[22mesm-OoXpmROR.mjs                                                [2m 44.27 kB[22m [2m│ gzip:  10.65 kB[22m
+[34mℹ[39m [2mdist/[22mdist-Cww9cJ0k.mjs.map                                           [2m 18.08 kB[22m [2m│ gzip:   4.51 kB[22m
+[34mℹ[39m [2mdist/[22mquery_compiler_fast_bg.postgresql-GVhhfAQy.mjs.map              [2m 12.61 kB[22m [2m│ gzip:   3.94 kB[22m
+[34mℹ[39m [2mdist/[22mdist-Cww9cJ0k.mjs                                               [2m 10.19 kB[22m [2m│ gzip:   2.66 kB[22m
+[34mℹ[39m [2mdist/[22mquery_compiler_fast_bg.postgresql-GVhhfAQy.mjs                  [2m  7.69 kB[22m [2m│ gzip:   2.85 kB[22m
+[34mℹ[39m [2mdist/[22mbun-sqlite-dialect-na--YwnN-JQAskT6C.mjs.map                    [2m  7.51 kB[22m [2m│ gzip:   2.48 kB[22m
+[34mℹ[39m [2mdist/[22mnode-sqlite-dialect-DXeH5iWp.mjs.map                            [2m  7.50 kB[22m [2m│ gzip:   2.48 kB[22m
+[34mℹ[39m [2mdist/[22md1-sqlite-dialect-C2B7YsIT-CNsmae8u.mjs.map                     [2m  6.85 kB[22m [2m│ gzip:   2.37 kB[22m
+[34mℹ[39m [2mdist/[22mbun-sqlite-dialect-na--YwnN-JQAskT6C.mjs                        [2m  4.32 kB[22m [2m│ gzip:   1.52 kB[22m
+[34mℹ[39m [2mdist/[22mnode-sqlite-dialect-DXeH5iWp.mjs                                [2m  4.31 kB[22m [2m│ gzip:   1.51 kB[22m
+[34mℹ[39m [2mdist/[22md1-sqlite-dialect-C2B7YsIT-CNsmae8u.mjs                         [2m  4.05 kB[22m [2m│ gzip:   1.50 kB[22m
+[34mℹ[39m [2mdist/[22msqlite-adapter-BgxwN2TQ.mjs.map                                 [2m  3.50 kB[22m [2m│ gzip:   1.20 kB[22m
+[34mℹ[39m [2mdist/[22msqlite-adapter-BgxwN2TQ.mjs                                     [2m  1.88 kB[22m [2m│ gzip:   0.76 kB[22m
+[34mℹ[39m [2mdist/[22mnode-llRKXlZg.mjs                                               [2m  0.17 kB[22m [2m│ gzip:   0.13 kB[22m
+[34mℹ[39m [2mdist/[22mkysely-adapter-DiHlM8AR.mjs                                     [2m  0.13 kB[22m [2m│ gzip:   0.10 kB[22m
+[34mℹ[39m 34 files, total: 25.94 MB
+[32m✔[39m Build complete in [32m439ms[39m

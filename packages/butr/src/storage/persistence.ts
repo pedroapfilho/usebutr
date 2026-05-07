@@ -1,9 +1,4 @@
-import type {
-  Account,
-  ChainPlatform,
-  ConnectedWallet,
-  WalletMode,
-} from "../types";
+import type { Account, ChainPlatform, ConnectedWallet, WalletMode } from "../types";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -24,9 +19,7 @@ type ConnectedWalletsRecord = Partial<Record<string, StoredWalletData>>;
 
 type WalletPersistence = {
   getConnectedWallets(): Promise<ConnectedWalletsRecord>;
-  setConnectedWallets(
-    wallets: Map<ChainPlatform, ConnectedWallet>,
-  ): Promise<void>;
+  setConnectedWallets(wallets: Map<ChainPlatform, ConnectedWallet>): Promise<void>;
   removeConnectedWallet(chainPlatform: ChainPlatform): Promise<void>;
   clearConnectedWallets(): Promise<void>;
   clearAll(): Promise<void>;

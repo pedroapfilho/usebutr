@@ -213,9 +213,9 @@ describe("createWalletStore", () => {
       });
       const onError = vi.fn();
 
-      await expect(
-        store.getState().connectWallet("test", undefined, onError),
-      ).rejects.toThrow("User rejected");
+      await expect(store.getState().connectWallet("test", undefined, onError)).rejects.toThrow(
+        "User rejected",
+      );
 
       expect(store.getState().connectionStatus).toBe("error");
       expect(store.getState().connectionError).toBe("User rejected");
@@ -505,9 +505,7 @@ describe("createWalletStore", () => {
       });
       store.getState().updateWalletAccount("evm", newAccount);
 
-      expect(
-        store.getState().connectedWallets.get("evm")?.account.walletAddress,
-      ).toBe("0xNEW");
+      expect(store.getState().connectedWallets.get("evm")?.account.walletAddress).toBe("0xNEW");
     });
 
     it("skips update when address and chain unchanged", async () => {
@@ -539,9 +537,9 @@ describe("createWalletStore", () => {
       const newAccount = createMockAccount({ walletAddress: "0xUPDATED" });
       store.getState().updateWalletAccount("evm", newAccount);
 
-      expect(
-        store.getState().connectedWallets.get("unified")?.account.walletAddress,
-      ).toBe("0xUPDATED");
+      expect(store.getState().connectedWallets.get("unified")?.account.walletAddress).toBe(
+        "0xUPDATED",
+      );
     });
 
     it("is a no-op for missing platform", async () => {
@@ -741,10 +739,7 @@ describe("createWalletStore", () => {
       });
 
       const wallets = new Map([
-        [
-          "evm" as ChainPlatform,
-          { connector: createMockConnector({ id: "metamask" }), account },
-        ],
+        ["evm" as ChainPlatform, { connector: createMockConnector({ id: "metamask" }), account }],
       ]);
       await storage.setConnectedWallets(wallets);
 
@@ -757,9 +752,7 @@ describe("createWalletStore", () => {
 
       expect(store.getState().isHydrated).toBe(true);
       expect(store.getState().connectedWallets.size).toBe(1);
-      expect(store.getState().connectedWallets.get("evm")?.connector.id).toBe(
-        "metamask",
-      );
+      expect(store.getState().connectedWallets.get("evm")?.connector.id).toBe("metamask");
     });
 
     it("syncs isUserDisconnected from storage", async () => {
@@ -876,9 +869,7 @@ describe("createWalletStore", () => {
 
       await hydrateStore(store);
 
-      expect(
-        store.getState().connectedWallets.get("evm")?.account.walletAddress,
-      ).toBe("0xSTORED");
+      expect(store.getState().connectedWallets.get("evm")?.account.walletAddress).toBe("0xSTORED");
     });
 
     it("sets correct wallet mode for external wallets", async () => {

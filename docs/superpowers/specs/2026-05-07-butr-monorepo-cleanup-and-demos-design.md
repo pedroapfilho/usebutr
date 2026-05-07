@@ -109,12 +109,12 @@ All exported hooks and factories are imported and used in the relevant `sections
 
 ### Framework-specific notes
 
-| Demo                | Entry                              | Provider lives in              | tsconfig extends                                  |
-| ------------------- | ---------------------------------- | ------------------------------ | ------------------------------------------------- |
-| demo-vite           | `src/main.tsx` mounts `<App />`    | `<WalletProvider>` in `App`    | `@repo/typescript-config/vite.json`               |
-| demo-next           | App Router (`app/layout.tsx`)      | `"use client"` provider in layout, page is `"use client"` | `@repo/typescript-config/nextjs.json` |
-| demo-tanstack-start | `app/root.tsx` + `app/routes/index.tsx` | `<WalletProvider>` wraps in `root.tsx` | `@repo/typescript-config/vite.json` |
-| demo-expo           | `app/_layout.tsx` + `app/index.tsx`     | `<WalletProvider>` in `_layout.tsx`    | `@repo/typescript-config/expo.json`     |
+| Demo                | Entry                                   | Provider lives in                                         | tsconfig extends                      |
+| ------------------- | --------------------------------------- | --------------------------------------------------------- | ------------------------------------- |
+| demo-vite           | `src/main.tsx` mounts `<App />`         | `<WalletProvider>` in `App`                               | `@repo/typescript-config/vite.json`   |
+| demo-next           | App Router (`app/layout.tsx`)           | `"use client"` provider in layout, page is `"use client"` | `@repo/typescript-config/nextjs.json` |
+| demo-tanstack-start | `app/root.tsx` + `app/routes/index.tsx` | `<WalletProvider>` wraps in `root.tsx`                    | `@repo/typescript-config/vite.json`   |
+| demo-expo           | `app/_layout.tsx` + `app/index.tsx`     | `<WalletProvider>` in `_layout.tsx`                       | `@repo/typescript-config/expo.json`   |
 
 ## Tooling rewires
 
@@ -199,12 +199,12 @@ Each demo:
 
 ### Dev URLs
 
-| Demo                | URL                                           |
-| ------------------- | --------------------------------------------- |
-| demo-vite           | `https://demo-vite.butr.localhost`            |
-| demo-next           | `https://demo-next.butr.localhost`            |
-| demo-tanstack-start | `https://demo-tanstack-start.butr.localhost`  |
-| demo-expo (web)     | `https://demo-expo.butr.localhost`            |
+| Demo                | URL                                                  |
+| ------------------- | ---------------------------------------------------- |
+| demo-vite           | `https://demo-vite.butr.localhost`                   |
+| demo-next           | `https://demo-next.butr.localhost`                   |
+| demo-tanstack-start | `https://demo-tanstack-start.butr.localhost`         |
+| demo-expo (web)     | `https://demo-expo.butr.localhost`                   |
 | demo-expo (native)  | runs on Expo's own simulator transport, not portless |
 
 ### Documentation updates

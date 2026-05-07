@@ -1,8 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  createBrowserStorageDriver,
-  createMemoryStorageDriver,
-} from "../browser-storage-driver";
+import { createBrowserStorageDriver, createMemoryStorageDriver } from "../browser-storage-driver";
 
 describe("createMemoryStorageDriver", () => {
   it("sets and gets values", () => {
@@ -77,9 +74,7 @@ describe("createBrowserStorageDriver", () => {
 
   describe("when web storage is available", () => {
     it("delegates persistent.getItem to localStorage", () => {
-      const spy = vi
-        .spyOn(window.localStorage, "getItem")
-        .mockReturnValue("stored");
+      const spy = vi.spyOn(window.localStorage, "getItem").mockReturnValue("stored");
       const { persistent } = createBrowserStorageDriver();
 
       expect(persistent.getItem("key")).toBe("stored");
@@ -88,9 +83,7 @@ describe("createBrowserStorageDriver", () => {
     });
 
     it("delegates session.getItem to sessionStorage", () => {
-      const spy = vi
-        .spyOn(window.sessionStorage, "getItem")
-        .mockReturnValue("s-stored");
+      const spy = vi.spyOn(window.sessionStorage, "getItem").mockReturnValue("s-stored");
       const { session } = createBrowserStorageDriver();
 
       expect(session.getItem("key")).toBe("s-stored");
@@ -99,9 +92,7 @@ describe("createBrowserStorageDriver", () => {
     });
 
     it("delegates persistent.setItem to localStorage", () => {
-      const spy = vi
-        .spyOn(window.localStorage, "setItem")
-        .mockImplementation(() => {});
+      const spy = vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {});
       const { persistent } = createBrowserStorageDriver();
 
       persistent.setItem("key", "value");
@@ -110,9 +101,7 @@ describe("createBrowserStorageDriver", () => {
     });
 
     it("delegates session.setItem to sessionStorage", () => {
-      const spy = vi
-        .spyOn(window.sessionStorage, "setItem")
-        .mockImplementation(() => {});
+      const spy = vi.spyOn(window.sessionStorage, "setItem").mockImplementation(() => {});
       const { session } = createBrowserStorageDriver();
 
       session.setItem("key", "value");
@@ -121,12 +110,8 @@ describe("createBrowserStorageDriver", () => {
     });
 
     it("delegates removeItem to the correct storage", () => {
-      const localSpy = vi
-        .spyOn(window.localStorage, "removeItem")
-        .mockImplementation(() => {});
-      const sessionSpy = vi
-        .spyOn(window.sessionStorage, "removeItem")
-        .mockImplementation(() => {});
+      const localSpy = vi.spyOn(window.localStorage, "removeItem").mockImplementation(() => {});
+      const sessionSpy = vi.spyOn(window.sessionStorage, "removeItem").mockImplementation(() => {});
       const { persistent, session } = createBrowserStorageDriver();
 
       persistent.removeItem("a");
@@ -139,11 +124,9 @@ describe("createBrowserStorageDriver", () => {
     });
 
     it("returns null when storage.getItem throws", () => {
-      const spy = vi
-        .spyOn(window.localStorage, "getItem")
-        .mockImplementation(() => {
-          throw new Error("SecurityError");
-        });
+      const spy = vi.spyOn(window.localStorage, "getItem").mockImplementation(() => {
+        throw new Error("SecurityError");
+      });
       const { persistent } = createBrowserStorageDriver();
 
       expect(persistent.getItem("key")).toBeNull();
@@ -151,11 +134,9 @@ describe("createBrowserStorageDriver", () => {
     });
 
     it("does not throw when storage.setItem throws", () => {
-      const spy = vi
-        .spyOn(window.localStorage, "setItem")
-        .mockImplementation(() => {
-          throw new Error("QuotaExceededError");
-        });
+      const spy = vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+        throw new Error("QuotaExceededError");
+      });
       const { persistent } = createBrowserStorageDriver();
 
       expect(() => persistent.setItem("key", "value")).not.toThrow();
@@ -163,11 +144,9 @@ describe("createBrowserStorageDriver", () => {
     });
 
     it("does not throw when storage.removeItem throws", () => {
-      const spy = vi
-        .spyOn(window.sessionStorage, "removeItem")
-        .mockImplementation(() => {
-          throw new Error("SecurityError");
-        });
+      const spy = vi.spyOn(window.sessionStorage, "removeItem").mockImplementation(() => {
+        throw new Error("SecurityError");
+      });
       const { session } = createBrowserStorageDriver();
 
       expect(() => session.removeItem("key")).not.toThrow();

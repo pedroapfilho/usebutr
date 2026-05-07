@@ -1,13 +1,6 @@
 import type { ChainPlatform, ConnectedWallet, WalletMode } from "../types";
-import {
-  createBrowserStorageDriver,
-  createMemoryStorageDriver,
-} from "./browser-storage-driver";
-import type {
-  ConnectedWalletsRecord,
-  StorageDriver,
-  WalletPersistence,
-} from "./persistence";
+import { createBrowserStorageDriver, createMemoryStorageDriver } from "./browser-storage-driver";
+import type { ConnectedWalletsRecord, StorageDriver, WalletPersistence } from "./persistence";
 
 const VALID_CHAIN_PLATFORMS = ["evm", "svm", "move", "unified"];
 
@@ -90,9 +83,7 @@ class WalletStorage implements WalletPersistence {
     }
   }
 
-  async setConnectedWallets(
-    wallets: Map<ChainPlatform, ConnectedWallet>,
-  ): Promise<void> {
+  async setConnectedWallets(wallets: Map<ChainPlatform, ConnectedWallet>): Promise<void> {
     try {
       const serializable = Object.fromEntries(
         Array.from(wallets.entries()).map(([platform, wallet]) => [
@@ -103,10 +94,7 @@ class WalletStorage implements WalletPersistence {
           },
         ]),
       );
-      await this.persistent.setItem(
-        this.connectedWalletsKey,
-        JSON.stringify(serializable),
-      );
+      await this.persistent.setItem(this.connectedWalletsKey, JSON.stringify(serializable));
     } catch (error) {
       console.warn("Failed to persist connected wallets:", error);
     }
@@ -117,16 +105,10 @@ class WalletStorage implements WalletPersistence {
       const stored = await this.getConnectedWallets();
       if (stored[chainPlatform]) {
         const { [chainPlatform]: _, ...remaining } = stored;
-        await this.persistent.setItem(
-          this.connectedWalletsKey,
-          JSON.stringify(remaining),
-        );
+        await this.persistent.setItem(this.connectedWalletsKey, JSON.stringify(remaining));
       }
     } catch (error) {
-      console.warn(
-        `Failed to remove ${chainPlatform} wallet from storage:`,
-        error,
-      );
+      console.warn(`Failed to remove ${chainPlatform} wallet from storage:`, error);
     }
   }
 
@@ -144,11 +126,7 @@ class WalletStorage implements WalletPersistence {
       const mode = await this.persistent.getItem(this.walletModeKey);
       if (!mode) return "none";
 
-      if (
-        mode === "smart-wallet" ||
-        mode === "external-wallet" ||
-        mode === "none"
-      ) {
+      if (mode === "smart-wallet" || mode === "external-wallet" || mode === "none") {
         return mode;
       }
 

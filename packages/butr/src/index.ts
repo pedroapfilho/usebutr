@@ -25,11 +25,7 @@ export type {
   StoredWalletData,
   WalletPersistence,
 } from "./storage";
-export {
-  createBrowserStorageDriver,
-  createMemoryStorageDriver,
-  WalletStorage,
-} from "./storage";
+export { createBrowserStorageDriver, createMemoryStorageDriver, WalletStorage } from "./storage";
 
 // React — Provider
 export { WalletManagerProvider } from "./context";

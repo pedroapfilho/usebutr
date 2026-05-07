@@ -270,7 +270,9 @@ const ConnectionSection = () => {
     <section style={{ padding: 16, borderBottom: "1px solid #ddd" }}>
       <h2>Connection</h2>
       <ul>
-        <li>status: <strong>{status}</strong> {isConnecting && "(connecting…)"}</li>
+        <li>
+          status: <strong>{status}</strong> {isConnecting && "(connecting…)"}
+        </li>
         <li>connected: {String(connected)}</li>
         <li>active connector: {activeId ?? "none"}</li>
         <li>error: {error ?? "none"}</li>
@@ -351,7 +353,9 @@ const WalletsSection = () => {
       <ul>
         <li>has any: {String(hasAny)}</li>
         <li>is evm connected: {String(isWalletConnected("evm"))}</li>
-        <li>list ({wallets.length}): {wallets.map((w) => w.connector.id).join(", ") || "none"}</li>
+        <li>
+          list ({wallets.length}): {wallets.map((w) => w.connector.id).join(", ") || "none"}
+        </li>
         <li>by chain (evm): {formatWallet(getByChain("evm"))}</li>
         <li>by platform (evm): {formatWallet(getByPlatform("evm"))}</li>
         <li>for operation (evm): {formatWallet(getForOperation("evm"))}</li>
@@ -380,9 +384,12 @@ const ModeSection = () => {
   return (
     <section style={{ padding: 16, borderBottom: "1px solid #ddd" }}>
       <h2>Mode</h2>
-      <p>current: <strong>{mode}</strong></p>
+      <p>
+        current: <strong>{mode}</strong>
+      </p>
       <p style={{ fontSize: 12, color: "#666" }}>
-        Mode is derived from connector type (smart vs external). Connect a wallet above to change it.
+        Mode is derived from connector type (smart vs external). Connect a wallet above to change
+        it.
       </p>
     </section>
   );
@@ -413,7 +420,10 @@ const InternalsSection = () => {
   return (
     <section style={{ padding: 16 }}>
       <h2>Internals</h2>
-      <p>mock-evm connector instance: {evmConnector?.name ?? "null"} ({evmConnector?.chainPlatform ?? "—"})</p>
+      <p>
+        mock-evm connector instance: {evmConnector?.name ?? "null"} (
+        {evmConnector?.chainPlatform ?? "—"})
+      </p>
       <pre style={{ background: "#f6f6f6", padding: 8, borderRadius: 4 }}>
         {JSON.stringify(snapshot, null, 2)}
       </pre>
@@ -514,6 +524,7 @@ Expected: one commit with the message above.
 ## Task 2: Delete acme apps
 
 **Files:**
+
 - Delete directory: `apps/web`
 - Delete directory: `apps/landing`
 - Delete directory: `apps/api`
@@ -544,6 +555,7 @@ git commit -m "chore: remove acme web, landing, and api apps"
 ## Task 3: Delete acme packages
 
 **Files:**
+
 - Delete directory: `packages/auth`
 - Delete directory: `packages/db`
 - Delete directory: `packages/transactional`
@@ -575,6 +587,7 @@ git commit -m "chore: remove auth, db, transactional, and ui packages"
 ## Task 4: Delete docker-compose, env examples, and stale e2e tests
 
 **Files:**
+
 - Delete: `docker-compose.yml`
 - Delete: `tests/e2e/*` contents (keep the directory + `playwright.config.ts` as a future placeholder)
 - Delete any remaining `.env.example` files in the workspace root
@@ -611,6 +624,7 @@ git commit -m "chore: remove docker-compose and stale e2e tests"
 ## Task 5: Update root `package.json` and `turbo.json`
 
 **Files:**
+
 - Modify: `package.json` (project root)
 - Modify: `turbo.json` (project root)
 
@@ -653,12 +667,8 @@ Replace the file contents entirely with:
     "turbo": "^2.9.6"
   },
   "lint-staged": {
-    "!(*.d).{ts,tsx,mts,cts,js,jsx,mjs,cjs}": [
-      "oxlint"
-    ],
-    "*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,json,md}": [
-      "oxfmt"
-    ]
+    "!(*.d).{ts,tsx,mts,cts,js,jsx,mjs,cjs}": ["oxlint"],
+    "*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,json,md}": ["oxfmt"]
   },
   "engines": {
     "node": ">=24"
@@ -744,6 +754,7 @@ git commit -m "chore: rename root to butr-monorepo and drop acme-only scripts/ta
 ## Task 6: Add `vite.json` and `expo.json` to `@repo/typescript-config`
 
 **Files:**
+
 - Create: `packages/config-typescript/vite.json`
 - Create: `packages/config-typescript/expo.json`
 - Modify: `packages/config-typescript/package.json`
@@ -815,6 +826,7 @@ git commit -m "feat(config-typescript): add vite.json and expo.json bases"
 ## Task 7: Migrate `butr` to shared TypeScript and Vitest configs
 
 **Files:**
+
 - Modify: `packages/butr/package.json`
 - Modify: `packages/butr/tsconfig.json`
 - Modify: `packages/butr/tsconfig.cjs.json` (verify; may not need changes)
@@ -961,6 +973,7 @@ git add . && git commit -m "chore: post-cleanup workspace verification"
 ## Task 9: Scaffold `apps/demo-vite`
 
 **Files:**
+
 - Create: `apps/demo-vite/package.json`
 - Create: `apps/demo-vite/tsconfig.json`
 - Create: `apps/demo-vite/tsconfig.node.json`
@@ -1161,6 +1174,7 @@ In one terminal: `pnpm --filter demo-vite dev`
 Expected: vite logs that it's listening; portless serves `https://demo-vite.butr.localhost`.
 
 In a browser, open `https://demo-vite.butr.localhost`. Expected:
+
 - Page title is `butr · Vite`
 - Four sections visible: Connection, Wallets, Mode, Internals
 - Status starts at `idle`
@@ -1181,6 +1195,7 @@ git commit -m "feat(demo-vite): add Vite + React kitchen-sink demo"
 ## Task 10: Scaffold `apps/demo-next`
 
 **Files:**
+
 - Create: `apps/demo-next/package.json`
 - Create: `apps/demo-next/tsconfig.json`
 - Create: `apps/demo-next/next.config.ts`
@@ -1358,6 +1373,7 @@ git commit -m "feat(demo-next): add Next.js App Router kitchen-sink demo"
 ## Task 11: Scaffold `apps/demo-tanstack-start`
 
 **Files:**
+
 - Create: `apps/demo-tanstack-start/package.json`
 - Create: `apps/demo-tanstack-start/tsconfig.json`
 - Create: `apps/demo-tanstack-start/app.config.ts`
@@ -1526,6 +1542,7 @@ git commit -m "feat(demo-tanstack-start): add TanStack Start kitchen-sink demo"
 ## Task 12: Scaffold `apps/demo-expo`
 
 **Files:**
+
 - Create: `apps/demo-expo/package.json`
 - Create: `apps/demo-expo/tsconfig.json`
 - Create: `apps/demo-expo/app.json`
@@ -1557,6 +1574,7 @@ Read the `expo` version in `apps/demo-expo/package.json`. Confirm it matches the
 - [ ] **Step 3: Replace `apps/demo-expo/package.json` scripts and add deps**
 
 Modify the file so it includes:
+
 - `"butr": "workspace:*"` in dependencies
 - `"@repo/typescript-config": "workspace:*"` in devDependencies
 - `dev` script wraps Expo's web command with portless: `"dev": "portless run --https demo-expo.butr -- expo start --web"`
@@ -1574,12 +1592,7 @@ Modify the file so it includes:
     "baseUrl": ".",
     "paths": { "@/*": ["./*"] }
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ]
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
 }
 ```
 
@@ -1671,7 +1684,10 @@ const ConnectionSection = () => {
   return (
     <View style={{ padding: 16, borderBottomWidth: 1, borderColor: "#ddd" }}>
       <Text style={{ fontSize: 18, fontWeight: "600" }}>Connection</Text>
-      <Text>status: {status}{isConnecting && " (connecting…)"}</Text>
+      <Text>
+        status: {status}
+        {isConnecting && " (connecting…)"}
+      </Text>
       <Text>connected: {String(connected)}</Text>
       <Text>active connector: {activeId ?? "none"}</Text>
       <Text>error: {error ?? "none"}</Text>
@@ -1748,7 +1764,9 @@ const WalletsSection = () => {
       <Text style={{ fontSize: 18, fontWeight: "600" }}>Wallets</Text>
       <Text>has any: {String(hasAny)}</Text>
       <Text>is evm connected: {String(isWalletConnected("evm"))}</Text>
-      <Text>list ({wallets.length}): {wallets.map((w) => w.connector.id).join(", ") || "none"}</Text>
+      <Text>
+        list ({wallets.length}): {wallets.map((w) => w.connector.id).join(", ") || "none"}
+      </Text>
       <Text>by chain (evm): {formatWallet(getByChain("evm"))}</Text>
       <Text>by platform (evm): {formatWallet(getByPlatform("evm"))}</Text>
       <Text>for operation (evm): {formatWallet(getForOperation("evm"))}</Text>
@@ -1757,7 +1775,13 @@ const WalletsSection = () => {
       <Text>map-by-platform keys: {Array.from(mapByPlatform.keys()).join(", ") || "none"}</Text>
       <Pressable
         onPress={rotateAccount}
-        style={{ padding: 8, backgroundColor: "#eee", borderRadius: 4, marginTop: 8, alignSelf: "flex-start" }}
+        style={{
+          padding: 8,
+          backgroundColor: "#eee",
+          borderRadius: 4,
+          marginTop: 8,
+          alignSelf: "flex-start",
+        }}
       >
         <Text>Rotate active EVM account</Text>
       </Pressable>
@@ -1812,11 +1836,11 @@ const InternalsSection = () => {
   return (
     <View style={{ padding: 16 }}>
       <Text style={{ fontSize: 18, fontWeight: "600" }}>Internals</Text>
-      <Text>mock-evm: {evmConnector?.name ?? "null"} ({evmConnector?.chainPlatform ?? "—"})</Text>
+      <Text>
+        mock-evm: {evmConnector?.name ?? "null"} ({evmConnector?.chainPlatform ?? "—"})
+      </Text>
       <View style={{ backgroundColor: "#f6f6f6", padding: 8, borderRadius: 4, marginTop: 8 }}>
-        <Text style={{ fontFamily: "monospace" }}>
-          {JSON.stringify(snapshot, null, 2)}
-        </Text>
+        <Text style={{ fontFamily: "monospace" }}>{JSON.stringify(snapshot, null, 2)}</Text>
       </View>
     </View>
   );
@@ -1861,13 +1885,14 @@ git commit -m "feat(demo-expo): add Expo + React Native kitchen-sink demo"
 ## Task 13: Update documentation
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `CLAUDE.md`
 - Modify: `AGENTS.md`
 
 - [ ] **Step 1: Replace `README.md`**
 
-```markdown
+````markdown
 # butr-monorepo
 
 The home of `butr`, a multi-chain wallet management library for React. The monorepo also hosts a set of demo apps that show `butr` running across different React frameworks.
@@ -1883,20 +1908,20 @@ The home of `butr`, a multi-chain wallet management library for React. The monor
 
 ## Apps
 
-| App                   | Description                          | Dev URL                                          |
-| --------------------- | ------------------------------------ | ------------------------------------------------ |
-| `demo-vite`           | Vite + React 19 SPA                  | `https://demo-vite.butr.localhost`               |
-| `demo-next`           | Next.js 16 App Router                | `https://demo-next.butr.localhost`               |
-| `demo-tanstack-start` | TanStack Start (Vite SSR)            | `https://demo-tanstack-start.butr.localhost`     |
-| `demo-expo`           | Expo (React Native, web target)      | `https://demo-expo.butr.localhost`               |
+| App                   | Description                     | Dev URL                                      |
+| --------------------- | ------------------------------- | -------------------------------------------- |
+| `demo-vite`           | Vite + React 19 SPA             | `https://demo-vite.butr.localhost`           |
+| `demo-next`           | Next.js 16 App Router           | `https://demo-next.butr.localhost`           |
+| `demo-tanstack-start` | TanStack Start (Vite SSR)       | `https://demo-tanstack-start.butr.localhost` |
+| `demo-expo`           | Expo (React Native, web target) | `https://demo-expo.butr.localhost`           |
 
 ## Packages
 
-| Package                   | Description                            |
-| ------------------------- | -------------------------------------- |
-| `butr`                    | The library itself                     |
-| `@repo/typescript-config` | Shared TypeScript config bases         |
-| `@repo/config-vitest`     | Shared Vitest configs                  |
+| Package                   | Description                    |
+| ------------------------- | ------------------------------ |
+| `butr`                    | The library itself             |
+| `@repo/typescript-config` | Shared TypeScript config bases |
+| `@repo/config-vitest`     | Shared Vitest configs          |
 
 ## Setup
 
@@ -1911,6 +1936,7 @@ The home of `butr`, a multi-chain wallet management library for React. The monor
 ```bash
 pnpm install
 ```
+````
 
 ### 2. Install portless and start the HTTPS proxy
 
@@ -1951,7 +1977,8 @@ branch fix-styles:       https://fix-styles.demo-vite.butr.localhost
 | `pnpm typecheck`    | Run TypeScript checks         |
 | `pnpm clean`        | Clean all build artifacts     |
 | `pnpm fallow:dead`  | Find unused exports           |
-```
+
+````
 
 - [ ] **Step 2: Replace `CLAUDE.md`**
 
@@ -1977,7 +2004,7 @@ pnpm format:check                       # oxfmt (check)
 # Testing
 pnpm test                               # vitest unit tests
 pnpm test:e2e                           # playwright (placeholder, no current tests)
-```
+````
 
 ## Architecture
 
@@ -1985,22 +2012,22 @@ pnpm test:e2e                           # playwright (placeholder, no current te
 
 ### Apps
 
-| App                   | Framework                       | Dev URL                                          |
-| --------------------- | ------------------------------- | ------------------------------------------------ |
-| `demo-vite`           | Vite 7 + React 19 (SPA)         | `https://demo-vite.butr.localhost`               |
-| `demo-next`           | Next.js 16 (App Router)         | `https://demo-next.butr.localhost`               |
-| `demo-tanstack-start` | TanStack Start (Vite SSR)       | `https://demo-tanstack-start.butr.localhost`     |
-| `demo-expo`           | Expo (React Native, web target) | `https://demo-expo.butr.localhost`               |
+| App                   | Framework                       | Dev URL                                      |
+| --------------------- | ------------------------------- | -------------------------------------------- |
+| `demo-vite`           | Vite 7 + React 19 (SPA)         | `https://demo-vite.butr.localhost`           |
+| `demo-next`           | Next.js 16 (App Router)         | `https://demo-next.butr.localhost`           |
+| `demo-tanstack-start` | TanStack Start (Vite SSR)       | `https://demo-tanstack-start.butr.localhost` |
+| `demo-expo`           | Expo (React Native, web target) | `https://demo-expo.butr.localhost`           |
 
 Every demo is a single-page kitchen-sink reference that imports and uses every public `butr` export.
 
 ### Packages
 
-| Package                   | Purpose                                                                  |
-| ------------------------- | ------------------------------------------------------------------------ |
-| `butr`                    | The library — multi-chain wallet management primitives for React.        |
+| Package                   | Purpose                                                                                                                           |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `butr`                    | The library — multi-chain wallet management primitives for React.                                                                 |
 | `@repo/typescript-config` | Shared tsconfig bases: `base.json`, `library.json`, `nextjs.json`, `react-library.json`, `server.json`, `vite.json`, `expo.json`. |
-| `@repo/config-vitest`     | Shared Vitest config. Exports `react.ts` and `node.ts`.                  |
+| `@repo/config-vitest`     | Shared Vitest config. Exports `react.ts` and `node.ts`.                                                                           |
 
 ## Portless (Dev URLs)
 
@@ -2030,7 +2057,8 @@ Branch name auto-prefixes the subdomain — no port collisions between concurren
 - Path aliases: `@/*` maps to `src/*` (and `app/*` for TanStack Start) in apps.
 - Demo apps depend on `butr` via `"butr": "workspace:*"` and on `@repo/typescript-config` via the same.
 - All web demos run behind portless; demo-expo's native target uses Metro/Expo Go (no portless).
-```
+
+````
 
 - [ ] **Step 3: Mirror to `AGENTS.md`**
 
@@ -2038,7 +2066,7 @@ Branch name auto-prefixes the subdomain — no port collisions between concurren
 
 ```bash
 cp CLAUDE.md AGENTS.md
-```
+````
 
 - [ ] **Step 4: Commit**
 
@@ -2093,6 +2121,7 @@ If anything fails, dig in: typically a missing `"use client"` in Next.js, a miss
 - [ ] **Step 8: Smoke each demo manually**
 
 For each demo, in turn:
+
 - `pnpm --filter demo-vite dev` → open `https://demo-vite.butr.localhost` → verify connect/disconnect → Ctrl+C
 - `pnpm --filter demo-next dev` → open `https://demo-next.butr.localhost` → verify → Ctrl+C
 - `pnpm --filter demo-tanstack-start dev` → open `https://demo-tanstack-start.butr.localhost` → verify → Ctrl+C
@@ -2102,9 +2131,11 @@ For each demo, in turn:
 
 Run: `git status`
 If anything is dirty:
+
 ```bash
 git add . && git commit -m "chore: post-verification fixes"
 ```
+
 Otherwise skip.
 
 ---

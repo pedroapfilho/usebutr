@@ -1,11 +1,5 @@
 import { vi } from "vitest";
-import type {
-  Account,
-  ChainBase,
-  ChainPlatform,
-  UIConnector,
-  WalletManagerConfig,
-} from "../types";
+import type { Account, ChainBase, ChainPlatform, UIConnector, WalletManagerConfig } from "../types";
 import type { StorageDriver } from "../storage/persistence";
 
 const createMockChain = (overrides?: Partial<ChainBase>): ChainBase => ({
@@ -23,9 +17,7 @@ const createMockAccount = (overrides?: Partial<Account>): Account => ({
   ...overrides,
 });
 
-const createMockConnector = (
-  overrides?: Partial<UIConnector>,
-): UIConnector => ({
+const createMockConnector = (overrides?: Partial<UIConnector>): UIConnector => ({
   id: "mock-connector",
   name: "Mock Wallet",
   chainPlatform: "evm" as ChainPlatform,
@@ -37,9 +29,7 @@ const createMockConnector = (
   signMessage: vi.fn().mockResolvedValue(new Uint8Array()),
   sendTx: vi.fn().mockResolvedValue("0xtxhash"),
   sendTxToChain: vi.fn().mockResolvedValue("0xtxhash"),
-  getTransactionReceipt: vi
-    .fn()
-    .mockResolvedValue({ status: "Success" as const }),
+  getTransactionReceipt: vi.fn().mockResolvedValue({ status: "Success" as const }),
   getBalance: vi.fn().mockResolvedValue({
     value: BigInt(0),
     decimals: 18,
@@ -84,9 +74,7 @@ const createMockStoragePair = () => ({
   session: createMockStorageDriver(),
 });
 
-const createMockConfig = (
-  overrides?: Partial<WalletManagerConfig>,
-): WalletManagerConfig => ({
+const createMockConfig = (overrides?: Partial<WalletManagerConfig>): WalletManagerConfig => ({
   connectors: [],
   createConnector: vi.fn().mockReturnValue(createMockConnector()),
   ...overrides,

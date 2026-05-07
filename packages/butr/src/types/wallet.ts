@@ -69,24 +69,16 @@ type UIConnector = {
    * the message internally; verifiers must check the signature against
    * `signedMessage`, not the input bytes. EVM wallets echo the input.
    */
-  signMessage(
-    msg: Uint8Array,
-  ): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
+  signMessage(msg: Uint8Array): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
   /**
    * Optional Sign-In With Solana / Ethereum flow. Implemented when the
    * connected wallet supports the chain's sign-in feature (e.g. Wallet
    * Standard `solana:signIn`). Returns the same shape as `signMessage` —
    * `signedMessage` is the bytes the wallet rendered and signed.
    */
-  signIn?(
-    input: SignInInput,
-  ): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
+  signIn?(input: SignInInput): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
   sendTx(tx: unknown): Promise<string>;
-  sendTxToChain(
-    tx: unknown,
-    targetChainId: string,
-    cb?: () => void,
-  ): Promise<string>;
+  sendTxToChain(tx: unknown, targetChainId: string, cb?: () => void): Promise<string>;
   getTransactionReceipt(tx: string): Promise<{
     status: "Success" | "Error" | "Pending";
   }>;

@@ -40,9 +40,7 @@ const createWebStorageDriver = (kind: WebStorageKind): StorageDriver => {
     return createMemoryStorageDriver();
   }
 
-  const storage = (globalThis as unknown as Record<WebStorageKind, Storage>)[
-    kind
-  ];
+  const storage = (globalThis as unknown as Record<WebStorageKind, Storage>)[kind];
 
   return {
     getItem(key) {

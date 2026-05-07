@@ -10,10 +10,7 @@ import {
 } from "../../__tests__/helpers";
 import type { ChainPlatform, ConnectedWallet } from "../../types";
 
-const createStorage = (overrides?: {
-  persistent?: StorageDriver;
-  session?: StorageDriver;
-}) => {
+const createStorage = (overrides?: { persistent?: StorageDriver; session?: StorageDriver }) => {
   const persistent = overrides?.persistent ?? createMockStorageDriver();
   const session = overrides?.session ?? createMockStorageDriver();
   return {
@@ -59,9 +56,7 @@ describe("WalletStorage", () => {
       const { storage } = createStorage({ persistent });
 
       expect(await storage.getConnectedWallets()).toEqual({});
-      expect(persistent.removeItem).toHaveBeenCalledWith(
-        "test-connected-wallets",
-      );
+      expect(persistent.removeItem).toHaveBeenCalledWith("test-connected-wallets");
     });
 
     it("returns empty and clears when platform key is invalid", async () => {
@@ -151,9 +146,7 @@ describe("WalletStorage", () => {
       const { storage } = createStorage({ persistent });
 
       expect(await storage.getConnectedWallets()).toEqual({});
-      expect(persistent.removeItem).toHaveBeenCalledWith(
-        "test-connected-wallets",
-      );
+      expect(persistent.removeItem).toHaveBeenCalledWith("test-connected-wallets");
     });
   });
 
@@ -162,15 +155,11 @@ describe("WalletStorage", () => {
       const { storage, persistent } = createStorage();
       const account = createMockAccount();
       const connector = createMockConnector({ id: "metamask" });
-      const wallets = new Map<ChainPlatform, ConnectedWallet>([
-        ["evm", { connector, account }],
-      ]);
+      const wallets = new Map<ChainPlatform, ConnectedWallet>([["evm", { connector, account }]]);
 
       await storage.setConnectedWallets(wallets);
 
-      const stored = JSON.parse(
-        (await persistent.getItem("test-connected-wallets")) as string,
-      );
+      const stored = JSON.parse((await persistent.getItem("test-connected-wallets")) as string);
       expect(stored.evm.connectorId).toBe("metamask");
       expect(stored.evm.account.walletAddress).toBe(account.walletAddress);
     });
@@ -179,9 +168,7 @@ describe("WalletStorage", () => {
       const { storage, persistent } = createStorage();
       await storage.setConnectedWallets(new Map());
 
-      const stored = JSON.parse(
-        (await persistent.getItem("test-connected-wallets")) as string,
-      );
+      const stored = JSON.parse((await persistent.getItem("test-connected-wallets")) as string);
       expect(stored).toEqual({});
     });
   });
@@ -222,9 +209,7 @@ describe("WalletStorage", () => {
 
       await storage.removeConnectedWallet("evm");
 
-      const stored = JSON.parse(
-        (await persistent.getItem("test-connected-wallets")) as string,
-      );
+      const stored = JSON.parse((await persistent.getItem("test-connected-wallets")) as string);
       expect(stored.evm).toBeUndefined();
       expect(stored.svm).toBeDefined();
     });
@@ -236,9 +221,7 @@ describe("WalletStorage", () => {
 
       await storage.removeConnectedWallet("move");
 
-      const stored = JSON.parse(
-        (await persistent.getItem("test-connected-wallets")) as string,
-      );
+      const stored = JSON.parse((await persistent.getItem("test-connected-wallets")) as string);
       expect(stored).toEqual({});
     });
   });
@@ -289,10 +272,7 @@ describe("WalletStorage", () => {
       await storage.markUserDisconnected(true);
 
       expect(await storage.isUserDisconnected()).toBe(true);
-      expect(session.setItem).toHaveBeenCalledWith(
-        "test-user-disconnected",
-        "true",
-      );
+      expect(session.setItem).toHaveBeenCalledWith("test-user-disconnected", "true");
     });
 
     it("clears disconnect intent", async () => {
@@ -310,14 +290,8 @@ describe("WalletStorage", () => {
 
       await storage.markUserDisconnected(true);
 
-      expect(pair.session.setItem).toHaveBeenCalledWith(
-        "test-user-disconnected",
-        "true",
-      );
-      expect(pair.persistent.setItem).not.toHaveBeenCalledWith(
-        "test-user-disconnected",
-        "true",
-      );
+      expect(pair.session.setItem).toHaveBeenCalledWith("test-user-disconnected", "true");
+      expect(pair.persistent.setItem).not.toHaveBeenCalledWith("test-user-disconnected", "true");
     });
   });
 
@@ -339,9 +313,7 @@ describe("WalletStorage", () => {
 
       const account = createMockAccount();
       const connector = createMockConnector({ id: "metamask" });
-      const wallets = new Map<ChainPlatform, ConnectedWallet>([
-        ["evm", { connector, account }],
-      ]);
+      const wallets = new Map<ChainPlatform, ConnectedWallet>([["evm", { connector, account }]]);
       await storage.setConnectedWallets(wallets);
 
       const restored = await storage.getConnectedWallets();

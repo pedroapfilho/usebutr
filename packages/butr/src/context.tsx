@@ -9,10 +9,7 @@ type WalletManagerProviderProps = {
   config: WalletManagerConfig;
 };
 
-const WalletManagerProvider: React.FC<WalletManagerProviderProps> = ({
-  children,
-  config,
-}) => {
+const WalletManagerProvider: React.FC<WalletManagerProviderProps> = ({ children, config }) => {
   const [store] = useState(() => createWalletStore(config));
   const hasHydratedRef = useRef(false);
 

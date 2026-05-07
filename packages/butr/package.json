@@ -2,7 +2,11 @@
   "name": "butr",
   "version": "0.1.0",
   "description": "Multi-chain wallet management primitives for React",
+  "files": [
+    "dist"
+  ],
   "type": "module",
+  "sideEffects": false,
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
@@ -14,18 +18,15 @@
       "require": "./dist/cjs/index.js"
     }
   },
-  "sideEffects": false,
   "scripts": {
     "build": "pnpm run build:esm && pnpm run build:cjs && pnpm run build:cjs-pkg",
     "build:esm": "tsc -p tsconfig.json",
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "build:cjs-pkg": "node -e \"require('fs').writeFileSync('dist/cjs/package.json', JSON.stringify({type:'commonjs'}))\"",
+    "clean": "rm -rf dist",
     "prepare": "pnpm run build",
-    "test:unit": "vitest run"
-  },
-  "peerDependencies": {
-    "react": ">=18.0.0",
-    "zustand": ">=4.0.0"
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@repo/config-vitest": "workspace:*",
@@ -36,7 +37,8 @@
     "vitest": "^1.6.1",
     "zustand": "^5.0.0"
   },
-  "files": [
-    "dist"
-  ]
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "zustand": ">=4.0.0"
+  }
 }

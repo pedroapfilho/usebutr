@@ -35,6 +35,12 @@ importers:
 
   packages/butr:
     devDependencies:
+      '@repo/config-vitest':
+        specifier: workspace:*
+        version: link:../config-vitest
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../config-typescript
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.14

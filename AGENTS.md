@@ -6,26 +6,19 @@ This file provides guidance to AI coding agents when working with code in this r
 
 ```bash
 # Development (runs all apps concurrently via Turborepo)
-pnpm dev                          # all apps via portless
-pnpm dev --filter=web             # single app
-pnpm dev --filter=api
+pnpm dev                                # all apps
+pnpm dev --filter=demo-vite             # single app
 
 # Build / Lint / Typecheck
-pnpm build                        # all packages + apps (turbo cached)
-pnpm lint                         # oxlint across all packages
-pnpm typecheck                    # tsc --noEmit across all packages
-pnpm format                       # oxfmt (write)
-pnpm format:check                 # oxfmt (check only, used in CI)
+pnpm build                              # all packages + apps
+pnpm lint                               # oxlint
+pnpm typecheck                          # tsc --noEmit
+pnpm format                             # oxfmt (write)
+pnpm format:check                       # oxfmt (check)
 
 # Testing
-pnpm test                         # vitest unit tests
-pnpm test:e2e                     # playwright (requires web + api running)
-pnpm test:e2e:ui                  # playwright with interactive UI
-
-# Database (Prisma, schema in packages/db/prisma/schema.prisma)
-pnpm db:generate                  # generate Prisma client
-pnpm db:push                      # push schema to database
-pnpm db:seed                      # seed database
+pnpm test                               # vitest unit tests
+pnpm test:e2e                           # playwright (placeholder, no current tests)
 ```
 
 ## Architecture
@@ -34,110 +27,48 @@ pnpm db:seed                      # seed database
 
 ### Apps
 
-| App       | Framework                | Dev URL                          | Purpose                   |
-| --------- | ------------------------ | -------------------------------- | ------------------------- |
-| `web`     | Next.js 16 (App Router)  | `https://acme.web.localhost`     | Main application          |
-| `landing` | Next.js 16 (App Router)  | `https://acme.landing.localhost` | Marketing site            |
-| `api`     | Hono on Node.js (tsdown) | `https://acme.api.localhost`     | Backend API + auth server |
+| App                   | Framework                       | Dev URL                                      |
+| --------------------- | ------------------------------- | -------------------------------------------- |
+| `demo-vite`           | Vite 7 + React 19 (SPA)         | `https://demo-vite.butr.localhost`           |
+| `demo-next`           | Next.js 16 (App Router)         | `https://demo-next.butr.localhost`           |
+| `demo-tanstack-start` | TanStack Start (Vite SSR)       | `https://demo-tanstack-start.butr.localhost` |
+| `demo-expo`           | Expo (React Native, web target) | `https://demo-expo.butr.localhost`           |
+
+Every demo is a single-page kitchen-sink reference that imports and uses every public `butr` export.
 
 ### Packages
 
-| Package                   | Purpose                                                                                                                                |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `@repo/ui`                | Shared React components (Tailwind + CVA). Includes TanStack Form field components (`Field`, `FieldGroup`, `FieldLabel`, `FieldError`). |
-| `@repo/config-vitest`     | Shared Vitest config. Exports `react.ts` and `node.ts` configs.                                                                        |
-| `@repo/auth`              | Better Auth config. Exports `./server` (for api) and `./client` (for web/landing).                                                     |
-| `@repo/db`                | Prisma client singleton + schema. Models: User, Session, Account, Verification.                                                        |
-| `@repo/typescript-config` | Shared tsconfig bases: `nextjs.json`, `server.json`, `react-library.json`, `vite.json`.                                                |
-| `@repo/tailwind-config`   | Shared Tailwind CSS config, PostCSS config, and design tokens (`shared-styles.css`).                                                   |
-
-### Key Relationships
-
-- **Auth flow**: `web`/`landing` use `@repo/auth/client` → calls `api` at `/auth/*` → `api` uses `@repo/auth/server` with Prisma adapter from `@repo/db`.
-- **API structure**: Hono app with versioned routes (`/api/v1/*`), Better Auth at `/auth/*`, health at `/healthz` and `/readyz`.
-- **UI consumption**: `web` and `landing` both import from `@repo/ui`.
-- **Build order**: Turborepo handles `^build` dependencies — packages build before apps that depend on them.
+| Package                   | Purpose                                                                                                                           |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `butr`                    | The library — multi-chain wallet management primitives for React.                                                                 |
+| `@repo/typescript-config` | Shared tsconfig bases: `base.json`, `library.json`, `nextjs.json`, `react-library.json`, `server.json`, `vite.json`, `expo.json`. |
+| `@repo/config-vitest`     | Shared Vitest config. Exports `react.ts` and `node.ts`.                                                                           |
 
 ## Portless (Dev URLs)
 
-Every dev server runs behind portless, which gives each app a stable HTTPS URL on `.localhost` instead of guessing port numbers. Cookies, OAuth redirects, and CORS allowlists stay valid across project switches.
+Every dev server runs behind portless, which gives each app a stable HTTPS URL on `.localhost`.
 
 ### Setup (one-time per machine)
 
 ```bash
-npm install -g portless                # global install (or upgrade)
-sudo portless proxy start --https      # start the daemon on :443
+npm install -g portless
+sudo portless proxy start --https
 ```
-
-The proxy auto-restarts on subsequent invocations once trusted.
-
-### URLs
-
-| Service   | URL                              | Started by |
-| --------- | -------------------------------- | ---------- |
-| `web`     | `https://acme.web.localhost`     | `pnpm dev` |
-| `api`     | `https://acme.api.localhost`     | `pnpm dev` |
-| `landing` | `https://acme.landing.localhost` | `pnpm dev` |
-
-The api also exposes `/openapi.json`, the Scalar UI at `/docs`, and a markdown export at `/llms.txt` — see `apps/api/src/lib/openapi.ts`.
 
 ### Worktrees
 
-Branch name auto-prefixes the subdomain — no port collisions between concurrent worktrees, each gets its own auto-assigned backing port:
-
-```
-main worktree:        https://acme.web.localhost
-branch fix-styles:    https://fix-styles.acme.web.localhost
-```
-
-## Dev Tools (Development Only)
-
-- **React Scan** — highlights unnecessary re-renders, loaded via `<script>` in root layout when `NODE_ENV=development`
-- **React Grab** — inspect React component tree, loaded via `<script>` in root layout when `NODE_ENV=development`
-- Neither tool runs in production builds
+Branch name auto-prefixes the subdomain — no port collisions between concurrent worktrees.
 
 ## Tooling
 
-- **Linter**: oxlint (NOT ESLint). Config in `.oxlintrc.json`. Uses `oxlint-config-awesomeness`.
-- **Formatter**: oxfmt (NOT Prettier). Config in `.oxfmtrc.json`. Sorts Tailwind classes and imports.
-- **Pre-commit**: Husky + lint-staged runs `oxlint` (on `.ts,.tsx,.js,.jsx` files) and `oxfmt` (on `.ts,.tsx,.js,.jsx,.json,.md` files).
-- **Testing**: Vitest for unit tests, Playwright for e2e (chromium, firefox, webkit). `@repo/config-vitest` exports `react.ts` and `node.ts` configs.
-- **Bundler (api)**: tsdown (not tsc). Outputs to `dist/`. Turbopack for Next.js dev.
-
-## Forms
-
-- **@tanstack/react-form** (NOT react-hook-form)
-- Validation: `onBlur` + `onChange` validators with Zod schemas
-- Display errors with `field.state.meta.isTouched && !field.state.meta.isValid`
-- Field components from `@repo/ui`: `Field`, `FieldGroup`, `FieldLabel`, `FieldError`
-- NEVER use `field.handleChange` inside `useEffect` or `useCallback` with `field` in deps — use `field.form.setFieldValue(field.name, value)` with stable refs
-
-## CI (GitHub Actions)
-
-- `test.yml` — `pnpm test`
-- `lint.yml` — `pnpm oxlint --format=github .`
-- `format.yml` — `pnpm run format:check`
-- `fallow.yml` — `pnpm fallow:dead` (cross-file dead code, unused exports, circular deps)
-- All use `permissions: { contents: read }` and `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true`
-
-## Prisma
-
-`prisma.config.ts` uses `process.env.DATABASE_URL ?? ""` (not `env("DATABASE_URL")`) so `prisma generate` works in CI without database credentials.
-
-## Environment
-
-Copy `.env.example` to `.env` at root. Key variables:
-
-- `DATABASE_URL` — PostgreSQL connection string
-- `BETTER_AUTH_SECRET` — min 32 characters
-- `CORS_ORIGINS` / `TRUSTED_ORIGINS` — comma-separated allowed origins
-- `NEXT_PUBLIC_API_URL` — API URL for client-side requests (web/landing use this)
-
-Web and landing apps use `.env.local` files; api uses `.env` at its app root.
+- **Linter:** oxlint. Config in `oxlint.config.ts`.
+- **Formatter:** oxfmt.
+- **Pre-commit:** Husky + lint-staged.
+- **Testing:** Vitest for unit tests; Playwright is wired but `tests/e2e/` is currently empty.
+- **Dead code:** `pnpm fallow:dead` to detect unused exports.
 
 ## Conventions
 
-- Path aliases: `@/*` maps to `src/*` in all apps and packages.
-- Auth password minimum: 12 characters. Sessions expire after 7 days.
-- API routes are versioned under `/api/v1/`. Auth routes are at `/auth/*`.
-- Turbo caches are sensitive to `API_URL`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_API_URL`, and `DATABASE_URL`.
+- Path aliases: `@/*` maps to `src/*` (and `app/*` for TanStack Start) in apps.
+- Demo apps depend on `butr` via `"butr": "workspace:*"` and on `@repo/typescript-config` via the same.
+- All web demos run behind portless; demo-expo's native target uses Metro/Expo Go (no portless).

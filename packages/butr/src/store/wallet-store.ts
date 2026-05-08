@@ -1,6 +1,8 @@
 import { createStore } from "zustand/vanilla";
 import { devtools } from "zustand/middleware";
 import type { Account, ChainPlatform, ConnectedWallet, WalletManagerConfig } from "../types";
+import type { ConnectionError } from "../types/errors";
+import { mapConnectionError } from "../types/errors";
 import { WalletStorage } from "../storage";
 import type { WalletPersistence } from "../storage";
 import { hydrateFromStorage, isProduction, logStorageError, run } from "./wallet-store-helpers";
@@ -26,7 +28,7 @@ type RuntimeMembers = {
   reset: () => void;
   resetConnectionStatus: () => void;
   setActiveConnector: (connectorId: string | null) => void;
-  setConnectionError: (error: string | null) => void;
+  setConnectionError: (error: ConnectionError | null) => void;
   setConnectionStatus: (status: State["connectionStatus"], connectorId?: string | null) => void;
   setSelection: (chainPlatform: ChainPlatform, connectorId: string | null) => void;
   updateWalletAccount: (connectorId: string, account: Account) => void;
@@ -127,8 +129,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               config.onConnect?.(entry);
               onSuccess?.(entry);
             } catch (error) {
-              const errorMessage = error instanceof Error ? error.message : "Connection failed";
-              dispatch({ error: errorMessage, type: "CONNECT_FAILED" });
+              dispatch({ error: mapConnectionError(error), type: "CONNECT_FAILED" });
               try {
                 await connector.disconnect?.();
               } catch (disconnectError: unknown) {

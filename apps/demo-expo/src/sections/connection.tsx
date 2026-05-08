@@ -64,7 +64,7 @@ const ConnectionSection = () => {
       <Text>hydrated: {String(isHydrated)}</Text>
       <Text>active connector: {activeId ?? "none"}</Text>
       <Text>connecting connector: {connectingId ?? "none"}</Text>
-      <Text>error: {error ?? "none"}</Text>
+      <Text>error: {error ? `${error.kind} — ${error.message}` : "none"}</Text>
       <Text>user-disconnected flag: {String(isUserDisconnected)}</Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 8 }}>
         <Btn label="Connect EVM" onPress={() => connect("mock-evm")} />

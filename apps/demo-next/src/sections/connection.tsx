@@ -56,7 +56,7 @@ const ConnectionSection = () => {
         <li>hydrated: {String(isHydrated)}</li>
         <li>active connector: {activeId ?? "none"}</li>
         <li>connecting connector: {connectingId ?? "none"}</li>
-        <li>error: {error ?? "none"}</li>
+        <li>error: {error ? `${error.kind} — ${error.message}` : "none"}</li>
         <li>user-disconnected flag: {String(isUserDisconnected)}</li>
       </ul>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>

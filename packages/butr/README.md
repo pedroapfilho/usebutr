@@ -119,6 +119,21 @@ CAIP-2 shaped: `{ id, namespace, reference, name }`. Consumers extend it structu
 
 Pluggable storage. Default `WalletStorage` uses two `StorageDriver`s: `persistent` (survives reloads) and `session` (cleared on tab close). Built-in factories: `createBrowserStorageDriver` (localStorage + sessionStorage) and `createMemoryStorageDriver` (SSR/RN/tests). Bring your own driver — anything that implements `getItem`/`setItem`/`removeItem` works.
 
+### `ConnectionError`
+
+A tagged union of normalised error variants — `UserRejected`, `RequestPending`, `WalletLocked`, `ChainMismatch`, `NotConnected`, `Timeout`, `Unknown`. butr's `mapConnectionError` translates raw thrown values from connectors (EIP-1193 numeric codes, Solana wallet messages, embedded SDK error classes) into one of these. Consumers branch on `error.kind` for UX decisions instead of regexing message strings.
+
+```ts
+const error = useConnectionError();
+if (error?.kind === "UserRejected") {
+  // show "try again"
+} else if (error?.kind === "RequestPending") {
+  // hint user to check their wallet popup
+} else if (error?.kind === "WalletLocked") {
+  // tell user to unlock
+}
+```
+
 ## API
 
 ### Provider
@@ -136,7 +151,7 @@ Pluggable storage. Default `WalletStorage` uses two `StorageDriver`s: `persisten
 | `useIsConnecting`          | `boolean`                                                                    |
 | `useConnectingConnectorId` | `string \| null` — the wallet currently in flight (null when not connecting) |
 | `useActiveConnectorId`     | `string \| null` — the global UX cursor                                      |
-| `useConnectionError`       | `string \| null`                                                             |
+| `useConnectionError`       | `ConnectionError \| null` — see [`ConnectionError`](#connectionerror)        |
 | `useWalletConnected`       | `boolean` (any wallet connected)                                             |
 | `useIsHydrated`            | `boolean` — has the store finished its initial load?                         |
 | `useIsUserDisconnected`    | session-scoped disconnect-intent flag                                        |

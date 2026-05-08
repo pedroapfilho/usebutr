@@ -140,10 +140,50 @@ describe("createWalletStore", () => {
       );
 
       expect(store.getState().connectionStatus).toBe("error");
-      expect(store.getState().connectionError).toBe("User rejected");
+      expect(store.getState().connectionError?.kind).toBe("UserRejected");
+      expect(store.getState().connectionError?.message).toBe("User rejected");
       expect(store.getState().connectingConnectorId).toBeNull();
       expect(onError).toHaveBeenCalledTimes(1);
       expect(connector.disconnect).toHaveBeenCalled();
+    });
+
+    it("maps EIP-1193 code 4001 to UserRejected", async () => {
+      const evmError = Object.assign(new Error("user denied transaction"), { code: 4001 });
+      const connector = createMockConnector({
+        connect: vi.fn().mockRejectedValue(evmError),
+      });
+      const { store } = createTestStore({
+        createConnector: vi.fn().mockReturnValue(connector),
+      });
+      await expect(store.getState().connectWallet("test")).rejects.toThrow();
+      expect(store.getState().connectionError?.kind).toBe("UserRejected");
+    });
+
+    it("maps EIP-1193 code -32002 to RequestPending", async () => {
+      const evmError = Object.assign(new Error("request already pending"), { code: -32_002 });
+      const connector = createMockConnector({
+        connect: vi.fn().mockRejectedValue(evmError),
+      });
+      const { store } = createTestStore({
+        createConnector: vi.fn().mockReturnValue(connector),
+      });
+      await expect(store.getState().connectWallet("test")).rejects.toThrow();
+      expect(store.getState().connectionError?.kind).toBe("RequestPending");
+    });
+
+    it("maps timeout to Timeout", async () => {
+      vi.useFakeTimers();
+      const connector = createMockConnector({
+        connect: vi.fn().mockReturnValue(new Promise(() => {})),
+      });
+      const { store } = createTestStore({
+        createConnector: vi.fn().mockReturnValue(connector),
+      });
+      const promise = store.getState().connectWallet("slow");
+      vi.advanceTimersByTime(90_001);
+      await expect(promise).rejects.toThrow();
+      vi.useRealTimers();
+      expect(store.getState().connectionError?.kind).toBe("Timeout");
     });
 
     it("throws when connector cannot be created", async () => {
@@ -574,14 +614,15 @@ describe("createWalletStore", () => {
   describe("connection status", () => {
     it("setConnectionError sets error status", () => {
       const { store } = createTestStore();
-      store.getState().setConnectionError("something broke");
+      store.getState().setConnectionError({ kind: "Unknown", message: "something broke" });
       expect(store.getState().connectionStatus).toBe("error");
-      expect(store.getState().connectionError).toBe("something broke");
+      expect(store.getState().connectionError?.kind).toBe("Unknown");
+      expect(store.getState().connectionError?.message).toBe("something broke");
     });
 
     it("setConnectionError with null returns to idle", () => {
       const { store } = createTestStore();
-      store.getState().setConnectionError("error");
+      store.getState().setConnectionError({ kind: "Unknown", message: "error" });
       store.getState().setConnectionError(null);
       expect(store.getState().connectionStatus).toBe("idle");
       expect(store.getState().connectionError).toBeNull();

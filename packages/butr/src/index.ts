@@ -5,10 +5,13 @@ export type {
   Balance,
   ChainPlatform,
   ConnectedWallet,
+  ConnectionError,
+  ConnectionErrorKind,
   ConnectorMeta,
   UIConnector,
   WalletManagerConfig,
 } from "./types";
+export { mapConnectionError } from "./types";
 
 // Store
 export type { ConnectionStatus, WalletStore, WalletStoreState } from "./store";

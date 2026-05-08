@@ -1,11 +1,12 @@
 import type { Account, ChainPlatform, ConnectedWallet } from "../types";
+import type { ConnectionError } from "../types/errors";
 
 type ConnectionStatus = "idle" | "connecting" | "success" | "error";
 
 type State = {
   activeConnectorId: string | null;
   connectingConnectorId: string | null;
-  connectionError: string | null;
+  connectionError: ConnectionError | null;
   connectionStatus: ConnectionStatus;
   isHydrated: boolean;
   isUserDisconnected: boolean;
@@ -24,7 +25,7 @@ type Event =
   | { type: "USER_DISCONNECTED_SET"; value: boolean }
   | { connectorId: string; type: "CONNECT_STARTED" }
   | { connectorId: string; entry: ConnectedWallet; type: "CONNECT_SUCCEEDED" }
-  | { error: string; type: "CONNECT_FAILED" }
+  | { error: ConnectionError; type: "CONNECT_FAILED" }
   | { connectorId: string; type: "DISCONNECTED" }
   | { account: Account; connectorId: string; type: "ACCOUNT_UPDATED" }
   | { connectorId: string; type: "WALLET_REFRESHED" }
@@ -32,7 +33,7 @@ type Event =
   | { chainPlatform: ChainPlatform; connectorId: string | null; type: "SELECTION_CHANGED" }
   | { connectorId?: string | null; status: ConnectionStatus; type: "STATUS_SET" }
   | { type: "STATUS_RESET" }
-  | { error: string | null; type: "ERROR_SET" }
+  | { error: ConnectionError | null; type: "ERROR_SET" }
   | { type: "RESET" };
 
 const initialState: State = {

@@ -97,9 +97,12 @@ const ConnectButton = () => {
 
 ### `UIConnector`
 
-The interface every connector must implement. Lifecycle: `connect`, `disconnect`, `getAccount`, `switchChain`, `switchAccount`. Capabilities: `getSigner`, `signMessage`, `sendTx`, `sendTxToChain`, `getTransactionReceipt`, `getBalance`.
+The interface every connector must implement. Conceptually it's the intersection of two smaller interfaces — the seam is documentary, but it makes "what `butr` calls" vs. "what your app calls" explicit:
 
-`butr` never inspects the signer or transaction types — the connector returns `unknown` and the consumer casts. This is what keeps the package chain-agnostic.
+- **`Connector`** — orchestration, what `butr` itself invokes during connect / disconnect / hydrate: `id`, `name`, `chainPlatform`, `connect`, `disconnect`, `getAccount`.
+- **`Wallet`** — capabilities, what your app calls on a connected wallet: `getSigner`, `signMessage`, `sendTx`, `sendTxToChain`, `getTransactionReceipt`, `getBalance`, `switchAccount`, `switchChain`.
+
+`UIConnector = Connector & Wallet`. `butr` never inspects the signer or transaction types — the connector returns `unknown` and the consumer casts. That's what keeps the package chain-agnostic.
 
 ### `WalletStore`
 
@@ -174,6 +177,27 @@ if (error?.kind === "UserRejected") {
 | `useGetWallet`            | `(connectorId: string) => ConnectedWallet \| undefined`     |
 | `useGetSelectedWallet`    | `(platform: ChainPlatform) => ConnectedWallet \| undefined` |
 | `useGetConnectorInstance` | `(id: string) => UIConnector \| null`                       |
+
+### Async hooks (signer + balance)
+
+Both invalidate automatically when `connectorId`, the connected account address, or the chain id changes — so chain switches or account swaps in the wallet refetch without consumer effort.
+
+| Hook                              | Returns                                                                                                  |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `useSigner(connectorId?)`         | `{ data: unknown \| null; error: unknown \| null; status: "idle" \| "loading" \| "success" \| "error" }` |
+| `useBalance(connectorId?, mint?)` | Same shape as `useSigner` plus `refetch: () => void` for poll-on-demand                                  |
+| `useWalletEntry(connectorId?)`    | Reactive lookup by `connectorId`. Re-renders only when the resolved wallet identity changes.             |
+
+If `connectorId` is omitted, both default to the active wallet (`useActiveConnectorId`).
+
+```tsx
+const { data: signer, status } = useSigner();
+const { data: balance, refetch } = useBalance();
+
+if (status === "success" && signer) {
+  // signer is ready; consumer casts to its concrete type
+}
+```
 
 ### Mutation hooks
 

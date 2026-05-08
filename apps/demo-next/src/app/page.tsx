@@ -1,5 +1,6 @@
 "use client";
 
+import { BalancesSection } from "../sections/balances";
 import { ConnectionSection } from "../sections/connection";
 import { InternalsSection } from "../sections/internals";
 import { WalletsSection } from "../sections/wallets";
@@ -11,6 +12,7 @@ const Page = () => (
     </header>
     <ConnectionSection />
     <WalletsSection />
+    <BalancesSection />
     <InternalsSection />
   </main>
 );

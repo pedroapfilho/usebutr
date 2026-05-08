@@ -7,7 +7,9 @@ export type {
   Balance,
   ChainPlatform,
   ConnectedWallet,
+  Connector,
   ConnectorMeta,
   UIConnector,
+  Wallet,
   WalletManagerConfig,
 } from "./wallet";

@@ -1,3 +1,4 @@
+import { BalancesSection } from "./sections/balances";
 import { ConnectionSection } from "./sections/connection";
 import { InternalsSection } from "./sections/internals";
 import { WalletsSection } from "./sections/wallets";
@@ -9,6 +10,7 @@ const App = () => (
     </header>
     <ConnectionSection />
     <WalletsSection />
+    <BalancesSection />
     <InternalsSection />
   </main>
 );

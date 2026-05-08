@@ -1,4 +1,5 @@
 import { ScrollView, View, Text } from "react-native";
+import { BalancesSection } from "../src/sections/balances";
 import { ConnectionSection } from "../src/sections/connection";
 import { InternalsSection } from "../src/sections/internals";
 import { WalletsSection } from "../src/sections/wallets";
@@ -10,6 +11,7 @@ const Index = () => (
     </View>
     <ConnectionSection />
     <WalletsSection />
+    <BalancesSection />
     <InternalsSection />
   </ScrollView>
 );

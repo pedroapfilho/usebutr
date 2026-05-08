@@ -7,8 +7,10 @@ export type {
   ConnectedWallet,
   ConnectionError,
   ConnectionErrorKind,
+  Connector,
   ConnectorMeta,
   UIConnector,
+  Wallet,
   WalletManagerConfig,
 } from "./types";
 export { mapConnectionError } from "./types";
@@ -63,3 +65,7 @@ export {
   useWalletConnected,
   useWalletStore,
 } from "./hooks";
+
+// React — Async hooks (signer cache + balance lifecycle)
+export type { AsyncState, UseBalanceResult } from "./hooks-async";
+export { useBalance, useSigner, useWalletEntry } from "./hooks-async";

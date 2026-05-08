@@ -66,9 +66,40 @@ describe("createWalletStore", () => {
       expect(state.pool.size).toBe(1);
       expect(state.pool.get("metamask")?.connector.id).toBe("metamask");
       expect(state.pool.get("metamask")?.account).toEqual(account);
+      expect(state.pool.get("metamask")?.accounts).toEqual([account]);
       expect(state.selection.get("evm")).toBe("metamask");
       expect(state.activeConnectorId).toBe("metamask");
       expect(state.connectionStatus).toBe("success");
+    });
+
+    it("populates accounts list via connector.getAccounts when present", async () => {
+      const a = createMockAccount({ id: "a", walletAddress: "0xA" });
+      const b = createMockAccount({ id: "b", walletAddress: "0xB" });
+      const connector = createMockConnector({
+        getAccount: vi.fn().mockResolvedValue(a),
+        getAccounts: vi.fn().mockResolvedValue([a, b]),
+        id: "metamask",
+      });
+      const { store } = createTestStore({
+        createConnector: vi.fn().mockReturnValue(connector),
+      });
+
+      await store.getState().connectWallet("metamask");
+      expect(store.getState().pool.get("metamask")?.accounts).toEqual([a, b]);
+    });
+
+    it("falls back to [account] when getAccounts throws", async () => {
+      const account = createMockAccount();
+      const connector = createMockConnector({
+        getAccount: vi.fn().mockResolvedValue(account),
+        getAccounts: vi.fn().mockRejectedValue(new Error("not supported")),
+      });
+      const { store } = createTestStore({
+        createConnector: vi.fn().mockReturnValue(connector),
+      });
+
+      await store.getState().connectWallet("test");
+      expect(store.getState().pool.get("test")?.accounts).toEqual([account]);
     });
 
     it("connects two wallets on different platforms simultaneously", async () => {
@@ -391,6 +422,107 @@ describe("createWalletStore", () => {
 
       store.getState().setSelection("evm", null);
       expect(store.getState().selection.has("evm")).toBe(false);
+    });
+  });
+
+  describe("connector subscription bridge", () => {
+    it("dispatches accountChanged events into ACCOUNT_UPDATED", async () => {
+      const original = createMockAccount({ walletAddress: "0xORIG" });
+      let listener: ((event: { account: typeof original; type: "accountChanged" }) => void) | null =
+        null;
+      const subscribe = vi.fn(
+        (l: (e: { account: typeof original; type: "accountChanged" }) => void) => {
+          listener = l;
+          return () => {
+            listener = null;
+          };
+        },
+      );
+      const connector = createMockConnector({
+        getAccount: vi.fn().mockResolvedValue(original),
+        id: "metamask",
+        subscribe: subscribe as unknown as never,
+      });
+      const { store } = createTestStore({
+        createConnector: vi.fn().mockReturnValue(connector),
+      });
+
+      await store.getState().connectWallet("metamask");
+      expect(subscribe).toHaveBeenCalledTimes(1);
+
+      const next = createMockAccount({ walletAddress: "0xNEXT" });
+      listener!({ account: next, type: "accountChanged" });
+
+      const wallet = store.getState().pool.get("metamask");
+      expect(wallet?.account.walletAddress).toBe("0xNEXT");
+      expect(wallet?.accounts.map((a) => a.walletAddress)).toEqual(["0xORIG", "0xNEXT"]);
+    });
+
+    it("dispatches disconnected events into DISCONNECTED", async () => {
+      let listener: ((event: { type: "disconnected" }) => void) | null = null;
+      const unsub = vi.fn();
+      const subscribe = vi.fn((l: (e: { type: "disconnected" }) => void) => {
+        listener = l;
+        return unsub;
+      });
+      const connector = createMockConnector({
+        id: "metamask",
+        subscribe: subscribe as unknown as never,
+      });
+      const { store } = createTestStore({
+        createConnector: vi.fn().mockReturnValue(connector),
+      });
+
+      await store.getState().connectWallet("metamask");
+      await hydrateStore(store);
+
+      listener!({ type: "disconnected" });
+
+      expect(store.getState().pool.size).toBe(0);
+      expect(unsub).toHaveBeenCalled();
+    });
+
+    it("unsubscribes on explicit disconnect", async () => {
+      const unsub = vi.fn();
+      const connector = createMockConnector({
+        id: "metamask",
+        subscribe: vi.fn(() => unsub) as unknown as never,
+      });
+      const { store } = createTestStore({
+        createConnector: vi.fn().mockReturnValue(connector),
+      });
+
+      await store.getState().connectWallet("metamask");
+      await hydrateStore(store);
+      store.getState().disconnectWallet("metamask");
+
+      expect(unsub).toHaveBeenCalled();
+    });
+
+    it("unsubscribes all connectors on reset", async () => {
+      const unsubA = vi.fn();
+      const unsubB = vi.fn();
+      const a = createMockConnector({
+        chainPlatform: "evm",
+        id: "metamask",
+        subscribe: vi.fn(() => unsubA) as unknown as never,
+      });
+      const b = createMockConnector({
+        chainPlatform: "svm",
+        id: "phantom",
+        subscribe: vi.fn(() => unsubB) as unknown as never,
+      });
+      const { store } = createTestStore({
+        createConnector: vi.fn((id) => (id === "metamask" ? a : b)),
+      });
+
+      await store.getState().connectWallet("metamask");
+      await store.getState().connectWallet("phantom");
+      await hydrateStore(store);
+      store.getState().reset();
+
+      expect(unsubA).toHaveBeenCalled();
+      expect(unsubB).toHaveBeenCalled();
     });
   });
 

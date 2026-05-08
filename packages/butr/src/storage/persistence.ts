@@ -12,6 +12,9 @@ type StorageDriver = {
 
 type StoredPoolEntry = {
   account: Account;
+  /** All known accounts on the wallet at last persist. Always contains
+   *  `account`. */
+  accounts: Array<Account>;
   chainPlatform: ChainPlatform;
   connectorId: string;
 };

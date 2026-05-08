@@ -18,6 +18,20 @@ type StorageConfig = {
   session?: StorageDriver;
 };
 
+const isValidAccount = (value: unknown): boolean => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const account = value as Record<string, unknown>;
+  if (typeof account.walletAddress !== "string" || typeof account.id !== "string") {
+    return false;
+  }
+  if (!account.chain || typeof account.chain !== "object") {
+    return false;
+  }
+  return true;
+};
+
 const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry => {
   if (!value || typeof value !== "object") {
     return false;
@@ -32,14 +46,15 @@ const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry
   if (!VALID_CHAIN_PLATFORMS.has(entry.chainPlatform as ChainPlatform)) {
     return false;
   }
-  if (!entry.account || typeof entry.account !== "object") {
+  if (!isValidAccount(entry.account)) {
     return false;
   }
-  const account = entry.account as Record<string, unknown>;
-  if (typeof account.walletAddress !== "string" || typeof account.id !== "string") {
-    return false;
-  }
-  if (!account.chain || typeof account.chain !== "object") {
+  // `accounts` is optional during read for backward compatibility; if
+  // present, every entry must be a valid Account.
+  if (
+    entry.accounts !== undefined &&
+    (!Array.isArray(entry.accounts) || !entry.accounts.every(isValidAccount))
+  ) {
     return false;
   }
   return true;
@@ -85,7 +100,12 @@ class WalletStorage implements WalletPersistence {
       const result: StoredPoolRecord = {};
       for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
         if (isValidPoolEntry(key, value)) {
-          result[key] = value;
+          // Default `accounts` to `[account]` for legacy entries that
+          // predate the multi-account field.
+          result[key] = {
+            ...value,
+            accounts: value.accounts ?? [value.account],
+          };
         } else {
           console.warn(`[butr] dropping invalid pool entry for ${key}`);
         }
@@ -104,6 +124,7 @@ class WalletStorage implements WalletPersistence {
       for (const [connectorId, wallet] of pool) {
         serializable[connectorId] = {
           account: wallet.account,
+          accounts: wallet.accounts,
           chainPlatform: wallet.connector.chainPlatform,
           connectorId,
         };

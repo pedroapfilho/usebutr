@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 import {
+  useAccounts,
   useActiveWallet,
   useConnectedWallets,
   useGetSelectedWallet,
@@ -15,6 +16,7 @@ import {
   type ChainBase,
   type ConnectedWallet,
 } from "butr";
+import { getMockConnectorHandle } from "../mock-connector";
 
 const ROTATING_CHAIN: ChainBase = {
   id: "eip155:1",
@@ -49,6 +51,8 @@ const WalletsSection = () => {
   const setActive = useSetActiveConnector();
   const setSelection = useSetSelection();
   const updateAccount = useUpdateWalletAccount();
+  const evmAccounts = useAccounts("mock-evm");
+  const activeAccounts = useAccounts();
 
   const rotateAccount = () => {
     const next: Account = {
@@ -57,6 +61,23 @@ const WalletsSection = () => {
       walletAddress: `0x${Date.now().toString(16).padStart(40, "0")}`.slice(0, 42),
     };
     updateAccount("mock-evm", next);
+  };
+
+  const triggerWalletAccountSwap = () => {
+    const handle = getMockConnectorHandle("mock-evm");
+    if (!handle || evmAccounts.length < 2) {
+      return;
+    }
+    const current = pool.get("mock-evm")?.account.walletAddress;
+    const other = evmAccounts.find((a) => a.walletAddress !== current);
+    if (other) {
+      handle.__emit({ account: other, type: "accountChanged" });
+    }
+  };
+
+  const triggerExternalDisconnect = () => {
+    const handle = getMockConnectorHandle("mock-evm");
+    handle?.__emit({ type: "disconnected" });
   };
 
   return (
@@ -77,12 +98,22 @@ const WalletsSection = () => {
       <Text>selected (svm): {formatWallet(selectedSvm)}</Text>
       <Text>get(mock-evm): {formatWallet(getWallet("mock-evm"))}</Text>
       <Text>getSelected(svm): {formatWallet(getSelected("svm"))}</Text>
+      <Text>
+        mock-evm accounts ({evmAccounts.length}):{" "}
+        {evmAccounts.map((a) => a.walletAddress).join(", ") || "none"}
+      </Text>
+      <Text>
+        active accounts ({activeAccounts.length}):{" "}
+        {activeAccounts.map((a) => a.walletAddress).join(", ") || "none"}
+      </Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 8 }}>
         <Btn label="Rotate EVM account" onPress={rotateAccount} />
         <Btn label="Activate EVM" onPress={() => setActive("mock-evm")} />
         <Btn label="Activate SVM" onPress={() => setActive("mock-svm")} />
         <Btn label="Select EVM=mock-evm" onPress={() => setSelection("evm", "mock-evm")} />
         <Btn label="Clear EVM selection" onPress={() => setSelection("evm", null)} />
+        <Btn label="Emit accountChanged" onPress={triggerWalletAccountSwap} />
+        <Btn label="Emit disconnected" onPress={triggerExternalDisconnect} />
       </View>
     </View>
   );

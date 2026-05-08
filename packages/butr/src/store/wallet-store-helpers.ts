@@ -1,5 +1,34 @@
-import type { ChainPlatform, ConnectedWallet, WalletManagerConfig } from "../types";
+import type {
+  Account,
+  ChainPlatform,
+  ConnectedWallet,
+  Connector,
+  WalletManagerConfig,
+} from "../types";
 import type { WalletPersistence } from "../storage";
+
+/**
+ * Pick the right `accounts` list for a hydrated wallet entry: prefer fresh
+ * data from `connector.getAccounts()`, otherwise fall back to whatever was
+ * persisted, otherwise just the active account. Extracted so the hydration
+ * loop can stay readable (and to avoid nested ternaries).
+ */
+const resolveHydratedAccounts = async (
+  connector: Connector,
+  storedAccounts: ReadonlyArray<Account>,
+  fallbackAccount: Account,
+): Promise<Array<Account>> => {
+  if (connector.getAccounts) {
+    const fresh = await connector.getAccounts().catch(() => null);
+    if (fresh && fresh.length > 0) {
+      return fresh;
+    }
+  }
+  if (storedAccounts.length > 0) {
+    return [...storedAccounts];
+  }
+  return [fallbackAccount];
+};
 
 type HydrateResult = {
   activeConnectorId: string | null;
@@ -60,8 +89,13 @@ const hydrateFromStorage = async (
       // oxlint-disable-next-line no-await-in-loop -- wallets must restore sequentially; each may fail independently
       const freshAccount = await connector.getAccount();
       const accountToUse = freshAccount || entry.account;
+      // Pull the full known-accounts list when the connector supports it,
+      // otherwise fall back to the stored list (or the active account alone).
+      // oxlint-disable-next-line no-await-in-loop -- wallets must restore sequentially; each may fail independently
+      const accounts = await resolveHydratedAccounts(connector, entry.accounts, accountToUse);
       pool.set(connectorId, {
         account: accountToUse,
+        accounts,
         connector,
       });
     } catch (error) {

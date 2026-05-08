@@ -8,8 +8,10 @@ export type {
   ChainPlatform,
   ConnectedWallet,
   Connector,
+  ConnectorEvent,
   ConnectorMeta,
   UIConnector,
   Wallet,
+  WalletAvailability,
   WalletManagerConfig,
 } from "./wallet";

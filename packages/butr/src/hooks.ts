@@ -3,7 +3,29 @@ import { useStore } from "zustand";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { useWalletStoreContext } from "./context";
 import type { WalletStoreState } from "./store";
-import type { ChainPlatform, ConnectedWallet } from "./types";
+import type { Account, ChainPlatform, ConnectedWallet } from "./types";
+
+const EMPTY_ACCOUNTS: ReadonlyArray<Account> = [];
+
+const accountsEqual = (a: ReadonlyArray<Account>, b: ReadonlyArray<Account>) => {
+  if (a === b) {
+    return true;
+  }
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let i = 0; i < a.length; i += 1) {
+    const x = a[i];
+    const y = b[i];
+    if (!x || !y) {
+      return false;
+    }
+    if (x.walletAddress !== y.walletAddress || x.chain.id !== y.chain.id) {
+      return false;
+    }
+  }
+  return true;
+};
 
 // ============================================================================
 // CONNECTION STATE HOOKS
@@ -127,6 +149,26 @@ const useIsPlatformConnected = (chainPlatform: ChainPlatform): boolean => {
   return useStore(store, (state) => state.selection.has(chainPlatform));
 };
 
+/**
+ * All known accounts on a wallet. Defaults to the active wallet when
+ * `connectorId` is omitted. Re-renders only when the accounts list
+ * actually changes (by address + chain id), so wallet-side
+ * `accountChanged` events bridged via `Connector.subscribe` flow through
+ * cleanly.
+ */
+const useAccounts = (connectorId?: string | null): ReadonlyArray<Account> => {
+  const store = useWalletStoreContext();
+  return useStoreWithEqualityFn(
+    store,
+    (state) => {
+      const id = connectorId ?? state.activeConnectorId;
+      const wallet = id ? state.pool.get(id) : undefined;
+      return wallet ? wallet.accounts : EMPTY_ACCOUNTS;
+    },
+    accountsEqual,
+  );
+};
+
 // ============================================================================
 // STABLE ACCESSORS (return functions; safe to use in callbacks)
 // ============================================================================
@@ -227,6 +269,7 @@ const useWalletStore = <T>(selector: (state: WalletStoreState) => T) => {
 };
 
 export {
+  useAccounts,
   useActiveConnectorId,
   useActiveWallet,
   useConnectedWallets,

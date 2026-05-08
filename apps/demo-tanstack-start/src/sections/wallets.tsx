@@ -1,4 +1,5 @@
 import {
+  useAccounts,
   useActiveWallet,
   useConnectedWallets,
   useGetSelectedWallet,
@@ -14,6 +15,7 @@ import {
   type ChainBase,
   type ConnectedWallet,
 } from "butr";
+import { getMockConnectorHandle } from "../mock-connector";
 
 const ROTATING_CHAIN: ChainBase = {
   id: "eip155:1",
@@ -39,6 +41,8 @@ const WalletsSection = () => {
   const setActive = useSetActiveConnector();
   const setSelection = useSetSelection();
   const updateAccount = useUpdateWalletAccount();
+  const evmAccounts = useAccounts("mock-evm");
+  const activeAccounts = useAccounts();
 
   const rotateAccount = () => {
     const next: Account = {
@@ -47,6 +51,25 @@ const WalletsSection = () => {
       walletAddress: `0x${Date.now().toString(16).padStart(40, "0")}`.slice(0, 42),
     };
     updateAccount("mock-evm", next);
+  };
+
+  const triggerWalletAccountSwap = () => {
+    const handle = getMockConnectorHandle("mock-evm");
+    if (!handle || evmAccounts.length < 2) {
+      return;
+    }
+    // Pick whichever known account isn't currently active and emit an
+    // accountChanged event — exercises the subscription bridge path.
+    const current = pool.get("mock-evm")?.account.walletAddress;
+    const other = evmAccounts.find((a) => a.walletAddress !== current);
+    if (other) {
+      handle.__emit({ account: other, type: "accountChanged" });
+    }
+  };
+
+  const triggerExternalDisconnect = () => {
+    const handle = getMockConnectorHandle("mock-evm");
+    handle?.__emit({ type: "disconnected" });
   };
 
   return (
@@ -68,6 +91,14 @@ const WalletsSection = () => {
         <li>selected (svm): {formatWallet(selectedSvm)}</li>
         <li>get(mock-evm): {formatWallet(getWallet("mock-evm"))}</li>
         <li>getSelected(svm): {formatWallet(getSelected("svm"))}</li>
+        <li>
+          mock-evm accounts ({evmAccounts.length}):{" "}
+          {evmAccounts.map((a) => a.walletAddress).join(", ") || "none"}
+        </li>
+        <li>
+          active wallet accounts ({activeAccounts.length}):{" "}
+          {activeAccounts.map((a) => a.walletAddress).join(", ") || "none"}
+        </li>
       </ul>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <button onClick={rotateAccount} type="button">
@@ -84,6 +115,12 @@ const WalletsSection = () => {
         </button>
         <button onClick={() => setSelection("evm", null)} type="button">
           Clear EVM selection
+        </button>
+        <button onClick={triggerWalletAccountSwap} type="button">
+          Wallet-side: emit accountChanged
+        </button>
+        <button onClick={triggerExternalDisconnect} type="button">
+          Wallet-side: emit disconnected
         </button>
       </div>
     </section>

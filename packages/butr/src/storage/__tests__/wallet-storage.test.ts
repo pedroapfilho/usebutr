@@ -27,20 +27,22 @@ describe("WalletStorage", () => {
       expect(await storage.getPool()).toEqual({});
     });
 
-    it("returns valid pool entries", async () => {
+    it("returns valid pool entries with accounts list", async () => {
       const persistent = createMockStorageDriver();
+      const account = {
+        chain: {
+          id: "eip155:1",
+          name: "Ethereum",
+          namespace: "eip155",
+          reference: "1",
+        },
+        id: "acc-1",
+        walletAddress: "0x123",
+      };
       const data = {
         metamask: {
-          account: {
-            chain: {
-              id: "eip155:1",
-              name: "Ethereum",
-              namespace: "eip155",
-              reference: "1",
-            },
-            id: "acc-1",
-            walletAddress: "0x123",
-          },
+          account,
+          accounts: [account],
           chainPlatform: "evm",
           connectorId: "metamask",
         },
@@ -49,6 +51,33 @@ describe("WalletStorage", () => {
       const { storage } = createStorage({ persistent });
 
       expect(await storage.getPool()).toEqual(data);
+    });
+
+    it("backfills missing `accounts` from legacy entries", async () => {
+      const persistent = createMockStorageDriver();
+      const account = {
+        chain: {
+          id: "eip155:1",
+          name: "Ethereum",
+          namespace: "eip155",
+          reference: "1",
+        },
+        id: "acc-1",
+        walletAddress: "0x123",
+      };
+      // Legacy entry written before multi-account support: no `accounts` field.
+      const legacy = {
+        metamask: {
+          account,
+          chainPlatform: "evm",
+          connectorId: "metamask",
+        },
+      };
+      await persistent.setItem("test-pool", JSON.stringify(legacy));
+      const { storage } = createStorage({ persistent });
+
+      const result = await storage.getPool();
+      expect(result.metamask?.accounts).toEqual([account]);
     });
 
     it("drops entries whose connectorId does not match the key", async () => {

@@ -1,6 +1,12 @@
 import { createStore } from "zustand/vanilla";
 import { devtools } from "zustand/middleware";
-import type { Account, ChainPlatform, ConnectedWallet, WalletManagerConfig } from "../types";
+import type {
+  Account,
+  ChainPlatform,
+  ConnectedWallet,
+  Connector,
+  WalletManagerConfig,
+} from "../types";
 import type { ConnectionError } from "../types/errors";
 import { mapConnectionError } from "../types/errors";
 import { WalletStorage } from "../storage";
@@ -41,6 +47,12 @@ const createWalletStore = (config: WalletManagerConfig) => {
   const storageKeyPrefix = config.storageKeyPrefix || "butr";
   const storage = config.storage || new WalletStorage({ keyPrefix: storageKeyPrefix });
 
+  // Closure-held registry of connector subscriptions. Keyed by connectorId,
+  // value is the unsubscribe function returned by `Connector.subscribe`.
+  // Lives outside the reducer state because these are side-effect handles,
+  // not data anyone should subscribe to.
+  const unsubscribers = new Map<string, () => void>();
+
   return createStore<State & RuntimeMembers>()(
     devtools(
       (set, get) => {
@@ -66,6 +78,72 @@ const createWalletStore = (config: WalletManagerConfig) => {
           );
         };
 
+        const unsubscribeFromConnector = (connectorId: string) => {
+          const unsub = unsubscribers.get(connectorId);
+          if (!unsub) {
+            return;
+          }
+          try {
+            unsub();
+          } catch (error: unknown) {
+            console.warn("[butr] unsubscribe threw:", error);
+          }
+          unsubscribers.delete(connectorId);
+        };
+
+        const unsubscribeAll = () => {
+          // Snapshot the keys before iterating because unsubscribeFromConnector
+          // mutates the underlying map.
+          const ids: Array<string> = [];
+          for (const id of unsubscribers.keys()) {
+            ids.push(id);
+          }
+          for (const connectorId of ids) {
+            unsubscribeFromConnector(connectorId);
+          }
+        };
+
+        const subscribeToConnector = (connectorId: string, connector: Connector) => {
+          if (!connector.subscribe) {
+            return;
+          }
+          unsubscribeFromConnector(connectorId);
+          try {
+            const unsub = connector.subscribe((event) => {
+              switch (event.type) {
+                case "accountChanged": {
+                  dispatch({ account: event.account, connectorId, type: "ACCOUNT_UPDATED" });
+                  persistPool();
+                  break;
+                }
+                case "disconnected": {
+                  // Mirror an external disconnect into the reducer.
+                  // Don't call connector.disconnect — the wallet already did
+                  // the work; just unwire and persist.
+                  dispatch({ connectorId, type: "DISCONNECTED" });
+                  unsubscribeFromConnector(connectorId);
+                  if (get().pool.size === 0) {
+                    void run(() => storage.clearAll(), logStorageError("failed to clear storage"));
+                  } else {
+                    persistPool();
+                    persistSelection();
+                    persistActive();
+                  }
+                  config.onDisconnect?.(connector.chainPlatform);
+                  break;
+                }
+                default: {
+                  const _exhaustive: never = event;
+                  void _exhaustive;
+                }
+              }
+            });
+            unsubscribers.set(connectorId, unsub);
+          } catch (error: unknown) {
+            console.warn(`[butr] subscribe failed for ${connectorId}:`, error);
+          }
+        };
+
         return {
           ...initialState,
           _config: config,
@@ -78,6 +156,12 @@ const createWalletStore = (config: WalletManagerConfig) => {
               selection: result.selection,
               type: "HYDRATED",
             });
+            // Wire up wallet-side event subscriptions for every restored
+            // connector so account/chain swaps after a refresh keep the
+            // reducer in sync without consumer effort.
+            for (const [connectorId, wallet] of result.pool) {
+              subscribeToConnector(connectorId, wallet.connector);
+            }
             // Persist any reconciled values back so future loads stay consistent.
             persistSelection();
             persistActive();
@@ -119,8 +203,17 @@ const createWalletStore = (config: WalletManagerConfig) => {
                 throw new Error("Failed to get account");
               }
 
-              const entry: ConnectedWallet = { account, connector };
+              // Pull all known accounts when the connector supports it.
+              const fetchedAccounts = connector.getAccounts
+                ? await connector.getAccounts().catch(() => null)
+                : null;
+              const accounts =
+                fetchedAccounts && fetchedAccounts.length > 0 ? fetchedAccounts : [account];
+
+              const entry: ConnectedWallet = { account, accounts, connector };
               dispatch({ connectorId, entry, type: "CONNECT_SUCCEEDED" });
+
+              subscribeToConnector(connectorId, connector);
 
               persistPool();
               persistSelection();
@@ -152,6 +245,8 @@ const createWalletStore = (config: WalletManagerConfig) => {
               return;
             }
 
+            unsubscribeFromConnector(connectorId);
+
             void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), console.error);
 
             const platform = wallet.connector.chainPlatform;
@@ -181,6 +276,8 @@ const createWalletStore = (config: WalletManagerConfig) => {
             if (!state.isHydrated) {
               return;
             }
+
+            unsubscribeAll();
 
             for (const wallet of state.pool.values()) {
               void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), console.error);

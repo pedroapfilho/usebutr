@@ -178,9 +178,17 @@ const reducer = (state: State, event: Event): State => {
       ) {
         return state;
       }
+      // Auto-extend the known-accounts list when the new account is one
+      // we haven't seen before. Keeps `useAccounts` honest after wallet-side
+      // account swaps.
+      const seen = wallet.accounts.some(
+        (a) =>
+          a.walletAddress === event.account.walletAddress && a.chain.id === event.account.chain.id,
+      );
+      const accounts = seen ? wallet.accounts : [...wallet.accounts, event.account];
       const newPool = new Map([
         ...state.pool,
-        [event.connectorId, { ...wallet, account: event.account }] as const,
+        [event.connectorId, { ...wallet, account: event.account, accounts }] as const,
       ]);
       return { ...state, pool: newPool };
     }

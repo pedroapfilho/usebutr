@@ -21,6 +21,29 @@ type Balance = {
 };
 
 /**
+ * Whether a wallet is currently usable from the user's environment.
+ *
+ * - `installed` — the wallet is available and `connect()` can be called.
+ * - `loadable` — the wallet's SDK can be loaded on demand (e.g. WalletConnect
+ *   modal that pops a QR code without requiring a browser extension).
+ * - `not-installed` — the wallet isn't reachable. Consumers typically render
+ *   a "download" affordance pointing at `meta.url`.
+ */
+type WalletAvailability = "installed" | "loadable" | "not-installed";
+
+/**
+ * Events a connector can emit while connected. butr's runtime subscribes
+ * via `Connector.subscribe?` after a successful `connect()` and dispatches
+ * the equivalent reducer event:
+ *
+ * - `accountChanged` → `ACCOUNT_UPDATED` (also covers chain switches —
+ *   the new chain lives inside `account.chain`).
+ * - `disconnected` → `DISCONNECTED` (wallet has gone away externally:
+ *   user locked it, removed the extension, etc.).
+ */
+type ConnectorEvent = { account: Account; type: "accountChanged" } | { type: "disconnected" };
+
+/**
  * Orchestration interface — what `butr` actually calls during the
  * connect / disconnect / hydrate flow. This is the contract `butr`
  * cares about; everything else on `UIConnector` is consumer-facing.
@@ -32,13 +55,24 @@ type Connector = {
   connect(): Promise<void>;
   /** Optional teardown. butr calls this on disconnect, error recovery, and reset. */
   disconnect?(): Promise<void>;
-  /** Read the currently-connected account. butr uses this to populate the pool
+  /** Read the currently-active account. butr uses this to populate the pool
    *  after a successful `connect()` and during hydration. */
   getAccount(): Promise<Account | null>;
+  /** Optional. List every account the wallet exposes. Some browser wallets
+   *  show many accounts at once (MetaMask with multiple imports). If
+   *  omitted, butr defaults to `[await getAccount()]`. */
+  getAccounts?(): Promise<Array<Account>>;
   /** Stable key: "metamask", "phantom", etc. Pool entries are keyed by this. */
   id: string;
   /** Human name: "MetaMask", "Phantom", etc. UI-facing only. */
   name: string;
+  /** Optional. Subscribe to wallet-side events (account swap, network swap,
+   *  external disconnect). butr's runtime calls this after a successful
+   *  `connect()`, and uses the returned function to unsubscribe on
+   *  disconnect / reset. Bridges native wallet events into the reducer so
+   *  consumers don't have to wire `accountsChanged` / `chainChanged`
+   *  themselves. */
+  subscribe?(listener: (event: ConnectorEvent) => void): () => void;
 };
 
 /**
@@ -89,14 +123,28 @@ type Wallet = {
 type UIConnector = Connector & Wallet;
 
 type ConnectedWallet = {
+  /** Currently-active account on this wallet. */
   account: Account;
+  /** All accounts known on this wallet at the time of connect/refresh.
+   *  Always contains at least `account`. Populated from `getAccounts()`
+   *  if the connector implements it; otherwise `[account]`. */
+  accounts: Array<Account>;
   connector: UIConnector;
 };
 
 type ConnectorMeta = {
+  /** Optional. Sync probe that reports whether the wallet is currently
+   *  available. Defaults to `"installed"` when omitted. Consumers call
+   *  this at render time to gate the "Connect" button. */
+  availability?: () => WalletAvailability;
   chainPlatform: ChainPlatform;
+  /** Optional image URL or data URI for wallet selection UIs. */
+  icon?: string;
   id: string;
   name: string;
+  /** Optional. Where to send users who don't have this wallet (download
+   *  page, app store link, etc.). */
+  url?: string;
 };
 
 type WalletManagerConfig = {
@@ -122,8 +170,10 @@ export type {
   ChainPlatform,
   ConnectedWallet,
   Connector,
+  ConnectorEvent,
   ConnectorMeta,
   UIConnector,
   Wallet,
+  WalletAvailability,
   WalletManagerConfig,
 };

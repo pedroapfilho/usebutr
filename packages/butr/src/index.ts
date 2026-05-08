@@ -8,9 +8,11 @@ export type {
   ConnectionError,
   ConnectionErrorKind,
   Connector,
+  ConnectorEvent,
   ConnectorMeta,
   UIConnector,
   Wallet,
+  WalletAvailability,
   WalletManagerConfig,
 } from "./types";
 export { mapConnectionError } from "./types";
@@ -36,6 +38,7 @@ export { WalletManagerProvider } from "./context";
 
 // React — Hooks
 export {
+  useAccounts,
   useActiveConnectorId,
   useActiveWallet,
   useConnectedWallets,

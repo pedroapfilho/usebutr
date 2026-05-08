@@ -99,10 +99,37 @@ const ConnectButton = () => {
 
 The interface every connector must implement. Conceptually it's the intersection of two smaller interfaces — the seam is documentary, but it makes "what `butr` calls" vs. "what your app calls" explicit:
 
-- **`Connector`** — orchestration, what `butr` itself invokes during connect / disconnect / hydrate: `id`, `name`, `chainPlatform`, `connect`, `disconnect`, `getAccount`.
+- **`Connector`** — orchestration, what `butr` itself invokes during connect / disconnect / hydrate: `id`, `name`, `chainPlatform`, `connect`, `disconnect`, `getAccount`. Optional: `getAccounts` (multi-account wallets), `subscribe` (bridge wallet-side events into the store).
 - **`Wallet`** — capabilities, what your app calls on a connected wallet: `getSigner`, `signMessage`, `sendTx`, `sendTxToChain`, `getTransactionReceipt`, `getBalance`, `switchAccount`, `switchChain`.
 
 `UIConnector = Connector & Wallet`. `butr` never inspects the signer or transaction types — the connector returns `unknown` and the consumer casts. That's what keeps the package chain-agnostic.
+
+### Wallet-side events: `Connector.subscribe`
+
+A connector can optionally bridge native wallet events (account swap, external lock/disconnect) into butr's store:
+
+```ts
+subscribe?(listener: (event: ConnectorEvent) => void): () => void;
+
+type ConnectorEvent =
+  | { type: "accountChanged"; account: Account }
+  | { type: "disconnected" };
+```
+
+butr calls `subscribe` after a successful `connect()` (and again for every wallet restored during hydration), then unsubscribes on `disconnectWallet` / `reset`. Inside the listener:
+
+- `accountChanged` → the reducer dispatches `ACCOUNT_UPDATED` and persists the pool. The new account is also auto-added to `wallet.accounts` if previously unknown.
+- `disconnected` → the reducer dispatches `DISCONNECTED`, fires `config.onDisconnect`, and clears the entry. butr does **not** call `connector.disconnect()` here, since the wallet has already gone away.
+
+Without this bridge, every consumer has to wire `window.ethereum.on('accountsChanged', …)` (and the Solana / WalletConnect equivalents) themselves and translate them into `updateWalletAccount` calls — a class of bugs we'd rather not ship.
+
+### Multi-account per wallet
+
+Each `ConnectedWallet` now carries `accounts: Array<Account>` alongside the active `account`. Populated from `Connector.getAccounts?()` if implemented; otherwise `[account]`. Surface via `useAccounts(connectorId?)` (defaults to the active wallet). Wallet-side `accountChanged` events auto-extend the list when the new address is one we haven't seen before.
+
+### `ConnectorMeta` extras
+
+`ConnectorMeta` carries optional `url` (download link), `icon` (image URL or data URI), and `availability?: () => WalletAvailability` (`"installed" | "loadable" | "not-installed"`). Useful for "Install MetaMask →" affordances and wallet selection UIs without baking either into butr.
 
 ### `WalletStore`
 
@@ -165,6 +192,7 @@ if (error?.kind === "UserRejected") {
 | ---------------------------------- | --------------------------------------------------------------------------------- |
 | `usePool`                          | `Map<connectorId, ConnectedWallet>` — every authorised wallet                     |
 | `useConnectedWallets`              | `Array<ConnectedWallet>` — pool projected as a list                               |
+| `useAccounts(connectorId?)`        | `ReadonlyArray<Account>` — all known accounts on a wallet (defaults to active)    |
 | `useSelection`                     | `Map<ChainPlatform, connectorId>` — current per-platform routing                  |
 | `useActiveWallet`                  | `ConnectedWallet \| undefined` — the globally active wallet                       |
 | `useSelectedWallet(platform)`      | `ConnectedWallet \| undefined` — re-renders only when the resolved wallet changes |

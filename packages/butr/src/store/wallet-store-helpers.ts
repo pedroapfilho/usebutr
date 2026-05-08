@@ -1,69 +1,11 @@
-import type {
-  Account,
-  ChainPlatform,
-  ConnectedWallet,
-  UIConnector,
-  WalletManagerConfig,
-} from "../types";
+import type { ChainPlatform, ConnectedWallet, WalletManagerConfig } from "../types";
 import type { WalletPersistence } from "../storage";
 
-/** Connection status for wallet connection flows */
-type ConnectionStatus = "idle" | "connecting" | "success" | "error";
-
-/** Public state and methods exposed to components */
-type WalletState = {
-  activeConnectorId: string | null;
-  connected: boolean;
-  // Public State
-  connectedWallets: Map<ChainPlatform, ConnectedWallet>;
-  connecting: boolean;
-  connectionError: string | null;
-  // Connection status tracking (for UI coordination)
-  connectionStatus: ConnectionStatus;
-  // Public Actions
-  connectWallet: (
-    id: string,
-    onSuccess?: (wallet: ConnectedWallet) => void,
-    onError?: (error: Error) => void,
-  ) => Promise<void>;
-
-  disconnectWallet: (chainPlatform: ChainPlatform) => void;
-  getConnectorInstance: (id: string) => UIConnector | null;
-  getWalletByPlatform: (chainPlatform: ChainPlatform) => ConnectedWallet | undefined;
-
-  getWalletForOperation: (chainPlatform: ChainPlatform) => ConnectedWallet | undefined;
-  hasAnyWallet: boolean;
-  isHydrated: boolean;
-  /** Reactive mirror of the session-scoped disconnect-intent flag. */
-  isUserDisconnected: boolean;
-  isWalletConnected: (chainPlatform: ChainPlatform) => boolean;
-  refreshWallet: (chainPlatform: ChainPlatform) => void;
-  reset: () => void;
-  resetConnectionStatus: () => void;
-  setConnectionError: (error: string | null) => void;
-  // Connection status actions
-  setConnectionStatus: (status: ConnectionStatus, connectorId?: string | null) => void;
-
-  updateWalletAccount: (chainPlatform: ChainPlatform, newAccount: Account) => void;
-  wallets: Array<ConnectedWallet>;
-};
-
-/** Internal state including private methods and config */
-type InternalWalletState = WalletState & {
-  _config: WalletManagerConfig;
-  _hydrateWallets: () => Promise<void>;
-
-  _markUserDisconnected: (value: boolean) => void;
-  _persistConnectedWallets: (wallets: Map<ChainPlatform, ConnectedWallet>) => void;
-  _storage: WalletPersistence;
-};
-
 type HydrateResult = {
-  connected: boolean;
-  connectedWallets: Map<ChainPlatform, ConnectedWallet>;
-  hasAnyWallet: boolean;
+  activeConnectorId: string | null;
   isUserDisconnected: boolean;
-  wallets: Array<ConnectedWallet>;
+  pool: Map<string, ConnectedWallet>;
+  selection: Map<ChainPlatform, string>;
 };
 
 const logStorageError = (context: string) => (error: unknown) => {
@@ -88,67 +30,79 @@ const isProduction = (): boolean => {
   }
 };
 
-/** Restores persisted wallets from storage. */
+/** Restores persisted wallets (pool + selection + active) from storage.
+ *  Drops entries whose connector cannot be re-instantiated or fails to connect. */
 const hydrateFromStorage = async (
   storage: WalletPersistence,
   createConnector: WalletManagerConfig["createConnector"],
 ): Promise<HydrateResult> => {
-  const [stored, userDisconnected] = await Promise.all([
-    storage.getConnectedWallets(),
+  const [storedPool, storedSelection, storedActive, userDisconnected] = await Promise.all([
+    storage.getPool(),
+    storage.getSelection(),
+    storage.getActiveConnectorId(),
     storage.isUserDisconnected(),
   ]);
-  const walletsMap = new Map<ChainPlatform, ConnectedWallet>();
 
-  for (const [platform, walletData] of Object.entries(stored)) {
-    const isValidWalletData =
-      typeof walletData === "object" &&
-      "connectorId" in walletData &&
-      "account" in walletData &&
-      typeof walletData.connectorId === "string";
+  const pool = new Map<string, ConnectedWallet>();
 
-    if (!isValidWalletData) {
-      console.warn(`[butr] validation failed for ${platform}, walletData:`, { walletData });
+  for (const [connectorId, entry] of Object.entries(storedPool)) {
+    if (!entry) {
       continue;
     }
-
-    const connector = createConnector(walletData.connectorId);
-
+    const connector = createConnector(connectorId);
     if (!connector) {
-      console.warn(`[butr] could not instantiate connector ${walletData.connectorId}`);
+      console.warn(`[butr] could not instantiate connector ${connectorId}`);
       continue;
     }
-
     try {
       // oxlint-disable-next-line no-await-in-loop -- wallets must restore sequentially; each may fail independently
       await connector.connect();
       // oxlint-disable-next-line no-await-in-loop -- wallets must restore sequentially; each may fail independently
       const freshAccount = await connector.getAccount();
-      const accountToUse = freshAccount || walletData.account;
-
-      walletsMap.set(platform as ChainPlatform, {
+      const accountToUse = freshAccount || entry.account;
+      pool.set(connectorId, {
         account: accountToUse,
         connector,
       });
     } catch (error) {
-      console.warn(`[butr] failed to restore connector ${walletData.connectorId}:`, error);
+      console.warn(`[butr] failed to restore connector ${connectorId}:`, error);
       // oxlint-disable-next-line no-await-in-loop -- wallets must restore sequentially; each may fail independently
       await storage
-        .removeConnectedWallet(platform as ChainPlatform)
+        .removePoolEntry(connectorId)
         .catch(logStorageError("failed to remove broken entry"));
     }
   }
 
-  const wallets = [...walletsMap.values()];
-  const hasAnyWallet = walletsMap.size > 0;
+  // Reconcile selection: drop stale entries.
+  const selection = new Map<ChainPlatform, string>();
+  for (const [platform, connectorId] of Object.entries(storedSelection)) {
+    if (connectorId && pool.has(connectorId)) {
+      selection.set(platform as ChainPlatform, connectorId);
+    }
+  }
+  // For platforms with a wallet in the pool but no stored selection, pick any.
+  for (const [connectorId, wallet] of pool) {
+    const platform = wallet.connector.chainPlatform;
+    if (!selection.has(platform)) {
+      selection.set(platform, connectorId);
+    }
+  }
+
+  // Reconcile active connector: must point to a wallet in the pool, otherwise pick any.
+  let activeConnectorId: string | null = null;
+  if (storedActive && pool.has(storedActive)) {
+    activeConnectorId = storedActive;
+  } else if (pool.size > 0) {
+    activeConnectorId = pool.keys().next().value ?? null;
+  }
 
   return {
-    connected: hasAnyWallet,
-    connectedWallets: walletsMap,
-    hasAnyWallet,
+    activeConnectorId,
     isUserDisconnected: userDisconnected,
-    wallets,
+    pool,
+    selection,
   };
 };
 
-export type { ConnectionStatus, HydrateResult, InternalWalletState, WalletState };
+export type { HydrateResult };
 export { hydrateFromStorage, isProduction, logStorageError, run };

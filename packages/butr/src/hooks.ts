@@ -1,23 +1,54 @@
+import { useMemo } from "react";
 import { useStore } from "zustand";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { useWalletStoreContext } from "./context";
 import type { WalletStoreState } from "./store";
-import type { ChainPlatform } from "./types";
+import type { ChainPlatform, ConnectedWallet } from "./types";
 
 // ============================================================================
-// STATE HOOKS
+// CONNECTION STATE HOOKS
 // ============================================================================
 
-/** Get wallet connection status. Only re-renders when connection state changes. */
-const useWalletConnected = () => {
+/** Connection status: "idle" | "connecting" | "success" | "error". */
+const useConnectionStatus = () => {
   const store = useWalletStoreContext();
-  return useStore(store, (state) => state.connected);
+  return useStore(store, (state) => state.connectionStatus);
 };
 
-/** Get if any wallet is connected. Only re-renders when this value changes. */
-const useHasAnyWallet = () => {
+/** True iff `connectionStatus === "connecting"`. */
+const useIsConnecting = () => {
   const store = useWalletStoreContext();
-  return useStore(store, (state) => state.hasAnyWallet);
+  return useStore(store, (state) => state.connectionStatus === "connecting");
+};
+
+/** ID of the wallet currently in the connecting flight (null when idle). */
+const useConnectingConnectorId = () => {
+  const store = useWalletStoreContext();
+  return useStore(store, (state) => state.connectingConnectorId);
+};
+
+/** ID of the wallet currently focused as the global active selection. */
+const useActiveConnectorId = () => {
+  const store = useWalletStoreContext();
+  return useStore(store, (state) => state.activeConnectorId);
+};
+
+/** Last connection error message, if any. */
+const useConnectionError = () => {
+  const store = useWalletStoreContext();
+  return useStore(store, (state) => state.connectionError);
+};
+
+/** True if at least one wallet is connected. */
+const useWalletConnected = () => {
+  const store = useWalletStoreContext();
+  return useStore(store, (state) => state.pool.size > 0);
+};
+
+/** Has the store finished its initial hydration pass? */
+const useIsHydrated = () => {
+  const store = useWalletStoreContext();
+  return useStore(store, (state) => state.isHydrated);
 };
 
 /** Session-scoped disconnect-intent flag. True after an explicit disconnect or
@@ -28,76 +59,54 @@ const useIsUserDisconnected = () => {
   return useStore(store, (state) => state.isUserDisconnected);
 };
 
-/** Get connected wallets as array. Only re-renders when wallets change. */
-const useConnectedWallets = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.wallets);
-};
-
-/** Get connected wallets as map. Only re-renders when wallets change. */
-const useConnectedWalletsMap = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.connectedWallets);
-};
-
 // ============================================================================
-// ACTION HOOKS - Stable references
+// POOL / SELECTION / ACTIVE
 // ============================================================================
 
-/** Connect a wallet */
-const useConnectWallet = () => {
+/** Full pool of connected wallets, keyed by `connectorId`. Re-renders on any pool change. */
+const usePool = () => {
   const store = useWalletStoreContext();
-  return useStore(store, (state) => state.connectWallet);
+  return useStore(store, (state) => state.pool);
 };
 
-/** Disconnect a wallet */
-const useDisconnectWallet = () => {
+/** Pool projected as an array. Stable when the pool reference is stable. */
+const useConnectedWallets = (): Array<ConnectedWallet> => {
+  const pool = usePool();
+  return useMemo(() => [...pool.values()], [pool]);
+};
+
+/** Per-platform selection: `Map<ChainPlatform, connectorId>`. */
+const useSelection = () => {
   const store = useWalletStoreContext();
-  return useStore(store, (state) => state.disconnectWallet);
+  return useStore(store, (state) => state.selection);
 };
 
-/** Reset wallet system */
-const useResetWallet = () => {
+const walletEqual = (a: ConnectedWallet | undefined, b: ConnectedWallet | undefined) => {
+  if (a === b) {
+    return true;
+  }
+  if (!a || !b) {
+    return false;
+  }
+  return (
+    a.connector.id === b.connector.id &&
+    a.account.walletAddress === b.account.walletAddress &&
+    a.account.chain.id === b.account.chain.id
+  );
+};
+
+/** Globally active wallet (the one in front of the user right now). */
+const useActiveWallet = (): ConnectedWallet | undefined => {
   const store = useWalletStoreContext();
-  return useStore(store, (state) => state.reset);
+  return useStoreWithEqualityFn(
+    store,
+    (state) => (state.activeConnectorId ? state.pool.get(state.activeConnectorId) : undefined),
+    walletEqual,
+  );
 };
 
-/** Update wallet account */
-const useUpdateWalletAccount = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.updateWalletAccount);
-};
-
-/** Force a wallet entry refresh without changing its account */
-const useRefreshWallet = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.refreshWallet);
-};
-
-// ============================================================================
-// QUERY HOOKS - Stable references
-// ============================================================================
-
-/** Get wallet by platform */
-const useGetWalletByPlatform = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.getWalletByPlatform);
-};
-
-/** Convenience alias for platform-based lookups */
-const useGetWalletByChain = () => {
-  const getWalletByPlatform = useGetWalletByPlatform();
-  return (chainPlatform: ChainPlatform) => getWalletByPlatform(chainPlatform);
-};
-
-/** Get wallet for operation */
-const useGetWalletForOperation = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.getWalletForOperation);
-};
-
-/** Reactive wallet lookup — re-renders when the wallet for the given platform changes. */
-const useWalletForOperation = (chainPlatform: ChainPlatform | null) => {
+/** Reactive lookup of the wallet selected for a given platform. */
+const useSelectedWallet = (chainPlatform: ChainPlatform | null): ConnectedWallet | undefined => {
   const store = useWalletStoreContext();
   return useStoreWithEqualityFn(
     store,
@@ -105,75 +114,102 @@ const useWalletForOperation = (chainPlatform: ChainPlatform | null) => {
       if (!chainPlatform) {
         return undefined;
       }
-      return state.getWalletForOperation(chainPlatform);
+      const id = state.selection.get(chainPlatform);
+      return id ? state.pool.get(id) : undefined;
     },
-    (a, b) => {
-      if (a === b) {
-        return true;
-      }
-      if (!a || !b) {
-        return false;
-      }
-      return (
-        a.connector.id === b.connector.id &&
-        a.account.walletAddress === b.account.walletAddress &&
-        a.account.chain.id === b.account.chain.id
-      );
-    },
+    walletEqual,
   );
 };
 
-/** Check if wallet is connected */
-const useIsWalletConnected = () => {
+/** Reactive boolean: is there a selected wallet for a given platform? */
+const useIsPlatformConnected = (chainPlatform: ChainPlatform): boolean => {
   const store = useWalletStoreContext();
-  return useStore(store, (state) => state.isWalletConnected);
+  return useStore(store, (state) => state.selection.has(chainPlatform));
 };
 
-/** Get connector instance */
+// ============================================================================
+// STABLE ACCESSORS (return functions; safe to use in callbacks)
+// ============================================================================
+
+/** Stable accessor: `(connectorId) => ConnectedWallet | undefined`. */
+const useGetWallet = () => {
+  const store = useWalletStoreContext();
+  return (connectorId: string) => store.getState().pool.get(connectorId);
+};
+
+/** Stable accessor: `(platform) => ConnectedWallet | undefined`. */
+const useGetSelectedWallet = () => {
+  const store = useWalletStoreContext();
+  return (chainPlatform: ChainPlatform) => {
+    const state = store.getState();
+    const id = state.selection.get(chainPlatform);
+    return id ? state.pool.get(id) : undefined;
+  };
+};
+
+/** Stable accessor for raw connector instances. */
 const useGetConnectorInstance = () => {
   const store = useWalletStoreContext();
   return useStore(store, (state) => state.getConnectorInstance);
 };
 
 // ============================================================================
-// CONNECTION STATUS HOOKS
+// MUTATION HOOKS
 // ============================================================================
 
-/** Get current connection status: "idle" | "connecting" | "success" | "error" */
-const useConnectionStatus = () => {
+const useConnectWallet = () => {
   const store = useWalletStoreContext();
-  return useStore(store, (state) => state.connectionStatus);
+  return useStore(store, (state) => state.connectWallet);
 };
 
-/** Check if any wallet connection is in progress */
-const useIsConnecting = () => {
+const useDisconnectWallet = () => {
   const store = useWalletStoreContext();
-  return useStore(store, (state) => state.connectionStatus === "connecting");
+  return useStore(store, (state) => state.disconnectWallet);
 };
 
-/** Get the ID of the connector currently being connected */
-const useActiveConnectorId = () => {
+const useSetActiveConnector = () => {
   const store = useWalletStoreContext();
-  return useStore(store, (state) => state.activeConnectorId);
+  return useStore(store, (state) => state.setActiveConnector);
 };
 
-/** Get the current connection error message */
-const useConnectionError = () => {
+const useSetSelection = () => {
   const store = useWalletStoreContext();
-  return useStore(store, (state) => state.connectionError);
+  return useStore(store, (state) => state.setSelection);
 };
 
-/** Set connection status */
+const useResetWallet = () => {
+  const store = useWalletStoreContext();
+  return useStore(store, (state) => state.reset);
+};
+
+const useUpdateWalletAccount = () => {
+  const store = useWalletStoreContext();
+  return useStore(store, (state) => state.updateWalletAccount);
+};
+
+const useRefreshWallet = () => {
+  const store = useWalletStoreContext();
+  return useStore(store, (state) => state.refreshWallet);
+};
+
 const useSetConnectionStatus = () => {
   const store = useWalletStoreContext();
   return useStore(store, (state) => state.setConnectionStatus);
 };
 
-/** Reset connection status to idle */
 const useResetConnectionStatus = () => {
   const store = useWalletStoreContext();
   return useStore(store, (state) => state.resetConnectionStatus);
 };
+
+const useSetConnectionError = () => {
+  const store = useWalletStoreContext();
+  return useStore(store, (state) => state.setConnectionError);
+};
+
+// ============================================================================
+// DIRECT STORE ACCESS
+// ============================================================================
 
 /**
  * Direct access to the Zustand store for custom selectors.
@@ -181,8 +217,8 @@ const useResetConnectionStatus = () => {
  * For shallow equality comparison of multiple values, use useShallow:
  * @example
  * import { useShallow } from 'zustand/react/shallow';
- * const { wallets, connected } = useWalletStore(
- *   useShallow((state) => ({ wallets: state.wallets, connected: state.connected }))
+ * const { pool, activeConnectorId } = useWalletStore(
+ *   useShallow((state) => ({ pool: state.pool, activeConnectorId: state.activeConnectorId }))
  * );
  */
 const useWalletStore = <T>(selector: (state: WalletStoreState) => T) => {
@@ -192,26 +228,31 @@ const useWalletStore = <T>(selector: (state: WalletStoreState) => T) => {
 
 export {
   useActiveConnectorId,
+  useActiveWallet,
   useConnectedWallets,
-  useConnectedWalletsMap,
+  useConnectingConnectorId,
   useConnectionError,
   useConnectionStatus,
   useConnectWallet,
   useDisconnectWallet,
   useGetConnectorInstance,
-  useGetWalletByChain,
-  useGetWalletByPlatform,
-  useGetWalletForOperation,
-  useHasAnyWallet,
+  useGetSelectedWallet,
+  useGetWallet,
   useIsConnecting,
+  useIsHydrated,
+  useIsPlatformConnected,
   useIsUserDisconnected,
-  useIsWalletConnected,
+  usePool,
   useRefreshWallet,
   useResetConnectionStatus,
   useResetWallet,
+  useSelectedWallet,
+  useSelection,
+  useSetActiveConnector,
+  useSetConnectionError,
   useSetConnectionStatus,
+  useSetSelection,
   useUpdateWalletAccount,
   useWalletConnected,
-  useWalletForOperation,
   useWalletStore,
 };

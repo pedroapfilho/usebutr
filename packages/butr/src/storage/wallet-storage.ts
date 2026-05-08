@@ -1,6 +1,12 @@
 import type { ChainPlatform, ConnectedWallet } from "../types";
 import { createBrowserStorageDriver } from "./browser-storage-driver";
-import type { ConnectedWalletsRecord, StorageDriver, WalletPersistence } from "./persistence";
+import type {
+  StorageDriver,
+  StoredPoolEntry,
+  StoredPoolRecord,
+  StoredSelectionRecord,
+  WalletPersistence,
+} from "./persistence";
 
 const VALID_CHAIN_PLATFORMS = new Set<ChainPlatform>(["evm", "svm"]);
 
@@ -12,14 +18,45 @@ type StorageConfig = {
   session?: StorageDriver;
 };
 
+const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const entry = value as Record<string, unknown>;
+  if (typeof entry.connectorId !== "string" || entry.connectorId !== key) {
+    return false;
+  }
+  if (typeof entry.chainPlatform !== "string") {
+    return false;
+  }
+  if (!VALID_CHAIN_PLATFORMS.has(entry.chainPlatform as ChainPlatform)) {
+    return false;
+  }
+  if (!entry.account || typeof entry.account !== "object") {
+    return false;
+  }
+  const account = entry.account as Record<string, unknown>;
+  if (typeof account.walletAddress !== "string" || typeof account.id !== "string") {
+    return false;
+  }
+  if (!account.chain || typeof account.chain !== "object") {
+    return false;
+  }
+  return true;
+};
+
 class WalletStorage implements WalletPersistence {
-  private connectedWalletsKey: string;
+  private poolKey: string;
+  private selectionKey: string;
+  private activeKey: string;
   private userDisconnectedKey: string;
   private persistent: StorageDriver;
   private session: StorageDriver;
 
   constructor(config: StorageConfig) {
-    this.connectedWalletsKey = `${config.keyPrefix}-connected-wallets`;
+    this.poolKey = `${config.keyPrefix}-pool`;
+    this.selectionKey = `${config.keyPrefix}-selection`;
+    this.activeKey = `${config.keyPrefix}-active`;
     this.userDisconnectedKey = `${config.keyPrefix}-user-disconnected`;
 
     if (config.persistent && config.session) {
@@ -32,105 +69,138 @@ class WalletStorage implements WalletPersistence {
     }
   }
 
-  private isValidWalletData(data: unknown): data is ConnectedWalletsRecord {
-    if (!data || typeof data !== "object") {
-      return false;
-    }
+  // ---- Pool ----
 
-    const record = data as Record<string, unknown>;
-
-    return Object.entries(record).every(([key, value]) => {
-      if (typeof key !== "string" || !value || typeof value !== "object") {
-        return false;
-      }
-
-      if (!VALID_CHAIN_PLATFORMS.has(key as ChainPlatform)) {
-        return false;
-      }
-
-      const wallet = value as Record<string, unknown>;
-
-      if (typeof wallet.connectorId !== "string") {
-        return false;
-      }
-      if (!wallet.account || typeof wallet.account !== "object") {
-        return false;
-      }
-
-      const account = wallet.account as Record<string, unknown>;
-      if (typeof account.walletAddress !== "string") {
-        return false;
-      }
-      if (typeof account.id !== "string") {
-        return false;
-      }
-      if (!account.chain || typeof account.chain !== "object") {
-        return false;
-      }
-
-      return true;
-    });
-  }
-
-  async getConnectedWallets(): Promise<ConnectedWalletsRecord> {
+  async getPool(): Promise<StoredPoolRecord> {
     try {
-      const stored = await this.persistent.getItem(this.connectedWalletsKey);
+      const stored = await this.persistent.getItem(this.poolKey);
       if (!stored) {
         return {};
       }
-
       const parsed: unknown = JSON.parse(stored);
-
-      if (!this.isValidWalletData(parsed)) {
-        console.warn("Invalid wallet data found in storage, clearing...");
-        await this.clearConnectedWallets();
+      if (!parsed || typeof parsed !== "object") {
+        await this.clearPool();
         return {};
       }
-
-      return parsed;
+      const result: StoredPoolRecord = {};
+      for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+        if (isValidPoolEntry(key, value)) {
+          result[key] = value;
+        } else {
+          console.warn(`[butr] dropping invalid pool entry for ${key}`);
+        }
+      }
+      return result;
     } catch (error) {
-      console.warn("Failed to parse wallet data from storage:", error);
-      await this.clearConnectedWallets();
+      console.warn("[butr] failed to parse pool from storage:", error);
+      await this.clearPool();
       return {};
     }
   }
 
-  async setConnectedWallets(wallets: Map<ChainPlatform, ConnectedWallet>): Promise<void> {
+  async setPool(pool: Map<string, ConnectedWallet>): Promise<void> {
     try {
-      const serializable = Object.fromEntries(
-        [...wallets.entries()].map(([platform, wallet]) => [
-          platform,
-          {
-            account: wallet.account,
-            connectorId: wallet.connector.id,
-          },
-        ]),
-      );
-      await this.persistent.setItem(this.connectedWalletsKey, JSON.stringify(serializable));
+      const serializable: StoredPoolRecord = {};
+      for (const [connectorId, wallet] of pool) {
+        serializable[connectorId] = {
+          account: wallet.account,
+          chainPlatform: wallet.connector.chainPlatform,
+          connectorId,
+        };
+      }
+      await this.persistent.setItem(this.poolKey, JSON.stringify(serializable));
     } catch (error) {
-      console.warn("Failed to persist connected wallets:", error);
+      console.warn("[butr] failed to persist pool:", error);
     }
   }
 
-  async removeConnectedWallet(chainPlatform: ChainPlatform): Promise<void> {
+  async removePoolEntry(connectorId: string): Promise<void> {
     try {
-      const stored = await this.getConnectedWallets();
-      if (stored[chainPlatform]) {
-        const { [chainPlatform]: _, ...remaining } = stored;
-        await this.persistent.setItem(this.connectedWalletsKey, JSON.stringify(remaining));
+      const stored = await this.getPool();
+      if (stored[connectorId]) {
+        const { [connectorId]: _, ...remaining } = stored;
+        await this.persistent.setItem(this.poolKey, JSON.stringify(remaining));
       }
     } catch (error) {
-      console.warn(`Failed to remove ${chainPlatform} wallet from storage:`, error);
+      console.warn(`[butr] failed to remove pool entry ${connectorId}:`, error);
     }
   }
 
-  async clearConnectedWallets(): Promise<void> {
-    await this.persistent.removeItem(this.connectedWalletsKey);
+  async clearPool(): Promise<void> {
+    await this.persistent.removeItem(this.poolKey);
   }
 
-  async clearAll(): Promise<void> {
-    await this.persistent.removeItem(this.connectedWalletsKey);
+  // ---- Selection ----
+
+  async getSelection(): Promise<StoredSelectionRecord> {
+    try {
+      const stored = await this.persistent.getItem(this.selectionKey);
+      if (!stored) {
+        return {};
+      }
+      const parsed: unknown = JSON.parse(stored);
+      if (!parsed || typeof parsed !== "object") {
+        return {};
+      }
+      const result: StoredSelectionRecord = {};
+      for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+        if (
+          VALID_CHAIN_PLATFORMS.has(key as ChainPlatform) &&
+          typeof value === "string" &&
+          value.length > 0
+        ) {
+          result[key as ChainPlatform] = value;
+        }
+      }
+      return result;
+    } catch (error) {
+      console.warn("[butr] failed to parse selection from storage:", error);
+      return {};
+    }
   }
+
+  async setSelection(selection: Map<ChainPlatform, string>): Promise<void> {
+    try {
+      const serializable: StoredSelectionRecord = {};
+      for (const [platform, connectorId] of selection) {
+        serializable[platform] = connectorId;
+      }
+      await this.persistent.setItem(this.selectionKey, JSON.stringify(serializable));
+    } catch (error) {
+      console.warn("[butr] failed to persist selection:", error);
+    }
+  }
+
+  // ---- Active connector ----
+
+  async getActiveConnectorId(): Promise<string | null> {
+    try {
+      const value = await this.persistent.getItem(this.activeKey);
+      return value && value.length > 0 ? value : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async setActiveConnectorId(connectorId: string | null): Promise<void> {
+    try {
+      await (connectorId === null
+        ? this.persistent.removeItem(this.activeKey)
+        : this.persistent.setItem(this.activeKey, connectorId));
+    } catch (error) {
+      console.warn("[butr] failed to persist active connector id:", error);
+    }
+  }
+
+  // ---- Bulk clear ----
+
+  async clearAll(): Promise<void> {
+    await this.persistent.removeItem(this.poolKey);
+    await this.persistent.removeItem(this.selectionKey);
+    await this.persistent.removeItem(this.activeKey);
+  }
+
+  // ---- Disconnect intent ----
 
   /**
    * Disconnect-intent tracking.

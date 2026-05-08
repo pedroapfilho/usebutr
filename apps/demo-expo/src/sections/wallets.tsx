@@ -1,14 +1,16 @@
 import { Pressable, Text, View } from "react-native";
 import {
+  useActiveWallet,
   useConnectedWallets,
-  useConnectedWalletsMap,
-  useGetWalletByChain,
-  useGetWalletByPlatform,
-  useGetWalletForOperation,
-  useHasAnyWallet,
-  useIsWalletConnected,
+  useGetSelectedWallet,
+  useGetWallet,
+  useIsPlatformConnected,
+  usePool,
+  useSelectedWallet,
+  useSelection,
+  useSetActiveConnector,
+  useSetSelection,
   useUpdateWalletAccount,
-  useWalletForOperation,
   type Account,
   type ChainBase,
   type ConnectedWallet,
@@ -24,16 +26,28 @@ const ROTATING_CHAIN: ChainBase = {
 const formatWallet = (w: ConnectedWallet | undefined) =>
   w ? `${w.connector.id} → ${w.account.walletAddress}` : "none";
 
+const Btn = ({ label, onPress }: { label: string; onPress: () => void }) => (
+  <Pressable
+    onPress={onPress}
+    style={{ backgroundColor: "#eee", borderRadius: 4, margin: 4, padding: 8 }}
+  >
+    <Text>{label}</Text>
+  </Pressable>
+);
+
 const WalletsSection = () => {
   const wallets = useConnectedWallets();
-  const map = useConnectedWalletsMap();
-  const hasAny = useHasAnyWallet();
-  const isWalletConnected = useIsWalletConnected();
-  const getByChain = useGetWalletByChain();
-  const getByPlatform = useGetWalletByPlatform();
-  const getForOperation = useGetWalletForOperation();
-  const reactiveEvm = useWalletForOperation("evm");
-  const reactiveSvm = useWalletForOperation("svm");
+  const pool = usePool();
+  const selection = useSelection();
+  const activeWallet = useActiveWallet();
+  const selectedEvm = useSelectedWallet("evm");
+  const selectedSvm = useSelectedWallet("svm");
+  const isEvm = useIsPlatformConnected("evm");
+  const isSvm = useIsPlatformConnected("svm");
+  const getWallet = useGetWallet();
+  const getSelected = useGetSelectedWallet();
+  const setActive = useSetActiveConnector();
+  const setSelection = useSetSelection();
   const updateAccount = useUpdateWalletAccount();
 
   const rotateAccount = () => {
@@ -42,36 +56,34 @@ const WalletsSection = () => {
       id: `evm:${Date.now()}`,
       walletAddress: `0x${Date.now().toString(16).padStart(40, "0")}`.slice(0, 42),
     };
-    updateAccount("evm", next);
+    updateAccount("mock-evm", next);
   };
 
   return (
     <View style={{ borderBottomWidth: 1, borderColor: "#ddd", padding: 16 }}>
       <Text style={{ fontSize: 18, fontWeight: "600" }}>Wallets</Text>
-      <Text>has any: {String(hasAny)}</Text>
-      <Text>is evm connected: {String(isWalletConnected("evm"))}</Text>
-      <Text>is svm connected: {String(isWalletConnected("svm"))}</Text>
+      <Text>has any: {String(wallets.length > 0)}</Text>
+      <Text>is evm connected: {String(isEvm)}</Text>
+      <Text>is svm connected: {String(isSvm)}</Text>
       <Text>
         list ({wallets.length}): {wallets.map((w) => w.connector.id).join(", ") || "none"}
       </Text>
-      <Text>by chain (evm): {formatWallet(getByChain("evm"))}</Text>
-      <Text>by platform (svm): {formatWallet(getByPlatform("svm"))}</Text>
-      <Text>for operation (evm): {formatWallet(getForOperation("evm"))}</Text>
-      <Text>reactive evm: {formatWallet(reactiveEvm)}</Text>
-      <Text>reactive svm: {formatWallet(reactiveSvm)}</Text>
-      <Text>map keys: {[...map.keys()].join(", ") || "none"}</Text>
-      <Pressable
-        onPress={rotateAccount}
-        style={{
-          alignSelf: "flex-start",
-          backgroundColor: "#eee",
-          borderRadius: 4,
-          marginTop: 8,
-          padding: 8,
-        }}
-      >
-        <Text>Rotate active EVM account</Text>
-      </Pressable>
+      <Text>pool keys: {[...pool.keys()].join(", ") || "none"}</Text>
+      <Text>
+        selection: {[...selection.entries()].map(([p, id]) => `${p}=${id}`).join(", ") || "none"}
+      </Text>
+      <Text>active wallet: {formatWallet(activeWallet)}</Text>
+      <Text>selected (evm): {formatWallet(selectedEvm)}</Text>
+      <Text>selected (svm): {formatWallet(selectedSvm)}</Text>
+      <Text>get(mock-evm): {formatWallet(getWallet("mock-evm"))}</Text>
+      <Text>getSelected(svm): {formatWallet(getSelected("svm"))}</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 8 }}>
+        <Btn label="Rotate EVM account" onPress={rotateAccount} />
+        <Btn label="Activate EVM" onPress={() => setActive("mock-evm")} />
+        <Btn label="Activate SVM" onPress={() => setActive("mock-svm")} />
+        <Btn label="Select EVM=mock-evm" onPress={() => setSelection("evm", "mock-evm")} />
+        <Btn label="Clear EVM selection" onPress={() => setSelection("evm", null)} />
+      </View>
     </View>
   );
 };

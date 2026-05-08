@@ -1,355 +1,233 @@
 import { createStore } from "zustand/vanilla";
 import { devtools } from "zustand/middleware";
-import type { ConnectedWallet, WalletManagerConfig } from "../types";
+import type { Account, ChainPlatform, ConnectedWallet, WalletManagerConfig } from "../types";
 import { WalletStorage } from "../storage";
+import type { WalletPersistence } from "../storage";
 import { hydrateFromStorage, isProduction, logStorageError, run } from "./wallet-store-helpers";
-import type { InternalWalletState } from "./wallet-store-helpers";
+import { type Event, type State, initialState, reducer } from "./reducer";
 
 const CONNECT_TIMEOUT_MS = 90_000;
 
 type ExtractState<S> = S extends { getState: () => infer T } ? T : never;
+
+type RuntimeMembers = {
+  _config: WalletManagerConfig;
+  _hydrateWallets: () => Promise<void>;
+  _markUserDisconnected: (value: boolean) => void;
+  _storage: WalletPersistence;
+  connectWallet: (
+    connectorId: string,
+    onSuccess?: (wallet: ConnectedWallet) => void,
+    onError?: (error: Error) => void,
+  ) => Promise<void>;
+  disconnectWallet: (connectorId: string) => void;
+  getConnectorInstance: (id: string) => ReturnType<WalletManagerConfig["createConnector"]>;
+  refreshWallet: (connectorId: string) => void;
+  reset: () => void;
+  resetConnectionStatus: () => void;
+  setActiveConnector: (connectorId: string | null) => void;
+  setConnectionError: (error: string | null) => void;
+  setConnectionStatus: (status: State["connectionStatus"], connectorId?: string | null) => void;
+  setSelection: (chainPlatform: ChainPlatform, connectorId: string | null) => void;
+  updateWalletAccount: (connectorId: string, account: Account) => void;
+};
 
 type WalletStore = ReturnType<typeof createWalletStore>;
 type WalletStoreState = ExtractState<WalletStore>;
 
 const createWalletStore = (config: WalletManagerConfig) => {
   const storageKeyPrefix = config.storageKeyPrefix || "butr";
+  const storage = config.storage || new WalletStorage({ keyPrefix: storageKeyPrefix });
 
-  const storage =
-    config.storage ||
-    new WalletStorage({
-      keyPrefix: storageKeyPrefix,
-    });
-
-  return createStore<InternalWalletState>()(
+  return createStore<State & RuntimeMembers>()(
     devtools(
-      (set, get) => ({
-        // Initial state
-        connected: false,
-        connectedWallets: new Map(),
-        connecting: false,
-        hasAnyWallet: false,
-        isHydrated: false,
-        isUserDisconnected: false,
-        wallets: [],
+      (set, get) => {
+        const dispatch = (event: Event) => {
+          set((prev) => reducer(prev, event), false);
+        };
 
-        // Connection status tracking
-        _config: config,
-        _hydrateWallets: async () => {
-          const result = await hydrateFromStorage(storage, config.createConnector);
+        const persistPool = () => {
+          void run(() => storage.setPool(get().pool), logStorageError("failed to persist pool"));
+        };
 
-          set(
-            {
-              connected: result.connected,
-              connectedWallets: result.connectedWallets,
-              connecting: false,
-              hasAnyWallet: result.hasAnyWallet,
-              isHydrated: true,
+        const persistSelection = () => {
+          void run(
+            () => storage.setSelection(get().selection),
+            logStorageError("failed to persist selection"),
+          );
+        };
+
+        const persistActive = () => {
+          void run(
+            () => storage.setActiveConnectorId(get().activeConnectorId),
+            logStorageError("failed to persist active connector"),
+          );
+        };
+
+        return {
+          ...initialState,
+          _config: config,
+          _hydrateWallets: async () => {
+            const result = await hydrateFromStorage(storage, config.createConnector);
+            dispatch({
+              activeConnectorId: result.activeConnectorId,
               isUserDisconnected: result.isUserDisconnected,
-              wallets: result.wallets,
-            },
-            false,
-          );
-        },
-        _markUserDisconnected: (value: boolean) => {
-          set({ isUserDisconnected: value }, false);
-          void run(
-            () => storage.markUserDisconnected(value),
-            logStorageError("failed to persist disconnect intent"),
-          );
-        },
+              pool: result.pool,
+              selection: result.selection,
+              type: "HYDRATED",
+            });
+            // Persist any reconciled values back so future loads stay consistent.
+            persistSelection();
+            persistActive();
+          },
+          _markUserDisconnected: (value: boolean) => {
+            dispatch({ type: "USER_DISCONNECTED_SET", value });
+            void run(
+              () => storage.markUserDisconnected(value),
+              logStorageError("failed to persist disconnect intent"),
+            );
+          },
+          _storage: storage,
 
-        _persistConnectedWallets: (wallets) => {
-          void run(
-            () => storage.setConnectedWallets(wallets),
-            logStorageError("failed to persist wallets"),
-          );
-        },
+          connectWallet: async (connectorId, onSuccess, onError) => {
+            get()._markUserDisconnected(false);
 
-        _storage: storage,
-
-        activeConnectorId: null,
-
-        connectionError: null,
-
-        connectionStatus: "idle",
-
-        connectWallet: async (id, onSuccess, onError) => {
-          get()._markUserDisconnected(false);
-
-          const connector = config.createConnector(id);
-          if (!connector) {
-            throw new Error(`Failed to create connector for ${id}`);
-          }
-
-          set(
-            {
-              activeConnectorId: id,
-              connectionError: null,
-              connectionStatus: "connecting",
-            },
-            false,
-          );
-
-          try {
-            const connectPromise = connector.connect();
-            // oxlint-disable-next-line promise/prefer-await-to-then -- suppress unhandled rejection; we await via Promise.race below
-            void connectPromise.catch(() => {});
-            await Promise.race([
-              connectPromise,
-              new Promise((_, reject) => {
-                setTimeout(() => {
-                  reject(new Error("Connection timeout"));
-                }, CONNECT_TIMEOUT_MS);
-              }),
-            ]);
-            const account = await connector.getAccount();
-            if (!account) {
-              throw new Error("Failed to get account");
+            const connector = config.createConnector(connectorId);
+            if (!connector) {
+              throw new Error(`Failed to create connector for ${connectorId}`);
             }
 
-            const connectedWallet: ConnectedWallet = { account, connector };
+            dispatch({ connectorId, type: "CONNECT_STARTED" });
 
-            set((prev) => {
-              const existingWallet = prev.connectedWallets.get(connector.chainPlatform);
-              if (
-                existingWallet &&
-                existingWallet.account.walletAddress.toLowerCase() ===
-                  connectedWallet.account.walletAddress.toLowerCase()
-              ) {
-                return {
-                  connectionStatus: "success" as const,
-                };
-              }
-
-              const newWallets = new Map([
-                ...prev.connectedWallets,
-                [connector.chainPlatform, connectedWallet],
+            try {
+              const connectPromise = connector.connect();
+              // oxlint-disable-next-line promise/prefer-await-to-then -- suppress unhandled rejection; we await via Promise.race below
+              void connectPromise.catch(() => {});
+              await Promise.race([
+                connectPromise,
+                new Promise((_, reject) => {
+                  setTimeout(() => {
+                    reject(new Error("Connection timeout"));
+                  }, CONNECT_TIMEOUT_MS);
+                }),
               ]);
 
-              const wallets = [...newWallets.values()];
-              const hasAnyWallet = newWallets.size > 0;
+              const account = await connector.getAccount();
+              if (!account) {
+                throw new Error("Failed to get account");
+              }
 
-              return {
-                connected: hasAnyWallet,
-                connectedWallets: newWallets,
-                connecting: false,
-                connectionStatus: "success" as const,
-                hasAnyWallet,
-                wallets,
-              };
-            }, false);
+              const entry: ConnectedWallet = { account, connector };
+              dispatch({ connectorId, entry, type: "CONNECT_SUCCEEDED" });
 
-            const updatedWallets = get().connectedWallets;
-            get()._persistConnectedWallets(updatedWallets);
+              persistPool();
+              persistSelection();
+              persistActive();
 
-            config.onConnect?.(connectedWallet);
-            onSuccess?.(connectedWallet);
-          } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "Connection failed";
-            set({ connectionError: errorMessage, connectionStatus: "error" }, false);
-            try {
-              await connector.disconnect?.();
-            } catch (disconnectError: unknown) {
-              console.warn("[butr] disconnect during error recovery failed:", disconnectError);
+              config.onConnect?.(entry);
+              onSuccess?.(entry);
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : "Connection failed";
+              dispatch({ error: errorMessage, type: "CONNECT_FAILED" });
+              try {
+                await connector.disconnect?.();
+              } catch (disconnectError: unknown) {
+                console.warn("[butr] disconnect during error recovery failed:", disconnectError);
+              }
+              onError?.(error as Error);
+              throw error;
             }
-            onError?.(error as Error);
-            throw error;
-          }
-        },
+          },
 
-        disconnectWallet: (chainPlatform) => {
-          get()._markUserDisconnected(true);
+          disconnectWallet: (connectorId) => {
+            get()._markUserDisconnected(true);
 
-          const disconnectState = get();
-          if (!disconnectState.isHydrated) {
-            return;
-          }
+            const state = get();
+            if (!state.isHydrated) {
+              return;
+            }
+            const wallet = state.pool.get(connectorId);
+            if (!wallet) {
+              return;
+            }
 
-          if (!disconnectState.connectedWallets.has(chainPlatform)) {
-            return;
-          }
-
-          const wallet = disconnectState.connectedWallets.get(chainPlatform);
-          if (wallet) {
             void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), console.error);
-          }
 
-          set((prev) => {
-            const newWallets = new Map(prev.connectedWallets);
-            newWallets.delete(chainPlatform);
+            const platform = wallet.connector.chainPlatform;
+            dispatch({ connectorId, type: "DISCONNECTED" });
 
-            const wallets = [...newWallets.values()];
-            const hasAnyWallet = newWallets.size > 0;
+            if (get().pool.size === 0) {
+              void run(() => storage.clearAll(), logStorageError("failed to clear storage"));
+            } else {
+              persistPool();
+              persistSelection();
+              persistActive();
+            }
 
-            return {
-              connected: hasAnyWallet,
-              connectedWallets: newWallets,
-              connecting: false,
-              hasAnyWallet,
-              wallets,
-            };
-          }, false);
+            config.onDisconnect?.(platform);
+          },
 
-          if (get().connectedWallets.size === 0) {
+          getConnectorInstance: (id) => config.createConnector(id),
+
+          refreshWallet: (connectorId) => {
+            dispatch({ connectorId, type: "WALLET_REFRESHED" });
+          },
+
+          reset: () => {
+            get()._markUserDisconnected(true);
+
+            const state = get();
+            if (!state.isHydrated) {
+              return;
+            }
+
+            for (const wallet of state.pool.values()) {
+              void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), console.error);
+            }
+
             void run(() => storage.clearAll(), logStorageError("failed to clear storage"));
-          } else {
-            get()._persistConnectedWallets(get().connectedWallets);
-          }
 
-          config.onDisconnect?.(chainPlatform);
-        },
-
-        getConnectorInstance: (id) => {
-          return config.createConnector(id);
-        },
-
-        getWalletByPlatform: (chainPlatform) => {
-          return get().connectedWallets.get(chainPlatform);
-        },
-
-        getWalletForOperation: (chainPlatform) => {
-          return get().connectedWallets.get(chainPlatform);
-        },
-
-        isWalletConnected: (chainPlatform) => {
-          return get().connectedWallets.has(chainPlatform);
-        },
-
-        refreshWallet: (chainPlatform) => {
-          set((prev) => {
-            if (!prev.connectedWallets.has(chainPlatform)) {
-              return prev;
+            if (config.onReset) {
+              const onReset = config.onReset;
+              void run(() => Promise.resolve(onReset()), console.error);
             }
 
-            const wallet = prev.connectedWallets.get(chainPlatform);
-            if (!wallet) {
-              return prev;
-            }
+            dispatch({ type: "RESET" });
+          },
 
-            const newWallets = new Map([...prev.connectedWallets, [chainPlatform, { ...wallet }]]);
+          resetConnectionStatus: () => {
+            dispatch({ type: "STATUS_RESET" });
+          },
 
-            const wallets = [...newWallets.values()];
-            const hasAnyWallet = newWallets.size > 0;
+          setActiveConnector: (connectorId) => {
+            dispatch({ connectorId, type: "ACTIVE_CHANGED" });
+            persistActive();
+          },
 
-            return {
-              connected: hasAnyWallet,
-              connectedWallets: newWallets,
-              connecting: false,
-              hasAnyWallet,
-              wallets,
-            };
-          }, false);
-        },
+          setConnectionError: (error) => {
+            dispatch({ error, type: "ERROR_SET" });
+          },
 
-        reset: () => {
-          get()._markUserDisconnected(true);
+          setConnectionStatus: (status, connectorId = null) => {
+            dispatch({ connectorId, status, type: "STATUS_SET" });
+          },
 
-          const resetState = get();
-          if (!resetState.isHydrated) {
-            return;
-          }
+          setSelection: (chainPlatform, connectorId) => {
+            dispatch({ chainPlatform, connectorId, type: "SELECTION_CHANGED" });
+            persistSelection();
+          },
 
-          for (const wallet of resetState.connectedWallets.values()) {
-            void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), console.error);
-          }
-
-          void run(() => storage.clearAll(), logStorageError("failed to clear storage"));
-
-          // Fire the consumer-provided reset callback (e.g., clear auth tokens)
-          if (config.onReset) {
-            const onReset = config.onReset;
-            void run(() => Promise.resolve(onReset()), console.error);
-          }
-
-          set(
-            {
-              activeConnectorId: null,
-              connected: false,
-              connectedWallets: new Map(),
-              connecting: false,
-              connectionError: null,
-              connectionStatus: "idle",
-              hasAnyWallet: false,
-              wallets: [],
-            },
-            false,
-          );
-        },
-
-        resetConnectionStatus: () => {
-          set(
-            {
-              activeConnectorId: null,
-              connectionError: null,
-              connectionStatus: "idle",
-            },
-            false,
-          );
-        },
-
-        setConnectionError: (error) => {
-          set(
-            {
-              connectionError: error,
-              connectionStatus: error ? "error" : "idle",
-            },
-            false,
-          );
-        },
-
-        setConnectionStatus: (status, connectorId = null) => {
-          set({ activeConnectorId: connectorId, connectionStatus: status }, false);
-        },
-
-        updateWalletAccount: (chainPlatform, newAccount) => {
-          set((prev) => {
-            if (!prev.connectedWallets.has(chainPlatform)) {
-              return prev;
-            }
-
-            const wallet = prev.connectedWallets.get(chainPlatform);
-            if (!wallet) {
-              return prev;
-            }
-
-            // Skip update when the account hasn't actually changed.
-            // Prevents unnecessary Map churn that cascades through
-            // useSyncExternalStore subscribers, which can trigger Error #185.
-            if (
-              wallet.account.walletAddress === newAccount.walletAddress &&
-              wallet.account.chain.id === newAccount.chain.id
-            ) {
-              return prev;
-            }
-
-            const updatedWallet: ConnectedWallet = {
-              ...wallet,
-              account: newAccount,
-            };
-
-            const newWallets = new Map([...prev.connectedWallets, [chainPlatform, updatedWallet]]);
-
-            const wallets = [...newWallets.values()];
-            const hasAnyWallet = newWallets.size > 0;
-
-            return {
-              connected: hasAnyWallet,
-              connectedWallets: newWallets,
-              connecting: false,
-              hasAnyWallet,
-              wallets,
-            };
-          }, false);
-
-          get()._persistConnectedWallets(get().connectedWallets);
-        },
-      }),
+          updateWalletAccount: (connectorId, account) => {
+            dispatch({ account, connectorId, type: "ACCOUNT_UPDATED" });
+            persistPool();
+          },
+        };
+      },
       { enabled: !isProduction(), name: "butr-wallet" },
     ),
   );
 };
 
-export type { ConnectionStatus } from "./wallet-store-helpers";
+export type { ConnectionStatus } from "./reducer";
 export type { WalletStore, WalletStoreState };
 export { createWalletStore };

@@ -1,13 +1,15 @@
 import {
+  useActiveWallet,
   useConnectedWallets,
-  useConnectedWalletsMap,
-  useGetWalletByChain,
-  useGetWalletByPlatform,
-  useGetWalletForOperation,
-  useHasAnyWallet,
-  useIsWalletConnected,
+  useGetSelectedWallet,
+  useGetWallet,
+  useIsPlatformConnected,
+  usePool,
+  useSelectedWallet,
+  useSelection,
+  useSetActiveConnector,
+  useSetSelection,
   useUpdateWalletAccount,
-  useWalletForOperation,
   type Account,
   type ChainBase,
   type ConnectedWallet,
@@ -25,14 +27,17 @@ const formatWallet = (w: ConnectedWallet | undefined) =>
 
 const WalletsSection = () => {
   const wallets = useConnectedWallets();
-  const map = useConnectedWalletsMap();
-  const hasAny = useHasAnyWallet();
-  const isWalletConnected = useIsWalletConnected();
-  const getByChain = useGetWalletByChain();
-  const getByPlatform = useGetWalletByPlatform();
-  const getForOperation = useGetWalletForOperation();
-  const reactiveEvm = useWalletForOperation("evm");
-  const reactiveSvm = useWalletForOperation("svm");
+  const pool = usePool();
+  const selection = useSelection();
+  const activeWallet = useActiveWallet();
+  const selectedEvm = useSelectedWallet("evm");
+  const selectedSvm = useSelectedWallet("svm");
+  const isEvm = useIsPlatformConnected("evm");
+  const isSvm = useIsPlatformConnected("svm");
+  const getWallet = useGetWallet();
+  const getSelected = useGetSelectedWallet();
+  const setActive = useSetActiveConnector();
+  const setSelection = useSetSelection();
   const updateAccount = useUpdateWalletAccount();
 
   const rotateAccount = () => {
@@ -41,29 +46,46 @@ const WalletsSection = () => {
       id: `evm:${Date.now()}`,
       walletAddress: `0x${Date.now().toString(16).padStart(40, "0")}`.slice(0, 42),
     };
-    updateAccount("evm", next);
+    updateAccount("mock-evm", next);
   };
 
   return (
     <section style={{ borderBottom: "1px solid #ddd", padding: 16 }}>
       <h2>Wallets</h2>
       <ul>
-        <li>has any: {String(hasAny)}</li>
-        <li>is evm connected: {String(isWalletConnected("evm"))}</li>
-        <li>is svm connected: {String(isWalletConnected("svm"))}</li>
+        <li>has any: {String(wallets.length > 0)}</li>
+        <li>is evm connected: {String(isEvm)}</li>
+        <li>is svm connected: {String(isSvm)}</li>
         <li>
           list ({wallets.length}): {wallets.map((w) => w.connector.id).join(", ") || "none"}
         </li>
-        <li>by chain (evm): {formatWallet(getByChain("evm"))}</li>
-        <li>by platform (svm): {formatWallet(getByPlatform("svm"))}</li>
-        <li>for operation (evm): {formatWallet(getForOperation("evm"))}</li>
-        <li>reactive evm: {formatWallet(reactiveEvm)}</li>
-        <li>reactive svm: {formatWallet(reactiveSvm)}</li>
-        <li>map keys: {[...map.keys()].join(", ") || "none"}</li>
+        <li>pool keys: {[...pool.keys()].join(", ") || "none"}</li>
+        <li>
+          selection: {[...selection.entries()].map(([p, id]) => `${p}=${id}`).join(", ") || "none"}
+        </li>
+        <li>active wallet: {formatWallet(activeWallet)}</li>
+        <li>selected (evm): {formatWallet(selectedEvm)}</li>
+        <li>selected (svm): {formatWallet(selectedSvm)}</li>
+        <li>get(mock-evm): {formatWallet(getWallet("mock-evm"))}</li>
+        <li>getSelected(svm): {formatWallet(getSelected("svm"))}</li>
       </ul>
-      <button onClick={rotateAccount} type="button">
-        Rotate active EVM account
-      </button>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <button onClick={rotateAccount} type="button">
+          Rotate active EVM account
+        </button>
+        <button onClick={() => setActive("mock-evm")} type="button">
+          Activate EVM
+        </button>
+        <button onClick={() => setActive("mock-svm")} type="button">
+          Activate SVM
+        </button>
+        <button onClick={() => setSelection("evm", "mock-evm")} type="button">
+          Select EVM=mock-evm
+        </button>
+        <button onClick={() => setSelection("evm", null)} type="button">
+          Clear EVM selection
+        </button>
+      </div>
     </section>
   );
 };

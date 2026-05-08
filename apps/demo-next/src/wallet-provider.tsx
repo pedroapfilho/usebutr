@@ -7,10 +7,11 @@ import {
   createBrowserStorageDriver,
   createMemoryStorageDriver,
   type BrowserStorageDrivers,
-  type ConnectedWalletsRecord,
   type MaybePromise,
   type StorageDriver,
-  type StoredWalletData,
+  type StoredPoolEntry,
+  type StoredPoolRecord,
+  type StoredSelectionRecord,
   type WalletManagerConfig,
   type WalletPersistence,
   type WalletStore,
@@ -22,9 +23,10 @@ type _StorageTypeRefs = {
   driver: StorageDriver;
   drivers: BrowserStorageDrivers;
   maybe: MaybePromise<string>;
-  record: ConnectedWalletsRecord;
+  pool: StoredPoolRecord;
+  selection: StoredSelectionRecord;
   store: WalletStore;
-  stored: StoredWalletData;
+  stored: StoredPoolEntry;
 };
 void ({} as _StorageTypeRefs);
 

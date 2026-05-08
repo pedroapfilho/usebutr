@@ -1,11 +1,13 @@
 import { Pressable, Text, View } from "react-native";
 import {
   useActiveConnectorId,
+  useConnectingConnectorId,
   useConnectionError,
   useConnectionStatus,
   useConnectWallet,
   useDisconnectWallet,
   useIsConnecting,
+  useIsHydrated,
   useIsUserDisconnected,
   useRefreshWallet,
   useResetConnectionStatus,
@@ -29,8 +31,10 @@ const ConnectionSection = () => {
   const isConnecting = useIsConnecting();
   const error = useConnectionError();
   const activeId = useActiveConnectorId();
+  const connectingId = useConnectingConnectorId();
   const connected = useWalletConnected();
   const isUserDisconnected = useIsUserDisconnected();
+  const isHydrated = useIsHydrated();
 
   const connect = useConnectWallet();
   const disconnect = useDisconnectWallet();
@@ -57,15 +61,17 @@ const ConnectionSection = () => {
         {isConnecting && " (connecting…)"}
       </Text>
       <Text>connected: {String(connected)}</Text>
+      <Text>hydrated: {String(isHydrated)}</Text>
       <Text>active connector: {activeId ?? "none"}</Text>
+      <Text>connecting connector: {connectingId ?? "none"}</Text>
       <Text>error: {error ?? "none"}</Text>
-      <Text>user disconnected flag: {String(isUserDisconnected)}</Text>
+      <Text>user-disconnected flag: {String(isUserDisconnected)}</Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 8 }}>
         <Btn label="Connect EVM" onPress={() => connect("mock-evm")} />
         <Btn label="Connect SVM" onPress={() => connect("mock-svm")} />
-        <Btn label="Disconnect EVM" onPress={() => disconnect("evm")} />
-        <Btn label="Disconnect SVM" onPress={() => disconnect("svm")} />
-        <Btn label="Refresh EVM" onPress={() => refresh("evm")} />
+        <Btn label="Disconnect EVM" onPress={() => disconnect("mock-evm")} />
+        <Btn label="Disconnect SVM" onPress={() => disconnect("mock-svm")} />
+        <Btn label="Refresh EVM" onPress={() => refresh("mock-evm")} />
         <Btn label="Reset" onPress={() => reset()} />
         <Btn label="Cycle status" onPress={cycleStatus} />
         <Btn label="Reset status" onPress={resetStatus} />

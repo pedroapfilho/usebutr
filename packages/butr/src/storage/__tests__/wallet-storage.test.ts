@@ -21,16 +21,16 @@ const createStorage = (overrides?: { persistent?: StorageDriver; session?: Stora
 };
 
 describe("WalletStorage", () => {
-  describe("getConnectedWallets", () => {
-    it("returns empty object when nothing stored", async () => {
+  describe("getPool", () => {
+    it("returns empty when nothing stored", async () => {
       const { storage } = createStorage();
-      expect(await storage.getConnectedWallets()).toEqual({});
+      expect(await storage.getPool()).toEqual({});
     });
 
-    it("returns valid wallet data", async () => {
+    it("returns valid pool entries", async () => {
       const persistent = createMockStorageDriver();
       const data = {
-        evm: {
+        metamask: {
           account: {
             chain: {
               id: "eip155:1",
@@ -41,28 +41,44 @@ describe("WalletStorage", () => {
             id: "acc-1",
             walletAddress: "0x123",
           },
+          chainPlatform: "evm",
           connectorId: "metamask",
         },
       };
-      await persistent.setItem("test-connected-wallets", JSON.stringify(data));
+      await persistent.setItem("test-pool", JSON.stringify(data));
       const { storage } = createStorage({ persistent });
 
-      expect(await storage.getConnectedWallets()).toEqual(data);
+      expect(await storage.getPool()).toEqual(data);
     });
 
-    it("returns empty and clears when stored JSON is not an object", async () => {
-      const persistent = createMockStorageDriver();
-      await persistent.setItem("test-connected-wallets", JSON.stringify("s"));
-      const { storage } = createStorage({ persistent });
-
-      expect(await storage.getConnectedWallets()).toEqual({});
-      expect(persistent.removeItem).toHaveBeenCalledWith("test-connected-wallets");
-    });
-
-    it("returns empty and clears when platform key is invalid", async () => {
+    it("drops entries whose connectorId does not match the key", async () => {
       const persistent = createMockStorageDriver();
       const data = {
-        cosmos: {
+        metamask: {
+          account: {
+            chain: {
+              id: "eip155:1",
+              name: "Ethereum",
+              namespace: "eip155",
+              reference: "1",
+            },
+            id: "acc-1",
+            walletAddress: "0x123",
+          },
+          chainPlatform: "evm",
+          connectorId: "different-id",
+        },
+      };
+      await persistent.setItem("test-pool", JSON.stringify(data));
+      const { storage } = createStorage({ persistent });
+
+      expect(await storage.getPool()).toEqual({});
+    });
+
+    it("drops entries with invalid chainPlatform", async () => {
+      const persistent = createMockStorageDriver();
+      const data = {
+        keplr: {
           account: {
             chain: {
               id: "cosmos:1",
@@ -73,111 +89,55 @@ describe("WalletStorage", () => {
             id: "acc-1",
             walletAddress: "cosmos1abc",
           },
+          chainPlatform: "cosmos",
           connectorId: "keplr",
         },
       };
-      await persistent.setItem("test-connected-wallets", JSON.stringify(data));
+      await persistent.setItem("test-pool", JSON.stringify(data));
       const { storage } = createStorage({ persistent });
 
-      expect(await storage.getConnectedWallets()).toEqual({});
-    });
-
-    it("returns empty when wallet data missing connectorId", async () => {
-      const persistent = createMockStorageDriver();
-      const data = {
-        evm: {
-          account: {
-            chain: {
-              id: "eip155:1",
-              name: "Ethereum",
-              namespace: "eip155",
-              reference: "1",
-            },
-            id: "acc-1",
-            walletAddress: "0x123",
-          },
-        },
-      };
-      await persistent.setItem("test-connected-wallets", JSON.stringify(data));
-      const { storage } = createStorage({ persistent });
-
-      expect(await storage.getConnectedWallets()).toEqual({});
-    });
-
-    it("returns empty when account missing walletAddress", async () => {
-      const persistent = createMockStorageDriver();
-      const data = {
-        evm: {
-          account: {
-            chain: {
-              id: "eip155:1",
-              name: "Ethereum",
-              namespace: "eip155",
-              reference: "1",
-            },
-            id: "acc-1",
-          },
-          connectorId: "metamask",
-        },
-      };
-      await persistent.setItem("test-connected-wallets", JSON.stringify(data));
-      const { storage } = createStorage({ persistent });
-
-      expect(await storage.getConnectedWallets()).toEqual({});
-    });
-
-    it("returns empty when account missing chain", async () => {
-      const persistent = createMockStorageDriver();
-      const data = {
-        evm: {
-          account: { id: "acc-1", walletAddress: "0x123" },
-          connectorId: "metamask",
-        },
-      };
-      await persistent.setItem("test-connected-wallets", JSON.stringify(data));
-      const { storage } = createStorage({ persistent });
-
-      expect(await storage.getConnectedWallets()).toEqual({});
+      expect(await storage.getPool()).toEqual({});
     });
 
     it("returns empty and clears on malformed JSON", async () => {
       const persistent = createMockStorageDriver();
-      await persistent.setItem("test-connected-wallets", "{invalid json");
+      await persistent.setItem("test-pool", "{invalid json");
       const { storage } = createStorage({ persistent });
 
-      expect(await storage.getConnectedWallets()).toEqual({});
-      expect(persistent.removeItem).toHaveBeenCalledWith("test-connected-wallets");
+      expect(await storage.getPool()).toEqual({});
+      expect(persistent.removeItem).toHaveBeenCalledWith("test-pool");
     });
   });
 
-  describe("setConnectedWallets", () => {
-    it("serializes a Map of ConnectedWallet to JSON", async () => {
+  describe("setPool", () => {
+    it("serializes a pool keyed by connectorId", async () => {
       const { persistent, storage } = createStorage();
       const account = createMockAccount();
-      const connector = createMockConnector({ id: "metamask" });
-      const wallets = new Map<ChainPlatform, ConnectedWallet>([["evm", { account, connector }]]);
+      const connector = createMockConnector({ chainPlatform: "evm", id: "metamask" });
+      const pool = new Map<string, ConnectedWallet>([["metamask", { account, connector }]]);
 
-      await storage.setConnectedWallets(wallets);
+      await storage.setPool(pool);
 
-      const stored = JSON.parse((await persistent.getItem("test-connected-wallets")) as string);
-      expect(stored.evm.connectorId).toBe("metamask");
-      expect(stored.evm.account.walletAddress).toBe(account.walletAddress);
+      const stored = JSON.parse((await persistent.getItem("test-pool")) as string);
+      expect(stored.metamask.connectorId).toBe("metamask");
+      expect(stored.metamask.chainPlatform).toBe("evm");
+      expect(stored.metamask.account.walletAddress).toBe(account.walletAddress);
     });
 
-    it("handles empty map", async () => {
+    it("handles empty pool", async () => {
       const { persistent, storage } = createStorage();
-      await storage.setConnectedWallets(new Map());
+      await storage.setPool(new Map());
 
-      const stored = JSON.parse((await persistent.getItem("test-connected-wallets")) as string);
+      const stored = JSON.parse((await persistent.getItem("test-pool")) as string);
       expect(stored).toEqual({});
     });
   });
 
-  describe("removeConnectedWallet", () => {
-    it("removes specific platform from stored record", async () => {
+  describe("removePoolEntry", () => {
+    it("removes a single connectorId from the pool", async () => {
       const persistent = createMockStorageDriver();
       const data = {
-        evm: {
+        metamask: {
           account: {
             chain: {
               id: "eip155:1",
@@ -188,9 +148,10 @@ describe("WalletStorage", () => {
             id: "acc-1",
             walletAddress: "0x123",
           },
+          chainPlatform: "evm",
           connectorId: "metamask",
         },
-        svm: {
+        phantom: {
           account: {
             chain: {
               id: "solana:mainnet",
@@ -201,39 +162,87 @@ describe("WalletStorage", () => {
             id: "acc-2",
             walletAddress: "So1ana",
           },
+          chainPlatform: "svm",
           connectorId: "phantom",
         },
       };
-      await persistent.setItem("test-connected-wallets", JSON.stringify(data));
+      await persistent.setItem("test-pool", JSON.stringify(data));
       const { storage } = createStorage({ persistent });
 
-      await storage.removeConnectedWallet("evm");
+      await storage.removePoolEntry("metamask");
 
-      const stored = JSON.parse((await persistent.getItem("test-connected-wallets")) as string);
-      expect(stored.evm).toBeUndefined();
-      expect(stored.svm).toBeDefined();
+      const stored = JSON.parse((await persistent.getItem("test-pool")) as string);
+      expect(stored.metamask).toBeUndefined();
+      expect(stored.phantom).toBeDefined();
+    });
+  });
+
+  describe("getSelection / setSelection", () => {
+    it("returns empty when nothing stored", async () => {
+      const { storage } = createStorage();
+      expect(await storage.getSelection()).toEqual({});
     });
 
-    it("is a no-op when platform not present", async () => {
+    it("round-trips a selection map", async () => {
+      const { storage } = createStorage();
+      await storage.setSelection(
+        new Map<ChainPlatform, string>([
+          ["evm", "metamask"],
+          ["svm", "phantom"],
+        ]),
+      );
+      const result = await storage.getSelection();
+      expect(result.evm).toBe("metamask");
+      expect(result.svm).toBe("phantom");
+    });
+
+    it("drops invalid platform keys", async () => {
       const persistent = createMockStorageDriver();
-      await persistent.setItem("test-connected-wallets", JSON.stringify({}));
+      await persistent.setItem(
+        "test-selection",
+        JSON.stringify({ cosmos: "keplr", evm: "metamask" }),
+      );
       const { storage } = createStorage({ persistent });
 
-      await storage.removeConnectedWallet("svm");
+      const result = await storage.getSelection();
+      expect(result.evm).toBe("metamask");
+      expect((result as Record<string, unknown>).cosmos).toBeUndefined();
+    });
+  });
 
-      const stored = JSON.parse((await persistent.getItem("test-connected-wallets")) as string);
-      expect(stored).toEqual({});
+  describe("getActiveConnectorId / setActiveConnectorId", () => {
+    it("returns null when nothing stored", async () => {
+      const { storage } = createStorage();
+      expect(await storage.getActiveConnectorId()).toBeNull();
+    });
+
+    it("round-trips an active connector id", async () => {
+      const { storage } = createStorage();
+      await storage.setActiveConnectorId("metamask");
+      expect(await storage.getActiveConnectorId()).toBe("metamask");
+    });
+
+    it("clears stored value on null", async () => {
+      const { persistent, storage } = createStorage();
+      await storage.setActiveConnectorId("metamask");
+      await storage.setActiveConnectorId(null);
+      expect(await storage.getActiveConnectorId()).toBeNull();
+      expect(persistent.removeItem).toHaveBeenCalledWith("test-active");
     });
   });
 
   describe("clearAll", () => {
-    it("removes the connected-wallets key", async () => {
+    it("removes pool, selection, and active keys", async () => {
       const { persistent, storage } = createStorage();
-      await storage.setConnectedWallets(new Map());
+      await storage.setPool(new Map());
+      await storage.setSelection(new Map([["evm", "metamask"]]));
+      await storage.setActiveConnectorId("metamask");
 
       await storage.clearAll();
 
-      expect(await persistent.getItem("test-connected-wallets")).toBeNull();
+      expect(await persistent.getItem("test-pool")).toBeNull();
+      expect(await persistent.getItem("test-selection")).toBeNull();
+      expect(await persistent.getItem("test-active")).toBeNull();
     });
   });
 
@@ -282,16 +291,20 @@ describe("WalletStorage", () => {
       });
 
       await storage.markUserDisconnected(true);
-
       expect(await storage.isUserDisconnected()).toBe(true);
 
       const account = createMockAccount();
       const connector = createMockConnector({ id: "metamask" });
-      const wallets = new Map<ChainPlatform, ConnectedWallet>([["evm", { account, connector }]]);
-      await storage.setConnectedWallets(wallets);
+      const pool = new Map<string, ConnectedWallet>([["metamask", { account, connector }]]);
+      await storage.setPool(pool);
+      await storage.setSelection(new Map([["evm", "metamask"]]));
+      await storage.setActiveConnectorId("metamask");
 
-      const restored = await storage.getConnectedWallets();
-      expect(restored.evm?.connectorId).toBe("metamask");
+      const restored = await storage.getPool();
+      expect(restored.metamask?.connectorId).toBe("metamask");
+      const restoredSelection = await storage.getSelection();
+      expect(restoredSelection.evm).toBe("metamask");
+      expect(await storage.getActiveConnectorId()).toBe("metamask");
     });
   });
 });

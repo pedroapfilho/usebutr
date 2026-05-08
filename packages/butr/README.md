@@ -103,7 +103,13 @@ The interface every connector must implement. Lifecycle: `connect`, `disconnect`
 
 ### `WalletStore`
 
-Zustand-vanilla store under the hood. Tracks connected wallets keyed by `ChainPlatform` (`"evm" | "svm"`), connection status, hydration state, and a session-scoped disconnect-intent flag. You can subscribe to the raw store via `useWalletStore(selector)` for custom derivations.
+Zustand-vanilla store under the hood. Tracks three orthogonal pieces of state:
+
+- **pool**: `Map<connectorId, ConnectedWallet>` — every authorised wallet, keyed by connector id. Multiple connectors can serve the same platform (e.g. MetaMask + Rabby both on EVM); both live in the pool.
+- **selection**: `Map<ChainPlatform, connectorId>` — for each platform, which wallet is the routing target right now. `connect("rabby")` makes Rabby the EVM selection; `setSelection("evm", "metamask")` switches it back.
+- **activeConnectorId**: `string | null` — a single global UX cursor for "the wallet currently in front of the user." Independent from selection — switching active doesn't shuffle per-platform routing.
+
+Internally the state is driven by a pure reducer (`(state, event) => state`); the runtime composes that reducer with connector I/O and storage. You can subscribe to the raw store via `useWalletStore(selector)` for custom derivations.
 
 ### `ChainBase`
 
@@ -122,50 +128,63 @@ Pluggable storage. Default `WalletStorage` uses two `StorageDriver`s: `persisten
 | `WalletManagerProvider`     | Wraps the React tree. Takes a `config: WalletManagerConfig`.                                                            |
 | `createWalletStore(config)` | Creates the underlying store directly. The provider does this for you; only call this if you need access outside React. |
 
-### State hooks (read connection)
+### Connection state hooks
 
-| Hook                    | Returns                                          |
-| ----------------------- | ------------------------------------------------ |
-| `useConnectionStatus`   | `"idle" \| "connecting" \| "success" \| "error"` |
-| `useIsConnecting`       | `boolean`                                        |
-| `useActiveConnectorId`  | `string \| null`                                 |
-| `useConnectionError`    | `string \| null`                                 |
-| `useWalletConnected`    | `boolean` (any wallet connected)                 |
-| `useHasAnyWallet`       | `boolean` (alias, same value)                    |
-| `useIsUserDisconnected` | session-scoped disconnect-intent flag            |
+| Hook                       | Returns                                                                      |
+| -------------------------- | ---------------------------------------------------------------------------- |
+| `useConnectionStatus`      | `"idle" \| "connecting" \| "success" \| "error"`                             |
+| `useIsConnecting`          | `boolean`                                                                    |
+| `useConnectingConnectorId` | `string \| null` — the wallet currently in flight (null when not connecting) |
+| `useActiveConnectorId`     | `string \| null` — the global UX cursor                                      |
+| `useConnectionError`       | `string \| null`                                                             |
+| `useWalletConnected`       | `boolean` (any wallet connected)                                             |
+| `useIsHydrated`            | `boolean` — has the store finished its initial load?                         |
+| `useIsUserDisconnected`    | session-scoped disconnect-intent flag                                        |
 
-### Wallet lookup hooks
+### Pool / selection / active hooks (reactive)
 
-| Hook                       | Returns                                                                |
-| -------------------------- | ---------------------------------------------------------------------- |
-| `useConnectedWallets`      | `ConnectedWallet[]`                                                    |
-| `useConnectedWalletsMap`   | `Map<ChainPlatform, ConnectedWallet>`                                  |
-| `useGetWalletByPlatform`   | `(p: ChainPlatform) => ConnectedWallet \| undefined`                   |
-| `useGetWalletByChain`      | alias of above for readability at call sites                           |
-| `useGetWalletForOperation` | platform-keyed lookup intended for operation call sites                |
-| `useWalletForOperation(p)` | reactive variant that re-renders only when the resolved wallet changes |
-| `useIsWalletConnected`     | `(p: ChainPlatform) => boolean`                                        |
-| `useGetConnectorInstance`  | `(id: string) => UIConnector \| null`                                  |
+| Hook                               | Returns                                                                           |
+| ---------------------------------- | --------------------------------------------------------------------------------- |
+| `usePool`                          | `Map<connectorId, ConnectedWallet>` — every authorised wallet                     |
+| `useConnectedWallets`              | `Array<ConnectedWallet>` — pool projected as a list                               |
+| `useSelection`                     | `Map<ChainPlatform, connectorId>` — current per-platform routing                  |
+| `useActiveWallet`                  | `ConnectedWallet \| undefined` — the globally active wallet                       |
+| `useSelectedWallet(platform)`      | `ConnectedWallet \| undefined` — re-renders only when the resolved wallet changes |
+| `useIsPlatformConnected(platform)` | `boolean` — does the selection have an entry for this platform?                   |
+
+### Stable accessors (return functions; safe in callbacks)
+
+| Hook                      | Returns                                                     |
+| ------------------------- | ----------------------------------------------------------- |
+| `useGetWallet`            | `(connectorId: string) => ConnectedWallet \| undefined`     |
+| `useGetSelectedWallet`    | `(platform: ChainPlatform) => ConnectedWallet \| undefined` |
+| `useGetConnectorInstance` | `(id: string) => UIConnector \| null`                       |
 
 ### Mutation hooks
 
-| Hook                       | Action                                                                                |
-| -------------------------- | ------------------------------------------------------------------------------------- |
-| `useConnectWallet`         | `(id, onSuccess?, onError?) => Promise<void>`                                         |
-| `useDisconnectWallet`      | `(p: ChainPlatform) => void`                                                          |
-| `useRefreshWallet`         | `(p: ChainPlatform) => void` (re-emits the wallet entry without changing the account) |
-| `useResetWallet`           | clears all wallets, fires `onReset`                                                   |
-| `useUpdateWalletAccount`   | `(p: ChainPlatform, account: Account) => void`                                        |
-| `useSetConnectionStatus`   | `(status, connectorId?) => void`                                                      |
-| `useResetConnectionStatus` | `() => void`                                                                          |
+| Hook                       | Action                                                                                               |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `useConnectWallet`         | `(connectorId, onSuccess?, onError?) => Promise<void>`                                               |
+| `useDisconnectWallet`      | `(connectorId: string) => void`                                                                      |
+| `useSetActiveConnector`    | `(connectorId: string \| null) => void` — change the global active wallet without touching selection |
+| `useSetSelection`          | `(platform: ChainPlatform, connectorId: string \| null) => void` — change per-platform routing       |
+| `useUpdateWalletAccount`   | `(connectorId: string, account: Account) => void`                                                    |
+| `useRefreshWallet`         | `(connectorId: string) => void` (re-emits the wallet entry without changing the account)             |
+| `useResetWallet`           | clears all wallets, fires `onReset`                                                                  |
+| `useSetConnectionStatus`   | `(status, connectorId?) => void`                                                                     |
+| `useResetConnectionStatus` | `() => void`                                                                                         |
+| `useSetConnectionError`    | `(error: string \| null) => void`                                                                    |
 
 ### Direct store access
 
 ```ts
 import { useShallow } from "zustand/react/shallow";
 
-const { wallets, connected } = useWalletStore(
-  useShallow((state) => ({ wallets: state.wallets, connected: state.connected })),
+const { pool, activeConnectorId } = useWalletStore(
+  useShallow((state) => ({
+    pool: state.pool,
+    activeConnectorId: state.activeConnectorId,
+  })),
 );
 ```
 

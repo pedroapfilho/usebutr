@@ -4,9 +4,10 @@ import { useGetConnectorInstance, useWalletStore, type WalletStoreState } from "
 
 const pickSnapshot = (state: WalletStoreState) => ({
   activeConnectorId: state.activeConnectorId,
+  connectingConnectorId: state.connectingConnectorId,
   connectionStatus: state.connectionStatus,
   isHydrated: state.isHydrated,
-  walletCount: state.wallets.length,
+  poolSize: state.pool.size,
 });
 
 const InternalsSection = () => {

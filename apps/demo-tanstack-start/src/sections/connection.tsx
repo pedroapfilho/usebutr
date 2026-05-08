@@ -1,10 +1,12 @@
 import {
   useActiveConnectorId,
+  useConnectingConnectorId,
   useConnectionError,
   useConnectionStatus,
   useConnectWallet,
   useDisconnectWallet,
   useIsConnecting,
+  useIsHydrated,
   useIsUserDisconnected,
   useRefreshWallet,
   useResetConnectionStatus,
@@ -19,8 +21,10 @@ const ConnectionSection = () => {
   const isConnecting = useIsConnecting();
   const error = useConnectionError();
   const activeId = useActiveConnectorId();
+  const connectingId = useConnectingConnectorId();
   const connected = useWalletConnected();
   const isUserDisconnected = useIsUserDisconnected();
+  const isHydrated = useIsHydrated();
 
   const connect = useConnectWallet();
   const disconnect = useDisconnectWallet();
@@ -47,9 +51,11 @@ const ConnectionSection = () => {
           status: <strong>{status}</strong> {isConnecting && "(connecting…)"}
         </li>
         <li>connected: {String(connected)}</li>
+        <li>hydrated: {String(isHydrated)}</li>
         <li>active connector: {activeId ?? "none"}</li>
+        <li>connecting connector: {connectingId ?? "none"}</li>
         <li>error: {error ?? "none"}</li>
-        <li>user disconnected flag: {String(isUserDisconnected)}</li>
+        <li>user-disconnected flag: {String(isUserDisconnected)}</li>
       </ul>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <button onClick={() => connect("mock-evm")} type="button">
@@ -58,13 +64,13 @@ const ConnectionSection = () => {
         <button onClick={() => connect("mock-svm")} type="button">
           Connect SVM
         </button>
-        <button onClick={() => disconnect("evm")} type="button">
+        <button onClick={() => disconnect("mock-evm")} type="button">
           Disconnect EVM
         </button>
-        <button onClick={() => disconnect("svm")} type="button">
+        <button onClick={() => disconnect("mock-svm")} type="button">
           Disconnect SVM
         </button>
-        <button onClick={() => refresh("evm")} type="button">
+        <button onClick={() => refresh("mock-evm")} type="button">
           Refresh EVM
         </button>
         <button onClick={() => reset()} type="button">

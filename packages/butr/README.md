@@ -1,6 +1,6 @@
 # butr
 
-Multi-chain wallet management primitives for React. Headless, ~7 kB gzipped, bring your own connectors.
+Multi-chain wallet management primitives for React. Headless, ~10 kB gzipped, bring your own connectors.
 
 ```bash
 npm install butr zustand react
@@ -257,24 +257,24 @@ const { pool, activeConnectorId } = useWalletStore(
 
 ## Comparison
 
-| Library                          | Chain support             | What it ships                                                                 | Bundle                               | UI opinions              | Primitives vs product |
-| -------------------------------- | ------------------------- | ----------------------------------------------------------------------------- | ------------------------------------ | ------------------------ | --------------------- |
-| **butr**                         | EVM, Solana               | Connection state machine, hooks, persistence, hydration, RN export            | **~7 kB gz** (peer: react + zustand) | None                     | Primitives            |
-| **wagmi**                        | EVM only                  | 40+ hooks, connectors, viem, TanStack Query integration                       | ~70 kB min+gz                        | None                     | Primitives            |
-| **@solana/wallet-adapter-react** | Solana only               | React context + hooks (`useWallet`, `useConnection`); UI in a sibling package | ~40–60 kB                            | Optional via `-react-ui` | Primitives            |
-| **RainbowKit**                   | EVM only (atop wagmi)     | Wallet modal, chain switcher, theming                                         | ~500 kB+ tree                        | Strong — ships modal     | Batteries-included UI |
-| **Reown AppKit** (Web3Modal)     | EVM, Solana, Bitcoin      | Modal UI, chain adapters, WalletConnect relay                                 | Large (lazy-loaded)                  | Very strong              | Product               |
-| **thirdweb**                     | EVM, Solana, 1000+ chains | Full SDK: hooks, UI, in-app wallets, contracts, RPC, storage                  | Large                                | Ships UI                 | Product               |
-| **Privy**                        | EVM, Solana               | Auth + embedded wallets via TEE/SSS, hooks, login flows                       | Large                                | Some — login UI          | Auth + wallet product |
-| **Dynamic Labs**                 | EVM, Solana, others       | Auth + embedded wallets + connectors, plugin-based chains                     | Large (core ~11 MB unmin)            | Modal + login UI         | Auth + wallet product |
-| **viem / ethers**                | EVM only                  | Low-level RPC, ABI, signing — no wallet state, no React                       | viem ~35 kB gz; ethers ~88 kB gz     | None                     | Below butr's level    |
+| Library                          | Chain support             | What it ships                                                                 | Bundle                                | UI opinions              | Primitives vs product |
+| -------------------------------- | ------------------------- | ----------------------------------------------------------------------------- | ------------------------------------- | ------------------------ | --------------------- |
+| **butr**                         | EVM, Solana               | Connection state machine, hooks, persistence, hydration, RN export            | **~10 kB gz** (peer: react + zustand) | None                     | Primitives            |
+| **wagmi**                        | EVM only                  | 40+ hooks, connectors, viem, TanStack Query integration                       | ~70 kB min+gz                         | None                     | Primitives            |
+| **@solana/wallet-adapter-react** | Solana only               | React context + hooks (`useWallet`, `useConnection`); UI in a sibling package | ~40–60 kB                             | Optional via `-react-ui` | Primitives            |
+| **RainbowKit**                   | EVM only (atop wagmi)     | Wallet modal, chain switcher, theming                                         | ~500 kB+ tree                         | Strong — ships modal     | Batteries-included UI |
+| **Reown AppKit** (Web3Modal)     | EVM, Solana, Bitcoin      | Modal UI, chain adapters, WalletConnect relay                                 | Large (lazy-loaded)                   | Very strong              | Product               |
+| **thirdweb**                     | EVM, Solana, 1000+ chains | Full SDK: hooks, UI, in-app wallets, contracts, RPC, storage                  | Large                                 | Ships UI                 | Product               |
+| **Privy**                        | EVM, Solana               | Auth + embedded wallets via TEE/SSS, hooks, login flows                       | Large                                 | Some — login UI          | Auth + wallet product |
+| **Dynamic Labs**                 | EVM, Solana, others       | Auth + embedded wallets + connectors, plugin-based chains                     | Large (core ~11 MB unmin)             | Modal + login UI         | Auth + wallet product |
+| **viem / ethers**                | EVM only                  | Low-level RPC, ABI, signing — no wallet state, no React                       | viem ~35 kB gz; ethers ~88 kB gz      | None                     | Below butr's level    |
 
 ### What makes butr different
 
 - **Multi-chain from day one.** `wagmi` is EVM-only; `@solana/wallet-adapter` is Solana-only. `butr`'s connector abstraction is chain-agnostic and covers EVM and Solana through one model.
 - **Bring your own connectors.** No connector implementations are bundled. You write a `UIConnector` for whatever wallet SDK you actually use, so there's no upstream coupling to WalletConnect, Phantom, MetaMask, or any specific provider.
 - **Genuinely headless.** RainbowKit and AppKit bundle a modal you can't easily skin past their brand. Privy and Dynamic ship login screens. `butr` ships zero UI, which means it composes with any design system without override fights.
-- **Smallest in its class.** ~7 kB gzipped, peer deps `react` + `zustand` only. RainbowKit, thirdweb, Privy, and Dynamic add hundreds of kilobytes to megabytes.
+- **Smallest in its class.** ~10 kB gzipped, peer deps `react` + `zustand` only. RainbowKit, thirdweb, Privy, and Dynamic add hundreds of kilobytes to megabytes.
 - **Runs everywhere React runs.** A `react-native` export condition and pluggable storage drivers (browser + memory) mean the same package works in browsers, React Native, and SSR — no separate adapters.
 
 ## React Native

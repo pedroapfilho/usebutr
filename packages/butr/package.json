@@ -1,7 +1,32 @@
 {
   "name": "butr",
   "version": "0.1.0",
-  "description": "Multi-chain wallet management primitives for React",
+  "description": "Multi-chain wallet management primitives for React. Headless, ~10 kB gzipped, bring your own connectors.",
+  "keywords": [
+    "ethereum",
+    "evm",
+    "headless",
+    "multichain",
+    "react",
+    "react-hooks",
+    "react-native",
+    "solana",
+    "typescript",
+    "wallet",
+    "web3",
+    "zustand"
+  ],
+  "homepage": "https://github.com/pedroapfilho/butr#readme",
+  "bugs": {
+    "url": "https://github.com/pedroapfilho/butr/issues"
+  },
+  "license": "MIT",
+  "author": "Pedro Filho <pedro@filho.me>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pedroapfilho/butr.git",
+    "directory": "packages/butr"
+  },
   "files": [
     "dist"
   ],
@@ -19,12 +44,13 @@
     }
   },
   "scripts": {
-    "build": "pnpm run build:esm && pnpm run build:cjs && pnpm run build:cjs-pkg",
+    "build": "pnpm run clean && pnpm run build:esm && pnpm run build:cjs && pnpm run build:cjs-pkg",
     "build:esm": "tsc -p tsconfig.json",
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "build:cjs-pkg": "node -e \"require('fs').writeFileSync('dist/cjs/package.json', JSON.stringify({type:'commonjs'}))\"",
     "clean": "rm -rf dist",
     "lint": "oxlint src",
+    "prepack": "pnpm run build",
     "prepare": "pnpm run build",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"

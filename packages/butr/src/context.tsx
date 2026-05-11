@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { discoverWalletAdapters } from "./auto/discover";
+import { type DiscoverOptions, discoverWalletAdapters } from "./auto/discover";
 import type { WalletAdapter, WalletManagerConfig } from "./types";
 import { type WalletStore, createWalletStore } from "./store";
 
@@ -8,13 +8,21 @@ const EMPTY_DISCOVERED: ReadonlyArray<WalletAdapter> = [];
 const DiscoveredWalletsContext = createContext<ReadonlyArray<WalletAdapter>>(EMPTY_DISCOVERED);
 
 /**
- * Auto-mode subset of `WalletManagerConfig`. When `auto` is `true`,
- * butr builds `connectors` + `createConnector` internally from
- * EIP-6963 (and, when wired, Wallet Standard) discovery, so consumers
- * only supply the optional callbacks/storage.
+ * Auto-mode subset of `WalletManagerConfig`. When `auto` is set, butr
+ * builds `connectors` + `createConnector` internally from discovery,
+ * so consumers only supply the optional callbacks/storage.
+ *
+ * The `auto` prop accepts either:
+ *  - `true` — discover every platform butr knows how to discover
+ *    (EVM via EIP-6963 + SVM via Wallet Standard). The SVM side
+ *    silently no-ops if `@wallet-standard/app` isn't installed.
+ *  - An options object like `{ evm: true, svm: false }` to scope to a
+ *    single platform. Useful for apps that only target one chain
+ *    family and don't want the other family's wallets cluttering
+ *    `useDiscoveredWallets()`.
  */
 type AutoProviderProps = {
-  auto: true;
+  auto: true | DiscoverOptions;
   children: React.ReactNode;
   onConnect?: WalletManagerConfig["onConnect"];
   onDisconnect?: WalletManagerConfig["onDisconnect"];
@@ -111,10 +119,18 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
     })();
   }, [store]);
 
-  // Auto-discovery subscription. Only attaches when `auto` is true on
+  // Auto-discovery subscription. Only attaches when `auto` is set on
   // mount — toggling `auto` after mount is not supported (the store
   // was already built around the initial mode).
-  const isAuto = props.auto === true;
+  //
+  // `auto: true` enables both platforms. `auto: { evm?, svm? }` scopes
+  // to whichever flags are set. The defaults inside `discoverWallet-
+  // Adapters` mirror `true` when omitted, so `{ evm: true }` means
+  // "EVM only" (svm defaults to its individual default — see
+  // discover.ts).
+  const isAuto = props.auto !== undefined && props.auto !== false;
+  const discoverOptions: DiscoverOptions | undefined =
+    typeof props.auto === "object" ? props.auto : undefined;
   useEffect(() => {
     if (!isAuto) {
       return;
@@ -125,9 +141,9 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
       }
       adapters.set(adapter.id, adapter);
       setDiscoveredList((prev) => [...prev, adapter]);
-    });
+    }, discoverOptions);
     return unsubscribe;
-  }, [adapters, isAuto]);
+  }, [adapters, discoverOptions, isAuto]);
 
   return (
     <WalletStoreContext.Provider value={store}>

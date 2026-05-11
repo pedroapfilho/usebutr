@@ -46,4 +46,5 @@ export { buildSvmAdapter, slugify } from "./wallet-standard-adapter";
 export { discoverSvmAdapters } from "./wallet-standard";
 
 // Combined discovery — also used internally by `<WalletManagerProvider auto>`.
+export type { DiscoverOptions } from "./discover";
 export { discoverWalletAdapters } from "./discover";

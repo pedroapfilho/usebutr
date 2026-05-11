@@ -257,7 +257,21 @@ const { pool, activeConnectorId } = useWalletStore(
 
 ## Auto mode
 
-`WalletManagerProvider` accepts an `auto` boolean prop. When set, butr subscribes to [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963) (EVM) and the [Wallet Standard](https://github.com/wallet-standard/wallet-standard) (Solana, stubbed) and feeds the announced wallets to the store automatically — no `config`, no `connectors`, no `createConnector`. `useDiscoveredWallets()` returns the live list for rendering a wallet picker.
+`WalletManagerProvider` accepts an `auto` prop that wires wallet discovery for you. butr subscribes to [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963) (EVM) and the [Wallet Standard](https://github.com/wallet-standard/wallet-standard) (Solana) and feeds the announced wallets to the store. No `config`, no `connectors`, no `createConnector`. `useDiscoveredWallets()` returns the live list for rendering a wallet picker.
+
+### Install — pick your target
+
+The Solana side requires one extra package as an **optional peer dependency**. The three modes:
+
+| You want              | Install                                 | What to use                                         |
+| --------------------- | --------------------------------------- | --------------------------------------------------- |
+| **EVM only**          | `npm install butr`                      | `<WalletManagerProvider auto={{ evm: true }}>`      |
+| **Solana only**       | `npm install butr @wallet-standard/app` | `<WalletManagerProvider auto={{ svm: true }}>`      |
+| **Both EVM + Solana** | `npm install butr @wallet-standard/app` | `<WalletManagerProvider auto>` (shorthand for both) |
+
+`auto={true}` is the shorthand for "discover everything butr knows how to discover." Pass an object to scope explicitly. Even with `auto={true}`, if `@wallet-standard/app` isn't installed the SVM side silently no-ops — your EVM wallets still come through. That's why the explicit `{ evm: true }` form is cleaner for EVM-only apps: it skips even attempting the SVM dynamic import.
+
+### Usage
 
 ```tsx
 import {
@@ -269,6 +283,8 @@ import {
 
 const App = () => (
   <WalletManagerProvider auto>
+    {" "}
+    {/* both platforms */}
     <WalletPicker />
   </WalletManagerProvider>
 );
@@ -292,7 +308,22 @@ const WalletPicker = () => {
 };
 ```
 
-Adapter IDs come from each wallet's `rdns` field (`io.metamask`, `io.rabby`, `app.phantom`) — stable across page loads. Callbacks (`onConnect`, `onDisconnect`, `onReset`) and custom storage pass through as top-level props on the provider when `auto` is set:
+Scope to one platform:
+
+```tsx
+// EVM-only app — no Solana wallets show up in useDiscoveredWallets()
+<WalletManagerProvider auto={{ evm: true }}>…</WalletManagerProvider>
+
+// Solana-only app — no EVM listener attaches at all
+<WalletManagerProvider auto={{ svm: true }}>…</WalletManagerProvider>
+```
+
+Adapter IDs:
+
+- EVM: `info.rdns` from EIP-6963 → `io.metamask`, `io.rabby`, `app.phantom`, etc.
+- SVM: `wallet-standard:<slug>` from the wallet's name → `wallet-standard:phantom`, `wallet-standard:solflare`.
+
+Stable across page loads. Callbacks (`onConnect`, `onDisconnect`, `onReset`) and custom storage pass through as top-level props on the provider when `auto` is set:
 
 ```tsx
 <WalletManagerProvider auto onConnect={(w) => console.log(w)} storageKeyPrefix="my-app">
@@ -306,17 +337,14 @@ Adapter IDs come from each wallet's `rdns` field (`io.metamask`, `io.rabby`, `ap
 <WalletManagerProvider config={myConfig}>…</WalletManagerProvider>
 ```
 
-### Solana auto-discovery (optional)
+### What's covered
 
-Solana discovery uses the [Wallet Standard](https://github.com/wallet-standard/wallet-standard). The `@wallet-standard/app` package is an **optional peer dependency** — EVM-only consumers don't need to install it. Install it alongside butr to enable SVM auto-discovery:
+| Surface               | Discovery               | Adapter                                    | Status                  |
+| --------------------- | ----------------------- | ------------------------------------------ | ----------------------- |
+| EVM (EIP-6963)        | EIP-6963 announcements  | EIP-1193 → `WalletAdapter`                 | Implemented             |
+| SVM (Wallet Standard) | `getWallets()` registry | Wallet Standard features → `WalletAdapter` | Implemented (mock-only) |
 
-```bash
-npm install butr @wallet-standard/app
-```
-
-With both installed, `<WalletManagerProvider auto>` picks up every Phantom / Solflare / Backpack / OKX that announces itself, in addition to the EVM wallets. No extra prop, no extra import — butr dynamic-imports `@wallet-standard/app` only when the auto path runs.
-
-Without `@wallet-standard/app` installed, the SVM discovery silently no-ops. EVM auto-discovery still works (Phantom's EVM surface, for example, comes through EIP-6963).
+Both paths are mock-tested. Real wallets (Phantom, Solflare, Backpack on SVM; MetaMask, Rabby, Coinbase on EVM) are likely to need small adapter tweaks once they're actually wired against — see the caveat sections below for what specifically.
 
 ### Capability caveats for SVM auto-adapters
 
@@ -328,17 +356,6 @@ The Wallet Standard exposes wallet features but no RPC connection. Adapters gene
 - `switchAccount()` re-runs `standard:connect`, which reopens the wallet's account picker.
 - `sendTx()` requires the wallet to advertise `solana:signAndSendTransaction`. Without it, the call rejects with a clear message.
 - `signMessage()` requires the wallet to advertise `solana:signMessage`. Without it, the call rejects with a clear message.
-
-Real-world wallet quirks (Phantom's exact signature format, Solflare's chain handling) are likely to need small adjustments in `buildSvmAdapter` — same caveat as everything else in butr: mock-tested, not browser-tested yet.
-
-### What's covered
-
-| Surface               | Discovery               | Adapter                                    | Status                                           |
-| --------------------- | ----------------------- | ------------------------------------------ | ------------------------------------------------ |
-| EVM (EIP-6963)        | EIP-6963 announcements  | EIP-1193 → `WalletAdapter`                 | Implemented                                      |
-| SVM (Wallet Standard) | `getWallets()` registry | Wallet Standard features → `WalletAdapter` | **Stub** — `discoverSvmAdapters` returns a no-op |
-
-Solana is deliberately stubbed for now (needs `@wallet-standard/app` as a peer dep + real-wallet fixtures). Until it lands, Solana wallets still wire manually via `WalletManagerConfig.createConnector`. EVM wallets that also announce on EIP-6963 (Phantom, for instance) get auto-discovered today.
 
 ### Caveats on the EVM auto-adapter
 

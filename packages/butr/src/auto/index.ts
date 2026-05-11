@@ -24,7 +24,25 @@ export {
   hexToBytes,
 } from "./eip6963-adapter";
 
-// SVM-side adapter (Wallet Standard) — stub, see file for context.
+// SVM-side adapter (Wallet Standard) — requires the optional peer dep
+// `@wallet-standard/app` for the discovery to actually fire.
+export type {
+  SolanaSignAndSendTransactionFeature,
+  SolanaSignAndSendTransactionInput,
+  SolanaSignAndSendTransactionOutput,
+  SolanaSignMessageFeature,
+  SolanaSignMessageInput,
+  SolanaSignMessageOutput,
+  StandardConnectFeature,
+  StandardDisconnectFeature,
+  StandardEventsFeature,
+  StandardEventsListener,
+  WalletStandardAppModule,
+  WalletStandardWallet,
+  WalletStandardWalletAccount,
+  WalletsApp,
+} from "./wallet-standard-types";
+export { buildSvmAdapter, slugify } from "./wallet-standard-adapter";
 export { discoverSvmAdapters } from "./wallet-standard";
 
 // Combined discovery — also used internally by `<WalletManagerProvider auto>`.

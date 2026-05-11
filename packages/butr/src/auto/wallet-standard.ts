@@ -1,43 +1,83 @@
 import type { WalletAdapter } from "../types";
+import { buildSvmAdapter } from "./wallet-standard-adapter";
+import type { WalletStandardAppModule, WalletStandardWallet } from "./wallet-standard-types";
 
 /**
  * Subscribe to Solana Wallet Standard announcements.
  * Spec: https://github.com/wallet-standard/wallet-standard
  *
- * **STATUS: stub.** Auto-discovery of Solana wallets is not implemented
- * yet. The function returns a no-op unsubscribe so callers can wire it
- * into `discoverWalletAdapters` without conditional branching, but no
- * adapters are produced.
+ * Runtime requires the `@wallet-standard/app` package, which is an
+ * **optional peer dependency** of butr. EVM-only consumers don't need
+ * to install it — discovery will silently skip the SVM side if the
+ * module isn't resolvable.
  *
- * **Why deferred**
+ * Install for SVM auto-discovery:
  *
- *  - Wallet Standard discovery requires either a peer dependency on
- *    `@wallet-standard/app` (its `getWallets()` registry exposes the
- *    `register` event we'd subscribe to) or a hand-rolled equivalent
- *    that listens for the `wallet-standard:app-ready` /
- *    `wallet-standard:register-wallet` events directly. Adding a peer
- *    dep is a non-trivial change for butr; doing it without solid
- *    real-wallet fixtures is premature.
+ *     npm install @wallet-standard/app
  *
- *  - The adapter generation is also more involved than EIP-6963:
- *    Wallet Standard wallets expose capability *feature* objects
- *    (`standard:connect`, `solana:signMessage`, `solana:signTransaction`,
- *    `standard:events`, etc.). Each has to be detected and bridged into
- *    butr's `WalletAdapter` shape with careful capability gating —
- *    wallets that don't expose `solana:signTransaction` shouldn't
- *    advertise `sendTx`. Real fixtures (Phantom, Solflare, Backpack)
- *    are needed to validate this.
+ * The function returns a synchronous unsubscribe that's safe to call
+ * before the dynamic import has resolved (it sets a cancellation flag
+ * and tears down any subscription that registered in the meantime).
  *
- * **Workaround until this lands**
- *
- *  Solana wallets can still be wired into butr manually via
- *  `WalletManagerConfig.createConnector`, the same way they are today.
- *  EVM-side auto-discovery via EIP-6963 is unaffected — wallets that
- *  announce both EVM and Solana surfaces (e.g. Phantom) will appear
- *  in the EVM discovery list automatically.
+ * Adapter generation is delegated to `buildSvmAdapter`, which gates
+ * features on what each wallet advertises. See that file for the
+ * limitations (`getBalance` needs an RPC, etc.).
  */
-const discoverSvmAdapters = (_onAdapter: (adapter: WalletAdapter) => void): (() => void) => {
-  return () => {};
+const discoverSvmAdapters = (onAdapter: (adapter: WalletAdapter) => void): (() => void) => {
+  let cancelled = false;
+  let internalUnsub: (() => void) | null = null;
+
+  void (async () => {
+    let mod: WalletStandardAppModule;
+    try {
+      // Dynamic import: only resolved when SVM discovery is exercised.
+      // The cast tells TS to trust our minimal type surface (see
+      // wallet-standard-types.ts) rather than pulling in the real
+      // package's types as a devDep. The ts-expect-error is required
+      // because the module is an OPTIONAL peer dependency — it may
+      // not be installed at all, in which case the import throws and
+      // we fall through to the catch.
+      // @ts-expect-error -- optional peer dep `@wallet-standard/app`
+      mod = (await import("@wallet-standard/app")) as unknown as WalletStandardAppModule;
+    } catch {
+      // @wallet-standard/app not installed. SVM discovery is disabled;
+      // EVM discovery still works. Consumers can wire SVM wallets
+      // manually via WalletManagerConfig.createConnector if they
+      // skipped the optional peer dep on purpose.
+      return;
+    }
+    if (cancelled) {
+      return;
+    }
+
+    const seen = new Set<string>();
+    const tryAdd = (wallet: WalletStandardWallet) => {
+      const adapter = buildSvmAdapter(wallet);
+      if (!adapter || seen.has(adapter.id)) {
+        return;
+      }
+      seen.add(adapter.id);
+      onAdapter(adapter);
+    };
+
+    const app = mod.getWallets();
+    for (const wallet of app.get()) {
+      tryAdd(wallet);
+    }
+
+    const offRegister = app.on("register", (...wallets) => {
+      for (const wallet of wallets) {
+        tryAdd(wallet);
+      }
+    });
+    internalUnsub = () => offRegister();
+  })();
+
+  return () => {
+    cancelled = true;
+    internalUnsub?.();
+    internalUnsub = null;
+  };
 };
 
 export { discoverSvmAdapters };

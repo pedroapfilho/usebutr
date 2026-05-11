@@ -306,6 +306,31 @@ Adapter IDs come from each wallet's `rdns` field (`io.metamask`, `io.rabby`, `ap
 <WalletManagerProvider config={myConfig}>…</WalletManagerProvider>
 ```
 
+### Solana auto-discovery (optional)
+
+Solana discovery uses the [Wallet Standard](https://github.com/wallet-standard/wallet-standard). The `@wallet-standard/app` package is an **optional peer dependency** — EVM-only consumers don't need to install it. Install it alongside butr to enable SVM auto-discovery:
+
+```bash
+npm install butr @wallet-standard/app
+```
+
+With both installed, `<WalletManagerProvider auto>` picks up every Phantom / Solflare / Backpack / OKX that announces itself, in addition to the EVM wallets. No extra prop, no extra import — butr dynamic-imports `@wallet-standard/app` only when the auto path runs.
+
+Without `@wallet-standard/app` installed, the SVM discovery silently no-ops. EVM auto-discovery still works (Phantom's EVM surface, for example, comes through EIP-6963).
+
+### Capability caveats for SVM auto-adapters
+
+The Wallet Standard exposes wallet features but no RPC connection. Adapters generated from `buildSvmAdapter` therefore have limits:
+
+- `getBalance()` returns `{ value: 0n, formatted: "0", … }`. Real balances need an RPC client; wrap your own.
+- `getTransactionReceipt()` always returns `{ status: "Pending" }`. Same reason — needs an RPC.
+- `switchChain()` is a no-op. The Wallet Standard has no `switchChain` feature; chains are passed per-call to `signAndSendTransaction`.
+- `switchAccount()` re-runs `standard:connect`, which reopens the wallet's account picker.
+- `sendTx()` requires the wallet to advertise `solana:signAndSendTransaction`. Without it, the call rejects with a clear message.
+- `signMessage()` requires the wallet to advertise `solana:signMessage`. Without it, the call rejects with a clear message.
+
+Real-world wallet quirks (Phantom's exact signature format, Solflare's chain handling) are likely to need small adjustments in `buildSvmAdapter` — same caveat as everything else in butr: mock-tested, not browser-tested yet.
+
 ### What's covered
 
 | Surface               | Discovery               | Adapter                                    | Status                                           |

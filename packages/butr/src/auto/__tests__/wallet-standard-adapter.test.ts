@@ -222,7 +222,10 @@ describe("buildSvmAdapter", () => {
       chain: "solana:mainnet",
       transaction: txBytes,
     });
-    expect(sig).toBe(Buffer.from(signatureBytes).toString("base64"));
+    // `btoa(String.fromCharCode(...))` matches butr's cross-platform
+    // `bytesToBase64` helper (no Node `Buffer` dependency).
+    const expectedBase64 = btoa(String.fromCodePoint(...signatureBytes));
+    expect(sig).toBe(expectedBase64);
   });
 
   it("sendTx() rejects when transaction isn't a Uint8Array", async () => {

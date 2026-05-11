@@ -1,0 +1,21 @@
+{
+  "name": "@repo/wallet-extensions",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts",
+    "./registry": "./registry.ts",
+    "./preferences": "./preferences.ts",
+    "./playwright": "./playwright.ts"
+  },
+  "scripts": {
+    "lint": "oxlint *.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^25.6.0",
+    "typescript": "^5.0.0"
+  }
+}

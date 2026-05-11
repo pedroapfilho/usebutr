@@ -63,7 +63,6 @@ export {
   useSelection,
   useSetActiveConnector,
   useSetConnectionError,
-  useSetConnectionStatus,
   useSetSelection,
   useUpdateWalletAccount,
   useWalletConnected,

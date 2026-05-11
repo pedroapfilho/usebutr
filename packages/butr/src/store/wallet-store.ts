@@ -35,7 +35,6 @@ type RuntimeMembers = {
   resetConnectionStatus: () => void;
   setActiveConnector: (connectorId: string | null) => void;
   setConnectionError: (error: ConnectionError | null) => void;
-  setConnectionStatus: (status: State["connectionStatus"], connectorId?: string | null) => void;
   setSelection: (chainPlatform: ChainPlatform, connectorId: string | null) => void;
   updateWalletAccount: (connectorId: string, account: Account) => void;
 };
@@ -60,6 +59,16 @@ const createWalletStore = (config: WalletManagerConfig) => {
           set((prev) => reducer(prev, event), false);
         };
 
+        // Fire-and-forget storage writes. Each persister is independent
+        // — `persistPool` only writes the pool, `persistSelection` only
+        // writes the selection, etc. Some events update one slot
+        // (`SELECTION_CHANGED` → `persistSelection`), others update all
+        // three (`CONNECT_SUCCEEDED`, hydration). When multiple
+        // persisters fire from the same call site, they race —
+        // intentionally. Each storage key is durable on its own; the
+        // order of resolution doesn't affect correctness. Don't
+        // collapse these into a single `persistAll()` helper without
+        // first reading the call sites — many of them only need one.
         const persistPool = () => {
           void run(() => storage.setPool(get().pool), logStorageError("failed to persist pool"));
         };
@@ -304,10 +313,6 @@ const createWalletStore = (config: WalletManagerConfig) => {
 
           setConnectionError: (error) => {
             dispatch({ error, type: "ERROR_SET" });
-          },
-
-          setConnectionStatus: (status, connectorId = null) => {
-            dispatch({ connectorId, status, type: "STATUS_SET" });
           },
 
           setSelection: (chainPlatform, connectorId) => {

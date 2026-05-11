@@ -13,9 +13,7 @@ import {
   useRefreshWallet,
   useResetConnectionStatus,
   useResetWallet,
-  useSetConnectionStatus,
   useWalletConnected,
-  type ConnectionStatus,
 } from "butr";
 
 const ConnectionSection = () => {
@@ -32,18 +30,7 @@ const ConnectionSection = () => {
   const disconnect = useDisconnectWallet();
   const refresh = useRefreshWallet();
   const reset = useResetWallet();
-  const setStatus = useSetConnectionStatus();
   const resetStatus = useResetConnectionStatus();
-
-  const cycleStatus = () => {
-    let next: ConnectionStatus = "idle";
-    if (status === "idle") {
-      next = "connecting";
-    } else if (status === "connecting") {
-      next = "success";
-    }
-    setStatus(next, activeId);
-  };
 
   return (
     <section style={{ borderBottom: "1px solid #ddd", padding: 16 }}>
@@ -77,9 +64,6 @@ const ConnectionSection = () => {
         </button>
         <button onClick={() => reset()} type="button">
           Reset
-        </button>
-        <button onClick={cycleStatus} type="button">
-          Cycle status
         </button>
         <button onClick={resetStatus} type="button">
           Reset status

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useMemo, useReducer } from "react";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { useWalletStoreContext } from "./context";
-import type { Balance, ConnectedWallet } from "./types";
+import type { Balance } from "./types";
+import { walletEqual } from "./wallet-equal";
 
 type AsyncState<T> =
   | { data: null; error: null; status: "idle" }
@@ -44,18 +45,50 @@ const asyncReducer = <T>(_state: AsyncState<T>, action: AsyncAction<T>): AsyncSt
 
 const IDLE: AsyncState<never> = { data: null, error: null, status: "idle" };
 
-const walletEqual = (a: ConnectedWallet | undefined, b: ConnectedWallet | undefined) => {
-  if (a === b) {
-    return true;
-  }
-  if (!a || !b) {
-    return false;
-  }
-  return (
-    a.connector.id === b.connector.id &&
-    a.account.walletAddress === b.account.walletAddress &&
-    a.account.chain.id === b.account.chain.id
-  );
+/**
+ * Generic async-resource hook. Encapsulates the load → fetch → cancel-
+ * on-deps-change → dispatch-result lifecycle that every async wallet
+ * read needs. `fn` is the request closure; pass `null` to stay idle.
+ *
+ * Invalidation is keyed on the identity of `fn` itself — callers
+ * stabilise via `useMemo` and re-create the closure when they want a
+ * refetch. This keeps the React-hooks exhaustive-deps lint rule happy
+ * (the effect's deps list is the literal `[fn]`).
+ *
+ * Why factored out: every consumer (`useSigner`, `useBalance`, future
+ * `useTokenBalance`, `useTransactionReceipt`, …) needs the exact same
+ * cancellation discipline. Centralising it keeps the fragile parts
+ * (`cancelled` flag, dispatch order) in one place — adding a new
+ * async hook becomes a 3-line definition.
+ */
+const useAsyncResource = <T>(fn: (() => Promise<T>) | null): AsyncState<T> => {
+  const [state, dispatch] = useReducer(asyncReducer<T>, IDLE);
+
+  useEffect(() => {
+    if (!fn) {
+      dispatch({ type: "reset" });
+      return;
+    }
+    dispatch({ type: "load" });
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await fn();
+        if (!cancelled) {
+          dispatch({ data, type: "success" });
+        }
+      } catch (error: unknown) {
+        if (!cancelled) {
+          dispatch({ error, type: "error" });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fn]);
+
+  return state;
 };
 
 /** Subscribe to the pool entry for a connectorId. Re-renders only when the
@@ -86,33 +119,10 @@ const useWalletEntry = (connectorId: string | null | undefined) => {
  */
 const useSigner = (connectorId?: string | null): AsyncState<unknown> => {
   const wallet = useWalletEntry(connectorId);
-  const [state, dispatch] = useReducer(asyncReducer<unknown>, IDLE);
-
-  useEffect(() => {
-    if (!wallet) {
-      dispatch({ type: "reset" });
-      return;
-    }
-    dispatch({ type: "load" });
-    let cancelled = false;
-    void (async () => {
-      try {
-        const signer = await wallet.connector.getSigner();
-        if (!cancelled) {
-          dispatch({ data: signer, type: "success" });
-        }
-      } catch (error: unknown) {
-        if (!cancelled) {
-          dispatch({ error, type: "error" });
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [wallet]);
-
-  return state;
+  // Stabilise the request closure so `useAsyncResource` only re-runs
+  // when the resolved wallet identity changes (not on every render).
+  const fn = useMemo(() => (wallet ? () => wallet.connector.getSigner() : null), [wallet]);
+  return useAsyncResource(fn);
 };
 
 type UseBalanceResult = AsyncState<Balance> & { refetch: () => void };
@@ -127,36 +137,18 @@ type UseBalanceResult = AsyncState<Balance> & { refetch: () => void };
  */
 const useBalance = (connectorId?: string | null, mint?: string): UseBalanceResult => {
   const wallet = useWalletEntry(connectorId);
-  const [state, dispatch] = useReducer(asyncReducer<Balance>, IDLE);
   const [counter, bumpCounter] = useReducer((n: number) => n + 1, 0);
   const refetch = useCallback(() => {
     bumpCounter();
   }, []);
-
-  useEffect(() => {
-    if (!wallet) {
-      dispatch({ type: "reset" });
-      return;
-    }
-    dispatch({ type: "load" });
-    let cancelled = false;
-    void (async () => {
-      try {
-        const balance = await wallet.connector.getBalance(mint);
-        if (!cancelled) {
-          dispatch({ data: balance, type: "success" });
-        }
-      } catch (error: unknown) {
-        if (!cancelled) {
-          dispatch({ error, type: "error" });
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [wallet, mint, counter]);
-
+  // `counter` participates in the closure identity, so calling
+  // `refetch()` produces a new `fn` and `useAsyncResource` re-runs.
+  const fn = useMemo(
+    () => (wallet ? () => wallet.connector.getBalance(mint) : null),
+    // oxlint-disable-next-line eslint-plugin-react-hooks/exhaustive-deps -- counter is the refetch trigger; not used inside the closure
+    [wallet, mint, counter],
+  );
+  const state = useAsyncResource(fn);
   return { ...state, refetch };
 };
 

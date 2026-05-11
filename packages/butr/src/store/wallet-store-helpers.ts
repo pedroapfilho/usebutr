@@ -171,3 +171,7 @@ const hydrateFromStorage = async (
 };
 
 export { hydrateFromStorage, isProduction, logStorageError, run };
+// `hydrateFromStorage` is consumed by the runtime in wallet-store.ts.
+// `isProduction`, `logStorageError`, `run` are internal infra utilities
+// shared between hydrate + runtime; they're not in butr's public API
+// (`src/index.ts` doesn't re-export them).

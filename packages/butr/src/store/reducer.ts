@@ -31,7 +31,6 @@ type Event =
   | { connectorId: string; type: "WALLET_REFRESHED" }
   | { connectorId: string | null; type: "ACTIVE_CHANGED" }
   | { chainPlatform: ChainPlatform; connectorId: string | null; type: "SELECTION_CHANGED" }
-  | { connectorId?: string | null; status: ConnectionStatus; type: "STATUS_SET" }
   | { type: "STATUS_RESET" }
   | { error: ConnectionError | null; type: "ERROR_SET" }
   | { type: "RESET" };
@@ -214,15 +213,6 @@ const reducer = (state: State, event: Event): State => {
         newSelection.set(event.chainPlatform, event.connectorId);
       }
       return { ...state, selection: newSelection };
-    }
-
-    case "STATUS_SET": {
-      return {
-        ...state,
-        connectingConnectorId:
-          event.status === "connecting" ? (event.connectorId ?? state.connectingConnectorId) : null,
-        connectionStatus: event.status,
-      };
     }
 
     case "STATUS_RESET": {

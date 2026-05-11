@@ -762,7 +762,10 @@ describe("createWalletStore", () => {
 
     it("resetConnectionStatus clears connecting + error", () => {
       const { store } = createTestStore();
-      store.getState().setConnectionStatus("connecting", "metamask");
+      // Drive the store into an "error" state via the public API, then
+      // verify reset clears it back to idle.
+      store.getState().setConnectionError({ kind: "UserRejected", message: "user rejected" });
+      expect(store.getState().connectionStatus).toBe("error");
       store.getState().resetConnectionStatus();
       expect(store.getState().connectionStatus).toBe("idle");
       expect(store.getState().connectingConnectorId).toBeNull();

@@ -4,6 +4,7 @@ import { useStoreWithEqualityFn } from "zustand/traditional";
 import { useWalletStoreContext } from "./context";
 import type { WalletStoreState } from "./store";
 import type { Account, ChainPlatform, ConnectedWallet } from "./types";
+import { walletEqual } from "./wallet-equal";
 
 const EMPTY_ACCOUNTS: ReadonlyArray<Account> = [];
 
@@ -101,20 +102,6 @@ const useConnectedWallets = (): Array<ConnectedWallet> => {
 const useSelection = () => {
   const store = useWalletStoreContext();
   return useStore(store, (state) => state.selection);
-};
-
-const walletEqual = (a: ConnectedWallet | undefined, b: ConnectedWallet | undefined) => {
-  if (a === b) {
-    return true;
-  }
-  if (!a || !b) {
-    return false;
-  }
-  return (
-    a.connector.id === b.connector.id &&
-    a.account.walletAddress === b.account.walletAddress &&
-    a.account.chain.id === b.account.chain.id
-  );
 };
 
 /** Globally active wallet (the one in front of the user right now). */
@@ -234,11 +221,8 @@ const useRefreshWallet = () => {
   return useStore(store, (state) => state.refreshWallet);
 };
 
-const useSetConnectionStatus = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.setConnectionStatus);
-};
-
+/** Clear `connectionError` + reset `connectionStatus` to idle. Useful when
+ *  surfacing an error in UI and giving the user a "dismiss" affordance. */
 const useResetConnectionStatus = () => {
   const store = useWalletStoreContext();
   return useStore(store, (state) => state.resetConnectionStatus);
@@ -293,7 +277,6 @@ export {
   useSelection,
   useSetActiveConnector,
   useSetConnectionError,
-  useSetConnectionStatus,
   useSetSelection,
   useUpdateWalletAccount,
   useWalletConnected,

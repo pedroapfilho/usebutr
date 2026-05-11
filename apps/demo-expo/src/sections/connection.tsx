@@ -12,9 +12,7 @@ import {
   useRefreshWallet,
   useResetConnectionStatus,
   useResetWallet,
-  useSetConnectionStatus,
   useWalletConnected,
-  type ConnectionStatus,
 } from "butr";
 
 const Btn = ({ label, onPress }: { label: string; onPress: () => void }) => (
@@ -40,18 +38,7 @@ const ConnectionSection = () => {
   const disconnect = useDisconnectWallet();
   const refresh = useRefreshWallet();
   const reset = useResetWallet();
-  const setStatus = useSetConnectionStatus();
   const resetStatus = useResetConnectionStatus();
-
-  const cycleStatus = () => {
-    let next: ConnectionStatus = "idle";
-    if (status === "idle") {
-      next = "connecting";
-    } else if (status === "connecting") {
-      next = "success";
-    }
-    setStatus(next, activeId);
-  };
 
   return (
     <View style={{ borderBottomWidth: 1, borderColor: "#ddd", padding: 16 }}>
@@ -73,7 +60,6 @@ const ConnectionSection = () => {
         <Btn label="Disconnect SVM" onPress={() => disconnect("mock-svm")} />
         <Btn label="Refresh EVM" onPress={() => refresh("mock-evm")} />
         <Btn label="Reset" onPress={() => reset()} />
-        <Btn label="Cycle status" onPress={cycleStatus} />
         <Btn label="Reset status" onPress={resetStatus} />
       </View>
     </View>

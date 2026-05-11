@@ -33,8 +33,9 @@ export type {
 } from "./storage";
 export { createBrowserStorageDriver, createMemoryStorageDriver, WalletStorage } from "./storage";
 
-// React — Provider
-export { WalletManagerProvider } from "./context";
+// React — Provider + auto-discovery hook
+export type { AutoProviderProps, ManualProviderProps, WalletManagerProviderProps } from "./context";
+export { WalletManagerProvider, useDiscoveredWallets } from "./context";
 
 // React — Hooks
 export {

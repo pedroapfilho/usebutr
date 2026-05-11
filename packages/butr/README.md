@@ -255,20 +255,22 @@ const { pool, activeConnectorId } = useWalletStore(
 );
 ```
 
-## Auto mode (`butr/auto`)
+## Auto mode
 
-Sub-path export that adds wallet auto-discovery via [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963) (EVM) and the [Wallet Standard](https://github.com/wallet-standard/wallet-standard) (Solana, stubbed). Opt-in — the core `butr` import stays adapter-free.
-
-Drop in `AutoWalletManagerProvider` instead of `WalletManagerProvider` and your app picks up every EIP-6963 wallet the browser announces, no `connectors`/`createConnector` wiring required:
+`WalletManagerProvider` accepts an `auto` boolean prop. When set, butr subscribes to [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963) (EVM) and the [Wallet Standard](https://github.com/wallet-standard/wallet-standard) (Solana, stubbed) and feeds the announced wallets to the store automatically — no `config`, no `connectors`, no `createConnector`. `useDiscoveredWallets()` returns the live list for rendering a wallet picker.
 
 ```tsx
-import { AutoWalletManagerProvider, useDiscoveredWallets } from "butr/auto";
-import { useConnectWallet, useConnectionStatus } from "butr";
+import {
+  WalletManagerProvider,
+  useConnectWallet,
+  useConnectionStatus,
+  useDiscoveredWallets,
+} from "butr";
 
 const App = () => (
-  <AutoWalletManagerProvider>
+  <WalletManagerProvider auto>
     <WalletPicker />
-  </AutoWalletManagerProvider>
+  </WalletManagerProvider>
 );
 
 const WalletPicker = () => {
@@ -290,7 +292,19 @@ const WalletPicker = () => {
 };
 ```
 
-Adapter IDs come from each wallet's `rdns` field (`io.metamask`, `io.rabby`, `app.phantom`) — stable across page loads.
+Adapter IDs come from each wallet's `rdns` field (`io.metamask`, `io.rabby`, `app.phantom`) — stable across page loads. Callbacks (`onConnect`, `onDisconnect`, `onReset`) and custom storage pass through as top-level props on the provider when `auto` is set:
+
+```tsx
+<WalletManagerProvider auto onConnect={(w) => console.log(w)} storageKeyPrefix="my-app">
+  …
+</WalletManagerProvider>
+```
+
+`auto` is mutually exclusive with `config` — the type system enforces this. Manual wiring still works:
+
+```tsx
+<WalletManagerProvider config={myConfig}>…</WalletManagerProvider>
+```
 
 ### What's covered
 
@@ -310,9 +324,9 @@ The EIP-1193 → `WalletAdapter` conversion lives in [`buildEvmAdapter`](src/aut
 - `getBalance()` reports native ETH with `symbol: "ETH"` regardless of which EVM chain is active. Consumers targeting multiple chains overlay the symbol themselves.
 - `getSigner()` returns the raw EIP-1193 provider. Wrap with `viem.createWalletClient` / `ethers.BrowserProvider` at the call site.
 
-### Lower-level building blocks
+### Lower-level building blocks (`butr/auto`)
 
-The sub-path also exports the pure functions for callers who want to compose discovery into their own provider:
+The sub-path export `butr/auto` exposes the pure discovery functions for callers who want to compose discovery into a custom provider (server-rendered apps, mobile webviews, iframe integrations):
 
 ```ts
 import {

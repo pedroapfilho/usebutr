@@ -1,3 +1,7 @@
+// Building blocks for advanced consumers who want to compose discovery
+// themselves. The high-level integration lives in core butr:
+// `<WalletManagerProvider auto>` + `useDiscoveredWallets()`.
+
 // EIP-1193 / EIP-6963 types — used by adapter authors who want to
 // build their own EVM adapter on top of butr's primitives.
 export type {
@@ -23,9 +27,5 @@ export {
 // SVM-side adapter (Wallet Standard) — stub, see file for context.
 export { discoverSvmAdapters } from "./wallet-standard";
 
-// Combined discovery
+// Combined discovery — also used internally by `<WalletManagerProvider auto>`.
 export { discoverWalletAdapters } from "./discover";
-
-// React surface
-export type { AutoWalletManagerProviderProps } from "./react";
-export { AutoWalletManagerProvider, useDiscoveredWallets } from "./react";

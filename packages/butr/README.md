@@ -581,6 +581,61 @@ const unsubscribe = discoverEvmAdapters((adapter, info) => {
 - **Smallest in its class.** ~10 kB gzipped, peer deps `react` + `zustand` only. RainbowKit, thirdweb, Privy, and Dynamic add hundreds of kilobytes to megabytes.
 - **Runs everywhere React runs.** A `react-native` export condition and pluggable storage drivers (browser + memory) mean the same package works in browsers, React Native, and SSR — no separate adapters.
 
+## WalletConnect (`butr/walletconnect`)
+
+Mobile wallets — Trust, Rainbow, Argent, Zerion, MetaMask Mobile, Phantom Mobile — don't inject a browser provider. They speak WalletConnect v2 over a relay, with the pairing handshake bootstrapped by a QR code or a deep link.
+
+butr's `butr/walletconnect` subpath builds a `WalletAdapter` from `@walletconnect/universal-provider` so consumers can wire WC alongside their EIP-6963 and Wallet Standard adapters with no chain-specific glue.
+
+### Install
+
+```bash
+npm install butr @walletconnect/universal-provider
+# Get a project id from https://cloud.reown.com
+```
+
+`@walletconnect/universal-provider` is an **optional peer dep** — only the consumers who import `butr/walletconnect` pay the bundle cost.
+
+### Usage
+
+```tsx
+import { createWalletConnectAdapter } from "butr/walletconnect";
+import { WalletManagerProvider, type WalletManagerConfig } from "butr";
+
+const wc = await createWalletConnectAdapter({
+  projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
+  metadata: {
+    name: "My dapp",
+    description: "What it does",
+    url: "https://my-dapp.example",
+    icons: ["https://my-dapp.example/icon.png"],
+  },
+  chains: ["eip155:1", "eip155:137"], // Ethereum + Polygon
+  onPairingUri: (uri) => {
+    // Render a QR code with this URI, or deep-link on mobile
+    setQrUri(uri);
+  },
+});
+
+const config: WalletManagerConfig = {
+  connectors: [{ id: wc.id, name: wc.name, chainPlatform: "evm" }],
+  createConnector: (id) => (id === wc.id ? wc : null),
+};
+```
+
+butr ships **no QR renderer** by design — consistent with the rest of the headless surface. Pick `@walletconnect/modal` (their official modal), `qrcode` (just the SVG), or roll your own.
+
+### What's covered
+
+- EVM mobile wallets via WC v2 (Ethereum, Polygon, Arbitrum, Base, etc.)
+- The returned adapter implements the full `WalletAdapter` surface — `connect`, `disconnect`, `getAccount`, `getAccounts`, `getBalance`, `signMessage`, `sendTx`, `sendTxToChain`, `switchChain`, `subscribe`. Per-call account routing (`signMessage(msg, account)`) works through WC's namespace methods.
+- Session persistence: WC's relay holds the session between page loads. butr's hydration restores the adapter; on `adapter.connect()` it short-circuits if `provider.session` is already live.
+
+### Caveats
+
+- `requestAccounts` is `false` in capabilities — WC doesn't have an EIP-2255 equivalent. To add more accounts on mobile, the user adds them in their wallet and re-pairs.
+- Solana via WalletConnect (the `solana` namespace) isn't wired yet. EVM-only for v1.
+
 ## React Native
 
 `butr`'s `package.json` declares a `react-native` export condition pointing at the same ESM build. Use the in-memory storage driver:

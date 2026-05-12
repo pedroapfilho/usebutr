@@ -1,4 +1,5 @@
 import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "../types";
+import { resolveCapabilities } from "../capabilities";
 import type {
   SolanaSignAndSendTransactionFeature,
   SolanaSignMessageFeature,
@@ -155,28 +156,15 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
   };
 
   return {
-    capabilities: {
-      // Wallet Standard has no balance/receipt RPC. Consumers wrap
-      // their own RPC client (e.g. butr/svm-rpc once it ships).
-      getBalance: false,
-      getTransactionReceipt: false,
-      // Wallet Standard has no programmatic equivalent of EIP-2255 —
-      // wallets expose all the user's accounts at connect time, and
-      // adding more is a wallet-UI operation. Re-running
-      // `standard:connect` is the closest we can do, but it doesn't
-      // produce new accounts on any major Wallet Standard wallet in
-      // practice (Phantom Solana, MetaMask Snap, Solflare, Backpack).
-      // Set false so consumers don't render a button that won't do
-      // anything visible.
-      requestAccounts: false,
-      sendTransaction: Boolean(signAndSendTx),
-      signMessage: Boolean(signMessage),
-      subscribe: Boolean(events),
-      // Wallet Standard has no silent account-switch feature.
-      switchAccount: false,
-      // Switching only makes sense if the wallet advertises >1 chain.
-      switchChain: wallet.chains.length > 1,
-    },
+    capabilities: resolveCapabilities({
+      chainCount: wallet.chains.length,
+      features: {
+        events: Boolean(events),
+        signAndSendTransaction: Boolean(signAndSendTx),
+        signMessage: Boolean(signMessage),
+      },
+      transport: "wallet-standard",
+    }),
     chainPlatform: "svm",
 
     async connect() {

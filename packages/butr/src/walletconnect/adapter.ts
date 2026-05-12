@@ -1,6 +1,7 @@
-import type { Account, WalletAdapter, WalletCapabilities } from "../types";
+import type { Account, WalletAdapter } from "../types";
 import type { Eip1193Provider, Eip6963ProviderInfo } from "../auto/eip1193";
 import { buildEvmAdapter } from "../auto/eip6963-adapter";
+import { resolveCapabilities } from "../capabilities";
 
 /**
  * Minimal type surface for `@walletconnect/universal-provider`. We
@@ -120,23 +121,6 @@ const loadUniversalProvider = async (): Promise<UniversalProviderConstructor> =>
   return mod.UniversalProvider ?? (mod.default as UniversalProviderConstructor);
 };
 
-const buildCapabilities = (): WalletCapabilities => ({
-  // Same shape as the EIP-6963 adapter — once paired, WalletConnect
-  // surfaces a normal EIP-1193 provider.
-  getBalance: true,
-  getTransactionReceipt: true,
-  // WalletConnect doesn't have EIP-2255; "request more accounts" on
-  // mobile wallets means tearing down the session and re-pairing.
-  // Not surfaced as a button-level capability.
-  requestAccounts: false,
-  sendTransaction: true,
-  signMessage: true,
-  subscribe: true,
-  switchAccount: false,
-  // Multi-chain depends on `chains` array length; verified after init.
-  switchChain: true,
-});
-
 /**
  * Build a WalletConnect v2 adapter usable with butr's
  * `WalletManagerConfig.createConnector`. The returned adapter is
@@ -211,7 +195,7 @@ const createWalletConnectAdapter = async (
 
   const adapter: WalletAdapter = {
     ...base,
-    capabilities: buildCapabilities(),
+    capabilities: resolveCapabilities({ transport: "walletconnect" }),
     id,
     name,
 
@@ -253,9 +237,6 @@ const createWalletConnectAdapter = async (
 
 export type { UniversalProviderConstructor, UniversalProviderLike, WalletConnectMetadata, WalletConnectOptions };
 export { DEFAULT_ICON as WALLETCONNECT_DEFAULT_ICON, createWalletConnectAdapter };
-
-const _supportsMultipleChains = (chains: ReadonlyArray<string>): boolean => chains.length > 1;
-void _supportsMultipleChains;
 
 // Account type re-exported for adapter authors who want to construct
 // accounts manually (e.g. for SVM via WalletConnect — future work).

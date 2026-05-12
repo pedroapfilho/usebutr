@@ -218,6 +218,7 @@ Bring your own driver — anything that implements `getItem`/`setItem`/`removeIt
 - `onConnectError(error: ConnectionError, connectorId: string)` — fires after a failed connect attempt. Receives the normalised `ConnectionError`.
 - `onSlowConnect(connectorId: string)` — fires when a connect hasn't resolved within `slowConnectThresholdMs` (default 5 000 ms). Useful for showing a "still trying — check your wallet" hint.
 - `onStorageError(error: unknown, context: string)` — fires when a persistence write fails (quota exceeded, IndexedDB shutdown, cookie size limit, cross-tab conflict). `context` is a short string identifying which write failed. Default behaviour when unset is `console.warn`.
+- `onHydrated(outcome: HydrationOutcome)` — fires once after butr's mount-time hydration finishes. `outcome` has three buckets: `restoredIds` (wallets that came back fully), `pendingIds` (wallets whose adapter wasn't registered yet — auto-discovery's async warmup; the runtime retries each when discovery announces a matching id), and `dropped` (wallets whose restore actually failed). Useful for showing "Couldn't reconnect Phantom — try again" UX without the consumer comparing pre/post-hydration state themselves.
 
 ```tsx
 <WalletManagerProvider
@@ -597,8 +598,9 @@ Where butr is heading next. Not promises — guideposts.
 - **`WalletCapabilities`** — runtime flags so consumers can gate UI on what a wallet actually supports (`requestAccounts`, `switchChain`, `signMessage`, …). Hides Request-more-accounts on Phantom EVM / Coinbase Wallet / all Wallet Standard wallets, hides Sign on adapters without `solana:signMessage`, etc.
 - **`accountChanged` event carries full accounts list** — the runtime mirrors the wallet's current exposure verbatim, so single-account-exposure wallets (Phantom EVM/SVM, MetaMask Snap) don't accumulate stale, non-signable addresses.
 - **Late-restore for missed adapters** — when hydration runs before an auto-discovered adapter has registered (Wallet Standard's dynamic import is async, so SVM wallets always miss the initial sweep), the runtime parks the entry and restores it when the adapter is announced. SVM wallets now auto-reconnect on reload.
-- **Reducer collapse** — `ACCOUNT_UPDATED` removed; all wallet-state mutations route through one `ACCOUNTS_REFRESHED` event with an optional `active?` field. One concept ("the wallet's exposure changed") instead of two.
+- **Reducer collapse** — `ACCOUNT_UPDATED` removed; all wallet-state mutations route through one `ACCOUNTS_REFRESHED` event with an optional `active?` field. Three call sites (wallet event, `updateWalletAccount`, `requestAccounts`) all go through one `refreshPoolEntry` helper. One concept ("the wallet's exposure changed") instead of two.
 - **`resolveDiscoverOptions`** — option-shape interpretation lives in one place (`butr/auto`), `context.tsx` is a pass-through.
+- **`onHydrated` callback** — `HydrationOutcome` exposes `restoredIds`, `pendingIds`, `dropped` so consumers can surface "Couldn't reconnect Phantom" UX instead of polling logs.
 
 ### Won't ship
 

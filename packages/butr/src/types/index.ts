@@ -12,6 +12,7 @@ export type {
   ConnectorMeta,
   WalletAdapter,
   Wallet,
+  HydrationOutcome,
   WalletAvailability,
   WalletCapabilities,
   WalletManagerConfig,

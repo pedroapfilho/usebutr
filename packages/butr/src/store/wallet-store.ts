@@ -95,6 +95,22 @@ const createWalletStore = (config: WalletManagerConfig) => {
           void run(() => storage.setPool(get().pool), reportStorageError("failed to persist pool"));
         };
 
+        // Single entry point for "the pool entry's exposed accounts
+        // changed." Three call sites use it: the wallet-event bridge
+        // (`accountChanged`), the consumer-facing `updateWalletAccount`
+        // action, and the `requestAccounts` action. `active` is set when
+        // the caller knows which address is now active (wallet event,
+        // manual update); omitted when the caller just refreshed the
+        // list and wants the reducer's preserve-or-fallback logic.
+        const refreshPoolEntry = (
+          connectorId: string,
+          accounts: Array<Account>,
+          active?: Account,
+        ) => {
+          dispatch({ accounts, active, connectorId, type: "ACCOUNTS_REFRESHED" });
+          persistPool();
+        };
+
         const persistSelection = () => {
           void run(
             () => storage.setSelection(get().selection),
@@ -149,13 +165,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
                   // wallets (Phantom EVM/SVM, MetaMask Snap); preserves
                   // the multi-account list on MetaMask, Rabby, etc.
                   // The wallet tells us which is now active.
-                  dispatch({
-                    accounts: [...event.accounts],
-                    active: event.account,
-                    connectorId,
-                    type: "ACCOUNTS_REFRESHED",
-                  });
-                  persistPool();
+                  refreshPoolEntry(connectorId, [...event.accounts], event.account);
                   break;
                 }
                 case "disconnected": {
@@ -214,6 +224,28 @@ const createWalletStore = (config: WalletManagerConfig) => {
             // Persist any reconciled values back so future loads stay consistent.
             persistSelection();
             persistActive();
+            // Surface the hydration outcome. Three buckets: restored,
+            // pending (waiting for adapter announcement), dropped
+            // (genuine restore failures). The default `console.warn`
+            // for dropped entries is replaced by this callback when
+            // set — consumers route to telemetry / UX hints.
+            if (config.onHydrated) {
+              try {
+                config.onHydrated({
+                  dropped: result.dropped,
+                  pendingIds: [...result.pending.keys()],
+                  restoredIds: [...result.pool.keys()],
+                });
+              } catch (cbError: unknown) {
+                console.warn("[butr] onHydrated threw:", cbError);
+              }
+            } else if (result.dropped.length > 0) {
+              // Preserve the pre-`onHydrated` console.warn behaviour
+              // when no callback is set, so silent drops still log.
+              for (const { connectorId, reason } of result.dropped) {
+                console.warn(`[butr] failed to restore connector ${connectorId}:`, reason);
+              }
+            }
           },
           _tryRestoreFromPending: async (connectorId) => {
             const entry = pendingRestores.get(connectorId);
@@ -396,8 +428,9 @@ const createWalletStore = (config: WalletManagerConfig) => {
             if (!fresh || fresh.length === 0) {
               return;
             }
-            dispatch({ accounts: fresh, connectorId, type: "ACCOUNTS_REFRESHED" });
-            persistPool();
+            // No `active` — the reducer preserves the current active
+            // if it's still in the refreshed list, else picks [0].
+            refreshPoolEntry(connectorId, fresh);
           },
 
           reset: () => {
@@ -467,8 +500,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               (a) => normalise(a.walletAddress) === normalise(account.walletAddress),
             );
             const accounts = seen ? remapped : [...remapped, account];
-            dispatch({ accounts, active: account, connectorId, type: "ACCOUNTS_REFRESHED" });
-            persistPool();
+            refreshPoolEntry(connectorId, accounts, account);
           },
         };
       });

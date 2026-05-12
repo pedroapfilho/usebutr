@@ -32,6 +32,12 @@ const resolveHydratedAccounts = async (
 
 type HydrateResult = {
   activeConnectorId: string | null;
+  /** Entries whose restore actually failed (connect() rejected, the
+   *  connector threw mid-flight). Surfaced to consumers via
+   *  `onHydrated` so they can show a "couldn't reconnect Phantom"
+   *  affordance. The stored entry is removed from persistence (a
+   *  retry on next reload would hit the same error). */
+  dropped: Array<{ connectorId: string; reason: unknown }>;
   isUserDisconnected: boolean;
   /** Entries we couldn't restore at hydration time because
    *  `createConnector(id)` returned `null`. These are NOT failures —
@@ -107,6 +113,10 @@ const hydrateFromStorage = async (
   // Entries whose adapter wasn't registered yet (auto-discovery race).
   // The runtime retries these when discovery announces a matching id.
   const pending = new Map<string, StoredPoolEntry>();
+  // Entries that failed restore — the wallet wasn't reconnectable.
+  // Surfaced via the `onHydrated` callback so consumers can show a UI
+  // hint ("Couldn't reconnect Phantom — connect again to restore").
+  const dropped: Array<{ connectorId: string; reason: unknown }> = [];
 
   // Build the restore-task list, instantiating connectors up front. A
   // null factory result isn't a failure — it means the adapter for that
@@ -136,7 +146,7 @@ const hydrateFromStorage = async (
       pool.set(outcome.connectorId, outcome.entry);
       continue;
     }
-    console.warn(`[butr] failed to restore connector ${outcome.connectorId}:`, outcome.error);
+    dropped.push({ connectorId: outcome.connectorId, reason: outcome.error });
     // Best-effort cleanup; persistence errors here aren't fatal.
     void run(
       () => storage.removePoolEntry(outcome.connectorId),
@@ -169,6 +179,7 @@ const hydrateFromStorage = async (
 
   return {
     activeConnectorId,
+    dropped,
     isUserDisconnected: userDisconnected,
     pending,
     pool,

@@ -31,6 +31,7 @@ type AutoProviderProps = {
   onConnect?: WalletManagerConfig["onConnect"];
   onConnectError?: WalletManagerConfig["onConnectError"];
   onDisconnect?: WalletManagerConfig["onDisconnect"];
+  onHydrated?: WalletManagerConfig["onHydrated"];
   onReset?: WalletManagerConfig["onReset"];
   onSlowConnect?: WalletManagerConfig["onSlowConnect"];
   onStorageError?: WalletManagerConfig["onStorageError"];
@@ -92,6 +93,7 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
           onConnect: props.onConnect,
           onConnectError: props.onConnectError,
           onDisconnect: props.onDisconnect,
+          onHydrated: props.onHydrated,
           onReset: props.onReset,
           onSlowConnect: props.onSlowConnect,
           onStorageError: props.onStorageError,

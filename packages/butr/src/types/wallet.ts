@@ -240,6 +240,26 @@ type ConnectorMeta = {
   url?: string;
 };
 
+/**
+ * Outcome of butr's mount-time hydration pass. Passed to
+ * `WalletManagerConfig.onHydrated`. Three buckets:
+ *
+ *  - `restoredIds` — wallets that came back fully. Their pool entries
+ *    are live and consumers can use them immediately.
+ *  - `pendingIds` — wallets whose adapter wasn't registered yet
+ *    (auto-discovery's async warmup). The runtime retries each one
+ *    when discovery announces a matching id, so most of these will
+ *    restore within a few hundred ms of mount.
+ *  - `dropped` — wallets whose restore actually failed (connector
+ *    threw mid-flight). These have been removed from storage; consumer
+ *    UX can surface "Couldn't reconnect Phantom — connect again."
+ */
+type HydrationOutcome = {
+  dropped: Array<{ connectorId: string; reason: unknown }>;
+  pendingIds: Array<string>;
+  restoredIds: Array<string>;
+};
+
 type WalletManagerConfig = {
   /** Available connector metadata */
   connectors: Array<ConnectorMeta>;
@@ -247,6 +267,14 @@ type WalletManagerConfig = {
   createConnector: (id: string) => WalletAdapter | null;
   /** Called after a wallet is successfully connected */
   onConnect?: (wallet: ConnectedWallet) => void;
+  /**
+   * Called once after butr's mount-time hydration finishes. Receives a
+   * `HydrationOutcome` summarising which stored wallets were restored,
+   * which are pending an adapter announcement, and which failed.
+   * Useful for surfacing "Phantom couldn't be reconnected — try
+   * again" UX or piping a metric to telemetry.
+   */
+  onHydrated?: (outcome: HydrationOutcome) => void;
   /**
    * Called after a connection attempt fails (user rejected, wallet
    * locked, chain mismatch, timeout, …). Receives the normalised
@@ -296,6 +324,7 @@ export type {
   ConnectorMeta,
   WalletAdapter,
   Wallet,
+  HydrationOutcome,
   WalletAvailability,
   WalletCapabilities,
   WalletManagerConfig,

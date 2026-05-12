@@ -268,6 +268,16 @@ type WalletManagerConfig = {
    * piping a slow-path metric to telemetry.
    */
   onSlowConnect?: (connectorId: string) => void;
+  /**
+   * Called when a storage write fails. butr's persistence layer is
+   * fire-and-forget by design (any individual write can fail without
+   * breaking butr's reducer state), but the consumer might still want
+   * to know — quota-exceeded errors, IndexedDB shutdown, cross-tab
+   * conflicts, cookie size limits. `context` is a short string
+   * describing which write failed (e.g. `"failed to persist pool"`).
+   * The default behaviour when no callback is set is `console.warn`.
+   */
+  onStorageError?: (error: unknown, context: string) => void;
   /** Threshold for `onSlowConnect`, in milliseconds. Defaults to 5_000. */
   slowConnectThresholdMs?: number;
   /** Optional custom persistence implementation (e.g., cookie-backed) */

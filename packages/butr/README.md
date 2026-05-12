@@ -213,16 +213,18 @@ Bring your own driver — anything that implements `getItem`/`setItem`/`removeIt
 
 ### Observability
 
-`WalletManagerConfig` accepts two optional callbacks for piping connection telemetry into Sentry/OTel without each consumer wrapping `connectWallet` themselves:
+`WalletManagerConfig` accepts optional callbacks for piping butr's runtime signals into Sentry/OTel without each consumer wrapping the actions themselves:
 
 - `onConnectError(error: ConnectionError, connectorId: string)` — fires after a failed connect attempt. Receives the normalised `ConnectionError`.
 - `onSlowConnect(connectorId: string)` — fires when a connect hasn't resolved within `slowConnectThresholdMs` (default 5 000 ms). Useful for showing a "still trying — check your wallet" hint.
+- `onStorageError(error: unknown, context: string)` — fires when a persistence write fails (quota exceeded, IndexedDB shutdown, cookie size limit, cross-tab conflict). `context` is a short string identifying which write failed. Default behaviour when unset is `console.warn`.
 
 ```tsx
 <WalletManagerProvider
   auto
-  onConnectError={(error, connectorId) => Sentry.captureMessage(`butr.connect.failed`, { extra: { error, connectorId } })}
+  onConnectError={(error, connectorId) => Sentry.captureMessage("butr.connect.failed", { extra: { error, connectorId } })}
   onSlowConnect={(connectorId) => console.warn("slow connect:", connectorId)}
+  onStorageError={(error, context) => Sentry.captureException(error, { extra: { context } })}
   slowConnectThresholdMs={3_000}
 >
 ```
@@ -587,11 +589,16 @@ Where butr is heading next. Not promises — guideposts.
 ### Recently shipped (this iteration)
 
 - **Cookie storage driver** — `createCookieStorageDriver(options?)`.
-- **Observability hooks** — `WalletManagerConfig.onConnectError`, `WalletManagerConfig.onSlowConnect`, `slowConnectThresholdMs`.
+- **Observability hooks** — `WalletManagerConfig.onConnectError`, `WalletManagerConfig.onSlowConnect`, `slowConnectThresholdMs`, and now `onStorageError`.
 - **Common chains registry** — `CHAINS`, `CHAINS_BY_PLATFORM`, `EVM_CHAINS`, `SVM_CHAINS`.
 - **Chain-switcher UI** — each connected-wallet card in the demos exposes per-platform chain switching via `Connector.switchChain`.
 - **Wallet-brand grouping** — the discovered picker renders one row per wallet brand with per-platform chips (so Phantom doesn't show up twice).
 - **First Playwright spec** — `tests/e2e/demo-vite/smoke.spec.ts` covers the empty-state render + install-link integrity.
+- **`WalletCapabilities`** — runtime flags so consumers can gate UI on what a wallet actually supports (`requestAccounts`, `switchChain`, `signMessage`, …). Hides Request-more-accounts on Phantom EVM / Coinbase Wallet / all Wallet Standard wallets, hides Sign on adapters without `solana:signMessage`, etc.
+- **`accountChanged` event carries full accounts list** — the runtime mirrors the wallet's current exposure verbatim, so single-account-exposure wallets (Phantom EVM/SVM, MetaMask Snap) don't accumulate stale, non-signable addresses.
+- **Late-restore for missed adapters** — when hydration runs before an auto-discovered adapter has registered (Wallet Standard's dynamic import is async, so SVM wallets always miss the initial sweep), the runtime parks the entry and restores it when the adapter is announced. SVM wallets now auto-reconnect on reload.
+- **Reducer collapse** — `ACCOUNT_UPDATED` removed; all wallet-state mutations route through one `ACCOUNTS_REFRESHED` event with an optional `active?` field. One concept ("the wallet's exposure changed") instead of two.
+- **`resolveDiscoverOptions`** — option-shape interpretation lives in one place (`butr/auto`), `context.tsx` is a pass-through.
 
 ### Won't ship
 

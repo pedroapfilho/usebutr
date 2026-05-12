@@ -10,7 +10,7 @@ import type { ConnectionError } from "../types/errors";
 import { mapConnectionError } from "../types/errors";
 import { WalletStorage } from "../storage";
 import type { WalletPersistence } from "../storage";
-import { hydrateFromStorage, logStorageError, restoreOneEntry, run } from "./wallet-store-helpers";
+import { hydrateFromStorage, restoreOneEntry, run } from "./wallet-store-helpers";
 import type { StoredPoolEntry } from "../storage";
 import { type Event, type State, initialState, reducer } from "./reducer";
 
@@ -55,6 +55,21 @@ const createWalletStore = (config: WalletManagerConfig) => {
   // not data anyone should subscribe to.
   const unsubscribers = new Map<string, () => void>();
 
+  // Storage-error handler. Default: `console.warn` (preserves the
+  // pre-`onStorageError` behaviour). Consumer-provided callback routes
+  // failures through their telemetry pipeline.
+  const reportStorageError = (context: string) => (error: unknown) => {
+    if (config.onStorageError) {
+      try {
+        config.onStorageError(error, context);
+      } catch (cbError: unknown) {
+        console.warn("[butr] onStorageError threw:", cbError);
+      }
+      return;
+    }
+    console.warn(`[butr] ${context}:`, error);
+  };
+
   // Stored pool entries that couldn't be restored at hydration because
   // their adapter wasn't registered yet (auto-discovery race for SVM).
   // `_tryRestoreFromPending(connectorId)` consumes from here when the
@@ -77,20 +92,20 @@ const createWalletStore = (config: WalletManagerConfig) => {
         // collapse these into a single `persistAll()` helper without
         // first reading the call sites — many of them only need one.
         const persistPool = () => {
-          void run(() => storage.setPool(get().pool), logStorageError("failed to persist pool"));
+          void run(() => storage.setPool(get().pool), reportStorageError("failed to persist pool"));
         };
 
         const persistSelection = () => {
           void run(
             () => storage.setSelection(get().selection),
-            logStorageError("failed to persist selection"),
+            reportStorageError("failed to persist selection"),
           );
         };
 
         const persistActive = () => {
           void run(
             () => storage.setActiveConnectorId(get().activeConnectorId),
-            logStorageError("failed to persist active connector"),
+            reportStorageError("failed to persist active connector"),
           );
         };
 
@@ -133,9 +148,10 @@ const createWalletStore = (config: WalletManagerConfig) => {
                   // previously-active address on single-account
                   // wallets (Phantom EVM/SVM, MetaMask Snap); preserves
                   // the multi-account list on MetaMask, Rabby, etc.
-                  // The reducer picks `event.account` as the new active.
+                  // The wallet tells us which is now active.
                   dispatch({
                     accounts: [...event.accounts],
+                    active: event.account,
                     connectorId,
                     type: "ACCOUNTS_REFRESHED",
                   });
@@ -149,7 +165,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
                   dispatch({ connectorId, type: "DISCONNECTED" });
                   unsubscribeFromConnector(connectorId);
                   if (get().pool.size === 0) {
-                    void run(() => storage.clearAll(), logStorageError("failed to clear storage"));
+                    void run(() => storage.clearAll(), reportStorageError("failed to clear storage"));
                   } else {
                     persistPool();
                     persistSelection();
@@ -223,7 +239,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               console.warn(`[butr] late restore failed for ${connectorId}:`, outcome.error);
               void run(
                 () => storage.removePoolEntry(connectorId),
-                logStorageError("failed to remove broken entry"),
+                reportStorageError("failed to remove broken entry"),
               );
               return;
             }
@@ -240,7 +256,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
             dispatch({ type: "USER_DISCONNECTED_SET", value });
             void run(
               () => storage.markUserDisconnected(value),
-              logStorageError("failed to persist disconnect intent"),
+              reportStorageError("failed to persist disconnect intent"),
             );
           },
           _storage: storage,
@@ -347,7 +363,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
             dispatch({ connectorId, type: "DISCONNECTED" });
 
             if (get().pool.size === 0) {
-              void run(() => storage.clearAll(), logStorageError("failed to clear storage"));
+              void run(() => storage.clearAll(), reportStorageError("failed to clear storage"));
             } else {
               persistPool();
               persistSelection();
@@ -398,7 +414,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), console.error);
             }
 
-            void run(() => storage.clearAll(), logStorageError("failed to clear storage"));
+            void run(() => storage.clearAll(), reportStorageError("failed to clear storage"));
 
             if (config.onReset) {
               const onReset = config.onReset;
@@ -427,7 +443,31 @@ const createWalletStore = (config: WalletManagerConfig) => {
           },
 
           updateWalletAccount: (connectorId, account) => {
-            dispatch({ account, connectorId, type: "ACCOUNT_UPDATED" });
+            // Manual variant of the wallet-event path. Builds the
+            // next accounts list (dedupe-by-address + chain refresh
+            // since chain is wallet-level) and routes through
+            // ACCOUNTS_REFRESHED so there's one reducer case for
+            // "the wallet's exposure changed."
+            const entry = get().pool.get(connectorId);
+            if (!entry) {
+              return;
+            }
+            const normalise = (addr: string): string => addr.toLowerCase();
+            const newChain = account.chain;
+            const remapped = entry.accounts.map((a) =>
+              a.chain.id === newChain.id
+                ? a
+                : {
+                    chain: newChain,
+                    id: `${newChain.id}:${normalise(a.walletAddress)}`,
+                    walletAddress: a.walletAddress,
+                  },
+            );
+            const seen = remapped.some(
+              (a) => normalise(a.walletAddress) === normalise(account.walletAddress),
+            );
+            const accounts = seen ? remapped : [...remapped, account];
+            dispatch({ accounts, active: account, connectorId, type: "ACCOUNTS_REFRESHED" });
             persistPool();
           },
         };

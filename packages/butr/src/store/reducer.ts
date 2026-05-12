@@ -27,8 +27,16 @@ type Event =
   | { connectorId: string; entry: ConnectedWallet; type: "CONNECT_SUCCEEDED" }
   | { error: ConnectionError; type: "CONNECT_FAILED" }
   | { connectorId: string; type: "DISCONNECTED" }
-  | { account: Account; connectorId: string; type: "ACCOUNT_UPDATED" }
-  | { accounts: Array<Account>; connectorId: string; type: "ACCOUNTS_REFRESHED" }
+  | {
+      /** When set, becomes the new active account. Used by paths that
+       *  know which account should be active (wallet event, manual
+       *  update). When unset, the reducer preserves the current active
+       *  if it's still in `accounts`, else picks `accounts[0]`. */
+      accounts: Array<Account>;
+      active?: Account;
+      connectorId: string;
+      type: "ACCOUNTS_REFRESHED";
+    }
   | { connectorId: string; type: "WALLET_REFRESHED" }
   | { connectorId: string | null; type: "ACTIVE_CHANGED" }
   | { chainPlatform: ChainPlatform; connectorId: string | null; type: "SELECTION_CHANGED" }
@@ -164,57 +172,42 @@ const reducer = (state: State, event: Event): State => {
       };
     }
 
-    case "ACCOUNT_UPDATED": {
-      const wallet = state.pool.get(event.connectorId);
-      if (!wallet) {
-        return state;
-      }
-      // Skip update when the account hasn't actually changed.
-      // Prevents unnecessary Map churn that cascades through useSyncExternalStore
-      // subscribers, which can trigger React Error #185.
-      if (
-        wallet.account.walletAddress === event.account.walletAddress &&
-        wallet.account.chain.id === event.account.chain.id
-      ) {
-        return state;
-      }
-      // Chain is a wallet-level property, not per-account. When the
-      // wallet switches chain, ALL exposed addresses move with it —
-      // so we refresh every entry's `chain` to match the new view and
-      // dedupe by address (case-insensitive for EVM, exact for SVM)
-      // to avoid the same address appearing once per chain visited.
-      const newChain = event.account.chain;
-      const normalise = (addr: string): string => addr.toLowerCase();
-      const remappedExisting = wallet.accounts.map((a) =>
-        a.chain.id === newChain.id
-          ? a
-          : { chain: newChain, id: `${newChain.id}:${normalise(a.walletAddress)}`, walletAddress: a.walletAddress },
-      );
-      const seen = remappedExisting.some(
-        (a) => normalise(a.walletAddress) === normalise(event.account.walletAddress),
-      );
-      const accounts = seen ? remappedExisting : [...remappedExisting, event.account];
-      const newPool = new Map([
-        ...state.pool,
-        [event.connectorId, { ...wallet, account: event.account, accounts }] as const,
-      ]);
-      return { ...state, pool: newPool };
-    }
-
     case "ACCOUNTS_REFRESHED": {
       const wallet = state.pool.get(event.connectorId);
       if (!wallet) {
         return state;
       }
-      // Preserve current `account` when it's still present in the new
-      // list; otherwise fall back to the first new account so the pool
-      // entry doesn't end up pointing at a revoked address.
-      const stillHasCurrent = event.accounts.some(
-        (a) =>
-          a.walletAddress === wallet.account.walletAddress &&
-          a.chain.id === wallet.account.chain.id,
-      );
-      const nextAccount = stillHasCurrent ? wallet.account : (event.accounts[0] ?? wallet.account);
+      // Pick the new active address. Three policies in priority order:
+      //  1. Explicit `event.active` (wallet event or manual update knows
+      //     what should be active).
+      //  2. Preserve current active if it's still in the new list.
+      //  3. Fall back to `accounts[0]` so the pool entry doesn't end up
+      //     pointing at an address the wallet no longer exposes.
+      let nextAccount: Account;
+      if (event.active) {
+        nextAccount = event.active;
+      } else {
+        const stillHasCurrent = event.accounts.some(
+          (a) =>
+            a.walletAddress === wallet.account.walletAddress &&
+            a.chain.id === wallet.account.chain.id,
+        );
+        nextAccount = stillHasCurrent ? wallet.account : (event.accounts[0] ?? wallet.account);
+      }
+      // No-op short-circuit: when the wallet event echoes the current
+      // active and the accounts array hasn't changed shape, skip the
+      // Map clone so `useSyncExternalStore` subscribers don't re-render.
+      // (Cheap heuristic — equality by reference for `accounts` would
+      // miss content changes; we compare by length + address set.)
+      const sameAccount =
+        nextAccount.walletAddress === wallet.account.walletAddress &&
+        nextAccount.chain.id === wallet.account.chain.id;
+      const sameAccountsShape =
+        event.accounts.length === wallet.accounts.length &&
+        event.accounts.every((a, i) => a.walletAddress === wallet.accounts[i]?.walletAddress);
+      if (sameAccount && sameAccountsShape) {
+        return state;
+      }
       const updated: ConnectedWallet = {
         ...wallet,
         account: nextAccount,

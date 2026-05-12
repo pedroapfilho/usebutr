@@ -16,18 +16,40 @@ type DiscoverOptions = {
 };
 
 /**
- * Subscribe to both EIP-6963 (EVM) and Wallet Standard (SVM) at once.
- * Calls `onAdapter` exactly once per unique wallet, deduplicated by
- * `adapter.id`.
+ * Resolve an `auto` prop input into a concrete set of enabled
+ * platforms. The single place where the `true | DiscoverOptions`
+ * union is interpreted.
  *
  * **Defaults**
  *
- *  - No options passed → both platforms enabled (the
- *    `<WalletManagerProvider auto>` shorthand uses this path).
- *  - Options object passed → opt-in. `{ evm: true }` discovers only
- *    EVM; `{ svm: true }` discovers only SVM. Unspecified flags
- *    default to `false` when the object form is used, which makes
- *    `{ evm: true }` mean "EVM-only app" the way most callers expect.
+ *  - `true` (or omitted) → both platforms enabled. The
+ *    `<WalletManagerProvider auto>` shorthand uses this path.
+ *  - `false` (or `undefined`) → discovery disabled.
+ *  - Object form → opt-in. `{ evm: true }` discovers only EVM;
+ *    unspecified flags default to `false`, so `{ evm: true }` means
+ *    "EVM-only app" the way most callers expect.
+ */
+const resolveDiscoverOptions = (
+  auto: true | false | DiscoverOptions | undefined,
+): { active: boolean; evm: boolean; svm: boolean } => {
+  if (auto === undefined || auto === false) {
+    return { active: false, evm: false, svm: false };
+  }
+  if (auto === true) {
+    return { active: true, evm: true, svm: true };
+  }
+  return {
+    active: true,
+    evm: auto.evm === true,
+    svm: auto.svm === true,
+  };
+};
+
+/**
+ * Subscribe to both EIP-6963 (EVM) and Wallet Standard (SVM) at once.
+ * Calls `onAdapter` exactly once per unique wallet, deduplicated by
+ * `adapter.id`. See `resolveDiscoverOptions` for the defaults that
+ * apply when `options` is omitted.
  *
  * The returned function unsubscribes whichever listeners were attached.
  */
@@ -35,11 +57,7 @@ const discoverWalletAdapters = (
   onAdapter: (adapter: WalletAdapter) => void,
   options?: DiscoverOptions,
 ): (() => void) => {
-  // No options object = "both" (`auto={true}` shorthand). With an
-  // explicit object, only flags set to true are enabled — unspecified
-  // becomes `false`, not the global default.
-  const evmEnabled = options ? options.evm === true : true;
-  const svmEnabled = options ? options.svm === true : true;
+  const resolved = resolveDiscoverOptions(options ?? true);
 
   const seen = new Set<string>();
   const add = (adapter: WalletAdapter) => {
@@ -50,8 +68,8 @@ const discoverWalletAdapters = (
     onAdapter(adapter);
   };
 
-  const unsubEvm = evmEnabled ? discoverEvmAdapters(add) : () => {};
-  const unsubSvm = svmEnabled ? discoverSvmAdapters(add) : () => {};
+  const unsubEvm = resolved.evm ? discoverEvmAdapters(add) : () => {};
+  const unsubSvm = resolved.svm ? discoverSvmAdapters(add) : () => {};
 
   return () => {
     unsubEvm();
@@ -60,4 +78,4 @@ const discoverWalletAdapters = (
 };
 
 export type { DiscoverOptions };
-export { discoverWalletAdapters };
+export { discoverWalletAdapters, resolveDiscoverOptions };

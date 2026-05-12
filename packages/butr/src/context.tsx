@@ -1,5 +1,9 @@
 import React, { createContext, use, useEffect, useMemo, useRef, useState } from "react";
-import { type DiscoverOptions, discoverWalletAdapters } from "./auto/discover";
+import {
+  type DiscoverOptions,
+  discoverWalletAdapters,
+  resolveDiscoverOptions,
+} from "./auto/discover";
 import type { WalletAdapter, WalletManagerConfig } from "./types";
 import { type WalletStore, createWalletStore } from "./store";
 
@@ -29,6 +33,7 @@ type AutoProviderProps = {
   onDisconnect?: WalletManagerConfig["onDisconnect"];
   onReset?: WalletManagerConfig["onReset"];
   onSlowConnect?: WalletManagerConfig["onSlowConnect"];
+  onStorageError?: WalletManagerConfig["onStorageError"];
   slowConnectThresholdMs?: WalletManagerConfig["slowConnectThresholdMs"];
   storage?: WalletManagerConfig["storage"];
   storageKeyPrefix?: WalletManagerConfig["storageKeyPrefix"];
@@ -89,6 +94,7 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
           onDisconnect: props.onDisconnect,
           onReset: props.onReset,
           onSlowConnect: props.onSlowConnect,
+          onStorageError: props.onStorageError,
           slowConnectThresholdMs: props.slowConnectThresholdMs,
           storage: props.storage,
           storageKeyPrefix: props.storageKeyPrefix,
@@ -127,18 +133,15 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
 
   // Auto-discovery subscription. Only attaches when `auto` is set on
   // mount — toggling `auto` after mount is not supported (the store
-  // was already built around the initial mode).
-  //
-  // `auto: true` enables both platforms. `auto: { evm?, svm? }` scopes
-  // to whichever flags are set. The defaults inside `discoverWallet-
-  // Adapters` mirror `true` when omitted, so `{ evm: true }` means
-  // "EVM only" (svm defaults to its individual default — see
-  // discover.ts).
-  const isAuto = props.auto !== undefined && props.auto !== false;
-  const discoverOptions: DiscoverOptions | undefined =
-    typeof props.auto === "object" ? props.auto : undefined;
+  // was already built around the initial mode). All option-shape
+  // interpretation lives in `resolveDiscoverOptions`; this hook just
+  // forwards the resolved flags.
+  const resolvedAuto = resolveDiscoverOptions(props.auto);
+  const discoverOptions: DiscoverOptions | undefined = resolvedAuto.active
+    ? { evm: resolvedAuto.evm, svm: resolvedAuto.svm }
+    : undefined;
   useEffect(() => {
-    if (!isAuto) {
+    if (!resolvedAuto.active) {
       return;
     }
     const unsubscribe = discoverWalletAdapters((adapter) => {
@@ -154,7 +157,7 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
       void store.getState()._tryRestoreFromPending(adapter.id);
     }, discoverOptions);
     return unsubscribe;
-  }, [adapters, discoverOptions, isAuto, store]);
+  }, [adapters, discoverOptions, resolvedAuto.active, store]);
 
   return (
     <WalletStoreContext.Provider value={store}>

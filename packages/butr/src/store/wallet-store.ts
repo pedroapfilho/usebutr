@@ -10,8 +10,8 @@ import type { ConnectionError } from "../types/errors";
 import { mapConnectionError } from "../types/errors";
 import { WalletStorage } from "../storage";
 import type { WalletPersistence } from "../storage";
-import { hydrateFromStorage, restoreOneEntry, run } from "./wallet-store-helpers";
-import type { StoredPoolEntry } from "../storage";
+import { run } from "./wallet-store-helpers";
+import { createHydrationCoordinator } from "./hydration";
 import { type Event, type State, initialState, reducer } from "./reducer";
 
 const CONNECT_TIMEOUT_MS = 90_000;
@@ -70,11 +70,16 @@ const createWalletStore = (config: WalletManagerConfig) => {
     console.warn(`[butr] ${context}:`, error);
   };
 
-  // Stored pool entries that couldn't be restored at hydration because
-  // their adapter wasn't registered yet (auto-discovery race for SVM).
-  // `_tryRestoreFromPending(connectorId)` consumes from here when the
-  // matching adapter finally announces.
-  const pendingRestores = new Map<string, StoredPoolEntry>();
+  // Owns the full restore lifecycle: read storage, instantiate adapters,
+  // restore in parallel, park entries whose adapter wasn't registered
+  // yet, drain parked entries when discovery announces a matching id.
+  // `pendingRestores` lives inside the coordinator — the runtime no
+  // longer manages the queue directly.
+  const hydration = createHydrationCoordinator(
+    storage,
+    config.createConnector,
+    (context, error) => reportStorageError(context)(error),
+  );
 
   return createStore<State & RuntimeMembers>()((set, get) => {
         const dispatch = (event: Event) => {
@@ -200,7 +205,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
           ...initialState,
           _config: config,
           _hydrateWallets: async () => {
-            const result = await hydrateFromStorage(storage, config.createConnector);
+            const result = await hydration.hydrate();
             dispatch({
               activeConnectorId: result.activeConnectorId,
               isUserDisconnected: result.isUserDisconnected,
@@ -208,13 +213,6 @@ const createWalletStore = (config: WalletManagerConfig) => {
               selection: result.selection,
               type: "HYDRATED",
             });
-            // Park entries whose adapter wasn't registered yet — the
-            // provider will call `_tryRestoreFromPending` once discovery
-            // announces a matching id.
-            pendingRestores.clear();
-            for (const [connectorId, entry] of result.pending) {
-              pendingRestores.set(connectorId, entry);
-            }
             // Wire up wallet-side event subscriptions for every restored
             // connector so account/chain swaps after a refresh keep the
             // reducer in sync without consumer effort.
@@ -225,18 +223,17 @@ const createWalletStore = (config: WalletManagerConfig) => {
             persistSelection();
             persistActive();
             // Drain: catch the race where a Wallet Standard adapter
-            // announced BEFORE hydration finished populating
-            // pendingRestores. Without this, the discovery callback's
-            // `_tryRestoreFromPending(adapter.id)` would have found
-            // an empty map and silently returned, leaving SVM wallets
-            // un-restored on reload even though their adapter IS in
-            // the registry by now. Each call resolves independently;
-            // `Promise.all` here mirrors the parallel restore that
-            // `hydrateFromStorage` does for the eager path. The promise
-            // is dropped on the floor — late-restore failures surface
-            // per-entry via `_tryRestoreFromPending`'s own logging.
-            const pendingIds = [...pendingRestores.keys()];
-            void Promise.all(pendingIds.map((id) => get()._tryRestoreFromPending(id)));
+            // announced BEFORE hydration finished populating its queue.
+            // Without this, the discovery callback's
+            // `_tryRestoreFromPending(adapter.id)` would have hit the
+            // empty queue and silently returned, leaving SVM wallets
+            // un-restored on reload. The coordinator's `pendingIds()`
+            // is the post-hydrate snapshot; each id resolves
+            // independently. Late-restore failures surface per-entry
+            // inside `_tryRestoreFromPending`.
+            void Promise.all(
+              hydration.pendingIds().map((id) => get()._tryRestoreFromPending(id)),
+            );
             // Surface the hydration outcome. Three buckets: restored,
             // pending (waiting for adapter announcement), dropped
             // (genuine restore failures). The default `console.warn`
@@ -246,7 +243,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               try {
                 config.onHydrated({
                   dropped: result.dropped,
-                  pendingIds: [...result.pending.keys()],
+                  pendingIds: [...result.pendingIds],
                   restoredIds: [...result.pool.keys()],
                 });
               } catch (cbError: unknown) {
@@ -261,29 +258,17 @@ const createWalletStore = (config: WalletManagerConfig) => {
             }
           },
           _tryRestoreFromPending: async (connectorId) => {
-            const entry = pendingRestores.get(connectorId);
-            if (!entry) {
-              return;
-            }
-            const connector = config.createConnector(connectorId);
-            if (!connector) {
-              // Adapter still not available — leave the entry pending.
-              return;
-            }
             // Note: deliberately NOT gating on `isUserDisconnected`.
-            // The EVM hydration path (`restoreOneEntry` inside
-            // `hydrateFromStorage`) doesn't check that flag either —
+            // The eager hydration path doesn't check that flag either —
             // stored entries restore on reload regardless of whether
             // the user's most recent action was a disconnect. The
             // late-restore path mirrors that policy for symmetry.
-            const outcome = await restoreOneEntry(connectorId, entry, connector);
-            pendingRestores.delete(connectorId);
+            const outcome = await hydration.drainPending(connectorId);
+            if (!outcome) {
+              return;
+            }
             if (outcome.kind === "fail") {
               console.warn(`[butr] late restore failed for ${connectorId}:`, outcome.error);
-              void run(
-                () => storage.removePoolEntry(connectorId),
-                reportStorageError("failed to remove broken entry"),
-              );
               return;
             }
             // Reuse the reducer's connect-success path so selection /

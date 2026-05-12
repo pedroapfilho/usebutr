@@ -1,4 +1,5 @@
 import type { WalletAdapter } from "../types";
+import { createDiscoveryBus } from "./discovery-bus";
 import { discoverEvmAdapters } from "./eip6963";
 import { discoverInjectedAdapter } from "./injected";
 import { discoverSvmAdapters } from "./wallet-standard";
@@ -75,29 +76,20 @@ const discoverWalletAdapters = (
 ): (() => void) => {
   const resolved = resolveDiscoverOptions(options ?? true);
 
-  const seen = new Set<string>();
-  const add = (adapter: WalletAdapter) => {
-    if (seen.has(adapter.id)) {
-      return;
-    }
-    seen.add(adapter.id);
-    onAdapter(adapter);
-  };
-
-  const unsubEvm = resolved.evm ? discoverEvmAdapters(add) : () => {};
-  const unsubSvm = resolved.svm ? discoverSvmAdapters(add) : () => {};
+  const bus = createDiscoveryBus(onAdapter);
+  bus.register(resolved.evm ? discoverEvmAdapters : null);
+  bus.register(resolved.svm ? discoverSvmAdapters : null);
   // Injected fallback only emits if no EIP-6963 adapter has fired
-  // by the settle deadline — `seen.size > 0` means the wallet is
-  // already covered via the standards path.
-  const unsubInjected = resolved.injected
-    ? discoverInjectedAdapter(add, { hasAnyEip6963Adapter: () => seen.size > 0 })
-    : () => {};
+  // by the settle deadline. `bus.hasAny` exposes that state through
+  // the bus interface rather than via a closure shared with the
+  // orchestrator.
+  bus.register(
+    resolved.injected
+      ? (emit) => discoverInjectedAdapter(emit, { hasAnyEip6963Adapter: bus.hasAny })
+      : null,
+  );
 
-  return () => {
-    unsubEvm();
-    unsubSvm();
-    unsubInjected();
-  };
+  return () => bus.unsubscribeAll();
 };
 
 export type { DiscoverOptions };

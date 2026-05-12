@@ -583,6 +583,52 @@ const unsubscribe = discoverEvmAdapters((adapter, info) => {
 - **Smallest in its class.** ~10 kB gzipped, peer deps `react` + `zustand` only. RainbowKit, thirdweb, Privy, and Dynamic add hundreds of kilobytes to megabytes.
 - **Runs everywhere React runs.** A `react-native` export condition and pluggable storage drivers (browser + memory) mean the same package works in browsers, React Native, and SSR — no separate adapters.
 
+## Ledger (`butr/ledger`)
+
+Hardware wallets — Ledger Nano S/X/S+ via USB — plug into butr through the optional `butr/ledger` subpath. Pairing happens over WebUSB (Chromium-based browsers only — Firefox and Safari don't ship WebUSB).
+
+### Install
+
+```bash
+npm install butr @ledgerhq/hw-app-eth @ledgerhq/hw-transport-webusb
+```
+
+Both Ledger packages are **optional peer deps** — consumers who don't import `butr/ledger` pay nothing.
+
+### Usage
+
+```tsx
+import { createLedgerAdapter } from "butr/ledger";
+import { WalletManagerProvider, type WalletManagerConfig } from "butr";
+
+const ledger = await createLedgerAdapter({
+  chainId: 1,         // Ethereum mainnet (decimal chain id)
+  accountCount: 3,    // walk the first 3 derivation paths
+});
+
+const config: WalletManagerConfig = {
+  connectors: [{ id: ledger.id, name: ledger.name, chainPlatform: "evm" }],
+  createConnector: (id) => (id === ledger.id ? ledger : null),
+};
+```
+
+`adapter.connect()` triggers the browser's WebUSB permission prompt the first time. After the user approves and unlocks their device, the adapter caches the first derivation-path address as the active account.
+
+### What's covered
+
+- `connect` / `disconnect` — opens/closes the WebUSB transport, instantiates `@ledgerhq/hw-app-eth`
+- `getAccount` / `getAccounts` — walks derivation paths under the configured prefix (default `44'/60'/0'/0`)
+- `signMessage(msg, account?)` — signs via EIP-191 `personal_sign`. Pass `account` to sign with a specific exposed address; the adapter walks paths to find it.
+- `switchChain` — updates the adapter's internal chainId (Ledger has no internal "current chain"; chainId is baked into each signed payload)
+- `getSigner()` — returns the raw `@ledgerhq/hw-app-eth` instance so consumers can wrap with viem's `toAccount` / ethers' `LedgerSigner`
+
+### Caveats (capabilities reflect these)
+
+- **No RPC.** `sendTx` / `sendTxToChain` / `getBalance` / `getTransactionReceipt` all reject — Ledger only signs, it doesn't broadcast. Wrap `getSigner()` with viem's `WalletClient` + your own `PublicClient` to complete the send pipeline.
+- **No event stream.** `subscribe` is a no-op (Ledger doesn't emit account/chain change events; the device is stateless from butr's perspective).
+- **No EIP-2255.** `requestAccounts` is `false`. To expose more addresses, raise `accountCount` at construction time.
+- **WebUSB only.** Chromium browsers (Chrome, Edge, Brave, Arc) work; Firefox and Safari don't. A future WebHID transport would close the Safari gap — not in this PR.
+
 ## React Native
 
 `butr`'s `package.json` declares a `react-native` export condition pointing at the same ESM build. Use the in-memory storage driver:

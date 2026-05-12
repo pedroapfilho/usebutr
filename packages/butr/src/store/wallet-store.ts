@@ -1,17 +1,12 @@
 import { createStore } from "zustand/vanilla";
-import type {
-  Account,
-  ChainPlatform,
-  ConnectedWallet,
-  Connector,
-  WalletManagerConfig,
-} from "../types";
+import type { Account, ChainPlatform, ConnectedWallet, WalletManagerConfig } from "../types";
 import type { ConnectionError } from "../types/errors";
 import { mapConnectionError } from "../types/errors";
 import { WalletStorage } from "../storage";
 import type { WalletPersistence } from "../storage";
 import { run } from "./wallet-store-helpers";
 import { createHydrationCoordinator } from "./hydration";
+import { createConnectorLifecycle } from "./connector-lifecycle";
 import { type Event, type State, initialState, reducer } from "./reducer";
 
 const CONNECT_TIMEOUT_MS = 90_000;
@@ -48,12 +43,6 @@ type WalletStoreState = ExtractState<WalletStore>;
 const createWalletStore = (config: WalletManagerConfig) => {
   const storageKeyPrefix = config.storageKeyPrefix || "butr";
   const storage = config.storage || new WalletStorage({ keyPrefix: storageKeyPrefix });
-
-  // Closure-held registry of connector subscriptions. Keyed by connectorId,
-  // value is the unsubscribe function returned by `Connector.subscribe`.
-  // Lives outside the reducer state because these are side-effect handles,
-  // not data anyone should subscribe to.
-  const unsubscribers = new Map<string, () => void>();
 
   // Storage-error handler. Default: `console.warn` (preserves the
   // pre-`onStorageError` behaviour). Consumer-provided callback routes
@@ -130,76 +119,36 @@ const createWalletStore = (config: WalletManagerConfig) => {
           );
         };
 
-        const unsubscribeFromConnector = (connectorId: string) => {
-          const unsub = unsubscribers.get(connectorId);
-          if (!unsub) {
-            return;
-          }
-          try {
-            unsub();
-          } catch (error: unknown) {
-            console.warn("[butr] unsubscribe threw:", error);
-          }
-          unsubscribers.delete(connectorId);
-        };
-
-        const unsubscribeAll = () => {
-          // Snapshot the keys before iterating because unsubscribeFromConnector
-          // mutates the underlying map.
-          const ids: Array<string> = [];
-          for (const id of unsubscribers.keys()) {
-            ids.push(id);
-          }
-          for (const connectorId of ids) {
-            unsubscribeFromConnector(connectorId);
-          }
-        };
-
-        const subscribeToConnector = (connectorId: string, connector: Connector) => {
-          if (!connector.subscribe) {
-            return;
-          }
-          unsubscribeFromConnector(connectorId);
-          try {
-            const unsub = connector.subscribe((event) => {
-              switch (event.type) {
-                case "accountChanged": {
-                  // Full-replace the accounts array so the pool entry
-                  // mirrors the wallet's current exposure. Drops the
-                  // previously-active address on single-account
-                  // wallets (Phantom EVM/SVM, MetaMask Snap); preserves
-                  // the multi-account list on MetaMask, Rabby, etc.
-                  // The wallet tells us which is now active.
-                  refreshPoolEntry(connectorId, [...event.accounts], event.account);
-                  break;
-                }
-                case "disconnected": {
-                  // Mirror an external disconnect into the reducer.
-                  // Don't call connector.disconnect — the wallet already did
-                  // the work; just unwire and persist.
-                  dispatch({ connectorId, type: "DISCONNECTED" });
-                  unsubscribeFromConnector(connectorId);
-                  if (get().pool.size === 0) {
-                    void run(() => storage.clearAll(), reportStorageError("failed to clear storage"));
-                  } else {
-                    persistPool();
-                    persistSelection();
-                    persistActive();
-                  }
-                  config.onDisconnect?.(connector.chainPlatform);
-                  break;
-                }
-                default: {
-                  const _exhaustive: never = event;
-                  void _exhaustive;
-                }
-              }
-            });
-            unsubscribers.set(connectorId, unsub);
-          } catch (error: unknown) {
-            console.warn(`[butr] subscribe failed for ${connectorId}:`, error);
-          }
-        };
+        // Owns the "exactly one subscription per connector" invariant,
+        // the event-to-handler choreography, and the unsubscribers Map.
+        // Attach is idempotent: the runtime calls it after every
+        // restore / connect without first checking whether a prior
+        // subscription exists.
+        const lifecycle = createConnectorLifecycle({
+          onAccountChanged: (connectorId, accounts, active) => {
+            // Full-replace the accounts array so the pool entry mirrors
+            // the wallet's current exposure. Drops the previously-active
+            // address on single-account wallets (Phantom EVM/SVM,
+            // MetaMask Snap); preserves the multi-account list on
+            // MetaMask, Rabby, etc. The wallet tells us which is active.
+            refreshPoolEntry(connectorId, [...accounts], active);
+          },
+          onDisconnected: (connectorId, chainPlatform) => {
+            // Mirror an external disconnect into the reducer. Don't call
+            // connector.disconnect — the wallet already did the work; the
+            // lifecycle bridge has already cleared the subscription. Just
+            // dispatch, persist, notify.
+            dispatch({ connectorId, type: "DISCONNECTED" });
+            if (get().pool.size === 0) {
+              void run(() => storage.clearAll(), reportStorageError("failed to clear storage"));
+            } else {
+              persistPool();
+              persistSelection();
+              persistActive();
+            }
+            config.onDisconnect?.(chainPlatform);
+          },
+        });
 
         return {
           ...initialState,
@@ -217,7 +166,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
             // connector so account/chain swaps after a refresh keep the
             // reducer in sync without consumer effort.
             for (const [connectorId, wallet] of result.pool) {
-              subscribeToConnector(connectorId, wallet.connector);
+              lifecycle.attach(connectorId, wallet.connector);
             }
             // Persist any reconciled values back so future loads stay consistent.
             persistSelection();
@@ -274,7 +223,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
             // Reuse the reducer's connect-success path so selection /
             // active reconciliation matches a normal connect flow.
             dispatch({ connectorId, entry: outcome.entry, type: "CONNECT_SUCCEEDED" });
-            subscribeToConnector(connectorId, outcome.entry.connector);
+            lifecycle.attach(connectorId, outcome.entry.connector);
             persistPool();
             persistSelection();
             persistActive();
@@ -341,7 +290,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               const entry: ConnectedWallet = { account, accounts, connector };
               dispatch({ connectorId, entry, type: "CONNECT_SUCCEEDED" });
 
-              subscribeToConnector(connectorId, connector);
+              lifecycle.attach(connectorId, connector);
 
               persistPool();
               persistSelection();
@@ -383,7 +332,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               return;
             }
 
-            unsubscribeFromConnector(connectorId);
+            lifecycle.detach(connectorId);
 
             void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), console.error);
 
@@ -437,7 +386,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               return;
             }
 
-            unsubscribeAll();
+            lifecycle.detachAll();
 
             for (const wallet of state.pool.values()) {
               void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), console.error);

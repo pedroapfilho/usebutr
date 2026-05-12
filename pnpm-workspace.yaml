@@ -10,6 +10,8 @@ onlyBuiltDependencies:
   - "@tailwindcss/oxide"
   - esbuild
   - fallow
+  - lightningcss
+  - msw
   - prisma
   - sharp
   - unrs-resolver

@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "./app";
 import { WalletProvider } from "./wallet-provider";
+import "./index.css";
 
 const root = document.querySelector("#root");
 if (!root) {

@@ -1,67 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import {
-  WalletManagerProvider,
-  WalletStorage,
-  createBrowserStorageDriver,
-  createMemoryStorageDriver,
-  type BrowserStorageDrivers,
-  type MaybePromise,
-  type StorageDriver,
-  type StoredPoolEntry,
-  type StoredPoolRecord,
-  type StoredSelectionRecord,
-  type WalletManagerConfig,
-  type WalletPersistence,
-  type WalletStore,
-  type createWalletStore,
-} from "butr";
-import { MOCK_CONNECTORS_META, createMockConnectorById } from "./mock-connector";
-
-type _StorageTypeRefs = {
-  driver: StorageDriver;
-  drivers: BrowserStorageDrivers;
-  maybe: MaybePromise<string>;
-  pool: StoredPoolRecord;
-  selection: StoredSelectionRecord;
-  store: WalletStore;
-  stored: StoredPoolEntry;
-};
-void ({} as _StorageTypeRefs);
-
-const buildPersistence = (): WalletPersistence => {
-  if (typeof window === "undefined") {
-    const mem = createMemoryStorageDriver();
-    return new WalletStorage({
-      keyPrefix: "butr-demo",
-      persistent: mem,
-      session: mem,
-    });
-  }
-  const { persistent, session } = createBrowserStorageDriver();
-  return new WalletStorage({
-    keyPrefix: "butr-demo",
-    persistent,
-    session,
-  });
-};
-
-const config: WalletManagerConfig = {
-  connectors: MOCK_CONNECTORS_META,
-  createConnector: createMockConnectorById,
-  onConnect: (wallet) => console.log("[demo] connected", wallet),
-  onDisconnect: (platform) => console.log("[demo] disconnected", platform),
-  onReset: () => console.log("[demo] reset"),
-  storage: buildPersistence(),
-  storageKeyPrefix: "butr-demo",
-};
-
-const _previewStore: ReturnType<typeof createWalletStore> | null = null;
-void _previewStore;
+import { WalletManagerProvider } from "butr";
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
+  <WalletManagerProvider auto storageKeyPrefix="butr-demo">
+    {children}
+  </WalletManagerProvider>
 );
 
 export { WalletProvider };

@@ -25,8 +25,11 @@ type AutoProviderProps = {
   auto: true | DiscoverOptions;
   children: React.ReactNode;
   onConnect?: WalletManagerConfig["onConnect"];
+  onConnectError?: WalletManagerConfig["onConnectError"];
   onDisconnect?: WalletManagerConfig["onDisconnect"];
   onReset?: WalletManagerConfig["onReset"];
+  onSlowConnect?: WalletManagerConfig["onSlowConnect"];
+  slowConnectThresholdMs?: WalletManagerConfig["slowConnectThresholdMs"];
   storage?: WalletManagerConfig["storage"];
   storageKeyPrefix?: WalletManagerConfig["storageKeyPrefix"];
 };
@@ -82,8 +85,11 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
           connectors: [],
           createConnector: (id) => adapters.get(id) ?? null,
           onConnect: props.onConnect,
+          onConnectError: props.onConnectError,
           onDisconnect: props.onDisconnect,
           onReset: props.onReset,
+          onSlowConnect: props.onSlowConnect,
+          slowConnectThresholdMs: props.slowConnectThresholdMs,
           storage: props.storage,
           storageKeyPrefix: props.storageKeyPrefix,
         };

@@ -13,12 +13,12 @@ The home of `butr`, a multi-chain wallet management library for React. The monor
 
 ## Apps
 
-| App                   | Description                     | Dev URL                                      |
-| --------------------- | ------------------------------- | -------------------------------------------- |
-| `demo-vite`           | Vite + React 19 SPA             | `https://demo-vite.butr.localhost`           |
-| `demo-next`           | Next.js 16 App Router           | `https://demo-next.butr.localhost`           |
-| `demo-tanstack-start` | TanStack Start (Vite SSR)       | `https://demo-tanstack-start.butr.localhost` |
-| `demo-expo`           | Expo (React Native, web target) | `https://demo-expo.butr.localhost`           |
+| App                   | Description                     | Dev URL                 |
+| --------------------- | ------------------------------- | ----------------------- |
+| `demo-vite`           | Vite + React 19 SPA             | `http://localhost:5173` |
+| `demo-next`           | Next.js 16 App Router           | `http://localhost:3000` |
+| `demo-tanstack-start` | TanStack Start (Vite SSR)       | `http://localhost:3001` |
+| `demo-expo`           | Expo (React Native, web target) | `http://localhost:8081` |
 
 Every demo is a single-page kitchen-sink reference that imports and uses every public `butr` export.
 
@@ -36,7 +36,6 @@ Every demo is a single-page kitchen-sink reference that imports and uses every p
 
 - **Node.js 24** (`nvm install 24 && nvm use 24`)
 - **pnpm 10** (`npm install -g pnpm@10`)
-- **portless** for stable HTTPS dev URLs
 
 ### 1. Install dependencies
 
@@ -44,32 +43,14 @@ Every demo is a single-page kitchen-sink reference that imports and uses every p
 pnpm install
 ```
 
-### 2. Install portless and start the HTTPS proxy
-
-```bash
-npm install -g portless
-sudo portless proxy start --https
-```
-
-The proxy auto-restarts on subsequent boots once trusted.
-
-### 3. Run a demo
+### 2. Run a demo
 
 ```bash
 pnpm dev --filter=demo-vite
 # or any of: demo-next, demo-tanstack-start, demo-expo
 ```
 
-Open the URL printed in the table above.
-
-### Worktrees
-
-Branch name auto-prefixes the subdomain — concurrent worktrees don't collide:
-
-```
-main worktree:           https://demo-vite.butr.localhost
-branch fix-styles:       https://fix-styles.demo-vite.butr.localhost
-```
+Open the URL printed in the table above. The four demos use distinct ports so they can run concurrently.
 
 ## Scripts
 

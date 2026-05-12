@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useStore } from "zustand";
+import { shallow } from "zustand/shallow";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { useWalletStoreContext } from "./context";
 import type { WalletStoreState } from "./store";
@@ -221,6 +222,21 @@ const useRefreshWallet = () => {
   return useStore(store, (state) => state.refreshWallet);
 };
 
+/**
+ * Open the wallet's account-selection UI (if the connector supports it),
+ * then re-read `getAccounts()` and update the pool entry's `accounts`
+ * array. EVM wallets call `wallet_requestPermissions` under the hood;
+ * Wallet Standard wallets that don't expose a picker just refresh.
+ *
+ * Consumers should hide the trigger when
+ * `wallet.connector.requestAccounts` is undefined — the action still
+ * resolves cleanly, but no picker will open.
+ */
+const useRequestAccounts = () => {
+  const store = useWalletStoreContext();
+  return useStore(store, (state) => state.requestAccounts);
+};
+
 /** Clear `connectionError` + reset `connectionStatus` to idle. Useful when
  *  surfacing an error in UI and giving the user a "dismiss" affordance. */
 const useResetConnectionStatus = () => {
@@ -238,18 +254,20 @@ const useSetConnectionError = () => {
 // ============================================================================
 
 /**
- * Direct access to the Zustand store for custom selectors.
+ * Direct access to the Zustand store for custom selectors. Uses shallow
+ * equality on the selector result, so returning an inline object or array
+ * is safe — no infinite re-render loop. Primitive selectors are
+ * unaffected (shallow falls back to `Object.is`).
  *
- * For shallow equality comparison of multiple values, use useShallow:
  * @example
- * import { useShallow } from 'zustand/react/shallow';
- * const { pool, activeConnectorId } = useWalletStore(
- *   useShallow((state) => ({ pool: state.pool, activeConnectorId: state.activeConnectorId }))
- * );
+ * const { pool, activeConnectorId } = useWalletStore((state) => ({
+ *   pool: state.pool,
+ *   activeConnectorId: state.activeConnectorId,
+ * }));
  */
 const useWalletStore = <T>(selector: (state: WalletStoreState) => T) => {
   const store = useWalletStoreContext();
-  return useStore(store, selector);
+  return useStoreWithEqualityFn(store, selector, shallow);
 };
 
 export {
@@ -271,6 +289,7 @@ export {
   useIsUserDisconnected,
   usePool,
   useRefreshWallet,
+  useRequestAccounts,
   useResetConnectionStatus,
   useResetWallet,
   useSelectedWallet,

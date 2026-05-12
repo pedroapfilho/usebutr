@@ -322,3 +322,119 @@ describe("buildSvmAdapter", () => {
       });
   });
 });
+
+// Per-wallet SVM fixtures. Wallet Standard is a stricter protocol
+// than EIP-1193, so the wallets above behave uniformly along most
+// axes — there are fewer per-wallet quirks to test than on EVM. The
+// asserts below pin the protocol-level invariants across every
+// wallet we ship support for, so a wallet that ever drifts (e.g.
+// Wallet Standard spec change) surfaces as a test failure rather
+// than a runtime bug.
+
+describe("SVM wallet fixtures — protocol-level uniformity", () => {
+  const buildWalletWithFullFeatures = (name: string): WalletStandardWallet => {
+    const connectFeature: StandardConnectFeature = {
+      connect: vi.fn().mockResolvedValue({ accounts: [] }),
+    };
+    const signMessageFeature: SolanaSignMessageFeature = {
+      signMessage: vi.fn().mockResolvedValue([
+        { signature: new Uint8Array(64), signedMessage: new Uint8Array() },
+      ]),
+    };
+    const signAndSendFeature: SolanaSignAndSendTransactionFeature = {
+      signAndSendTransaction: vi.fn().mockResolvedValue([{ signature: new Uint8Array(64) }]),
+    };
+    const eventsFeature: StandardEventsFeature = {
+      on: vi.fn().mockReturnValue(() => {}),
+    };
+    return withFeatures(buildWallet({ name }), {
+      "solana:signAndSendTransaction": signAndSendFeature,
+      "solana:signMessage": signMessageFeature,
+      "standard:connect": connectFeature,
+      "standard:events": eventsFeature,
+    });
+  };
+
+  it.each([
+    "Phantom",
+    "Solflare",
+    "Backpack",
+    "MetaMask", // Solana Snap
+    "OKX Wallet",
+    "Glow",
+    "Coinbase Wallet",
+    "Trust Wallet",
+    "Math Wallet",
+    "Coin98",
+    "Exodus",
+  ])(
+    "wallet=%s: capabilities.requestAccounts is false (Wallet Standard has no EIP-2255 equivalent)",
+    (name) => {
+      const wallet = buildWalletWithFullFeatures(name);
+      const adapter = buildSvmAdapter(wallet);
+      expect(adapter?.capabilities.requestAccounts).toBe(false);
+    },
+  );
+
+  it("capabilities.signMessage mirrors `solana:signMessage` feature advertisement", () => {
+    const connectFeature: StandardConnectFeature = {
+      connect: vi.fn().mockResolvedValue({ accounts: [] }),
+    };
+    const signAndSendFeature: SolanaSignAndSendTransactionFeature = {
+      signAndSendTransaction: vi.fn(),
+    };
+
+    const withSignMessage = withFeatures(buildWallet(), {
+      "solana:signAndSendTransaction": signAndSendFeature,
+      "solana:signMessage": { signMessage: vi.fn() } as SolanaSignMessageFeature,
+      "standard:connect": connectFeature,
+    });
+    expect(buildSvmAdapter(withSignMessage)?.capabilities.signMessage).toBe(true);
+
+    const withoutSignMessage = withFeatures(buildWallet(), {
+      "solana:signAndSendTransaction": signAndSendFeature,
+      "standard:connect": connectFeature,
+    });
+    expect(buildSvmAdapter(withoutSignMessage)?.capabilities.signMessage).toBe(false);
+  });
+
+  it("capabilities.sendTransaction mirrors `solana:signAndSendTransaction` feature advertisement", () => {
+    const connectFeature: StandardConnectFeature = {
+      connect: vi.fn().mockResolvedValue({ accounts: [] }),
+    };
+
+    const withFeature = withFeatures(buildWallet(), {
+      "solana:signAndSendTransaction": { signAndSendTransaction: vi.fn() } as SolanaSignAndSendTransactionFeature,
+      "standard:connect": connectFeature,
+    });
+    expect(buildSvmAdapter(withFeature)?.capabilities.sendTransaction).toBe(true);
+
+    const withoutFeature = withFeatures(buildWallet(), { "standard:connect": connectFeature });
+    expect(buildSvmAdapter(withoutFeature)?.capabilities.sendTransaction).toBe(false);
+  });
+
+  it("capabilities.subscribe mirrors `standard:events` feature advertisement", () => {
+    const connectFeature: StandardConnectFeature = {
+      connect: vi.fn().mockResolvedValue({ accounts: [] }),
+    };
+
+    const withEvents = withFeatures(buildWallet(), {
+      "standard:connect": connectFeature,
+      "standard:events": { on: vi.fn().mockReturnValue(() => {}) } as StandardEventsFeature,
+    });
+    expect(buildSvmAdapter(withEvents)?.capabilities.subscribe).toBe(true);
+
+    const withoutEvents = withFeatures(buildWallet(), { "standard:connect": connectFeature });
+    expect(buildSvmAdapter(withoutEvents)?.capabilities.subscribe).toBe(false);
+  });
+
+  it("universal SVM capabilities are constant across wallets", () => {
+    const adapter = buildSvmAdapter(buildWalletWithFullFeatures("Phantom"));
+    expect(adapter?.capabilities).toMatchObject({
+      getBalance: false, // Wallet Standard has no RPC
+      getTransactionReceipt: false, // Wallet Standard has no RPC
+      requestAccounts: false, // No EIP-2255 equivalent
+      switchAccount: false, // No silent "use address X"
+    });
+  });
+});

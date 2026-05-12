@@ -515,6 +515,7 @@ The allow-list lives in [`src/auto/eip6963-adapter.ts`](src/auto/eip6963-adapter
 2. Click "Request more accounts" on its connected card.
 3. If a fresh account-picker modal opens and lets you grant new accounts → add the `rdns` to the set.
 4. If nothing visible happens, the wallet falls in the silent-return bucket — leave it out.
+5. In either case, add a fixture test to [`src/auto/__tests__/wallet-fixtures.test.ts`](src/auto/__tests__/wallet-fixtures.test.ts) that simulates the wallet's response shape (success or rejection code), so the behavior is pinned in CI alongside the allow-list change.
 
 **Solana wallets (Wallet Standard discovery)**
 

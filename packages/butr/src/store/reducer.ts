@@ -178,14 +178,22 @@ const reducer = (state: State, event: Event): State => {
       ) {
         return state;
       }
-      // Auto-extend the known-accounts list when the new account is one
-      // we haven't seen before. Keeps `useAccounts` honest after wallet-side
-      // account swaps.
-      const seen = wallet.accounts.some(
-        (a) =>
-          a.walletAddress === event.account.walletAddress && a.chain.id === event.account.chain.id,
+      // Chain is a wallet-level property, not per-account. When the
+      // wallet switches chain, ALL exposed addresses move with it —
+      // so we refresh every entry's `chain` to match the new view and
+      // dedupe by address (case-insensitive for EVM, exact for SVM)
+      // to avoid the same address appearing once per chain visited.
+      const newChain = event.account.chain;
+      const normalise = (addr: string): string => addr.toLowerCase();
+      const remappedExisting = wallet.accounts.map((a) =>
+        a.chain.id === newChain.id
+          ? a
+          : { chain: newChain, id: `${newChain.id}:${normalise(a.walletAddress)}`, walletAddress: a.walletAddress },
       );
-      const accounts = seen ? wallet.accounts : [...wallet.accounts, event.account];
+      const seen = remappedExisting.some(
+        (a) => normalise(a.walletAddress) === normalise(event.account.walletAddress),
+      );
+      const accounts = seen ? remappedExisting : [...remappedExisting, event.account];
       const newPool = new Map([
         ...state.pool,
         [event.connectorId, { ...wallet, account: event.account, accounts }] as const,

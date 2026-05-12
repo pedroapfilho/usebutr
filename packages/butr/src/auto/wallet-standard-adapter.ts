@@ -1,4 +1,4 @@
-import type { Account, ChainBase, WalletAdapter } from "../types";
+import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "../types";
 import type {
   SolanaSignAndSendTransactionFeature,
   SolanaSignMessageFeature,
@@ -93,9 +93,17 @@ const pickAccountByAddress = (
  *    scope; consumers wrap their own RPC client.
  *  - `getTransactionReceipt` returns `{ status: "Pending" }`. Same
  *    reason — needs an RPC.
- *  - `switchChain` is a no-op. Solana Wallet Standard doesn't have a
- *    standardised "switch chain" feature; the wallet's chain follows
- *    whichever feature input the caller passes.
+ *  - `switchChain` updates butr's view of the current Solana cluster
+ *    locally and routes subsequent `signAndSendTransaction` calls
+ *    through the new chain. Wallet Standard has no "tell the wallet
+ *    to switch cluster" RPC; the wallet's own UI controls its global
+ *    cluster setting, and `signAndSendTransaction` accepts the chain
+ *    per-call. The chain must be one the wallet advertises in
+ *    `wallet.chains`; otherwise the call rejects.
+ *  - `requestAccounts` re-runs `standard:connect`. Some wallets show
+ *    their account picker again; others (those that "remember"
+ *    authorisations) silently return the existing accounts. butr
+ *    refreshes the pool entry's `accounts` array either way.
  *  - `switchAccount` is intentionally unimplemented. Wallet Standard
  *    has no silent "use address X" feature — the user picks the active
  *    account through the wallet's own UI. `signAndSendTransaction`
@@ -120,7 +128,27 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
     "solana:signAndSendTransaction",
   );
 
-  const chain = buildSolanaChain(solanaChainId, wallet.name);
+  // Current Solana cluster. Mutable so `switchChain` can route subsequent
+  // `signAndSendTransaction` calls through a different cluster without
+  // rebuilding the adapter. butr's reducer learns about chain changes
+  // via the `accountChanged` events emitted to subscribers below.
+  let currentChainId = solanaChainId;
+  const currentChain = (): ChainBase => buildSolanaChain(currentChainId, wallet.name);
+
+  // Local listener set so `switchChain` (and `requestAccounts`) can
+  // synthesise `accountChanged` events that flow into butr's pool.
+  // Wallet-native events from `standard:events` are bridged alongside.
+  const listeners = new Set<(event: ConnectorEvent) => void>();
+  const notifyAccountChanged = () => {
+    const address = pickFirstAddress(wallet.accounts);
+    if (!address) {
+      return;
+    }
+    const account = buildSolanaAccount(address, currentChain());
+    for (const listener of listeners) {
+      listener({ account, type: "accountChanged" });
+    }
+  };
 
   return {
     chainPlatform: "svm",
@@ -144,10 +172,11 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
       if (!address) {
         return Promise.resolve(null);
       }
-      return Promise.resolve(buildSolanaAccount(address, chain));
+      return Promise.resolve(buildSolanaAccount(address, currentChain()));
     },
 
     getAccounts() {
+      const chain = currentChain();
       return Promise.resolve(wallet.accounts.map((a) => buildSolanaAccount(a.address, chain)));
     },
 
@@ -178,6 +207,17 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
     id: slugify(wallet.name),
     name: wallet.name,
 
+    async requestAccounts() {
+      // Wallet Standard has no equivalent of EIP-2255's
+      // `wallet_requestPermissions`. The closest we can do is re-run
+      // `standard:connect`, which prompts the user on wallets that
+      // surface their picker each time and silently returns the
+      // existing list on wallets that remember authorisations.
+      // butr's runtime calls `getAccounts()` afterwards to refresh
+      // the pool entry, so newly-exposed addresses appear either way.
+      await connect.connect();
+    },
+
     async sendTx(tx, account) {
       if (!signAndSendTx) {
         throw new Error(`Wallet ${wallet.name} does not advertise solana:signAndSendTransaction`);
@@ -193,7 +233,7 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
       }
       const [output] = await signAndSendTx.signAndSendTransaction({
         account: wsAccount,
-        chain: solanaChainId,
+        chain: currentChainId,
         transaction: tx,
       });
       if (!output) {
@@ -231,34 +271,51 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
     },
 
     subscribe(listener) {
-      if (!events) {
-        return () => {};
-      }
-      const unsub = events.on("change", (changes) => {
-        if (!changes.accounts) {
-          return;
-        }
-        if (changes.accounts.length === 0) {
-          listener({ type: "disconnected" });
-          return;
-        }
-        const first = changes.accounts[0];
-        if (!first) {
-          return;
-        }
-        listener({
-          account: buildSolanaAccount(first.address, chain),
-          type: "accountChanged",
+      listeners.add(listener);
+      let unsubWallet: (() => void) | null = null;
+      if (events) {
+        const unsub = events.on("change", (changes) => {
+          if (!changes.accounts) {
+            return;
+          }
+          if (changes.accounts.length === 0) {
+            listener({ type: "disconnected" });
+            return;
+          }
+          const first = changes.accounts[0];
+          if (!first) {
+            return;
+          }
+          listener({
+            account: buildSolanaAccount(first.address, currentChain()),
+            type: "accountChanged",
+          });
         });
-      });
-      return () => unsub();
+        unsubWallet = () => unsub();
+      }
+      return () => {
+        listeners.delete(listener);
+        unsubWallet?.();
+      };
     },
 
-    switchChain(_chain) {
-      // Wallet Standard doesn't expose a switchChain feature. The
-      // wallet sticks to whichever chain the caller asks for at
-      // sign/send time. Consumers needing real chain switching wrap
-      // the adapter at a higher level.
+    switchChain(chain) {
+      if (chain.namespace !== "solana") {
+        throw new Error(
+          `SVM adapter received non-Solana chain "${chain.id}". Pass a chain with namespace "solana".`,
+        );
+      }
+      // The wallet must advertise this cluster — otherwise
+      // signAndSendTransaction will reject the chain string later.
+      if (!wallet.chains.includes(chain.id)) {
+        throw new Error(
+          `Wallet ${wallet.name} does not advertise chain "${chain.id}". Available: ${wallet.chains.join(", ")}`,
+        );
+      }
+      currentChainId = chain.id;
+      // Synthesise an `accountChanged` so butr's reducer updates the
+      // pool entry's chain — the wallet itself has no event to fire here.
+      notifyAccountChanged();
       return Promise.resolve();
     },
   };

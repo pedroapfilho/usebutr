@@ -171,13 +171,28 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     name: info.name,
 
     async requestAccounts() {
-      // Reopens the wallet's account-picker UI; the user chooses which
-      // additional accounts to expose. After the user dismisses the modal,
-      // `getAccounts()` returns the newly-extended list.
-      await provider.request({
-        method: "wallet_requestPermissions",
-        params: [{ eth_accounts: {} }],
-      });
+      // Preferred path: EIP-2255 `wallet_requestPermissions` reopens the
+      // wallet's account-picker UI; the user chooses which additional
+      // accounts to expose. MetaMask, Rabby, and Brave implement this.
+      // Fallback: wallets that don't implement EIP-2255 (notably
+      // Phantom's EVM provider) reject with code 4200 or -32601. We fall
+      // through to `eth_requestAccounts`, which won't reopen the picker
+      // but at least refreshes the exposed list and surfaces newly-
+      // added accounts after the user adds them in the wallet UI.
+      try {
+        await provider.request({
+          method: "wallet_requestPermissions",
+          params: [{ eth_accounts: {} }],
+        });
+      } catch (error: unknown) {
+        const code = (error as { code?: number } | null)?.code;
+        // EIP-1474 "method not supported" / JSON-RPC "method not found"
+        if (code === 4200 || code === -32601) {
+          await provider.request({ method: "eth_requestAccounts" });
+          return;
+        }
+        throw error;
+      }
     },
 
     async sendTx(tx, account) {

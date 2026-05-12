@@ -26,18 +26,26 @@ const EVM_CHAINS = {
   sepolia: { id: "eip155:11155111", name: "Sepolia", namespace: "eip155", reference: "11155111" },
 } as const satisfies Record<string, ChainBase>;
 
+// Solana chain identifiers follow the Wallet Standard convention
+// (`solana:mainnet` / `solana:devnet` / `solana:testnet`) rather than
+// the strict CAIP-2 genesis-hash form (`solana:5eykt…`). Phantom,
+// Solflare, Backpack and the rest of the Wallet Standard ecosystem
+// advertise these shortnames in `wallet.chains`, and the SVM adapter's
+// `switchChain` rejects anything not in that set. The genesis-hash form
+// remains valid CAIP-2 but isn't what real wallets exchange.
 const SVM_CHAINS = {
-  devnet: {
-    id: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
-    name: "Solana Devnet",
-    namespace: "solana",
-    reference: "EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
-  },
+  devnet: { id: "solana:devnet", name: "Solana Devnet", namespace: "solana", reference: "devnet" },
   mainnet: {
-    id: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    id: "solana:mainnet",
     name: "Solana Mainnet",
     namespace: "solana",
-    reference: "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    reference: "mainnet",
+  },
+  testnet: {
+    id: "solana:testnet",
+    name: "Solana Testnet",
+    namespace: "solana",
+    reference: "testnet",
   },
 } as const satisfies Record<string, ChainBase>;
 

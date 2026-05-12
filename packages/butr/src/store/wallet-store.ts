@@ -1,17 +1,12 @@
 import { createStore } from "zustand/vanilla";
-import type {
-  Account,
-  ChainPlatform,
-  ConnectedWallet,
-  Connector,
-  WalletManagerConfig,
-} from "../types";
+import type { Account, ChainPlatform, ConnectedWallet, WalletManagerConfig } from "../types";
 import type { ConnectionError } from "../types/errors";
 import { mapConnectionError } from "../types/errors";
 import { WalletStorage } from "../storage";
 import type { WalletPersistence } from "../storage";
-import { hydrateFromStorage, restoreOneEntry, run } from "./wallet-store-helpers";
-import type { StoredPoolEntry } from "../storage";
+import { run } from "./wallet-store-helpers";
+import { createHydrationCoordinator } from "./hydration";
+import { createConnectorLifecycle } from "./connector-lifecycle";
 import { type Event, type State, initialState, reducer } from "./reducer";
 
 const CONNECT_TIMEOUT_MS = 90_000;
@@ -49,12 +44,6 @@ const createWalletStore = (config: WalletManagerConfig) => {
   const storageKeyPrefix = config.storageKeyPrefix || "butr";
   const storage = config.storage || new WalletStorage({ keyPrefix: storageKeyPrefix });
 
-  // Closure-held registry of connector subscriptions. Keyed by connectorId,
-  // value is the unsubscribe function returned by `Connector.subscribe`.
-  // Lives outside the reducer state because these are side-effect handles,
-  // not data anyone should subscribe to.
-  const unsubscribers = new Map<string, () => void>();
-
   // Storage-error handler. Default: `console.warn` (preserves the
   // pre-`onStorageError` behaviour). Consumer-provided callback routes
   // failures through their telemetry pipeline.
@@ -70,11 +59,16 @@ const createWalletStore = (config: WalletManagerConfig) => {
     console.warn(`[butr] ${context}:`, error);
   };
 
-  // Stored pool entries that couldn't be restored at hydration because
-  // their adapter wasn't registered yet (auto-discovery race for SVM).
-  // `_tryRestoreFromPending(connectorId)` consumes from here when the
-  // matching adapter finally announces.
-  const pendingRestores = new Map<string, StoredPoolEntry>();
+  // Owns the full restore lifecycle: read storage, instantiate adapters,
+  // restore in parallel, park entries whose adapter wasn't registered
+  // yet, drain parked entries when discovery announces a matching id.
+  // `pendingRestores` lives inside the coordinator — the runtime no
+  // longer manages the queue directly.
+  const hydration = createHydrationCoordinator(
+    storage,
+    config.createConnector,
+    (context, error) => reportStorageError(context)(error),
+  );
 
   return createStore<State & RuntimeMembers>()((set, get) => {
         const dispatch = (event: Event) => {
@@ -125,82 +119,42 @@ const createWalletStore = (config: WalletManagerConfig) => {
           );
         };
 
-        const unsubscribeFromConnector = (connectorId: string) => {
-          const unsub = unsubscribers.get(connectorId);
-          if (!unsub) {
-            return;
-          }
-          try {
-            unsub();
-          } catch (error: unknown) {
-            console.warn("[butr] unsubscribe threw:", error);
-          }
-          unsubscribers.delete(connectorId);
-        };
-
-        const unsubscribeAll = () => {
-          // Snapshot the keys before iterating because unsubscribeFromConnector
-          // mutates the underlying map.
-          const ids: Array<string> = [];
-          for (const id of unsubscribers.keys()) {
-            ids.push(id);
-          }
-          for (const connectorId of ids) {
-            unsubscribeFromConnector(connectorId);
-          }
-        };
-
-        const subscribeToConnector = (connectorId: string, connector: Connector) => {
-          if (!connector.subscribe) {
-            return;
-          }
-          unsubscribeFromConnector(connectorId);
-          try {
-            const unsub = connector.subscribe((event) => {
-              switch (event.type) {
-                case "accountChanged": {
-                  // Full-replace the accounts array so the pool entry
-                  // mirrors the wallet's current exposure. Drops the
-                  // previously-active address on single-account
-                  // wallets (Phantom EVM/SVM, MetaMask Snap); preserves
-                  // the multi-account list on MetaMask, Rabby, etc.
-                  // The wallet tells us which is now active.
-                  refreshPoolEntry(connectorId, [...event.accounts], event.account);
-                  break;
-                }
-                case "disconnected": {
-                  // Mirror an external disconnect into the reducer.
-                  // Don't call connector.disconnect — the wallet already did
-                  // the work; just unwire and persist.
-                  dispatch({ connectorId, type: "DISCONNECTED" });
-                  unsubscribeFromConnector(connectorId);
-                  if (get().pool.size === 0) {
-                    void run(() => storage.clearAll(), reportStorageError("failed to clear storage"));
-                  } else {
-                    persistPool();
-                    persistSelection();
-                    persistActive();
-                  }
-                  config.onDisconnect?.(connector.chainPlatform);
-                  break;
-                }
-                default: {
-                  const _exhaustive: never = event;
-                  void _exhaustive;
-                }
-              }
-            });
-            unsubscribers.set(connectorId, unsub);
-          } catch (error: unknown) {
-            console.warn(`[butr] subscribe failed for ${connectorId}:`, error);
-          }
-        };
+        // Owns the "exactly one subscription per connector" invariant,
+        // the event-to-handler choreography, and the unsubscribers Map.
+        // Attach is idempotent: the runtime calls it after every
+        // restore / connect without first checking whether a prior
+        // subscription exists.
+        const lifecycle = createConnectorLifecycle({
+          onAccountChanged: (connectorId, accounts, active) => {
+            // Full-replace the accounts array so the pool entry mirrors
+            // the wallet's current exposure. Drops the previously-active
+            // address on single-account wallets (Phantom EVM/SVM,
+            // MetaMask Snap); preserves the multi-account list on
+            // MetaMask, Rabby, etc. The wallet tells us which is active.
+            refreshPoolEntry(connectorId, [...accounts], active);
+          },
+          onDisconnected: (connectorId, chainPlatform) => {
+            // Mirror an external disconnect into the reducer. Don't call
+            // connector.disconnect — the wallet already did the work; the
+            // lifecycle bridge has already cleared the subscription. Just
+            // dispatch, persist, notify.
+            dispatch({ connectorId, type: "DISCONNECTED" });
+            if (get().pool.size === 0) {
+              void run(() => storage.clearAll(), reportStorageError("failed to clear storage"));
+            } else {
+              persistPool();
+              persistSelection();
+              persistActive();
+            }
+            config.onDisconnect?.(chainPlatform);
+          },
+        });
 
         return {
           ...initialState,
           _config: config,
           _hydrateWallets: async () => {
-            const result = await hydrateFromStorage(storage, config.createConnector);
+            const result = await hydration.hydrate();
             dispatch({
               activeConnectorId: result.activeConnectorId,
               isUserDisconnected: result.isUserDisconnected,
@@ -208,35 +162,27 @@ const createWalletStore = (config: WalletManagerConfig) => {
               selection: result.selection,
               type: "HYDRATED",
             });
-            // Park entries whose adapter wasn't registered yet — the
-            // provider will call `_tryRestoreFromPending` once discovery
-            // announces a matching id.
-            pendingRestores.clear();
-            for (const [connectorId, entry] of result.pending) {
-              pendingRestores.set(connectorId, entry);
-            }
             // Wire up wallet-side event subscriptions for every restored
             // connector so account/chain swaps after a refresh keep the
             // reducer in sync without consumer effort.
             for (const [connectorId, wallet] of result.pool) {
-              subscribeToConnector(connectorId, wallet.connector);
+              lifecycle.attach(connectorId, wallet.connector);
             }
             // Persist any reconciled values back so future loads stay consistent.
             persistSelection();
             persistActive();
             // Drain: catch the race where a Wallet Standard adapter
-            // announced BEFORE hydration finished populating
-            // pendingRestores. Without this, the discovery callback's
-            // `_tryRestoreFromPending(adapter.id)` would have found
-            // an empty map and silently returned, leaving SVM wallets
-            // un-restored on reload even though their adapter IS in
-            // the registry by now. Each call resolves independently;
-            // `Promise.all` here mirrors the parallel restore that
-            // `hydrateFromStorage` does for the eager path. The promise
-            // is dropped on the floor — late-restore failures surface
-            // per-entry via `_tryRestoreFromPending`'s own logging.
-            const pendingIds = [...pendingRestores.keys()];
-            void Promise.all(pendingIds.map((id) => get()._tryRestoreFromPending(id)));
+            // announced BEFORE hydration finished populating its queue.
+            // Without this, the discovery callback's
+            // `_tryRestoreFromPending(adapter.id)` would have hit the
+            // empty queue and silently returned, leaving SVM wallets
+            // un-restored on reload. The coordinator's `pendingIds()`
+            // is the post-hydrate snapshot; each id resolves
+            // independently. Late-restore failures surface per-entry
+            // inside `_tryRestoreFromPending`.
+            void Promise.all(
+              hydration.pendingIds().map((id) => get()._tryRestoreFromPending(id)),
+            );
             // Surface the hydration outcome. Three buckets: restored,
             // pending (waiting for adapter announcement), dropped
             // (genuine restore failures). The default `console.warn`
@@ -246,7 +192,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               try {
                 config.onHydrated({
                   dropped: result.dropped,
-                  pendingIds: [...result.pending.keys()],
+                  pendingIds: [...result.pendingIds],
                   restoredIds: [...result.pool.keys()],
                 });
               } catch (cbError: unknown) {
@@ -261,35 +207,23 @@ const createWalletStore = (config: WalletManagerConfig) => {
             }
           },
           _tryRestoreFromPending: async (connectorId) => {
-            const entry = pendingRestores.get(connectorId);
-            if (!entry) {
-              return;
-            }
-            const connector = config.createConnector(connectorId);
-            if (!connector) {
-              // Adapter still not available — leave the entry pending.
-              return;
-            }
             // Note: deliberately NOT gating on `isUserDisconnected`.
-            // The EVM hydration path (`restoreOneEntry` inside
-            // `hydrateFromStorage`) doesn't check that flag either —
+            // The eager hydration path doesn't check that flag either —
             // stored entries restore on reload regardless of whether
             // the user's most recent action was a disconnect. The
             // late-restore path mirrors that policy for symmetry.
-            const outcome = await restoreOneEntry(connectorId, entry, connector);
-            pendingRestores.delete(connectorId);
+            const outcome = await hydration.drainPending(connectorId);
+            if (!outcome) {
+              return;
+            }
             if (outcome.kind === "fail") {
               console.warn(`[butr] late restore failed for ${connectorId}:`, outcome.error);
-              void run(
-                () => storage.removePoolEntry(connectorId),
-                reportStorageError("failed to remove broken entry"),
-              );
               return;
             }
             // Reuse the reducer's connect-success path so selection /
             // active reconciliation matches a normal connect flow.
             dispatch({ connectorId, entry: outcome.entry, type: "CONNECT_SUCCEEDED" });
-            subscribeToConnector(connectorId, outcome.entry.connector);
+            lifecycle.attach(connectorId, outcome.entry.connector);
             persistPool();
             persistSelection();
             persistActive();
@@ -356,7 +290,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               const entry: ConnectedWallet = { account, accounts, connector };
               dispatch({ connectorId, entry, type: "CONNECT_SUCCEEDED" });
 
-              subscribeToConnector(connectorId, connector);
+              lifecycle.attach(connectorId, connector);
 
               persistPool();
               persistSelection();
@@ -398,7 +332,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               return;
             }
 
-            unsubscribeFromConnector(connectorId);
+            lifecycle.detach(connectorId);
 
             void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), console.error);
 
@@ -452,7 +386,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               return;
             }
 
-            unsubscribeAll();
+            lifecycle.detachAll();
 
             for (const wallet of state.pool.values()) {
               void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), console.error);

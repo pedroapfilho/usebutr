@@ -1,4 +1,5 @@
-import type { Account, ChainBase, WalletAdapter, WalletCapabilities } from "../types";
+import type { Account, ChainBase, WalletAdapter } from "../types";
+import { resolveCapabilities } from "../capabilities";
 
 /**
  * Minimal type surface for `@ledgerhq/hw-app-eth`. Declared inline
@@ -122,31 +123,6 @@ const buildEvmAccount = (address: string, chain: ChainBase): Account => ({
   walletAddress: address,
 });
 
-const buildCapabilities = (): WalletCapabilities => ({
-  // Ledger only signs — it doesn't speak RPC. Balance, receipt, and
-  // tx broadcast all require an external RPC client (viem/ethers).
-  // butr surfaces these as `false` so demos / pickers don't render
-  // affordances that would throw.
-  getBalance: false,
-  getTransactionReceipt: false,
-  // Ledger has no concept of permission granting; pairing IS the
-  // grant. "Request more accounts" would be "walk more derivation
-  // paths," which is the `accountCount` config — not a runtime UI
-  // affordance.
-  requestAccounts: false,
-  sendTransaction: false,
-  signMessage: true,
-  // No event stream — the device doesn't emit. Account/chain changes
-  // happen through butr's mutation actions (`updateWalletAccount`,
-  // `switchChain`) which trigger the necessary updates directly.
-  subscribe: false,
-  switchAccount: false,
-  // Local state — Ledger doesn't have a "current chain"; chainId is
-  // baked into every signed payload. `switchChain` updates the
-  // adapter's chainId field.
-  switchChain: true,
-});
-
 const SUBSCRIBE_NOT_AVAILABLE = "[butr/ledger] subscribe is not implemented — device emits no events";
 
 /**
@@ -196,7 +172,7 @@ const createLedgerAdapter = async (options: LedgerOptions = {}): Promise<WalletA
   const pathAt = (index: number): string => `${derivationPathPrefix}/${index}`;
 
   const adapter: WalletAdapter = {
-    capabilities: buildCapabilities(),
+    capabilities: resolveCapabilities({ transport: "ledger" }),
     chainPlatform: "evm",
 
     async connect() {

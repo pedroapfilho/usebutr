@@ -1,4 +1,5 @@
 import type { Account, ChainBase, WalletAdapter } from "../types";
+import { resolveCapabilities } from "../capabilities";
 import type { Eip1193Listener, Eip1193Provider, Eip6963ProviderInfo } from "./eip1193";
 
 const HEX_PREFIX = "0x";
@@ -86,42 +87,9 @@ const buildEvmAccount = (address: string, chain: ChainBase): Account => ({
  *  - `getSigner` returns the raw EIP-1193 provider. Wrap it in viem's
  *    `createWalletClient` or ethers' `BrowserProvider` at the call site.
  */
-// Allow-list of EIP-6963 wallets where `requestAccounts` does
-// something user-visible (reopens the wallet's account picker via
-// EIP-2255 `wallet_requestPermissions`). MetaMask is the only wallet
-// that implements this the way the spec intends — every other tested
-// wallet either rejects the method (Phantom EVM, Coinbase Wallet) or
-// silently returns the existing accounts (Rabby, OKX, Binance,
-// Backpack EVM), making the UI button a no-op for the user. The
-// inverted default avoids rendering a button that does nothing.
-//
-// Listed by `rdns` (EIP-6963 §Wallet.info). Add a wallet here only
-// after verifying that calling `requestAccounts` actually surfaces
-// a picker UI to the user.
-const RDNS_WITH_REQUEST_ACCOUNTS = new Set<string>([
-  "io.metamask", // MetaMask — verified May 2026
-]);
-
 const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): WalletAdapter => {
   return {
-    capabilities: {
-      getBalance: true,
-      getTransactionReceipt: true,
-      // False by default; true only for wallets in the allow-list
-      // above. Most EVM wallets either reject EIP-2255 or silently
-      // return existing accounts, so the UI button would be a no-op.
-      // Consumers can still call `connector.requestAccounts()`
-      // manually for wallet-specific flows — the method exists, the
-      // capability flag just gates the affordance.
-      requestAccounts: RDNS_WITH_REQUEST_ACCOUNTS.has(info.rdns),
-      sendTransaction: true,
-      signMessage: true,
-      subscribe: true,
-      // EIP-1193 has no silent "use address X" RPC. Always false for
-      // auto-built EVM adapters.
-      switchAccount: false,
-      switchChain: true,
-    },
+    capabilities: resolveCapabilities({ rdns: info.rdns, transport: "eip6963" }),
     chainPlatform: "evm",
 
     async connect() {
@@ -211,7 +179,8 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       // that actually surfaces a fresh picker — Rabby / OKX / Binance
       // / Backpack silently return existing accounts; Phantom EVM and
       // Coinbase Wallet reject with `method not supported`. The
-      // `capabilities` layer (`RDNS_WITH_REQUEST_ACCOUNTS`) gates the
+      // `capabilities` layer (`EIP6963_RDNS_WITH_REQUEST_ACCOUNTS` in
+      // `capabilities.ts`) gates the
       // demo button so users only see it where it'll do something
       // visible; this method stays callable for consumers with
       // wallet-specific flows.

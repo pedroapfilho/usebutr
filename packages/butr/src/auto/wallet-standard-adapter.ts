@@ -96,8 +96,11 @@ const pickAccountByAddress = (
  *  - `switchChain` is a no-op. Solana Wallet Standard doesn't have a
  *    standardised "switch chain" feature; the wallet's chain follows
  *    whichever feature input the caller passes.
- *  - `switchAccount` re-runs `standard:connect`, which reopens the
- *    wallet's account picker. No standardised "switch to address X".
+ *  - `switchAccount` is intentionally unimplemented. Wallet Standard
+ *    has no silent "use address X" feature — the user picks the active
+ *    account through the wallet's own UI. `signAndSendTransaction`
+ *    accepts an `account` input, so consumers needing per-tx address
+ *    selection can pick one from `accounts` at call time.
  */
 const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => {
   const solanaChainId = pickSolanaChain(wallet);
@@ -171,26 +174,25 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
       return Promise.resolve({ status: "Pending" as const });
     },
 
+    icon: wallet.icon,
     id: slugify(wallet.name),
     name: wallet.name,
 
-    async sendTx(tx) {
+    async sendTx(tx, account) {
       if (!signAndSendTx) {
         throw new Error(`Wallet ${wallet.name} does not advertise solana:signAndSendTransaction`);
       }
-      const address = pickFirstAddress(wallet.accounts);
-      if (!address) {
-        throw new Error("No connected account");
-      }
-      const account = pickAccountByAddress(wallet.accounts, address);
-      if (!account) {
+      const wsAccount = account
+        ? pickAccountByAddress(wallet.accounts, account.walletAddress)
+        : (wallet.accounts[0] ?? null);
+      if (!wsAccount) {
         throw new Error("No connected account");
       }
       if (!(tx instanceof Uint8Array)) {
         throw new TypeError("SVM sendTx expects a serialized transaction (Uint8Array)");
       }
       const [output] = await signAndSendTx.signAndSendTransaction({
-        account,
+        account: wsAccount,
         chain: solanaChainId,
         transaction: tx,
       });
@@ -200,7 +202,7 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
       return bytesToBase64(output.signature);
     },
 
-    sendTxToChain(tx, _targetChainId, cb) {
+    sendTxToChain(tx, _targetChainId, account, cb) {
       // Solana Wallet Standard's signAndSendTransaction takes the
       // target chain directly. `targetChainId` is the decimal-string
       // form butr uses, but the wallet expects a CAIP-2 chain string.
@@ -208,22 +210,20 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
       // let consumers route per-chain at a higher level if they need
       // multi-cluster support.
       cb?.();
-      return this.sendTx(tx);
+      return this.sendTx(tx, account);
     },
 
-    async signMessage(msg) {
+    async signMessage(msg, account) {
       if (!signMessage) {
         throw new Error(`Wallet ${wallet.name} does not advertise solana:signMessage`);
       }
-      const address = pickFirstAddress(wallet.accounts);
-      if (!address) {
+      const wsAccount = account
+        ? pickAccountByAddress(wallet.accounts, account.walletAddress)
+        : (wallet.accounts[0] ?? null);
+      if (!wsAccount) {
         throw new Error("No connected account");
       }
-      const account = pickAccountByAddress(wallet.accounts, address);
-      if (!account) {
-        throw new Error("No connected account");
-      }
-      const [output] = await signMessage.signMessage({ account, message: msg });
+      const [output] = await signMessage.signMessage({ account: wsAccount, message: msg });
       if (!output) {
         throw new Error("signMessage returned no outputs");
       }
@@ -252,12 +252,6 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
         });
       });
       return () => unsub();
-    },
-
-    async switchAccount(_address) {
-      // No standardised "switch to address X" feature. Re-running
-      // standard:connect prompts the wallet's account picker.
-      await connect.connect();
     },
 
     switchChain(_chain) {

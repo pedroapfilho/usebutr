@@ -10,7 +10,8 @@ config.resolver.nodeModulesPaths = [
   path.resolve(__dirname, "../..", "node_modules"),
 ];
 
-// Honor package.json#exports (needed for butr's react-native export condition)
+// butr ships ESM-only via package.json#exports — let Metro honour the
+// `default` condition instead of falling back to legacy main/module.
 config.resolver.unstable_enablePackageExports = true;
 
 module.exports = config;

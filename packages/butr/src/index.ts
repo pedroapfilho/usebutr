@@ -17,6 +17,9 @@ export type {
 } from "./types";
 export { mapConnectionError } from "./types";
 
+// Common chains registry (convenience for chain-switcher UIs)
+export { CHAINS, CHAINS_BY_PLATFORM, EVM_CHAINS, SVM_CHAINS } from "./chains";
+
 // Store
 export type { ConnectionStatus, WalletStore, WalletStoreState } from "./store";
 export { createWalletStore } from "./store";
@@ -24,6 +27,7 @@ export { createWalletStore } from "./store";
 // Storage
 export type {
   BrowserStorageDrivers,
+  CookieDriverOptions,
   MaybePromise,
   StorageDriver,
   StoredPoolEntry,
@@ -31,7 +35,12 @@ export type {
   StoredSelectionRecord,
   WalletPersistence,
 } from "./storage";
-export { createBrowserStorageDriver, createMemoryStorageDriver, WalletStorage } from "./storage";
+export {
+  createBrowserStorageDriver,
+  createCookieStorageDriver,
+  createMemoryStorageDriver,
+  WalletStorage,
+} from "./storage";
 
 // React — Provider + auto-discovery hook
 export type { AutoProviderProps, ManualProviderProps, WalletManagerProviderProps } from "./context";
@@ -57,6 +66,7 @@ export {
   useIsUserDisconnected,
   usePool,
   useRefreshWallet,
+  useRequestAccounts,
   useResetConnectionStatus,
   useResetWallet,
   useSelectedWallet,

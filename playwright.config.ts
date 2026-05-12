@@ -1,49 +1,18 @@
-import { execFileSync } from "node:child_process";
-
 import { defineConfig, devices } from "@playwright/test";
 
-/**
- * Resolve a portless dev URL, falling back to `undefined` when portless
- * isn't running (CI) or the name isn't registered yet. Local dev uses
- * `https://<name>.localhost` via portless; CI binds to `127.0.0.1:<port>`.
- */
-const getPortlessUrl = (name: string): string | undefined => {
-  if (process.env.CI) {
-    return undefined;
-  }
-  try {
-    return execFileSync("portless", ["get", name], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-  } catch {
-    return undefined;
-  }
-};
-
-// Each butr demo has a portless name (registered by its `dev`/`start`
-// script) and a CI port we'll bind to when portless isn't available.
-// Keep the two side-by-side so the mapping is obvious.
-const DEMOS = {
-  expo: { ciPort: undefined, portlessName: "demo-expo.butr" },
-  next: { ciPort: 3000, portlessName: "demo-next.butr" },
-  tanstackStart: { ciPort: 4174, portlessName: "demo-tanstack-start.butr" },
-  vite: { ciPort: 4173, portlessName: "demo-vite.butr" },
-} as const;
-
-const urlFor = (key: keyof typeof DEMOS): string | undefined => {
-  const { ciPort, portlessName } = DEMOS[key];
-  return getPortlessUrl(portlessName) ?? (ciPort ? `http://127.0.0.1:${ciPort}` : undefined);
-};
-
-// Exported so individual tests can `goto(viteUrl + '/path')` or build
-// project-specific helpers without re-deriving the URL.
-export const viteUrl = urlFor("vite") ?? "http://127.0.0.1:4173";
-export const nextUrl = urlFor("next") ?? "http://127.0.0.1:3000";
-export const tanstackStartUrl = urlFor("tanstackStart") ?? "http://127.0.0.1:4174";
-// demo-expo doesn't have a CI port wired yet (see webServer block below).
-// Use `?? undefined` so callers handle the local-only case explicitly.
-export const expoUrl = urlFor("expo");
+// Local dev binds each demo to its framework default port (see each
+// app's `dev` script). CI builds and serves on a separate set of ports
+// (`vite preview` / `next start`) so the two modes don't fight over the
+// same numbers. Exported so individual tests can `goto(viteUrl + '/path')`
+// or build project-specific helpers without re-deriving the URL.
+export const viteUrl = process.env.CI ? "http://127.0.0.1:4173" : "http://localhost:5173";
+export const nextUrl = process.env.CI ? "http://127.0.0.1:3000" : "http://localhost:3000";
+export const tanstackStartUrl = process.env.CI
+  ? "http://127.0.0.1:4174"
+  : "http://localhost:3001";
+// demo-expo doesn't have a CI server wired yet (see webServer block
+// below). `undefined` so callers handle the local-only case explicitly.
+export const expoUrl = process.env.CI ? undefined : "http://localhost:8081";
 
 export default defineConfig({
   forbidOnly: !!process.env.CI,

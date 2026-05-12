@@ -186,7 +186,7 @@ describe("buildEvmAdapter", () => {
     const switchCb = vi.fn();
 
     const adapter = buildEvmAdapter(INFO, provider);
-    const hash = await adapter.sendTxToChain({}, "137", switchCb);
+    const hash = await adapter.sendTxToChain({}, "137", undefined, switchCb);
 
     expect(switchCb).toHaveBeenCalledTimes(1);
     expect(provider.requests).toContainEqual({

@@ -28,6 +28,7 @@ type Event =
   | { error: ConnectionError; type: "CONNECT_FAILED" }
   | { connectorId: string; type: "DISCONNECTED" }
   | { account: Account; connectorId: string; type: "ACCOUNT_UPDATED" }
+  | { accounts: Array<Account>; connectorId: string; type: "ACCOUNTS_REFRESHED" }
   | { connectorId: string; type: "WALLET_REFRESHED" }
   | { connectorId: string | null; type: "ACTIVE_CHANGED" }
   | { chainPlatform: ChainPlatform; connectorId: string | null; type: "SELECTION_CHANGED" }
@@ -189,6 +190,29 @@ const reducer = (state: State, event: Event): State => {
         ...state.pool,
         [event.connectorId, { ...wallet, account: event.account, accounts }] as const,
       ]);
+      return { ...state, pool: newPool };
+    }
+
+    case "ACCOUNTS_REFRESHED": {
+      const wallet = state.pool.get(event.connectorId);
+      if (!wallet) {
+        return state;
+      }
+      // Preserve current `account` when it's still present in the new
+      // list; otherwise fall back to the first new account so the pool
+      // entry doesn't end up pointing at a revoked address.
+      const stillHasCurrent = event.accounts.some(
+        (a) =>
+          a.walletAddress === wallet.account.walletAddress &&
+          a.chain.id === wallet.account.chain.id,
+      );
+      const nextAccount = stillHasCurrent ? wallet.account : (event.accounts[0] ?? wallet.account);
+      const updated: ConnectedWallet = {
+        ...wallet,
+        account: nextAccount,
+        accounts: [...event.accounts],
+      };
+      const newPool = new Map([...state.pool, [event.connectorId, updated] as const]);
       return { ...state, pool: newPool };
     }
 

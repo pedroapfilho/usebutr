@@ -62,10 +62,24 @@ type Connector = {
    *  show many accounts at once (MetaMask with multiple imports). If
    *  omitted, butr defaults to `[await getAccount()]`. */
   getAccounts?(): Promise<Array<Account>>;
+  /** Optional. Wallet logo as a URL or data URI. Adapters built via butr's
+   *  auto-discovery (EIP-6963, Wallet Standard) populate this from the
+   *  wallet's announced metadata; hand-rolled adapters can leave it
+   *  unset and supply icons separately via `ConnectorMeta`. */
+  icon?: string;
   /** Stable key: "metamask", "phantom", etc. Pool entries are keyed by this. */
   id: string;
   /** Human name: "MetaMask", "Phantom", etc. UI-facing only. */
   name: string;
+  /** Optional. Ask the wallet to open its account-selection UI so the
+   *  user can expose additional accounts to this app. Implemented on
+   *  EIP-6963 wallets via `wallet_requestPermissions`; Wallet Standard
+   *  wallets generally leave this unset because the user enables more
+   *  accounts directly in the extension. Resolution doesn't include the
+   *  new accounts — call `getAccounts()` (or use butr's
+   *  `useRequestAccounts` hook, which refreshes the pool entry for
+   *  you). */
+  requestAccounts?(): Promise<void>;
   /** Optional. Subscribe to wallet-side events (account swap, network swap,
    *  external disconnect). butr's runtime calls this after a successful
    *  `connect()`, and uses the returned function to unsubscribe on
@@ -93,19 +107,38 @@ type Wallet = {
   getTransactionReceipt(tx: string): Promise<{
     status: "Success" | "Error" | "Pending";
   }>;
-  /** Submit a transaction on the wallet's currently-active chain. */
-  sendTx(tx: unknown): Promise<string>;
+  /** Submit a transaction on the wallet's currently-active chain.
+   *  Pass an `account` from `ConnectedWallet.accounts` to route the
+   *  transaction through a specific exposed address instead of the
+   *  wallet's currently-active one. EVM wallets honour this via
+   *  `tx.from`; Wallet Standard wallets via the feature's `account`
+   *  input. Omit for "use whichever the wallet picks." */
+  sendTx(tx: unknown, account?: Account): Promise<string>;
   /** Submit a transaction targeting a specific chain. The optional
    *  callback fires after the connector has switched chain (consumers
-   *  use this to re-enable UI). */
-  sendTxToChain(tx: unknown, targetChainId: string, cb?: () => void): Promise<string>;
+   *  use this to re-enable UI). Pass an `account` to route through a
+   *  specific exposed address (see `sendTx`). */
+  sendTxToChain(
+    tx: unknown,
+    targetChainId: string,
+    account?: Account,
+    cb?: () => void,
+  ): Promise<string>;
   /**
    * Sign a message and return both the signature and the bytes the wallet
    * actually signed. Solana Wallet Standard wallets may prefix or re-encode
    * the message internally; verifiers must check the signature against
    * `signedMessage`, not the input bytes. EVM wallets echo the input.
+   *
+   * Pass an `account` to sign with a specific exposed address. EIP-1193
+   * routes it through `personal_sign`'s address param; Wallet Standard
+   * uses the feature's `account` input. Both support per-call signing
+   * without changing the wallet's active account.
    */
-  signMessage(msg: Uint8Array): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
+  signMessage(
+    msg: Uint8Array,
+    account?: Account,
+  ): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
   /** Switch to a different account on the same wallet (some wallets
    *  expose multiple accounts simultaneously). */
   switchAccount?(address: string): Promise<void>;
@@ -154,10 +187,29 @@ type WalletManagerConfig = {
   createConnector: (id: string) => WalletAdapter | null;
   /** Called after a wallet is successfully connected */
   onConnect?: (wallet: ConnectedWallet) => void;
+  /**
+   * Called after a connection attempt fails (user rejected, wallet
+   * locked, chain mismatch, timeout, …). Receives the normalised
+   * `ConnectionError` plus the id of the connector that was being
+   * connected. Useful for piping into observability tooling
+   * (Sentry, OTel) without each consumer wiring `try/catch`s around
+   * `connectWallet` themselves.
+   */
+  onConnectError?: (error: import("./errors").ConnectionError, connectorId: string) => void;
   /** Called after a wallet is disconnected */
   onDisconnect?: (chainPlatform: ChainPlatform) => void;
   /** Called after all wallets are reset (e.g., to clear auth tokens) */
   onReset?: () => void | Promise<void>;
+  /**
+   * Called when a connect attempt takes longer than
+   * `slowConnectThresholdMs` (default 5_000) but hasn't yet resolved
+   * or rejected. Fires at most once per connect attempt. Useful for
+   * surfacing a "still trying — check your wallet" hint in the UI or
+   * piping a slow-path metric to telemetry.
+   */
+  onSlowConnect?: (connectorId: string) => void;
+  /** Threshold for `onSlowConnect`, in milliseconds. Defaults to 5_000. */
+  slowConnectThresholdMs?: number;
   /** Optional custom persistence implementation (e.g., cookie-backed) */
   storage?: WalletPersistence;
   /** Storage key prefix for localStorage */

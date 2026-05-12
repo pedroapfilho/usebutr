@@ -27,12 +27,12 @@ pnpm test:e2e                           # playwright (placeholder, no current te
 
 ### Apps
 
-| App                   | Framework                       | Dev URL                                      |
-| --------------------- | ------------------------------- | -------------------------------------------- |
-| `demo-vite`           | Vite 7 + React 19 (SPA)         | `https://demo-vite.butr.localhost`           |
-| `demo-next`           | Next.js 16 (App Router)         | `https://demo-next.butr.localhost`           |
-| `demo-tanstack-start` | TanStack Start (Vite SSR)       | `https://demo-tanstack-start.butr.localhost` |
-| `demo-expo`           | Expo (React Native, web target) | `https://demo-expo.butr.localhost`           |
+| App                   | Framework                       | Dev URL                 |
+| --------------------- | ------------------------------- | ----------------------- |
+| `demo-vite`           | Vite 7 + React 19 (SPA)         | `http://localhost:5173` |
+| `demo-next`           | Next.js 16 (App Router)         | `http://localhost:3000` |
+| `demo-tanstack-start` | TanStack Start (Vite SSR)       | `http://localhost:3001` |
+| `demo-expo`           | Expo (React Native, web target) | `http://localhost:8081` |
 
 Every demo is a single-page kitchen-sink reference that imports and uses every public `butr` export.
 
@@ -43,21 +43,6 @@ Every demo is a single-page kitchen-sink reference that imports and uses every p
 | `butr`                    | The library — multi-chain wallet management primitives for React.                                                                 |
 | `@repo/typescript-config` | Shared tsconfig bases: `base.json`, `library.json`, `nextjs.json`, `react-library.json`, `server.json`, `vite.json`, `expo.json`. |
 | `@repo/config-vitest`     | Shared Vitest config. Exports `react.ts` and `node.ts`.                                                                           |
-
-## Portless (Dev URLs)
-
-Every dev server runs behind portless, which gives each app a stable HTTPS URL on `.localhost`.
-
-### Setup (one-time per machine)
-
-```bash
-npm install -g portless
-sudo portless proxy start --https
-```
-
-### Worktrees
-
-Branch name auto-prefixes the subdomain — no port collisions between concurrent worktrees.
 
 ## Tooling
 
@@ -71,4 +56,4 @@ Branch name auto-prefixes the subdomain — no port collisions between concurren
 
 - Path aliases: `@/*` maps to `src/*` (and `app/*` for TanStack Start) in apps.
 - Demo apps depend on `butr` via `"butr": "workspace:*"` and on `@repo/typescript-config` via the same.
-- All web demos run behind portless; demo-expo's native target uses Metro/Expo Go (no portless).
+- Each web demo binds a distinct localhost port so all four can run concurrently. `demo-expo`'s native target uses Metro/Expo Go on its own transport.

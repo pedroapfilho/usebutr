@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { WalletProvider } from "../wallet-provider";
+import "./globals.css";
 
 export const metadata = {
   title: "butr · Next.js",
@@ -7,7 +8,7 @@ export const metadata = {
 
 const RootLayout = ({ children }: { children: ReactNode }) => (
   <html lang="en">
-    <body style={{ margin: 0 }}>
+    <body>
       <WalletProvider>{children}</WalletProvider>
     </body>
   </html>

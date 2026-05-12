@@ -1,5 +1,4 @@
 import { createStore } from "zustand/vanilla";
-import { devtools } from "zustand/middleware";
 import type {
   Account,
   ChainPlatform,
@@ -11,10 +10,11 @@ import type { ConnectionError } from "../types/errors";
 import { mapConnectionError } from "../types/errors";
 import { WalletStorage } from "../storage";
 import type { WalletPersistence } from "../storage";
-import { hydrateFromStorage, isProduction, logStorageError, run } from "./wallet-store-helpers";
+import { hydrateFromStorage, logStorageError, run } from "./wallet-store-helpers";
 import { type Event, type State, initialState, reducer } from "./reducer";
 
 const CONNECT_TIMEOUT_MS = 90_000;
+const DEFAULT_SLOW_CONNECT_THRESHOLD_MS = 5_000;
 
 type ExtractState<S> = S extends { getState: () => infer T } ? T : never;
 
@@ -31,6 +31,7 @@ type RuntimeMembers = {
   disconnectWallet: (connectorId: string) => void;
   getConnectorInstance: (id: string) => ReturnType<WalletManagerConfig["createConnector"]>;
   refreshWallet: (connectorId: string) => void;
+  requestAccounts: (connectorId: string) => Promise<void>;
   reset: () => void;
   resetConnectionStatus: () => void;
   setActiveConnector: (connectorId: string | null) => void;
@@ -52,9 +53,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
   // not data anyone should subscribe to.
   const unsubscribers = new Map<string, () => void>();
 
-  return createStore<State & RuntimeMembers>()(
-    devtools(
-      (set, get) => {
+  return createStore<State & RuntimeMembers>()((set, get) => {
         const dispatch = (event: Event) => {
           set((prev) => reducer(prev, event), false);
         };
@@ -194,6 +193,20 @@ const createWalletStore = (config: WalletManagerConfig) => {
 
             dispatch({ connectorId, type: "CONNECT_STARTED" });
 
+            // Slow-connect telemetry. Fires once if the wallet doesn't
+            // resolve within the configured threshold. Cleared in finally.
+            const slowThreshold =
+              config.slowConnectThresholdMs ?? DEFAULT_SLOW_CONNECT_THRESHOLD_MS;
+            const slowTimer = config.onSlowConnect
+              ? setTimeout(() => {
+                  try {
+                    config.onSlowConnect?.(connectorId);
+                  } catch (cbError: unknown) {
+                    console.warn("[butr] onSlowConnect threw:", cbError);
+                  }
+                }, slowThreshold)
+              : null;
+
             try {
               const connectPromise = connector.connect();
               // oxlint-disable-next-line promise/prefer-await-to-then -- suppress unhandled rejection; we await via Promise.race below
@@ -231,14 +244,24 @@ const createWalletStore = (config: WalletManagerConfig) => {
               config.onConnect?.(entry);
               onSuccess?.(entry);
             } catch (error) {
-              dispatch({ error: mapConnectionError(error), type: "CONNECT_FAILED" });
+              const normalised = mapConnectionError(error);
+              dispatch({ error: normalised, type: "CONNECT_FAILED" });
               try {
                 await connector.disconnect?.();
               } catch (disconnectError: unknown) {
                 console.warn("[butr] disconnect during error recovery failed:", disconnectError);
               }
+              try {
+                config.onConnectError?.(normalised, connectorId);
+              } catch (cbError: unknown) {
+                console.warn("[butr] onConnectError threw:", cbError);
+              }
               onError?.(error as Error);
               throw error;
+            } finally {
+              if (slowTimer) {
+                clearTimeout(slowTimer);
+              }
             }
           },
 
@@ -276,6 +299,27 @@ const createWalletStore = (config: WalletManagerConfig) => {
 
           refreshWallet: (connectorId) => {
             dispatch({ connectorId, type: "WALLET_REFRESHED" });
+          },
+
+          requestAccounts: async (connectorId) => {
+            const entry = get().pool.get(connectorId);
+            if (!entry) {
+              return;
+            }
+            // Ask the wallet to open its picker (if supported). EVM
+            // wallets honour this via `wallet_requestPermissions`;
+            // Wallet Standard wallets typically have no equivalent
+            // RPC, so the call resolves immediately and the refresh
+            // below simply re-reads the current list.
+            await entry.connector.requestAccounts?.();
+            const fresh = entry.connector.getAccounts
+              ? await entry.connector.getAccounts().catch(() => null)
+              : null;
+            if (!fresh || fresh.length === 0) {
+              return;
+            }
+            dispatch({ accounts: fresh, connectorId, type: "ACCOUNTS_REFRESHED" });
+            persistPool();
           },
 
           reset: () => {
@@ -325,10 +369,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
             persistPool();
           },
         };
-      },
-      { enabled: !isProduction(), name: "butr-wallet" },
-    ),
-  );
+      });
 };
 
 export type { WalletStore, WalletStoreState };

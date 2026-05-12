@@ -50,15 +50,6 @@ const run = async (fn: () => Promise<void>, onError: (e: unknown) => void): Prom
   }
 };
 
-const isProduction = (): boolean => {
-  try {
-    const proc = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process;
-    return proc?.env?.NODE_ENV === "production";
-  } catch {
-    return false;
-  }
-};
-
 type RestoreOutcome =
   | { connectorId: string; entry: ConnectedWallet; kind: "ok" }
   | { connectorId: string; error: unknown; kind: "fail" };
@@ -170,7 +161,7 @@ const hydrateFromStorage = async (
   };
 };
 
-export { hydrateFromStorage, isProduction, logStorageError, run };
+export { hydrateFromStorage, logStorageError, run };
 // `hydrateFromStorage` is consumed by the runtime in wallet-store.ts.
 // `isProduction`, `logStorageError`, `run` are internal infra utilities
 // shared between hydrate + runtime; they're not in butr's public API

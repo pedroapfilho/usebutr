@@ -73,9 +73,12 @@ const buildEvmAccount = (address: string, chain: ChainBase): Account => ({
  *    implement that method and silently ignore the call. The reducer
  *    will still mark the wallet as disconnected on butr's side; the
  *    wallet's own auto-reconnect heuristic may or may not honour it.
- *  - `switchAccount` calls `wallet_requestPermissions` because EIP-1193
- *    has no standardised "switch to address X" RPC. The user picks
- *    which account to expose; butr can't force a specific one.
+ *  - `switchAccount` is intentionally unimplemented because EIP-1193 has
+ *    no silent "use address X" RPC. The active account is whichever one
+ *    the wallet exposes first; the user changes it through the wallet's
+ *    own UI. butr's `subscribe` bridge auto-updates the pool entry when
+ *    `accountsChanged` fires. Call `requestAccounts` if you want the
+ *    wallet to expose more accounts.
  *  - `getBalance` returns the native ETH balance with symbol `"ETH"`,
  *    regardless of which EVM chain the wallet is currently on. Consumers
  *    that target multiple EVM chains should overlay the symbol via
@@ -163,18 +166,32 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       return { status: receipt.status === "0x1" ? "Success" : "Error" };
     },
 
+    icon: info.icon,
     id: info.rdns,
     name: info.name,
 
-    async sendTx(tx) {
+    async requestAccounts() {
+      // Reopens the wallet's account-picker UI; the user chooses which
+      // additional accounts to expose. After the user dismisses the modal,
+      // `getAccounts()` returns the newly-extended list.
+      await provider.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }],
+      });
+    },
+
+    async sendTx(tx, account) {
+      const txWithFrom = account
+        ? { ...(tx as Record<string, unknown>), from: account.walletAddress }
+        : tx;
       const hash = (await provider.request({
         method: "eth_sendTransaction",
-        params: [tx],
+        params: [txWithFrom],
       })) as string;
       return hash;
     },
 
-    async sendTxToChain(tx, targetChainIdDecimal, cb) {
+    async sendTxToChain(tx, targetChainIdDecimal, account, cb) {
       const current = (await provider.request({ method: "eth_chainId" })) as string;
       const targetHex = chainIdDecimalToHex(targetChainIdDecimal);
       if (current.toLowerCase() !== targetHex.toLowerCase()) {
@@ -184,22 +201,32 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         });
         cb?.();
       }
+      const txWithFrom = account
+        ? { ...(tx as Record<string, unknown>), from: account.walletAddress }
+        : tx;
       const hash = (await provider.request({
         method: "eth_sendTransaction",
-        params: [tx],
+        params: [txWithFrom],
       })) as string;
       return hash;
     },
 
-    async signMessage(msg) {
-      const accounts = (await provider.request({ method: "eth_accounts" })) as Array<string>;
-      const first = accounts[0];
-      if (!first) {
+    async signMessage(msg, account) {
+      // Default to the first exposed account when the caller doesn't
+      // specify one. MetaMask requires the address to be one currently
+      // exposed via `eth_requestAccounts`; pass any address from
+      // `ConnectedWallet.accounts` to sign with a non-active one.
+      let signer = account?.walletAddress;
+      if (!signer) {
+        const accounts = (await provider.request({ method: "eth_accounts" })) as Array<string>;
+        signer = accounts[0];
+      }
+      if (!signer) {
         throw new Error("No connected account");
       }
       const signatureHex = (await provider.request({
         method: "personal_sign",
-        params: [bytesToHex(msg), first],
+        params: [bytesToHex(msg), signer],
       })) as string;
       return { signature: hexToBytes(signatureHex), signedMessage: msg };
     },
@@ -264,16 +291,6 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         provider.removeListener("chainChanged", onChainChanged);
         provider.removeListener("disconnect", onDisconnect);
       };
-    },
-
-    async switchAccount() {
-      // No standardised "switch to address X" RPC. Asking for
-      // permissions reopens the wallet's account-picker UI; the user
-      // chooses what to expose.
-      await provider.request({
-        method: "wallet_requestPermissions",
-        params: [{ eth_accounts: {} }],
-      });
     },
 
     async switchChain(chain) {

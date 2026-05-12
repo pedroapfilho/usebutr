@@ -20,6 +20,36 @@ Every wallet library that exists today is opinionated about one of three things:
 
 It exists because we had three internal apps each maintaining their own version of the same Zustand store, and the abstraction kept getting copied wrong. Now there's one.
 
+## Mental model
+
+butr keeps three orthogonal slices of state. Most wallet libraries collapse them; butr keeps them separate because they answer different questions and change at different rates.
+
+```
+┌─ pool ─────────────────────────────────────────────────────────┐
+│  every connected wallet, keyed by connectorId                  │
+│                                                                │
+│    io.metamask              →  MetaMask    @ 0x53d1…           │
+│    io.rabby                 →  Rabby       @ 0x12ab…           │
+│    wallet-standard:phantom  →  Phantom     @ AbCd…             │
+└────────────────────────────────────────────────────────────────┘
+                │                                  │
+                ▼                                  ▼
+   ┌─ selection ─────────────┐      ┌─ active ───────────────────┐
+   │  per chain family       │      │  global UX cursor          │
+   │                         │      │                            │
+   │   "evm" → io.rabby      │      │    io.metamask             │
+   │   "svm" → wallet-…      │      │                            │
+   └─────────────────────────┘      └────────────────────────────┘
+       "which wallet to use            "which wallet is in
+        for an EVM / SVM op"            focus right now"
+```
+
+- **pool** answers _"who's connected?"_ It's a Map of every authorised wallet. Multiple wallets on the same chain (MetaMask + Rabby) coexist.
+- **selection** answers _"if I'm about to send an EVM tx, which wallet routes it?"_ One entry per chain family. Changing the active wallet doesn't shuffle this.
+- **active** answers _"which wallet does the user have in focus right now?"_ A single cursor for UX, independent of routing.
+
+Within a single wallet, the `ConnectedWallet` carries an `accounts: Array<Account>` (every exposed address) and an `account: Account` (the wallet's currently-active one). Signing methods accept an optional `account` parameter for per-call routing without changing the wallet's active address — see [Per-call account routing](#per-call-account-routing) below.
+
 ## Quick start
 
 ```tsx
@@ -125,7 +155,33 @@ Without this bridge, every consumer has to wire `window.ethereum.on('accountsCha
 
 ### Multi-account per wallet
 
-Each `ConnectedWallet` now carries `accounts: Array<Account>` alongside the active `account`. Populated from `Connector.getAccounts?()` if implemented; otherwise `[account]`. Surface via `useAccounts(connectorId?)` (defaults to the active wallet). Wallet-side `accountChanged` events auto-extend the list when the new address is one we haven't seen before.
+Each `ConnectedWallet` carries `accounts: Array<Account>` alongside the active `account`. Populated from `Connector.getAccounts?()` if implemented; otherwise `[account]`. Surface via `useAccounts(connectorId?)` (defaults to the active wallet). Wallet-side `accountChanged` events auto-extend the list when the new address is one we haven't seen before.
+
+Two related capabilities widen and refresh this list:
+
+- **`Connector.requestAccounts?()`** — ask the wallet to open its account-selection UI. EIP-6963 wallets implement this via `wallet_requestPermissions`; Wallet Standard wallets typically leave it unset (the user enables more accounts directly in the extension).
+- **`useRequestAccounts()`** — the React-side wrapper. Calls the connector's `requestAccounts`, then re-reads `getAccounts()` and updates the pool entry's `accounts` array. UI should hide the trigger when `connector.requestAccounts` is undefined.
+
+### Per-call account routing
+
+Switching _the wallet's_ active account is sovereign to the wallet UI — neither EIP-1193 nor Wallet Standard exposes a silent "use address X" RPC. But _per-call_ signing with a specific exposed address is possible, and butr threads it through:
+
+```ts
+// Default behaviour — signs with the wallet's currently-active account
+await wallet.connector.signMessage(bytes);
+
+// Sign with a specific exposed account, without changing the wallet's
+// active address. Pick from wallet.accounts.
+await wallet.connector.signMessage(bytes, wallet.accounts[1]);
+
+// Same for transactions
+await wallet.connector.sendTx(tx, wallet.accounts[1]);
+await wallet.connector.sendTxToChain(tx, chainId, wallet.accounts[1]);
+```
+
+Under the hood: EIP-1193 routes through `personal_sign`'s address slot or `tx.from`; Wallet Standard routes through the feature input's `account`. Both work without prompting to switch the wallet's active account.
+
+EVM caveat: `eth_sendTransaction` with a non-active `from` may still prompt some MetaMask versions to switch (`personal_sign` doesn't). Per-call signing is the more reliable path for verifying address routing in real wallets.
 
 ### `ConnectorMeta` extras
 
@@ -147,7 +203,45 @@ CAIP-2 shaped: `{ id, namespace, reference, name }`. Consumers extend it structu
 
 ### `WalletPersistence`
 
-Pluggable storage. Default `WalletStorage` uses two `StorageDriver`s: `persistent` (survives reloads) and `session` (cleared on tab close). Built-in factories: `createBrowserStorageDriver` (localStorage + sessionStorage) and `createMemoryStorageDriver` (SSR/RN/tests). Bring your own driver — anything that implements `getItem`/`setItem`/`removeItem` works.
+Pluggable storage. Default `WalletStorage` uses two `StorageDriver`s: `persistent` (survives reloads) and `session` (cleared on tab close). Built-in factories:
+
+- `createBrowserStorageDriver()` — localStorage + sessionStorage. Default for web demos.
+- `createMemoryStorageDriver()` — in-memory map. Default for SSR / React Native / tests.
+- `createCookieStorageDriver(options?)` — `document.cookie` reader/writer. Server-readable, so SSR apps can prime the connected-wallet UI from the request without hydration flicker. Configure `domain` / `maxAgeSeconds` / `sameSite` / `secure` per app.
+
+Bring your own driver — anything that implements `getItem`/`setItem`/`removeItem` works.
+
+### Observability
+
+`WalletManagerConfig` accepts two optional callbacks for piping connection telemetry into Sentry/OTel without each consumer wrapping `connectWallet` themselves:
+
+- `onConnectError(error: ConnectionError, connectorId: string)` — fires after a failed connect attempt. Receives the normalised `ConnectionError`.
+- `onSlowConnect(connectorId: string)` — fires when a connect hasn't resolved within `slowConnectThresholdMs` (default 5 000 ms). Useful for showing a "still trying — check your wallet" hint.
+
+```tsx
+<WalletManagerProvider
+  auto
+  onConnectError={(error, connectorId) => Sentry.captureMessage(`butr.connect.failed`, { extra: { error, connectorId } })}
+  onSlowConnect={(connectorId) => console.warn("slow connect:", connectorId)}
+  slowConnectThresholdMs={3_000}
+>
+```
+
+### Chain switching
+
+Each adapter implements `Connector.switchChain(chain: ChainBase)`. butr ships a small registry of common chains so consumers don't have to hand-roll the CAIP-2 tuples:
+
+```tsx
+import { CHAINS_BY_PLATFORM } from "butr";
+
+CHAINS_BY_PLATFORM[wallet.connector.chainPlatform].map((chain) => (
+  <button key={chain.id} onClick={() => wallet.connector.switchChain(chain)}>
+    {chain.name}
+  </button>
+));
+```
+
+EVM coverage: Ethereum, Sepolia, Polygon, Arbitrum, Optimism, Base, BNB Smart Chain. SVM coverage: Solana Mainnet, Devnet. Granular chains live as named exports (`EVM_CHAINS.base`, etc.) so consumers can construct their own subsets.
 
 ### `ConnectionError`
 
@@ -237,10 +331,10 @@ if (status === "success" && signer) {
 | `useSetSelection`          | `(platform: ChainPlatform, connectorId: string \| null) => void` — change per-platform routing       |
 | `useUpdateWalletAccount`   | `(connectorId: string, account: Account) => void`                                                    |
 | `useRefreshWallet`         | `(connectorId: string) => void` (re-emits the wallet entry without changing the account)             |
+| `useRequestAccounts`       | `(connectorId: string) => Promise<void>` — opens the wallet's picker, refreshes `accounts` array     |
 | `useResetWallet`           | clears all wallets, fires `onReset`                                                                  |
-| `useSetConnectionStatus`   | `(status, connectorId?) => void`                                                                     |
 | `useResetConnectionStatus` | `() => void`                                                                                         |
-| `useSetConnectionError`    | `(error: string \| null) => void`                                                                    |
+| `useSetConnectionError`    | `(error: ConnectionError \| null) => void`                                                           |
 
 ### Direct store access
 
@@ -339,12 +433,12 @@ Stable across page loads. Callbacks (`onConnect`, `onDisconnect`, `onReset`) and
 
 ### What's covered
 
-| Surface               | Discovery               | Adapter                                    | Status                  |
-| --------------------- | ----------------------- | ------------------------------------------ | ----------------------- |
-| EVM (EIP-6963)        | EIP-6963 announcements  | EIP-1193 → `WalletAdapter`                 | Implemented             |
-| SVM (Wallet Standard) | `getWallets()` registry | Wallet Standard features → `WalletAdapter` | Implemented (mock-only) |
+| Surface               | Discovery               | Adapter                                    | Status      |
+| --------------------- | ----------------------- | ------------------------------------------ | ----------- |
+| EVM (EIP-6963)        | EIP-6963 announcements  | EIP-1193 → `WalletAdapter`                 | Implemented |
+| SVM (Wallet Standard) | `getWallets()` registry | Wallet Standard features → `WalletAdapter` | Implemented |
 
-Both paths are mock-tested. Real wallets (Phantom, Solflare, Backpack on SVM; MetaMask, Rabby, Coinbase on EVM) are likely to need small adapter tweaks once they're actually wired against — see the caveat sections below for what specifically.
+End-to-end tested against MetaMask (EIP-6963) and Phantom (Wallet Standard) in the kitchen-sink demos.
 
 ### Capability caveats for SVM auto-adapters
 
@@ -353,7 +447,7 @@ The Wallet Standard exposes wallet features but no RPC connection. Adapters gene
 - `getBalance()` returns `{ value: 0n, formatted: "0", … }`. Real balances need an RPC client; wrap your own.
 - `getTransactionReceipt()` always returns `{ status: "Pending" }`. Same reason — needs an RPC.
 - `switchChain()` is a no-op. The Wallet Standard has no `switchChain` feature; chains are passed per-call to `signAndSendTransaction`.
-- `switchAccount()` re-runs `standard:connect`, which reopens the wallet's account picker.
+- `switchAccount()` is intentionally unimplemented. Wallet Standard has no silent "use address X" feature; users switch the active account in the wallet's own UI, and butr's `subscribe` bridge picks the change up. For per-tx routing use `signMessage(msg, account)` / `sendTx(tx, account)` instead.
 - `sendTx()` requires the wallet to advertise `solana:signAndSendTransaction`. Without it, the call rejects with a clear message.
 - `signMessage()` requires the wallet to advertise `solana:signMessage`. Without it, the call rejects with a clear message.
 
@@ -362,7 +456,7 @@ The Wallet Standard exposes wallet features but no RPC connection. Adapters gene
 The EIP-1193 → `WalletAdapter` conversion lives in [`buildEvmAdapter`](src/auto/eip6963-adapter.ts). A few things behave differently from a hand-written adapter:
 
 - `disconnect()` calls `wallet_revokePermissions`. Many wallets don't implement it and silently ignore the call — butr's reducer still marks the wallet as disconnected on its side.
-- `switchAccount()` calls `wallet_requestPermissions` (no standardised "switch to address X" RPC exists). The wallet reopens its account picker; the user chooses.
+- `switchAccount()` is intentionally unimplemented. EIP-1193 has no silent "use address X" RPC. The user changes the active account in the wallet's own UI (MetaMask account picker); butr's `accountsChanged` subscription auto-updates the pool entry. Use `requestAccounts()` to widen which accounts the wallet exposes, and `signMessage(msg, account)` for per-call routing.
 - `getBalance()` reports native ETH with `symbol: "ETH"` regardless of which EVM chain is active. Consumers targeting multiple chains overlay the symbol themselves.
 - `getSigner()` returns the raw EIP-1193 provider. Wrap with `viem.createWalletClient` / `ethers.BrowserProvider` at the call site.
 
@@ -442,7 +536,43 @@ This monorepo ships four working demo apps that exercise every public export of 
 - `apps/demo-tanstack-start` — TanStack Start (Vite SSR)
 - `apps/demo-expo` — Expo / React Native (web target)
 
-`pnpm dev --filter=demo-vite` (etc.) to run any of them. Source under `apps/demo-*/src/sections/` shows the conventional usage of each hook.
+`pnpm dev --filter=demo-vite` (etc.) to run any of them. Each demo is a single page exercising the multi-wallet pool, account discovery, per-address signing, and the auto-discovery flow.
+
+## Roadmap
+
+Where butr is heading next. Not promises — guideposts.
+
+### Near-term
+
+- **First npm publish.** butr is currently workspace-only. `npm pack --dry-run` runs clean (~73 kB compressed, 111 files). Cut a 0.x release once an external consumer has exercised the full surface.
+- **Per-tx account routing in the demos.** `signMessage(msg, account)` ships with a per-row Sign button. `sendTx(tx, account)` needs equivalent UI to verify the `from`-address flow against real wallets — deferred because broadcasting requires a chain-specific tx builder.
+
+### Medium-term
+
+- **Optional RPC helpers.** butr's auto-built Solana adapter returns `getBalance: 0` and `getTransactionReceipt: Pending` because Wallet Standard has no RPC. A `butr/svm-rpc` sub-path (optional peer on `@solana/web3.js`) would close the gap without baking RPC into the core.
+- **NativeWind v5 in `demo-expo`.** Currently uses React Native `StyleSheet` with Tailwind-shaped design tokens because NativeWind v5 (Tailwind v4 port) is in preview and breaks against `react-native-web@0.21`. Revisit when it ships GA.
+- **Expanded Playwright coverage.** A smoke spec ships at `tests/e2e/demo-vite/smoke.spec.ts`. Next: wallet-extensions-backed tests using the `wallet-extensions` registry so CI exercises real EIP-6963 discovery against bundled MetaMask / Rabby tarballs.
+
+### Longer-term
+
+- **WalletConnect bridge.** Real native-mobile wallet connection needs WalletConnect's relay. A `butr/walletconnect` adapter would unlock the Expo native target.
+- **Account abstraction (ERC-4337) signers.** Smart-account wallets expose the same shape as EOAs but with extra capabilities (paymasters, session keys). butr's `WalletAdapter` can hold them as an optional capability extension without bloating the core surface.
+
+### Recently shipped (this iteration)
+
+- **Cookie storage driver** — `createCookieStorageDriver(options?)`.
+- **Observability hooks** — `WalletManagerConfig.onConnectError`, `WalletManagerConfig.onSlowConnect`, `slowConnectThresholdMs`.
+- **Common chains registry** — `CHAINS`, `CHAINS_BY_PLATFORM`, `EVM_CHAINS`, `SVM_CHAINS`.
+- **Chain-switcher UI** — each connected-wallet card in the demos exposes per-platform chain switching via `Connector.switchChain`.
+- **Wallet-brand grouping** — the discovered picker renders one row per wallet brand with per-platform chips (so Phantom doesn't show up twice).
+- **First Playwright spec** — `tests/e2e/demo-vite/smoke.spec.ts` covers the empty-state render + install-link integrity.
+
+### Won't ship
+
+- **Bundled connectors.** "Bring your own" is load-bearing for the headless pitch. Auto-discovery via EIP-6963 / Wallet Standard is the closest butr gets to ergonomic out-of-box behaviour.
+- **A modal.** RainbowKit / AppKit / ConnectKit own this space. butr is the layer below.
+- **Auth.** Privy / Dynamic / Magic own this space. butr is the layer below.
+- **Multi-tenant wallet state.** One provider, one store. Apps with multiple sections that each want their own pool can mount multiple providers themselves.
 
 ## License
 

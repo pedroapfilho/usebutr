@@ -485,9 +485,59 @@ The Wallet Standard exposes wallet features but no RPC connection. Adapters gene
 The EIP-1193 → `WalletAdapter` conversion lives in [`buildEvmAdapter`](src/auto/eip6963-adapter.ts). A few things behave differently from a hand-written adapter:
 
 - `disconnect()` calls `wallet_revokePermissions`. Many wallets don't implement it and silently ignore the call — butr's reducer still marks the wallet as disconnected on its side.
-- `switchAccount()` is intentionally unimplemented. EIP-1193 has no silent "use address X" RPC. The user changes the active account in the wallet's own UI (MetaMask account picker); butr's `accountsChanged` subscription auto-updates the pool entry. Use `requestAccounts()` to widen which accounts the wallet exposes, and `signMessage(msg, account)` for per-call routing.
+- `switchAccount()` is intentionally unimplemented. EIP-1193 has no silent "use address X" RPC. The user changes the active account in the wallet's own UI; butr's `accountsChanged` subscription auto-updates the pool entry. Use `signMessage(msg, account)` for per-call routing.
+- `requestAccounts()` is the method consumers call to ask a wallet to expose more accounts. In practice, **MetaMask is the only EVM wallet** whose `wallet_requestPermissions` actually reopens an account picker. See [Verified wallet behaviour](#verified-wallet-behaviour) below — the `capabilities.requestAccounts` flag is `false` for every other EVM wallet to avoid rendering a button that does nothing visible.
 - `getBalance()` reports native ETH with `symbol: "ETH"` regardless of which EVM chain is active. Consumers targeting multiple chains overlay the symbol themselves.
 - `getSigner()` returns the raw EIP-1193 provider. Wrap with `viem.createWalletClient` / `ethers.BrowserProvider` at the call site.
+
+### Verified wallet behaviour
+
+Wallet implementations of EIP-1193 / EIP-2255 / Wallet Standard diverge in practice. This is the matrix we've verified — `capabilities` flags on the auto-built adapters mirror this knowledge so consumers don't render UI for affordances that wouldn't do anything.
+
+**EVM wallets (EIP-6963 discovery)**
+
+| Wallet | `rdns` | `requestAccounts` reopens picker? | Notes |
+|---|---|---|---|
+| **MetaMask** | `io.metamask` | ✅ yes (verified May 2026) | The only EVM wallet whose `wallet_requestPermissions` surfaces a picker UI. `capabilities.requestAccounts: true`. |
+| **Rabby** | `io.rabby` | ❌ silently returns existing accounts | Capability flag is `false`; button hidden. |
+| **Brave Wallet** | `com.brave.wallet` | ⚠️ unverified — assume no | Add to allow-list if confirmed. |
+| **OKX Wallet** | `com.okex.wallet` | ❌ silently returns existing accounts | Capability flag is `false`. |
+| **Binance Wallet** | `com.binance.wallet` | ❌ silently returns existing accounts | Capability flag is `false`. |
+| **Backpack** (EVM) | `com.backpack` | ❌ silently returns existing accounts | Capability flag is `false`. |
+| **Phantom** (EVM) | `app.phantom` | ❌ rejects EIP-2255 (`-32601`) | Capability flag is `false`. Falls through to `eth_requestAccounts`. |
+| **Coinbase Wallet** | `com.coinbase.wallet` | ❌ rejects (`-32603` wrapping `-32604`) | Capability flag is `false`. Falls through to `eth_requestAccounts`. |
+
+The allow-list lives in [`src/auto/eip6963-adapter.ts`](src/auto/eip6963-adapter.ts) as `RDNS_WITH_REQUEST_ACCOUNTS`. To verify a new wallet:
+
+1. Install the extension, connect to the demo.
+2. Click "Request more accounts" on its connected card.
+3. If a fresh account-picker modal opens and lets you grant new accounts → add the `rdns` to the set.
+4. If nothing visible happens, the wallet falls in the silent-return bucket — leave it out.
+
+**Solana wallets (Wallet Standard discovery)**
+
+| Wallet | Wallet Standard ID | `requestAccounts` | `signMessage` | Notes |
+|---|---|---|---|---|
+| **Phantom** | `wallet-standard:phantom` | ❌ no protocol equivalent | ✅ | Single-account exposure (only the active address is in `accounts`). |
+| **Solflare** | `wallet-standard:solflare-wallet` | ❌ | ✅ | `change` event firing was inconsistent in older builds. |
+| **Backpack** | `wallet-standard:backpack` | ❌ | ✅ | xNFT context shares the same surface. |
+| **MetaMask Snap** (Solana) | `wallet-standard:metamask` | ❌ | ✅ | Single-account architecture (one snap account per MetaMask). No devnet/testnet. |
+| **OKX** | `wallet-standard:okx-wallet` | ❌ | ✅ | |
+| **Binance** | `wallet-standard:binance-wallet` | ❌ | ✅ | |
+| **Jupiter** | `wallet-standard:jupiter` | ❌ | ✅ | |
+
+**`capabilities.requestAccounts` is `false` for every Wallet Standard wallet** — the protocol has no equivalent of EIP-2255. Wallets expose all the user's accounts at `standard:connect` time; adding more is a wallet-UI action. The flag is gated at the SVM adapter level, not per-wallet.
+
+`capabilities.signMessage` / `capabilities.sendTransaction` derive at runtime from whether the wallet advertises `solana:signMessage` / `solana:signAndSendTransaction`. All major wallets above advertise both.
+
+### Single-account vs multi-account exposure
+
+A wallet's *exposure model* determines what `accounts` looks like in the pool entry:
+
+- **Multi-account exposure** (MetaMask EVM, Rabby, Brave, Coinbase Wallet): the wallet keeps multiple accounts authorized for the dapp simultaneously. `accounts` contains every authorized address; `personal_sign(msg, addressX)` works for any of them.
+- **Single-account exposure** (Phantom EVM, Phantom Solana, MetaMask Snap, every other tested Wallet Standard wallet): the wallet exposes only the currently-active address. Switching accounts in the wallet UI fires `accountsChanged` with the new (single) address; the pool entry mirrors that. Signing with a previously-exposed address rejects.
+
+butr handles both uniformly — the `accountChanged` event carries the full `accounts` list, the reducer mirrors it verbatim, and consumers don't have to know which model a given wallet uses. The exposure model just affects how many Sign buttons render on the card.
 
 ### Lower-level building blocks (`butr/auto`)
 

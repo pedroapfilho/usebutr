@@ -29,6 +29,7 @@
     "prepack": "pnpm run build",
     "prepare": "pnpm run build",
     "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -42,6 +43,7 @@
     "zustand": ">=4.0.0"
   },
   "devDependencies": {
+    "@repo/config-vitest": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/react": "^19.0.0",
     "react": "^19.2.6",

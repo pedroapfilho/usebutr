@@ -56,3 +56,6 @@ pnpm-debug.log*
 test-results/
 playwright-report/
 playwright/.cache/
+
+# vitest coverage
+coverage/

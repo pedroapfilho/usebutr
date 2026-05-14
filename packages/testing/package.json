@@ -28,13 +28,17 @@
     "lint": "oxlint src",
     "prepack": "pnpm run build",
     "prepare": "pnpm run build",
+    "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@butr/core": "workspace:*"
   },
   "devDependencies": {
+    "@repo/config-vitest": "workspace:*",
     "@repo/typescript-config": "workspace:*",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
   }
 }

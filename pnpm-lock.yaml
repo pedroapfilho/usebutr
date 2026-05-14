@@ -280,61 +280,6 @@ importers:
         specifier: ^8.0.12
         version: 8.0.12(@types/node@25.6.2)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.9.0)
 
-  packages/butr:
-    dependencies:
-      '@butr/core':
-        specifier: workspace:*
-        version: link:../core
-      '@butr/evm':
-        specifier: workspace:*
-        version: link:../evm
-      '@butr/ledger':
-        specifier: workspace:*
-        version: link:../ledger
-      '@butr/react':
-        specifier: workspace:*
-        version: link:../react
-      '@butr/svm':
-        specifier: workspace:*
-        version: link:../svm
-      '@butr/walletconnect':
-        specifier: workspace:*
-        version: link:../walletconnect
-      '@butr/wallets':
-        specifier: workspace:*
-        version: link:../wallets
-    devDependencies:
-      '@ledgerhq/hw-app-eth':
-        specifier: ^7.8.2
-        version: 7.8.2(react@19.2.6)
-      '@ledgerhq/hw-transport-webusb':
-        specifier: ^6.34.2
-        version: 6.34.2
-      '@repo/typescript-config':
-        specifier: workspace:*
-        version: link:../config-typescript
-      '@types/react':
-        specifier: ^19.0.0
-        version: 19.2.14
-      '@wallet-standard/app':
-        specifier: ^1.1.0
-        version: 1.1.0
-      '@walletconnect/universal-provider':
-        specifier: ^2.23.9
-        version: 2.23.9(db0@0.3.4)(typescript@6.0.3)(zod@4.4.3)
-      react:
-        specifier: ^19.2.6
-        version: 19.2.6
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vitest:
-        specifier: ^4.1.6
-        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.6.2)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(msw@2.14.1(@types/node@25.6.2)(typescript@6.0.3))(vite@8.0.12(@types/node@25.6.2)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.9.0))
-      zustand:
-        specifier: ^5.0.0
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
-
   packages/config-typescript:
     dependencies:
       expo:
@@ -405,7 +350,7 @@ importers:
     devDependencies:
       '@ledgerhq/hw-app-eth':
         specifier: ^7.8.2
-        version: 7.8.2
+        version: 7.8.2(react@19.0.0)
       '@ledgerhq/hw-transport-webusb':
         specifier: ^6.34.2
         version: 6.34.2
@@ -8233,28 +8178,10 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@ledgerhq/client-ids@0.8.3':
-    dependencies:
-      '@ledgerhq/live-env': 2.33.0
-      '@reduxjs/toolkit': 2.11.2
-      uuid: 9.0.1
-    transitivePeerDependencies:
-      - react
-      - react-redux
-
   '@ledgerhq/client-ids@0.8.3(react@19.0.0)':
     dependencies:
       '@ledgerhq/live-env': 2.33.0
       '@reduxjs/toolkit': 2.11.2(react@19.0.0)
-      uuid: 9.0.1
-    transitivePeerDependencies:
-      - react
-      - react-redux
-
-  '@ledgerhq/client-ids@0.8.3(react@19.2.6)':
-    dependencies:
-      '@ledgerhq/live-env': 2.33.0
-      '@reduxjs/toolkit': 2.11.2(react@19.2.6)
       uuid: 9.0.1
     transitivePeerDependencies:
       - react
@@ -8292,7 +8219,7 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  '@ledgerhq/hw-app-eth@7.8.2':
+  '@ledgerhq/hw-app-eth@7.8.2(react@19.0.0)':
     dependencies:
       '@ethersproject/abi': 5.8.0
       '@ethersproject/rlp': 5.8.0
@@ -8303,27 +8230,7 @@ snapshots:
       '@ledgerhq/hw-transport': 6.35.2
       '@ledgerhq/hw-transport-mocker': 6.34.2
       '@ledgerhq/logs': 6.17.0
-      '@ledgerhq/types-live': 6.106.0
-      axios: 1.13.2
-      bignumber.js: 9.3.1
-      semver: 7.7.3
-    transitivePeerDependencies:
-      - debug
-      - react
-      - react-redux
-
-  '@ledgerhq/hw-app-eth@7.8.2(react@19.2.6)':
-    dependencies:
-      '@ethersproject/abi': 5.8.0
-      '@ethersproject/rlp': 5.8.0
-      '@ethersproject/transactions': 5.8.0
-      '@ledgerhq/domain-service': 1.8.2
-      '@ledgerhq/errors': 6.34.1
-      '@ledgerhq/evm-tools': 1.12.4
-      '@ledgerhq/hw-transport': 6.35.2
-      '@ledgerhq/hw-transport-mocker': 6.34.2
-      '@ledgerhq/logs': 6.17.0
-      '@ledgerhq/types-live': 6.106.0(react@19.2.6)
+      '@ledgerhq/types-live': 6.106.0(react@19.0.0)
       axios: 1.13.2
       bignumber.js: 9.3.1
       semver: 7.7.3
@@ -8359,27 +8266,9 @@ snapshots:
 
   '@ledgerhq/logs@6.17.0': {}
 
-  '@ledgerhq/types-live@6.106.0':
-    dependencies:
-      '@ledgerhq/client-ids': 0.8.3
-      bignumber.js: 9.3.1
-      rxjs: 7.8.2
-    transitivePeerDependencies:
-      - react
-      - react-redux
-
   '@ledgerhq/types-live@6.106.0(react@19.0.0)':
     dependencies:
       '@ledgerhq/client-ids': 0.8.3(react@19.0.0)
-      bignumber.js: 9.3.1
-      rxjs: 7.8.2
-    transitivePeerDependencies:
-      - react
-      - react-redux
-
-  '@ledgerhq/types-live@6.106.0(react@19.2.6)':
-    dependencies:
-      '@ledgerhq/client-ids': 0.8.3(react@19.2.6)
       bignumber.js: 9.3.1
       rxjs: 7.8.2
     transitivePeerDependencies:
@@ -9110,15 +8999,6 @@ snapshots:
     dependencies:
       nanoid: 3.3.11
 
-  '@reduxjs/toolkit@2.11.2':
-    dependencies:
-      '@standard-schema/spec': 1.1.0
-      '@standard-schema/utils': 0.3.0
-      immer: 11.1.8
-      redux: 5.0.1
-      redux-thunk: 3.1.0(redux@5.0.1)
-      reselect: 5.1.1
-
   '@reduxjs/toolkit@2.11.2(react@19.0.0)':
     dependencies:
       '@standard-schema/spec': 1.1.0
@@ -9129,17 +9009,6 @@ snapshots:
       reselect: 5.1.1
     optionalDependencies:
       react: 19.0.0
-
-  '@reduxjs/toolkit@2.11.2(react@19.2.6)':
-    dependencies:
-      '@standard-schema/spec': 1.1.0
-      '@standard-schema/utils': 0.3.0
-      immer: 11.1.8
-      redux: 5.0.1
-      redux-thunk: 3.1.0(redux@5.0.1)
-      reselect: 5.1.1
-    optionalDependencies:
-      react: 19.2.6
 
   '@rolldown/binding-android-arm64@1.0.0':
     optional: true

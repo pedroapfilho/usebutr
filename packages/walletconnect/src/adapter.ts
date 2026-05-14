@@ -1,7 +1,7 @@
 import type { Account, WalletAdapter } from "@butr/core";
 import type { Eip1193Provider, Eip6963ProviderInfo } from "@butr/evm";
 import { buildEvmAdapter } from "@butr/evm";
-import { resolveCapabilities } from "../capabilities";
+import { WALLETCONNECT_CAPABILITIES } from "./capabilities";
 
 /**
  * Minimal type surface for `@walletconnect/universal-provider`. We
@@ -195,7 +195,7 @@ const createWalletConnectAdapter = async (
 
   const adapter: WalletAdapter = {
     ...base,
-    capabilities: resolveCapabilities({ transport: "walletconnect" }),
+    capabilities: WALLETCONNECT_CAPABILITIES,
     id,
     name,
 

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import type { Account, ConnectedWallet, WalletAdapter } from "@butr/core";
 import {
-  CHAINS_BY_PLATFORM,
   useActiveWallet,
   useBalance,
   useConnectWallet,
@@ -9,21 +9,22 @@ import {
   useConnectionError,
   useConnectionStatus,
   useDisconnectWallet,
-  useDiscoveredWallets,
   useIsHydrated,
   useRequestAccounts,
   useSetActiveConnector,
-  type Account,
-  type ConnectedWallet,
-  type WalletAdapter,
-} from "butr";
+} from "@butr/react";
+import { EVM_CHAINS_LIST } from "@butr/evm";
+import { useDiscoveredWallets } from "../wallet-provider";
+
+const CHAINS_BY_PLATFORM = { evm: EVM_CHAINS_LIST, svm: [] as const };
 
 const Home = () => (
   <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900">
     <header className="mb-8">
       <h1 className="text-3xl font-bold tracking-tight">butr · TanStack Start</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Multi-chain wallet primitives. Discovering wallets via EIP-6963 and Wallet Standard.
+        EVM-only manual wiring under SSR with <code>@butr/react</code> +{" "}
+        <code>@butr/evm</code>. Discovery via EIP-6963; no SVM in the bundle.
       </p>
     </header>
     <Content />

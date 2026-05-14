@@ -1,0 +1,42 @@
+{
+  "name": "demo-expo-web",
+  "version": "0.0.1",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "BROWSER=none expo start --web",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "build": "expo export --platform web",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint app src",
+    "clean": "rm -rf .expo node_modules dist"
+  },
+  "dependencies": {
+    "@butr/core": "workspace:*",
+    "@butr/react": "workspace:*",
+    "@butr/wallets": "workspace:*",
+    "@expo/metro-runtime": "^55.0.11",
+    "@react-native-async-storage/async-storage": "^2.1.2",
+    "expo": "^55.0.23",
+    "expo-constants": "^55.0.16",
+    "expo-linking": "^55.0.15",
+    "expo-router": "^55.0.14",
+    "expo-status-bar": "^55.0.6",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-native": "^0.85.3",
+    "react-native-safe-area-context": "^5.4.0",
+    "react-native-screens": "^4.25.0",
+    "react-native-web": "^0.21.2",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@repo/typescript-config": "workspace:*",
+    "@types/react": "^19.0.0",
+    "typescript": "^6.0.3"
+  }
+}

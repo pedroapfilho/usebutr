@@ -18,7 +18,7 @@ The home of `butr`, a multi-chain wallet management library for React. The monor
 | `demo-vite`           | Vite + React 19 SPA             | `http://localhost:5173` |
 | `demo-next`           | Next.js 16 App Router           | `http://localhost:3000` |
 | `demo-tanstack-start` | TanStack Start (Vite SSR)       | `http://localhost:3001` |
-| `demo-expo`           | Expo (React Native, web target) | `http://localhost:8081` |
+| `demo-expo-web`       | Expo (React Native, web target) | `http://localhost:8081` |
 
 Every demo is a single-page kitchen-sink reference that imports and uses every public `butr` export.
 
@@ -47,7 +47,7 @@ pnpm install
 
 ```bash
 pnpm dev --filter=demo-vite
-# or any of: demo-next, demo-tanstack-start, demo-expo
+# or any of: demo-next, demo-tanstack-start, demo-expo-web
 ```
 
 Open the URL printed in the table above. The four demos use distinct ports so they can run concurrently.

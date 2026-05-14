@@ -1,6 +1,6 @@
 import { useState } from "react";
+import type { Account, ConnectedWallet, WalletAdapter } from "@butr/core";
 import {
-  CHAINS_BY_PLATFORM,
   useActiveWallet,
   useBalance,
   useConnectWallet,
@@ -8,21 +8,19 @@ import {
   useConnectionError,
   useConnectionStatus,
   useDisconnectWallet,
-  useDiscoveredWallets,
   useIsHydrated,
   useRequestAccounts,
   useSetActiveConnector,
-  type Account,
-  type ConnectedWallet,
-  type WalletAdapter,
-} from "butr";
+} from "@butr/react";
+import { CHAINS_BY_PLATFORM, useDiscoveredWallets } from "@butr/wallets";
 
 const App = () => (
   <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900">
     <header className="mb-8">
       <h1 className="text-3xl font-bold tracking-tight">butr · Vite</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Multi-chain wallet primitives. Discovering wallets via EIP-6963 and Wallet Standard.
+        Batteries-included install via <code>@butr/wallets</code>. EVM (EIP-6963) and
+        SVM (Wallet Standard) discovered in one provider; persisted in localStorage.
       </p>
     </header>
     <Content />

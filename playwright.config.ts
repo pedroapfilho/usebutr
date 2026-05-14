@@ -10,7 +10,7 @@ export const nextUrl = process.env.CI ? "http://127.0.0.1:3000" : "http://localh
 export const tanstackStartUrl = process.env.CI
   ? "http://127.0.0.1:4174"
   : "http://localhost:3001";
-// demo-expo doesn't have a CI server wired yet (see webServer block
+// demo-expo-web doesn't have a CI server wired yet (see webServer block
 // below). `undefined` so callers handle the local-only case explicitly.
 export const expoUrl = process.env.CI ? undefined : "http://localhost:8081";
 
@@ -39,7 +39,7 @@ export default defineConfig({
       testDir: "./tests/e2e/demo-tanstack-start",
       use: { ...devices["Desktop Chrome"], baseURL: tanstackStartUrl },
     },
-    // demo-expo: deferred until the static-export server story is
+    // demo-expo-web: deferred until the static-export server story is
     // pinned (see webServer comment below).
   ],
 
@@ -92,8 +92,8 @@ export default defineConfig({
           timeout: 120_000,
           url: tanstackStartUrl,
         },
-        // demo-expo: `expo export --platform web` lands a static site
-        // in `apps/demo-expo/dist/`. Serving it in CI needs a static
+        // demo-expo-web: `expo export --platform web` lands a static site
+        // in `apps/demo-expo-web/dist/`. Serving it in CI needs a static
         // server (`npx serve`, `http-server`, etc.) we haven't pinned.
         // Wire when there's an Expo-specific E2E test that needs it.
       ]

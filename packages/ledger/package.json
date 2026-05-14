@@ -1,0 +1,48 @@
+{
+  "name": "@butr/ledger",
+  "version": "0.1.0",
+  "description": "Ledger hardware-wallet adapter for butr (EVM).",
+  "license": "MIT",
+  "author": "Pedro Filho <pedro@filho.me>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pedroapfilho/butr.git",
+    "directory": "packages/ledger"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "rm -rf dist",
+    "dev": "tsdown --watch",
+    "lint": "oxlint src",
+    "prepack": "pnpm run build",
+    "prepare": "pnpm run build",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@butr/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@ledgerhq/hw-app-eth": ">=6.0.0 <8.0.0",
+    "@ledgerhq/hw-transport-webusb": ">=6.0.0"
+  },
+  "devDependencies": {
+    "@ledgerhq/hw-app-eth": "^7.8.2",
+    "@ledgerhq/hw-transport-webusb": "^6.34.2",
+    "@repo/typescript-config": "workspace:*",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

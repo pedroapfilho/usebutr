@@ -1,6 +1,6 @@
 import { useState } from "react";
+import type { Account, ConnectedWallet, WalletAdapter } from "@butr/core";
 import {
-  CHAINS_BY_PLATFORM,
   useActiveWallet,
   useBalance,
   useConnectWallet,
@@ -8,14 +8,11 @@ import {
   useConnectionError,
   useConnectionStatus,
   useDisconnectWallet,
-  useDiscoveredWallets,
   useIsHydrated,
   useRequestAccounts,
   useSetActiveConnector,
-  type Account,
-  type ConnectedWallet,
-  type WalletAdapter,
-} from "butr";
+} from "@butr/react";
+import { CHAINS_BY_PLATFORM, useDiscoveredWallets } from "@butr/wallets";
 
 const App = () => (
   <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900">

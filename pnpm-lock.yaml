@@ -518,18 +518,36 @@ importers:
         specifier: workspace:*
         version: link:../svm
     devDependencies:
+      '@butr/testing':
+        specifier: workspace:*
+        version: link:../testing
       '@repo/config-vitest':
         specifier: workspace:*
         version: link:../config-vitest
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../config-typescript
+      '@testing-library/jest-dom':
+        specifier: ^6.9.1
+        version: 6.9.1
+      '@testing-library/react':
+        specifier: ^16.3.2
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.14)
+      jsdom:
+        specifier: ^29.1.1
+        version: 29.1.1(@noble/hashes@2.2.0)
       react:
         specifier: ^19.2.6
         version: 19.2.6
+      react-dom:
+        specifier: ^19.2.6
+        version: 19.2.6(react@19.2.6)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

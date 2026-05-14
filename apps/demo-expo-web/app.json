@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "demo-expo",
-    "slug": "demo-expo",
+    "name": "demo-expo-web",
+    "slug": "demo-expo-web",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

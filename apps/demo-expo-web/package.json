@@ -1,5 +1,5 @@
 {
-  "name": "demo-expo",
+  "name": "demo-expo-web",
   "version": "0.0.1",
   "private": true,
   "main": "expo-router/entry",

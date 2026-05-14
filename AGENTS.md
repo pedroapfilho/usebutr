@@ -32,7 +32,7 @@ pnpm test:e2e                           # playwright (placeholder, no current te
 | `demo-vite`           | Vite 7 + React 19 (SPA)         | `http://localhost:5173` |
 | `demo-next`           | Next.js 16 (App Router)         | `http://localhost:3000` |
 | `demo-tanstack-start` | TanStack Start (Vite SSR)       | `http://localhost:3001` |
-| `demo-expo`           | Expo (React Native, web target) | `http://localhost:8081` |
+| `demo-expo-web`       | Expo (React Native, web target) | `http://localhost:8081` |
 
 Every demo is a single-page kitchen-sink reference that imports and uses every public `butr` export.
 
@@ -56,4 +56,4 @@ Every demo is a single-page kitchen-sink reference that imports and uses every p
 
 - Path aliases: `@/*` maps to `src/*` (and `app/*` for TanStack Start) in apps.
 - Demo apps depend on `butr` via `"butr": "workspace:*"` and on `@repo/typescript-config` via the same.
-- Each web demo binds a distinct localhost port so all four can run concurrently. `demo-expo`'s native target uses Metro/Expo Go on its own transport.
+- Each web demo binds a distinct localhost port so all four can run concurrently. `demo-expo-web` targets the web bundle via `expo start --web`; native targets (iOS/Android) remain wired through Metro/Expo Go on their own transport.

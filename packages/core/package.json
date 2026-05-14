@@ -1,0 +1,42 @@
+{
+  "name": "@butr/core",
+  "version": "0.1.0",
+  "description": "Core types, store, storage, and discovery seam for butr. No React, no protocols.",
+  "license": "MIT",
+  "author": "Pedro Filho <pedro@filho.me>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pedroapfilho/butr.git",
+    "directory": "packages/core"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "pnpm run clean && tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "lint": "oxlint src",
+    "prepack": "pnpm run build",
+    "prepare": "pnpm run build",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "zustand": ">=4.0.0"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6",
+    "zustand": "^5.0.0"
+  }
+}

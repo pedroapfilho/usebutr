@@ -26,7 +26,7 @@ export {
   hexToBytes,
 } from "@butr/evm";
 
-// SVM-side adapter (Wallet Standard) — still in butr until Task 8.
+// SVM (now in @butr/svm)
 export type {
   SolanaSignAndSendTransactionFeature,
   SolanaSignAndSendTransactionInput,
@@ -42,9 +42,8 @@ export type {
   WalletStandardWallet,
   WalletStandardWalletAccount,
   WalletsApp,
-} from "./wallet-standard-types";
-export { buildSvmAdapter, slugify } from "./wallet-standard-adapter";
-export { discoverSvmAdapters } from "./wallet-standard";
+} from "@butr/svm";
+export { buildSvmAdapter, discoverSvmAdapters, slugify } from "@butr/svm";
 
 // Combined discovery — also used internally by `<WalletManagerProvider auto>`.
 export type { DiscoverOptions } from "./discover";

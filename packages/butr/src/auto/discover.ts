@@ -1,7 +1,7 @@
 import type { WalletAdapter } from "@butr/core";
 import { discoverEvmAdapters, discoverInjectedAdapter } from "@butr/evm";
+import { discoverSvmAdapters } from "@butr/svm";
 import { createDiscoveryBus } from "./discovery-bus";
-import { discoverSvmAdapters } from "./wallet-standard";
 
 /**
  * Which platforms to discover. Omitting a flag (or setting it to

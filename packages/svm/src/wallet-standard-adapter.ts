@@ -1,5 +1,5 @@
-import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "../types";
-import { resolveCapabilities } from "../capabilities";
+import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@butr/core";
+import { resolveWalletStandardCapabilities } from "./capabilities";
 import type {
   SolanaSignAndSendTransactionFeature,
   SolanaSignMessageFeature,
@@ -156,14 +156,13 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
   };
 
   return {
-    capabilities: resolveCapabilities({
+    capabilities: resolveWalletStandardCapabilities({
       chainCount: wallet.chains.length,
       features: {
         events: Boolean(events),
         signAndSendTransaction: Boolean(signAndSendTx),
         signMessage: Boolean(signMessage),
       },
-      transport: "wallet-standard",
     }),
     chainPlatform: "svm",
 

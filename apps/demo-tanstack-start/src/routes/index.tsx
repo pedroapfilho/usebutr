@@ -23,7 +23,8 @@ const Home = () => (
     <header className="mb-8">
       <h1 className="text-3xl font-bold tracking-tight">butr · TanStack Start</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Multi-chain wallet primitives. Discovering wallets via EIP-6963 and Wallet Standard.
+        EVM-only manual wiring under SSR with <code>@butr/react</code> +{" "}
+        <code>@butr/evm</code>. Discovery via EIP-6963; no SVM in the bundle.
       </p>
     </header>
     <Content />

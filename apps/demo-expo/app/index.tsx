@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import type { Account, ConnectedWallet, WalletAdapter } from "@butr/core";
 import {
   useActiveWallet,
@@ -43,7 +51,9 @@ const Index = () => (
       <View style={styles.header}>
         <Text style={styles.h1}>butr · Expo</Text>
         <Text style={styles.lede}>
-          Multi-chain wallet primitives. Discovering wallets via EIP-6963 and Wallet Standard.
+          React Native target. EVM (EIP-6963) and SVM (Wallet Standard)
+          discovery via @butr/wallets; persistence via an AsyncStorage-backed
+          WalletStorage driver.
         </Text>
       </View>
       <Content />
@@ -91,7 +101,11 @@ const StatusBar = ({ status }: { status: string }) => (
   </View>
 );
 
-const ConnectedList = ({ wallets }: { wallets: ReadonlyArray<ConnectedWallet> }) => (
+const ConnectedList = ({
+  wallets,
+}: {
+  wallets: ReadonlyArray<ConnectedWallet>;
+}) => (
   <View>
     <View style={styles.groupHeader}>
       <Text style={styles.h2}>Connected</Text>
@@ -129,7 +143,10 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
       <View style={styles.activeHeader}>
         <View style={styles.walletRowLeft}>
           {wallet.connector.icon ? (
-            <Image source={{ uri: wallet.connector.icon }} style={styles.activeIcon} />
+            <Image
+              source={{ uri: wallet.connector.icon }}
+              style={styles.activeIcon}
+            />
           ) : null}
           <View>
             <View style={styles.titleRow}>
@@ -145,7 +162,10 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
         </View>
         <View style={styles.actionRow}>
           {isActive ? null : (
-            <Pressable onPress={() => setActive(wallet.connector.id)} style={styles.outlineButton}>
+            <Pressable
+              onPress={() => setActive(wallet.connector.id)}
+              style={styles.outlineButton}
+            >
               <Text style={styles.outlineButtonText}>Make active</Text>
             </Pressable>
           )}
@@ -199,9 +219,16 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
             onPress={() => {
               void wallet.connector.switchChain(chain);
             }}
-            style={[styles.chainChip, isCurrent ? styles.chainChipCurrent : null]}
+            style={[
+              styles.chainChip,
+              isCurrent ? styles.chainChipCurrent : null,
+            ]}
           >
-            <Text style={isCurrent ? styles.chainChipTextCurrent : styles.chainChipText}>
+            <Text
+              style={
+                isCurrent ? styles.chainChipTextCurrent : styles.chainChipText
+              }
+            >
               {chain.name}
             </Text>
           </Pressable>
@@ -217,7 +244,8 @@ const AccountPicker = ({ wallet }: { wallet: ConnectedWallet }) => (
       <AccountRow account={account} key={account.id} wallet={wallet} />
     ))}
     <Text style={styles.muted}>
-      Active account is set in your wallet. Use Sign to test per-account signing.
+      Active account is set in your wallet. Use Sign to test per-account
+      signing.
     </Text>
   </View>
 );
@@ -230,7 +258,13 @@ type SignState =
 
 const SIGN_MESSAGE_TEXT = "Hello from the butr demo";
 
-const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWallet }) => {
+const AccountRow = ({
+  account,
+  wallet,
+}: {
+  account: Account;
+  wallet: ConnectedWallet;
+}) => {
   const isCurrent = account.walletAddress === wallet.account.walletAddress;
   const canSign = wallet.connector.capabilities.signMessage;
   const [state, setState] = useState<SignState>({ kind: "idle" });
@@ -250,8 +284,12 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
   };
 
   return (
-    <View style={[styles.accountRow, isCurrent ? styles.accountRowCurrent : null]}>
-      <Text style={isCurrent ? styles.accountAddressActive : styles.accountAddress}>
+    <View
+      style={[styles.accountRow, isCurrent ? styles.accountRowCurrent : null]}
+    >
+      <Text
+        style={isCurrent ? styles.accountAddressActive : styles.accountAddress}
+      >
         {account.walletAddress}
       </Text>
       {canSign ? (
@@ -268,7 +306,9 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
             }}
             style={styles.signButton}
           >
-            <Text style={styles.signButtonText}>{state.kind === "signing" ? "…" : "Sign"}</Text>
+            <Text style={styles.signButtonText}>
+              {state.kind === "signing" ? "…" : "Sign"}
+            </Text>
           </Pressable>
         </View>
       ) : null}
@@ -282,7 +322,9 @@ type WalletBrand = {
   name: string;
 };
 
-const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand> => {
+const groupByBrand = (
+  wallets: ReadonlyArray<WalletAdapter>,
+): Array<WalletBrand> => {
   const byName = new Map<string, WalletBrand>();
   for (const wallet of wallets) {
     const key = wallet.name.toLowerCase();
@@ -291,7 +333,11 @@ const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand>
       existing.adapters.push(wallet);
       existing.icon = existing.icon ?? wallet.icon;
     } else {
-      byName.set(key, { adapters: [wallet], icon: wallet.icon, name: wallet.name });
+      byName.set(key, {
+        adapters: [wallet],
+        icon: wallet.icon,
+        name: wallet.name,
+      });
     }
   }
   return [...byName.values()];
@@ -311,8 +357,9 @@ const WalletPicker = ({
       <View style={styles.emptyCard}>
         <Text style={styles.h2}>No wallets detected</Text>
         <Text style={styles.bodySmall}>
-          Wallet discovery on native requires WalletConnect or a chain-specific SDK. The web target
-          discovers browser-extension wallets via EIP-6963 and the Solana Wallet Standard.
+          Wallet discovery on native requires WalletConnect or a chain-specific
+          SDK. The web target discovers browser-extension wallets via EIP-6963
+          and the Solana Wallet Standard.
         </Text>
         <Pressable
           onPress={() => Linking.openURL("https://metamask.io/download")}
@@ -331,7 +378,9 @@ const WalletPicker = ({
 
   return (
     <View>
-      <Text style={styles.h2}>{hasConnected ? "Connect another" : "Available wallets"}</Text>
+      <Text style={styles.h2}>
+        {hasConnected ? "Connect another" : "Available wallets"}
+      </Text>
       <View style={[styles.stackSmall, { marginTop: 12 }]}>
         {brands.map((brand) => (
           <WalletBrandRow brand={brand} connect={connect} key={brand.name} />
@@ -350,13 +399,21 @@ const WalletBrandRow = ({
 }) => (
   <View style={styles.walletRow}>
     <View style={styles.walletRowLeft}>
-      {brand.icon ? <Image source={{ uri: brand.icon }} style={styles.walletIcon} /> : null}
+      {brand.icon ? (
+        <Image source={{ uri: brand.icon }} style={styles.walletIcon} />
+      ) : null}
       <Text style={styles.walletName}>{brand.name}</Text>
     </View>
     <View style={styles.brandPlatformList}>
       {brand.adapters.map((adapter) => (
-        <Pressable key={adapter.id} onPress={() => connect(adapter.id)} style={styles.platformChip}>
-          <Text style={styles.platformChipText}>{adapter.chainPlatform.toUpperCase()}</Text>
+        <Pressable
+          key={adapter.id}
+          onPress={() => connect(adapter.id)}
+          style={styles.platformChip}
+        >
+          <Text style={styles.platformChipText}>
+            {adapter.chainPlatform.toUpperCase()}
+          </Text>
         </Pressable>
       ))}
     </View>
@@ -364,8 +421,18 @@ const WalletBrandRow = ({
 );
 
 const styles = StyleSheet.create({
-  accountAddress: { color: tokens.neutral700, flex: 1, fontFamily: "Menlo", fontSize: 12 },
-  accountAddressActive: { color: tokens.emerald700, flex: 1, fontFamily: "Menlo", fontSize: 12 },
+  accountAddress: {
+    color: tokens.neutral700,
+    flex: 1,
+    fontFamily: "Menlo",
+    fontSize: 12,
+  },
+  accountAddressActive: {
+    color: tokens.emerald700,
+    flex: 1,
+    fontFamily: "Menlo",
+    fontSize: 12,
+  },
   accountList: { flex: 1, gap: 4 },
   accountRow: {
     alignItems: "center",
@@ -401,7 +468,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  activeBadgeText: { color: tokens.emerald700, fontSize: 12, fontWeight: "500" },
+  activeBadgeText: {
+    color: tokens.emerald700,
+    fontSize: 12,
+    fontWeight: "500",
+  },
   activeCard: {
     backgroundColor: tokens.white,
     borderColor: tokens.neutral200,
@@ -431,16 +502,30 @@ const styles = StyleSheet.create({
     borderColor: "#a7f3d0",
   },
   chainChipText: { color: tokens.neutral700, fontSize: 12 },
-  chainChipTextCurrent: { color: tokens.emerald700, fontSize: 12, fontWeight: "500" },
+  chainChipTextCurrent: {
+    color: tokens.emerald700,
+    fontSize: 12,
+    fontWeight: "500",
+  },
   chainList: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  container: { marginHorizontal: "auto", maxWidth: 672, paddingHorizontal: 24, paddingVertical: 40, width: "100%" },
+  container: {
+    marginHorizontal: "auto",
+    maxWidth: 672,
+    paddingHorizontal: 24,
+    paddingVertical: 40,
+    width: "100%",
+  },
   countPill: {
     backgroundColor: tokens.neutral100,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  countPillText: { color: tokens.neutral500, fontFamily: "Menlo", fontSize: 12 },
+  countPillText: {
+    color: tokens.neutral500,
+    fontFamily: "Menlo",
+    fontSize: 12,
+  },
   dd: { color: tokens.neutral900, flex: 1, fontFamily: "Menlo", fontSize: 12 },
   dlRow: { flexDirection: "row" },
   dt: { color: tokens.neutral500, fontSize: 14, width: 112 },
@@ -459,9 +544,19 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   errorText: { color: tokens.red700, fontSize: 14 },
-  groupHeader: { alignItems: "center", flexDirection: "row", gap: 8, marginBottom: 12 },
+  groupHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+  },
   groupHeading: { color: tokens.neutral700, fontSize: 14, fontWeight: "500" },
-  h1: { color: tokens.neutral900, fontSize: 30, fontWeight: "700", letterSpacing: -0.5 },
+  h1: {
+    color: tokens.neutral900,
+    fontSize: 30,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
   h2: { color: tokens.neutral900, fontSize: 16, fontWeight: "600" },
   header: { marginBottom: 32 },
   lede: { color: tokens.neutral500, fontSize: 14, marginTop: 4 },
@@ -497,7 +592,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  statusPillText: { color: tokens.neutral600, fontFamily: "Menlo", fontSize: 12 },
+  statusPillText: {
+    color: tokens.neutral600,
+    fontFamily: "Menlo",
+    fontSize: 12,
+  },
   statusRow: { alignItems: "center", flexDirection: "row", gap: 8 },
   titleRow: { alignItems: "center", flexDirection: "row", gap: 8 },
   walletIcon: { borderRadius: 4, height: 24, width: 24 },

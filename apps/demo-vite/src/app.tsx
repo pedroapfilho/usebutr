@@ -19,7 +19,8 @@ const App = () => (
     <header className="mb-8">
       <h1 className="text-3xl font-bold tracking-tight">butr · Vite</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Multi-chain wallet primitives. Discovering wallets via EIP-6963 and Wallet Standard.
+        Batteries-included install via <code>@butr/wallets</code>. EVM (EIP-6963) and
+        SVM (Wallet Standard) discovered in one provider; persisted in localStorage.
       </p>
     </header>
     <Content />

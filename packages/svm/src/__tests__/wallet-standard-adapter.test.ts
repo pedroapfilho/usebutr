@@ -438,3 +438,120 @@ describe("SVM wallet fixtures — protocol-level uniformity", () => {
     });
   });
 });
+
+describe("buildSvmAdapter.switchChain", () => {
+  const connectFeature: StandardConnectFeature = {
+    connect: vi.fn().mockResolvedValue({ accounts: [] }),
+  };
+  const buildAdapter = () =>
+    buildSvmAdapter(
+      withFeatures(buildWallet({ chains: ["solana:mainnet", "solana:devnet"] }), {
+        "standard:connect": connectFeature,
+      }),
+    );
+
+  it("rejects a non-Solana chain", () => {
+    const adapter = buildAdapter();
+    expect(() =>
+      adapter?.switchChain({
+        id: "eip155:1",
+        name: "Ethereum",
+        namespace: "eip155",
+        reference: "1",
+      }),
+    ).toThrow(/non-Solana/);
+  });
+
+  it("rejects a Solana chain the wallet does not advertise", () => {
+    const adapter = buildAdapter();
+    expect(() =>
+      adapter?.switchChain({
+        id: "solana:testnet",
+        name: "Solana Testnet",
+        namespace: "solana",
+        reference: "testnet",
+      }),
+    ).toThrow(/does not advertise chain/);
+  });
+
+  it("happy path: switches and synthesises an accountChanged event", async () => {
+    const wallet = buildWallet({ chains: ["solana:mainnet", "solana:devnet"] });
+    const eventsFeature: StandardEventsFeature = {
+      on: vi.fn().mockReturnValue(() => {}),
+    };
+    const adapter = buildSvmAdapter(
+      withFeatures(wallet, {
+        "standard:connect": connectFeature,
+        "standard:events": eventsFeature,
+      }),
+    );
+    const listener = vi.fn();
+    adapter?.subscribe?.(listener);
+    await adapter?.switchChain({
+      id: "solana:devnet",
+      name: "Solana Devnet",
+      namespace: "solana",
+      reference: "devnet",
+    });
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "accountChanged" }),
+    );
+  });
+});
+
+describe("buildSvmAdapter edge cases", () => {
+  const connectFeature: StandardConnectFeature = {
+    connect: vi.fn().mockResolvedValue({ accounts: [] }),
+  };
+
+  it("signMessage throws when no account is exposed", async () => {
+    const signFeature: SolanaSignMessageFeature = {
+      signMessage: vi.fn().mockResolvedValue([{ signature: new Uint8Array(), signedMessage: new Uint8Array() }]),
+    };
+    const wallet = buildWallet({ accounts: [] });
+    const adapter = buildSvmAdapter(
+      withFeatures(wallet, {
+        "standard:connect": connectFeature,
+        "solana:signMessage": signFeature,
+      }),
+    );
+    await expect(adapter?.signMessage(new Uint8Array([1, 2, 3]))).rejects.toThrow(
+      /No connected account/,
+    );
+  });
+
+  it("signMessage throws when the feature returns no outputs", async () => {
+    const signFeature: SolanaSignMessageFeature = {
+      signMessage: vi.fn().mockResolvedValue([]),
+    };
+    const adapter = buildSvmAdapter(
+      withFeatures(buildWallet(), {
+        "standard:connect": connectFeature,
+        "solana:signMessage": signFeature,
+      }),
+    );
+    await expect(adapter?.signMessage(new Uint8Array([1]))).rejects.toThrow(
+      /signMessage returned no outputs/,
+    );
+  });
+
+  it("subscribe ignores `change` events without an accounts field", () => {
+    let captured: StandardEventsListener | null = null;
+    const eventsFeature: StandardEventsFeature = {
+      on: vi.fn((_event, listener) => {
+        captured = listener;
+        return () => {};
+      }),
+    };
+    const adapter = buildSvmAdapter(
+      withFeatures(buildWallet(), {
+        "standard:connect": connectFeature,
+        "standard:events": eventsFeature,
+      }),
+    );
+    const fireListener = vi.fn();
+    adapter?.subscribe?.(fireListener);
+    captured?.({ chains: ["solana:mainnet"] });
+    expect(fireListener).not.toHaveBeenCalled();
+  });
+});

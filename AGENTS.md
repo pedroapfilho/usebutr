@@ -27,6 +27,8 @@ pnpm test:e2e                           # playwright (placeholder, no current te
 
 ### Apps
 
+**Framework demos** (kitchen-sink references):
+
 | App                   | Framework                       | Dev URL                 |
 | --------------------- | ------------------------------- | ----------------------- |
 | `demo-vite`           | Vite 7 + React 19 (SPA)         | `http://localhost:5173` |
@@ -34,7 +36,15 @@ pnpm test:e2e                           # playwright (placeholder, no current te
 | `demo-tanstack-start` | TanStack Start (Vite SSR)       | `http://localhost:3001` |
 | `demo-expo-web`       | Expo (React Native, web target) | `http://localhost:8081` |
 
-Every demo is a single-page kitchen-sink reference that imports and uses every public `butr` export.
+**Integration demos** (one library each, EVM Sepolia or SVM Devnet):
+
+| App                               | Library                       | Dev URL                 |
+| --------------------------------- | ----------------------------- | ----------------------- |
+| `demo-with-viem`                  | viem                          | `http://localhost:5175` |
+| `demo-with-wagmi`                 | wagmi (@wagmi/core)           | `http://localhost:5176` |
+| `demo-with-solana-web3js`         | @solana/web3.js               | `http://localhost:5177` |
+| `demo-with-solana-wallet-adapter` | @solana/wallet-adapter-react  | `http://localhost:5178` |
+| `demo-with-solana-kit`            | @solana/kit                   | `http://localhost:5179` |
 
 ### Packages
 

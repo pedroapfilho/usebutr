@@ -13,6 +13,8 @@ The home of `butr`, a multi-chain wallet management library for React. The monor
 
 ## Apps
 
+### Framework demos
+
 | App                   | Description                     | Dev URL                 |
 | --------------------- | ------------------------------- | ----------------------- |
 | `demo-vite`           | Vite + React 19 SPA             | `http://localhost:5173` |
@@ -20,7 +22,19 @@ The home of `butr`, a multi-chain wallet management library for React. The monor
 | `demo-tanstack-start` | TanStack Start (Vite SSR)       | `http://localhost:3001` |
 | `demo-expo-web`       | Expo (React Native, web target) | `http://localhost:8081` |
 
-Every demo is a single-page kitchen-sink reference that imports and uses every public `butr` export.
+Every framework demo is a single-page kitchen-sink reference that imports and uses every public `butr` export.
+
+### Integration demos
+
+Each integration demo shows butr composing with an existing web3 library — butr handles wallet discovery + connection state, the integration lib handles chain reads, signing, and submission. Connect → read balance → sign message → send tx in every demo.
+
+| App                                | Library                            | Dev URL                 |
+| ---------------------------------- | ---------------------------------- | ----------------------- |
+| `demo-with-viem`                   | viem (EVM, Sepolia)                | `http://localhost:5175` |
+| `demo-with-wagmi`                  | wagmi + @wagmi/core (EVM, Sepolia) | `http://localhost:5176` |
+| `demo-with-solana-web3js`          | @solana/web3.js (SVM, Devnet)      | `http://localhost:5177` |
+| `demo-with-solana-wallet-adapter`  | @solana/wallet-adapter-react       | `http://localhost:5178` |
+| `demo-with-solana-kit`             | @solana/kit (the new modular SDK)  | `http://localhost:5179` |
 
 ## Packages
 

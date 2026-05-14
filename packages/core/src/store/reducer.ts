@@ -73,13 +73,40 @@ const findConnectorForPlatform = (
 const reducer = (state: State, event: Event): State => {
   switch (event.type) {
     case "HYDRATED": {
+      // Merge instead of replace. CONNECT_SUCCEEDED can fire during the
+      // late-restore window — discovery announces an adapter, the runtime
+      // calls _tryRestoreFromPending, drainPending succeeds, the reducer
+      // adds the entry to state.pool — all BEFORE hydrate's outer await
+      // resolves and HYDRATED dispatches. A wholesale replace at that
+      // point wipes the freshly-restored late entry. Merging keeps both
+      // the eager-restored entries (event.pool) and the late-restored
+      // entries (state.pool).
+      const pool = new Map<string, ConnectedWallet>(state.pool);
+      for (const [id, entry] of event.pool) {
+        pool.set(id, entry);
+      }
+      const selection = new Map<ChainPlatform, string>(state.selection);
+      for (const [platform, id] of event.selection) {
+        selection.set(platform, id);
+      }
+      // Prefer hydrate's activeConnectorId when valid in the merged
+      // pool (matches the pre-reload selection). Fall back to any late-
+      // restore-driven active if hydrate's choice didn't restore eagerly.
+      let activeConnectorId: string | null = null;
+      if (event.activeConnectorId && pool.has(event.activeConnectorId)) {
+        activeConnectorId = event.activeConnectorId;
+      } else if (state.activeConnectorId && pool.has(state.activeConnectorId)) {
+        activeConnectorId = state.activeConnectorId;
+      } else if (pool.size > 0) {
+        activeConnectorId = pool.keys().next().value ?? null;
+      }
       return {
         ...state,
-        activeConnectorId: event.activeConnectorId,
+        activeConnectorId,
         isHydrated: true,
         isUserDisconnected: event.isUserDisconnected,
-        pool: event.pool,
-        selection: event.selection,
+        pool,
+        selection,
       };
     }
 

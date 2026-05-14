@@ -151,9 +151,6 @@ const createHydrationCoordinator = (
         storage.isUserDisconnected(),
       ]);
 
-      // TODO remove diagnostic
-      console.log("[butr/hydrate] storedPool keys", Object.keys(storedPool));
-
       const pool = new Map<string, ConnectedWallet>();
       const dropped: Array<{ connectorId: string; reason: unknown }> = [];
 
@@ -172,8 +169,6 @@ const createHydrationCoordinator = (
           continue;
         }
         const connector = createConnector(connectorId);
-        // TODO remove diagnostic
-        console.log("[butr/hydrate] entry", { connectorId, hasConnector: Boolean(connector) });
         if (!connector) {
           pending.set(connectorId, entry);
           continue;
@@ -182,8 +177,6 @@ const createHydrationCoordinator = (
       }
 
       const outcomes = await Promise.all(tasks);
-      // TODO remove diagnostic
-      console.log("[butr/hydrate] outcomes", outcomes.map((o) => ({ id: o.connectorId, kind: o.kind })));
       for (const outcome of outcomes) {
         if (outcome.kind === "ok") {
           pool.set(outcome.connectorId, outcome.entry);

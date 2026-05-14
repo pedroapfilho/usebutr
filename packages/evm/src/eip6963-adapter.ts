@@ -267,8 +267,6 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     subscribe(listener) {
       const onAccountsChanged: Eip1193Listener = (...args) => {
         const accs = args[0] as Array<string>;
-        // TODO remove diagnostic — tracing multi-wallet auto-restore bug.
-        console.log("[butr/evm] accountsChanged", { id: info.rdns, accounts: accs });
         if (accs.length === 0) {
           listener({ type: "disconnected" });
           return;
@@ -322,9 +320,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
           });
       };
 
-      const onDisconnect: Eip1193Listener = (...args) => {
-        // TODO remove diagnostic — tracing multi-wallet auto-restore bug.
-        console.log("[butr/evm] disconnect event", { id: info.rdns, args });
+      const onDisconnect: Eip1193Listener = () => {
         listener({ type: "disconnected" });
       };
 

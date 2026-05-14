@@ -264,6 +264,9 @@ importers:
       '@butr/evm':
         specifier: workspace:*
         version: link:../evm
+      '@butr/ledger':
+        specifier: workspace:*
+        version: link:../ledger
       '@butr/react':
         specifier: workspace:*
         version: link:../react
@@ -357,6 +360,28 @@ importers:
         specifier: workspace:*
         version: link:../core
     devDependencies:
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../config-typescript
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.6.2)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(msw@2.14.1(@types/node@25.6.2)(typescript@6.0.3))(vite@8.0.12(@types/node@25.6.2)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.9.0))
+
+  packages/ledger:
+    dependencies:
+      '@butr/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@ledgerhq/hw-app-eth':
+        specifier: ^7.8.2
+        version: 7.8.2
+      '@ledgerhq/hw-transport-webusb':
+        specifier: ^6.34.2
+        version: 6.34.2
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../config-typescript
@@ -8134,6 +8159,15 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  '@ledgerhq/client-ids@0.8.3':
+    dependencies:
+      '@ledgerhq/live-env': 2.33.0
+      '@reduxjs/toolkit': 2.11.2
+      uuid: 9.0.1
+    transitivePeerDependencies:
+      - react
+      - react-redux
+
   '@ledgerhq/client-ids@0.8.3(react@19.0.0)':
     dependencies:
       '@ledgerhq/live-env': 2.33.0
@@ -8184,6 +8218,26 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
+  '@ledgerhq/hw-app-eth@7.8.2':
+    dependencies:
+      '@ethersproject/abi': 5.8.0
+      '@ethersproject/rlp': 5.8.0
+      '@ethersproject/transactions': 5.8.0
+      '@ledgerhq/domain-service': 1.8.2
+      '@ledgerhq/errors': 6.34.1
+      '@ledgerhq/evm-tools': 1.12.4
+      '@ledgerhq/hw-transport': 6.35.2
+      '@ledgerhq/hw-transport-mocker': 6.34.2
+      '@ledgerhq/logs': 6.17.0
+      '@ledgerhq/types-live': 6.106.0
+      axios: 1.13.2
+      bignumber.js: 9.3.1
+      semver: 7.7.3
+    transitivePeerDependencies:
+      - debug
+      - react
+      - react-redux
+
   '@ledgerhq/hw-app-eth@7.8.2(react@19.2.6)':
     dependencies:
       '@ethersproject/abi': 5.8.0
@@ -8230,6 +8284,15 @@ snapshots:
       utility-types: 3.11.0
 
   '@ledgerhq/logs@6.17.0': {}
+
+  '@ledgerhq/types-live@6.106.0':
+    dependencies:
+      '@ledgerhq/client-ids': 0.8.3
+      bignumber.js: 9.3.1
+      rxjs: 7.8.2
+    transitivePeerDependencies:
+      - react
+      - react-redux
 
   '@ledgerhq/types-live@6.106.0(react@19.0.0)':
     dependencies:
@@ -8972,6 +9035,15 @@ snapshots:
   '@react-navigation/routers@7.5.4':
     dependencies:
       nanoid: 3.3.11
+
+  '@reduxjs/toolkit@2.11.2':
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      '@standard-schema/utils': 0.3.0
+      immer: 11.1.8
+      redux: 5.0.1
+      redux-thunk: 3.1.0(redux@5.0.1)
+      reselect: 5.1.1
 
   '@reduxjs/toolkit@2.11.2(react@19.0.0)':
     dependencies:

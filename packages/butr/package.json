@@ -63,6 +63,7 @@
   "dependencies": {
     "@butr/core": "workspace:*",
     "@butr/evm": "workspace:*",
+    "@butr/ledger": "workspace:*",
     "@butr/react": "workspace:*",
     "@butr/svm": "workspace:*",
     "@butr/walletconnect": "workspace:*"

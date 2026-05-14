@@ -1,5 +1,5 @@
-import type { Account, ChainBase, WalletAdapter } from "../types";
-import { resolveCapabilities } from "../capabilities";
+import type { Account, ChainBase, WalletAdapter } from "@butr/core";
+import { LEDGER_CAPABILITIES } from "./capabilities";
 
 /**
  * Minimal type surface for `@ledgerhq/hw-app-eth`. Declared inline
@@ -172,7 +172,7 @@ const createLedgerAdapter = async (options: LedgerOptions = {}): Promise<WalletA
   const pathAt = (index: number): string => `${derivationPathPrefix}/${index}`;
 
   const adapter: WalletAdapter = {
-    capabilities: resolveCapabilities({ transport: "ledger" }),
+    capabilities: LEDGER_CAPABILITIES,
     chainPlatform: "evm",
 
     async connect() {

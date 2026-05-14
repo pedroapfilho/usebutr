@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { type Address, type EIP1193Provider, custom, formatEther, http, parseEther } from "viem";
+import { type Address, type EIP1193Provider, formatEther, http, parseEther } from "viem";
 import { sepolia } from "viem/chains";
 import {
   type Config,
+  connect,
   createConfig,
   getBalance,
   sendTransaction,
   signMessage,
 } from "@wagmi/core";
-import { mock } from "@wagmi/connectors";
+import { injected } from "@wagmi/connectors";
 import {
   useActiveWallet,
   useConnectWallet,
@@ -19,24 +20,26 @@ import { useDiscoveredWallets } from "./wallet-provider";
 
 const BURN_ADDRESS: Address = "0x000000000000000000000000000000000000dEaD";
 
-// One wagmi Config per active wallet. The trick: we bridge butr's
-// EIP-1193 provider into wagmi via the `mock` connector — wagmi expects
-// connectors to expose a provider getter, and `mock` lets us hand it
-// one directly. From there every @wagmi/core action works exactly like
-// it would with a wagmi-native connector. Hooks via @wagmi/react would
-// work the same way; this demo uses the imperative API to keep the
-// integration boundary readable.
-const buildWagmiConfig = (provider: EIP1193Provider, account: Address): Config =>
+// Bridge butr's EIP-1193 provider into wagmi via the `injected` connector's
+// `target.provider` override. wagmi's connector lifecycle (connect, getAccounts,
+// signMessage, sendTransaction) then routes through butr's real provider —
+// every sign and every transaction hits the actual wallet, not a mock.
+// The transport stays pure RPC (`http()`) for read-only chain queries so we
+// don't double-spend the wallet on `eth_getBalance` etc.
+const buildWagmiConfig = (provider: EIP1193Provider, butrName: string, butrId: string): Config =>
   createConfig({
     chains: [sepolia],
     connectors: [
-      mock({
-        accounts: [account],
-        features: { defaultConnected: true },
+      injected({
+        target: {
+          id: butrId,
+          name: butrName,
+          provider: () => provider,
+        },
       }),
     ],
     transports: {
-      [sepolia.id]: custom(provider),
+      [sepolia.id]: http(),
     },
   });
 
@@ -124,7 +127,13 @@ const Connected = ({
       try {
         const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
         if (cancelled) return;
-        setWagmiConfig(buildWagmiConfig(provider, account));
+        const cfg = buildWagmiConfig(provider, wallet.connector.name, wallet.connector.id);
+        // Run wagmi's connect lifecycle through butr's provider so all subsequent
+        // @wagmi/core actions know which connector to call. The wallet has
+        // already authorised the dapp via butr, so this resolves silently — no
+        // second popup.
+        await connect(cfg, { connector: cfg.connectors[0]! });
+        if (!cancelled) setWagmiConfig(cfg);
       } catch (e) {
         if (!cancelled) setError(formatError(e));
       }

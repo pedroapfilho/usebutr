@@ -1,14 +1,31 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
+import { WalletStorage } from "@butr/core";
 import { AutoWalletManagerProvider } from "@butr/wallets";
+import { asyncStorageDriver } from "./async-storage-driver";
 
-// NOTE: demo-expo runs the web target via `BROWSER=none expo start --web`,
-// so the default browser storage driver in @butr/core works out of the
-// box. A future iteration can swap in an AsyncStorage driver for the
-// native target (the StorageDriver shape from @butr/core supports it).
-const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <AutoWalletManagerProvider storageKeyPrefix="butr-demo">
-    {children}
-  </AutoWalletManagerProvider>
-);
+const KEY_PREFIX = "butr-demo";
+
+const WalletProvider = ({ children }: { children: ReactNode }) => {
+  // WalletStorage is constructed once and held for the provider's
+  // lifetime — passing it via `useMemo` is just to avoid re-instantiating
+  // it on every render. The underlying driver is shared between
+  // persistent and session calls (AsyncStorage has no session
+  // equivalent; see async-storage-driver.ts for the trade-off).
+  const storage = useMemo(
+    () =>
+      new WalletStorage({
+        keyPrefix: KEY_PREFIX,
+        persistent: asyncStorageDriver,
+        session: asyncStorageDriver,
+      }),
+    [],
+  );
+
+  return (
+    <AutoWalletManagerProvider storage={storage} storageKeyPrefix={KEY_PREFIX}>
+      {children}
+    </AutoWalletManagerProvider>
+  );
+};
 
 export { WalletProvider };

@@ -1,19 +1,19 @@
-export type { ChainBase } from "./chain";
-export type { ConnectionError, ConnectionErrorKind } from "./errors";
-export { mapConnectionError } from "./errors";
-
 export type {
   Account,
   Balance,
+  ChainBase,
   ChainPlatform,
   ConnectedWallet,
+  ConnectionError,
+  ConnectionErrorKind,
   Connector,
   ConnectorEvent,
   ConnectorMeta,
-  WalletAdapter,
-  Wallet,
   HydrationOutcome,
+  Wallet,
+  WalletAdapter,
   WalletAvailability,
   WalletCapabilities,
   WalletManagerConfig,
-} from "./wallet";
+} from "@butr/core";
+export { mapConnectionError } from "@butr/core";

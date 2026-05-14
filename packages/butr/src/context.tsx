@@ -171,7 +171,7 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
 };
 
 /** Hook to get the store from context (internal) */
-const useWalletStoreContext = () => {
+const useWalletStoreContext = (): WalletStore => {
   const store = use(WalletStoreContext);
   if (!store) {
     throw new Error("useWalletStoreContext must be used within WalletManagerProvider");

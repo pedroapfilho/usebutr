@@ -1,4 +1,4 @@
-import type { WalletAdapter } from "../types";
+import type { WalletAdapter } from "@butr/core";
 import { buildEvmAdapter } from "./eip6963-adapter";
 import type { Eip1193Provider, Eip6963ProviderInfo } from "./eip1193";
 

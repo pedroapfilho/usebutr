@@ -62,6 +62,7 @@
   },
   "dependencies": {
     "@butr/core": "workspace:*",
+    "@butr/evm": "workspace:*",
     "@butr/react": "workspace:*"
   },
   "devDependencies": {

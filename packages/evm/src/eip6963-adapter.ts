@@ -1,5 +1,5 @@
-import type { Account, ChainBase, WalletAdapter } from "../types";
-import { resolveCapabilities } from "../capabilities";
+import type { Account, ChainBase, WalletAdapter } from "@butr/core";
+import { resolveEip6963Capabilities } from "./capabilities";
 import type { Eip1193Listener, Eip1193Provider, Eip6963ProviderInfo } from "./eip1193";
 
 const HEX_PREFIX = "0x";
@@ -89,7 +89,7 @@ const buildEvmAccount = (address: string, chain: ChainBase): Account => ({
  */
 const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): WalletAdapter => {
   return {
-    capabilities: resolveCapabilities({ rdns: info.rdns, transport: "eip6963" }),
+    capabilities: resolveEip6963Capabilities({ rdns: info.rdns }),
     chainPlatform: "evm",
 
     async connect() {

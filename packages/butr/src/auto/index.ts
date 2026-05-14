@@ -2,8 +2,7 @@
 // themselves. The high-level integration lives in core butr:
 // `<WalletManagerProvider auto>` + `useDiscoveredWallets()`.
 
-// EIP-1193 / EIP-6963 types — used by adapter authors who want to
-// build their own EVM adapter on top of butr's primitives.
+// EVM (now in @butr/evm)
 export type {
   Eip1193Listener,
   Eip1193Provider,
@@ -11,26 +10,23 @@ export type {
   Eip6963AnnounceEvent,
   Eip6963ProviderDetail,
   Eip6963ProviderInfo,
-} from "./eip1193";
-
-// EVM-side adapter (EIP-6963)
-export { ANNOUNCE_EVENT, REQUEST_EVENT, discoverEvmAdapters } from "./eip6963";
+  InjectedDiscoveryOptions,
+} from "@butr/evm";
 export {
+  ANNOUNCE_EVENT,
+  GENERIC_INJECTED_ICON,
+  REQUEST_EVENT,
   buildEvmAdapter,
   bytesToHex,
   chainIdDecimalToHex,
   chainIdHexToDecimal,
+  discoverEvmAdapters,
+  discoverInjectedAdapter,
   formatEther,
   hexToBytes,
-} from "./eip6963-adapter";
+} from "@butr/evm";
 
-// Injected fallback — last-resort discovery for EVM wallets that
-// don't announce via EIP-6963 (regional / legacy injected providers).
-export type { InjectedDiscoveryOptions } from "./injected";
-export { GENERIC_INJECTED_ICON, discoverInjectedAdapter } from "./injected";
-
-// SVM-side adapter (Wallet Standard) — requires the optional peer dep
-// `@wallet-standard/app` for the discovery to actually fire.
+// SVM-side adapter (Wallet Standard) — still in butr until Task 8.
 export type {
   SolanaSignAndSendTransactionFeature,
   SolanaSignAndSendTransactionInput,

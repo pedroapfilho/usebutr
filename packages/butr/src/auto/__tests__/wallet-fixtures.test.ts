@@ -10,8 +10,8 @@
 // `RDNS_WITH_REQUEST_ACCOUNTS` in `eip6963-adapter.ts` together.
 
 import { describe, expect, it } from "vitest";
-import { buildEvmAdapter } from "../eip6963-adapter";
-import type { Eip1193Provider, Eip6963ProviderInfo } from "../eip1193";
+import type { Eip1193Provider, Eip6963ProviderInfo } from "@butr/evm";
+import { buildEvmAdapter } from "@butr/evm";
 
 const baseInfo = (rdns: string, name: string): Eip6963ProviderInfo => ({
   icon: "data:image/svg+xml;base64,Zm9v",

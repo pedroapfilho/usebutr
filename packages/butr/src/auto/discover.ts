@@ -1,7 +1,6 @@
-import type { WalletAdapter } from "../types";
+import type { WalletAdapter } from "@butr/core";
+import { discoverEvmAdapters, discoverInjectedAdapter } from "@butr/evm";
 import { createDiscoveryBus } from "./discovery-bus";
-import { discoverEvmAdapters } from "./eip6963";
-import { discoverInjectedAdapter } from "./injected";
 import { discoverSvmAdapters } from "./wallet-standard";
 
 /**

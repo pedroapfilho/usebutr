@@ -1,6 +1,6 @@
-import type { Account, WalletAdapter } from "../types";
-import type { Eip1193Provider, Eip6963ProviderInfo } from "../auto/eip1193";
-import { buildEvmAdapter } from "../auto/eip6963-adapter";
+import type { Account, WalletAdapter } from "@butr/core";
+import type { Eip1193Provider, Eip6963ProviderInfo } from "@butr/evm";
+import { buildEvmAdapter } from "@butr/evm";
 import { resolveCapabilities } from "../capabilities";
 
 /**

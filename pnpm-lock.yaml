@@ -261,6 +261,9 @@ importers:
       '@butr/core':
         specifier: workspace:*
         version: link:../core
+      '@butr/evm':
+        specifier: workspace:*
+        version: link:../evm
       '@butr/react':
         specifier: workspace:*
         version: link:../react

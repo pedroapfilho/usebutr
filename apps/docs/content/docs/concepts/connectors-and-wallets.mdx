@@ -1,0 +1,97 @@
+---
+title: Connectors and wallets
+description: Every wallet is a WalletAdapter — the Connector half is what butr calls, the Wallet half is what your app calls.
+---
+
+A `WalletAdapter` is `Connector & Wallet`. The split is documentary: it makes
+the orchestration / capability seam explicit.
+
+## Connector — what butr calls
+
+butr's runtime calls these during connect / disconnect / hydrate. You rarely
+touch them directly.
+
+```ts
+type Connector = {
+  capabilities: WalletCapabilities;
+  chainPlatform: "evm" | "svm";
+  connect(): Promise<void>;
+  disconnect?(): Promise<void>;
+  getAccount(): Promise<Account | null>;
+  getAccounts?(): Promise<Array<Account>>;
+  icon?: string;
+  id: string; // stable key: "metamask", "phantom" — pool entries keyed by this
+  name: string; // UI-facing: "MetaMask", "Phantom"
+  requestAccounts?(): Promise<void>;
+  subscribe?(listener: (event: ConnectorEvent) => void): () => void;
+};
+```
+
+`subscribe` is how wallet-side events (`accountChanged`, `disconnected`) get
+bridged into butr's store — you never wire `accountsChanged` / `chainChanged`
+yourself.
+
+## Wallet — what your app calls
+
+These exist purely to give you a typed surface to a connected wallet. butr
+never invokes them itself.
+
+```ts
+type Wallet = {
+  getBalance(mint?: string): Promise<Balance>;
+  getSigner(): Promise<unknown>; // cast to viem WalletClient, WalletStandardWallet, …
+  getTransactionReceipt(tx: string): Promise<{ status: "Success" | "Error" | "Pending" }>;
+  sendTx(tx: unknown, account?: Account): Promise<string>;
+  sendTxToChain(tx: unknown, targetChainId: string, account?: Account, cb?: () => void): Promise<string>;
+  signMessage(
+    msg: Uint8Array,
+    account?: Account,
+  ): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
+  switchAccount?(address: string): Promise<void>;
+  switchChain(chain: ChainBase): Promise<void>;
+};
+```
+
+<Callout type="warn">
+  `signMessage` returns **both** `signature` and `signedMessage`. Solana Wallet
+  Standard wallets may prefix or re-encode the message internally. Verify the
+  signature against `signedMessage`, not your input bytes. EVM wallets echo the
+  input.
+</Callout>
+
+## The seam: `createConnector`
+
+Everything is registered through one function. butr asks for an adapter by id;
+you return it (or `null`).
+
+```ts
+type WalletManagerConfig = {
+  connectors: Array<ConnectorMeta>;
+  createConnector: (id: string) => WalletAdapter | null;
+  // …lifecycle callbacks
+};
+```
+
+This is why "how do I add wallet X" always has the same shape — discovered
+injected wallets, [WalletConnect](/docs/connectors/walletconnect),
+[Ledger](/docs/connectors/ledger), or a hand-written adapter all arrive through
+`createConnector`. `@butr/wallets`' `AutoWalletManagerProvider` wires this seam
+to EVM + SVM discovery for you.
+
+## ConnectedWallet
+
+What the hooks hand back:
+
+```ts
+type ConnectedWallet = {
+  account: Account; // currently-active account
+  accounts: Array<Account>; // every account this wallet exposes (≥ 1)
+  connector: WalletAdapter;
+};
+```
+
+`Account` is `{ chain: ChainBase; id: string; walletAddress: string }`. The
+chain travels *inside* the account — switching chains re-wraps the address with
+new chain data.
+
+**Source:** `packages/core/src/types/wallet.ts`.

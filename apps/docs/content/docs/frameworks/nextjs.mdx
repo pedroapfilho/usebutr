@@ -1,0 +1,116 @@
+---
+title: Next.js (App Router)
+description: Client-component provider, RSC boundary, and the EVM-only manual discovery pattern.
+---
+
+butr is a client-side wallet library — it touches `window`, wallet
+extensions, and `localStorage`. Under the App Router that means the provider
+must be a client component.
+
+## The `"use client"` boundary
+
+The `demo-next` reference is EVM-only and wires discovery manually (no
+`@butr/svm` in the bundle). The provider module starts with `"use client"`:
+
+```tsx title="src/wallet-provider.tsx"
+"use client";
+
+import {
+  createContext,
+  use,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import type { WalletAdapter, WalletManagerConfig } from "@butr/core";
+import { WalletManagerProvider, useWalletStoreContext } from "@butr/react";
+import { discoverEvmAdapters } from "@butr/evm";
+
+const EMPTY: ReadonlyArray<WalletAdapter> = [];
+const DiscoveredContext = createContext<ReadonlyArray<WalletAdapter>>(EMPTY);
+
+const DiscoverySubscriber = ({ adapters, setList }) => {
+  const store = useWalletStoreContext();
+  useEffect(() => {
+    const unsubscribe = discoverEvmAdapters((adapter) => {
+      if (adapters.has(adapter.id)) return;
+      adapters.set(adapter.id, adapter);
+      setList((prev) => [...prev, adapter]);
+      void store.getState()._tryRestoreFromPending(adapter.id);
+    });
+    return unsubscribe;
+  }, []);
+  return null;
+};
+
+const WalletProvider = ({ children }: { children: ReactNode }) => {
+  const [adapters] = useState<Map<string, WalletAdapter>>(() => new Map());
+  const [list, setList] = useState<ReadonlyArray<WalletAdapter>>(EMPTY);
+
+  const config = useMemo<WalletManagerConfig>(
+    () => ({
+      connectors: [],
+      createConnector: (id) => adapters.get(id) ?? null,
+      storageKeyPrefix: "butr-demo",
+    }),
+    [],
+  );
+
+  return (
+    <WalletManagerProvider config={config}>
+      <DiscoverySubscriber adapters={adapters} setList={setList} />
+      <DiscoveredContext.Provider value={list}>
+        {children}
+      </DiscoveredContext.Provider>
+    </WalletManagerProvider>
+  );
+};
+
+const useDiscoveredWallets = () => use(DiscoveredContext);
+
+export { WalletProvider, useDiscoveredWallets };
+```
+
+Mount it in the root layout (a Server Component importing a Client Component is
+fine):
+
+```tsx title="src/app/layout.tsx"
+import type { ReactNode } from "react";
+import { WalletProvider } from "../wallet-provider";
+
+const RootLayout = ({ children }: { children: ReactNode }) => (
+  <html lang="en">
+    <body>
+      <WalletProvider>{children}</WalletProvider>
+    </body>
+  </html>
+);
+
+export default RootLayout;
+```
+
+Any page using butr hooks (`useConnectWallet`, `useActiveWallet`, …) must also
+be `"use client"`.
+
+## Chains without `@butr/wallets`
+
+EVM-only setups don't bundle `@butr/wallets`. Pull the chain list from
+`@butr/evm` directly:
+
+```tsx
+import { EVM_CHAINS_LIST } from "@butr/evm";
+const CHAINS_BY_PLATFORM = { evm: EVM_CHAINS_LIST, svm: [] as const };
+```
+
+## Want EVM + SVM instead?
+
+Use `AutoWalletManagerProvider` from `@butr/wallets` in a `"use client"`
+module — same as [Vite](/docs/frameworks/vite), just with the directive at the
+top.
+
+<Callout type="info">
+  **Source:** `apps/demo-next` in the
+  [butr repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-next).
+  Run `pnpm dev --filter=demo-next` → `http://localhost:3000`.
+</Callout>

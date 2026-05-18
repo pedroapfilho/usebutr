@@ -1,0 +1,33 @@
+---
+title: Overview
+description: Every connector plugs in through the same createConnector seam — discovered, or registered explicitly.
+---
+
+A connector is a `WalletAdapter`. They reach butr two ways, both through
+`WalletManagerConfig.createConnector`:
+
+- **Discovered** — browser wallets announce themselves. `@butr/evm` listens for
+  EIP-6963; `@butr/svm` listens for the Wallet Standard. `@butr/wallets`
+  composes both. You don't register these by hand.
+- **Registered explicitly** — WalletConnect and Ledger aren't browser-injected.
+  You build the adapter once and return it from `createConnector` (or a
+  `createConnector` that falls back to a discovered map).
+
+| Connector | Package | Platform | Discovery | Notes |
+| --- | --- | --- | --- | --- |
+| [Injected EVM](/docs/connectors/injected-evm) | `@butr/evm` | evm | EIP-6963 + injected fallback | MetaMask, Rabby, Brave, … |
+| [Solana Wallet Standard](/docs/connectors/solana-wallet-standard) | `@butr/svm` | svm | Wallet Standard | Phantom, Solflare, Backpack, … |
+| [WalletConnect](/docs/connectors/walletconnect) | `@butr/walletconnect` | evm | explicit | Mobile wallets; needs a Reown project id |
+| [Ledger](/docs/connectors/ledger) | `@butr/ledger` | evm | explicit | WebUSB, Chromium-only, signing-only |
+
+Registering an explicit connector is the same shape every time:
+
+```ts
+const wc = await createWalletConnectAdapter({ projectId, onPairingUri });
+const extra = new Map([[wc.id, wc]]);
+
+const config: WalletManagerConfig = {
+  connectors: [{ id: wc.id, name: wc.name, chainPlatform: "evm" }],
+  createConnector: (id) => extra.get(id) ?? discovered.get(id) ?? null,
+};
+```

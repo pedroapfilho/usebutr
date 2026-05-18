@@ -1,0 +1,130 @@
+---
+title: Provider setup
+description: Auto-discovery with AutoWalletManagerProvider, or manual wiring with WalletManagerProvider and your own discovery loop.
+---
+
+There are two ways to set up the provider. Pick based on how much of the bundle
+and discovery pipeline you want to control.
+
+## Auto: `AutoWalletManagerProvider`
+
+The batteries-included path. One component discovers EVM (EIP-6963) and SVM
+(Wallet Standard) wallets and persists to `localStorage`.
+
+```tsx title="wallet-provider.tsx"
+import type { ReactNode } from "react";
+import { AutoWalletManagerProvider } from "@butr/wallets";
+
+const WalletProvider = ({ children }: { children: ReactNode }) => (
+  <AutoWalletManagerProvider storageKeyPrefix="butr-demo">
+    {children}
+  </AutoWalletManagerProvider>
+);
+
+export { WalletProvider };
+```
+
+Control discovery with `auto`:
+
+```tsx
+// EVM only — no SVM in the work the provider does
+<AutoWalletManagerProvider auto={{ evm: true }}>
+
+// Both (default)
+<AutoWalletManagerProvider auto>
+```
+
+`auto` semantics: `true` (or omitted) discovers everything. The object form is
+opt-in — unspecified flags default to `false`, so `{ evm: true }` is EVM-only.
+`injected` defaults to `true` when `evm` is true (the legacy EIP-1193 fallback).
+
+<Callout type="info">
+  **Source:** `apps/demo-vite` (auto, both platforms) and `apps/demo-expo-web`
+  (auto + custom storage) in the
+  [butr repository](https://github.com/pedroapfilho/butr/tree/main/apps).
+</Callout>
+
+## Manual: `WalletManagerProvider`
+
+When you want an EVM-only bundle (no `@butr/svm`) or a custom discovery
+pipeline, wire it yourself with `@butr/react` + `@butr/evm`. It's about 30
+lines. This is the `demo-next` / `demo-tanstack-start` pattern.
+
+```tsx title="wallet-provider.tsx"
+import {
+  createContext,
+  use,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import type { WalletAdapter, WalletManagerConfig } from "@butr/core";
+import { WalletManagerProvider, useWalletStoreContext } from "@butr/react";
+import { discoverEvmAdapters } from "@butr/evm";
+
+const EMPTY: ReadonlyArray<WalletAdapter> = [];
+const DiscoveredContext = createContext<ReadonlyArray<WalletAdapter>>(EMPTY);
+
+const DiscoverySubscriber = ({
+  adapters,
+  setList,
+}: {
+  adapters: Map<string, WalletAdapter>;
+  setList: (next: (prev: ReadonlyArray<WalletAdapter>) => ReadonlyArray<WalletAdapter>) => void;
+}) => {
+  const store = useWalletStoreContext();
+  useEffect(() => {
+    const unsubscribe = discoverEvmAdapters((adapter) => {
+      if (adapters.has(adapter.id)) return;
+      adapters.set(adapter.id, adapter);
+      setList((prev) => [...prev, adapter]);
+      // Complete any restore that was waiting on this adapter.
+      void store.getState()._tryRestoreFromPending(adapter.id);
+    });
+    return unsubscribe;
+  }, []);
+  return null;
+};
+
+const WalletProvider = ({ children }: { children: ReactNode }) => {
+  const [adapters] = useState<Map<string, WalletAdapter>>(() => new Map());
+  const [list, setList] = useState<ReadonlyArray<WalletAdapter>>(EMPTY);
+
+  const config = useMemo<WalletManagerConfig>(
+    () => ({
+      connectors: [],
+      createConnector: (id) => adapters.get(id) ?? null,
+      storageKeyPrefix: "butr-demo",
+    }),
+    [],
+  );
+
+  return (
+    <WalletManagerProvider config={config}>
+      <DiscoverySubscriber adapters={adapters} setList={setList} />
+      <DiscoveredContext.Provider value={list}>
+        {children}
+      </DiscoveredContext.Provider>
+    </WalletManagerProvider>
+  );
+};
+
+const useDiscoveredWallets = (): ReadonlyArray<WalletAdapter> =>
+  use(DiscoveredContext);
+
+export { WalletProvider, useDiscoveredWallets };
+```
+
+The whole manual contract is the `config` object: `createConnector` is the
+[seam](/docs/concepts/connectors-and-wallets) — butr asks for an adapter by id,
+you return it. Calling `_tryRestoreFromPending` after each discovery is what
+makes [hydration](/docs/concepts/hydration) complete for late-announced
+wallets.
+
+<Callout type="info">
+  **Source:** `apps/demo-next/src/wallet-provider.tsx` and
+  `apps/demo-tanstack-start/src/wallet-provider.tsx`. Add WalletConnect or
+  Ledger by returning their adapters from `createConnector` — see
+  [Connectors](/docs/connectors).
+</Callout>

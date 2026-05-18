@@ -15,6 +15,12 @@ const EMPTY_DISCOVERED: ReadonlyArray<WalletAdapter> = [];
 const DiscoveredWalletsContext: React.Context<ReadonlyArray<WalletAdapter>> =
   createContext<ReadonlyArray<WalletAdapter>>(EMPTY_DISCOVERED);
 
+/**
+ * All props — especially `on*` lifecycle callbacks, `storage`, and `discovery` —
+ * are captured once at mount via `useState` lazy initializers and are authoritative
+ * for the provider's lifetime. Later prop changes are silently ignored, so consumers
+ * must pass stable references: module-level values, `useRef`, or `useCallback`.
+ */
 type WalletManagerProviderProps = {
   children: React.ReactNode;
   /** Metadata for explicitly-registered connectors. */

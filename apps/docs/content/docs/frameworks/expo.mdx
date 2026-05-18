@@ -1,10 +1,10 @@
 ---
 title: Expo (React Native, web target)
-description: AutoWalletManagerProvider with an AsyncStorage-backed storage driver.
+description: WalletManagerProvider with autoDiscovery() and an AsyncStorage-backed storage driver.
 ---
 
-Expo works with `AutoWalletManagerProvider`, but React Native has no
-`localStorage`, so you supply an `AsyncStorage`-backed
+Expo works with `WalletManagerProvider` and `autoDiscovery()`, but React Native
+has no `localStorage`, so you supply an `AsyncStorage`-backed
 [storage driver](/docs/guides/custom-storage). This is the `demo-expo-web`
 reference.
 
@@ -24,10 +24,13 @@ export { asyncStorageDriver };
 ```tsx title="src/wallet-provider.tsx"
 import type { ReactNode } from "react";
 import { WalletStorage } from "@butr/core";
-import { AutoWalletManagerProvider } from "@butr/wallets";
+import { WalletManagerProvider } from "@butr/react";
+import { autoDiscovery } from "@butr/wallets";
 import { asyncStorageDriver } from "./async-storage-driver";
 
 const KEY_PREFIX = "butr-demo";
+
+const discovery = autoDiscovery();
 
 const storage = new WalletStorage({
   keyPrefix: KEY_PREFIX,
@@ -36,9 +39,13 @@ const storage = new WalletStorage({
 });
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <AutoWalletManagerProvider storage={storage} storageKeyPrefix={KEY_PREFIX}>
+  <WalletManagerProvider
+    discovery={discovery}
+    storage={storage}
+    storageKeyPrefix={KEY_PREFIX}
+  >
     {children}
-  </AutoWalletManagerProvider>
+  </WalletManagerProvider>
 );
 
 export { WalletProvider };
@@ -52,7 +59,7 @@ export { WalletProvider };
 </Callout>
 
 <Callout type="info">
-  **Source:** `apps/demo-expo-web` in the
+  **Source:** `apps/demo-expo-web/src/wallet-provider.tsx` in the
   [butr repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-expo-web).
   Run `pnpm dev --filter=demo-expo-web` → `http://localhost:8081`. See
   [custom storage](/docs/guides/custom-storage) for the session-storage caveat.

@@ -9,8 +9,7 @@ description: Discover wallets, connect by id, read status and errors, and discon
 ones already in the pool before rendering a picker:
 
 ```tsx
-import { useConnectWallet, useConnectedWallets } from "@butr/react";
-import { useDiscoveredWallets } from "@butr/wallets";
+import { useConnectWallet, useConnectedWallets, useDiscoveredWallets } from "@butr/react";
 
 const connect = useConnectWallet();
 const discovered = useDiscoveredWallets();
@@ -20,9 +19,6 @@ const available = discovered.filter(
   (d) => !connected.some((c) => c.connector.id === d.id),
 );
 ```
-
-(In a [manual EVM-only setup](/docs/guides/provider-setup), `useDiscoveredWallets`
-comes from your own provider module instead of `@butr/wallets`.)
 
 ## Connect
 

@@ -1,4 +1,9 @@
-# butr-monorepo
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/butr-logo-dark.svg">
+    <img alt="butr" src="./assets/butr-logo-light.svg" width="320">
+  </picture>
+</div>
 
 butr is a multi-chain wallet management library for React. It discovers EVM and Solana wallets in the browser, manages their connections across the lifetime of an app, and exposes them through composable hooks — so a single component can talk to a MetaMask account and a Phantom account in the same render pass.
 

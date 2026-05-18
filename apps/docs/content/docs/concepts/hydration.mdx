@@ -28,6 +28,11 @@ type HydrationOutcome = {
   storage; surface "Couldn't reconnect Phantom — connect again" if you want.
 
 ```tsx
+import { WalletManagerProvider } from "@butr/react";
+import { autoDiscovery } from "@butr/wallets";
+
+const discovery = autoDiscovery();
+
 <WalletManagerProvider
   discovery={discovery}
   onHydrated={(outcome) => {

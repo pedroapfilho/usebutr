@@ -117,7 +117,3 @@ Open the URL from the table above. Distinct ports let every demo run side by sid
 | `pnpm typecheck`    | Run TypeScript checks across the monorepo. |
 | `pnpm clean`        | Clean all build artifacts.                 |
 | `pnpm fallow:dead`  | Find unused exports.                       |
-
-## Architecture
-
-See [`docs/architecture-review-2026-05-14.md`](docs/architecture-review-2026-05-14.md) for the most recent deepening-opportunity survey across the packages.

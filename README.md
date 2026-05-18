@@ -3,6 +3,8 @@
     <source media="(prefers-color-scheme: dark)" srcset="./assets/butr-logo-dark.svg">
     <img alt="butr" src="./assets/butr-logo-light.svg" width="320">
   </picture>
+  <br />
+  <br />
 </div>
 
 butr is a multi-chain wallet management library for React. It discovers EVM and Solana wallets in the browser, manages their connections across the lifetime of an app, and exposes them through composable hooks — so a single component can talk to a MetaMask account and a Phantom account in the same render pass.
@@ -74,7 +76,7 @@ All web demos bind distinct ports so they can run concurrently.
 - **Library:** `@butr/*` workspace packages (React 19, zustand).
 - **Build:** Turborepo + pnpm workspaces; tsdown for package builds (tree-shaking, minification, source maps, watch mode).
 - **Linting / formatting:** oxlint + oxfmt.
-- **Testing:** Vitest for unit tests; Playwright wired but currently placeholder.
+- **Testing:** Vitest for unit tests.
 
 ## Setup
 
@@ -108,14 +110,9 @@ Open the URL from the table above. Distinct ports let every demo run side by sid
 | `pnpm dev`          | Start every app in development mode.       |
 | `pnpm build`        | Build every package and app.               |
 | `pnpm test`         | Run unit tests across the monorepo.        |
-| `pnpm test:e2e`     | Run Playwright e2e tests (placeholder).    |
 | `pnpm lint`         | Run oxlint.                                |
 | `pnpm format`       | Format with oxfmt.                         |
 | `pnpm format:check` | Check formatting without writing.          |
 | `pnpm typecheck`    | Run TypeScript checks across the monorepo. |
 | `pnpm clean`        | Clean all build artifacts.                 |
 | `pnpm fallow:dead`  | Find unused exports.                       |
-
-## Architecture
-
-See [`docs/architecture-review-2026-05-14.md`](docs/architecture-review-2026-05-14.md) for the most recent deepening-opportunity survey across the packages.

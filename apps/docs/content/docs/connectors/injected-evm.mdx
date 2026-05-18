@@ -10,25 +10,27 @@ wallets announce themselves via window events instead of fighting over
 
 ## Discovery
 
+`autoDiscovery()` from `@butr/wallets` handles EVM discovery automatically.
+For an EVM-only setup, wire it directly with `createWalletSource`:
+
 ```ts
+import { createWalletSource } from "@butr/core";
 import { discoverEvmAdapters } from "@butr/evm";
+import { WalletManagerProvider } from "@butr/react";
 
-const unsubscribe = discoverEvmAdapters((adapter) => {
-  // adapter is a WalletAdapter — register it and complete pending restores
-  adapters.set(adapter.id, adapter);
-  void store.getState()._tryRestoreFromPending(adapter.id);
-});
+const discovery = createWalletSource(discoverEvmAdapters);
+
+<WalletManagerProvider discovery={discovery}>
+  {children}
+</WalletManagerProvider>
 ```
-
-`@butr/wallets`' `AutoWalletManagerProvider` calls this for you. Wire it
-yourself only for an [EVM-only manual setup](/docs/guides/provider-setup).
 
 ## Injected fallback
 
 Some regional / legacy wallets only expose a raw EIP-1193 `window.ethereum` and
 never announce via EIP-6963. `discoverInjectedAdapter` is the last-resort
-fallback for them. In `AutoWalletManagerProvider` it's controlled by the
-`injected` discovery flag, which defaults to `true` whenever `evm` is enabled.
+fallback for them. When using `autoDiscovery()` the `injected` flag is
+controlled by `DiscoverOptions` and defaults to `true` whenever `evm` is enabled.
 
 ```ts
 import { discoverInjectedAdapter, GENERIC_INJECTED_ICON } from "@butr/evm";

@@ -4,14 +4,13 @@ description: Every connector plugs in through the same createConnector seam — 
 ---
 
 A connector is a `WalletAdapter`. They reach butr two ways, both through
-`WalletManagerConfig.createConnector`:
+`WalletManagerProvider`:
 
 - **Discovered** — browser wallets announce themselves. `@butr/evm` listens for
   EIP-6963; `@butr/svm` listens for the Wallet Standard. `@butr/wallets`
-  composes both. You don't register these by hand.
+  composes both via `autoDiscovery()`. You don't register these by hand.
 - **Registered explicitly** — WalletConnect and Ledger aren't browser-injected.
-  You build the adapter once and return it from `createConnector` (or a
-  `createConnector` that falls back to a discovered map).
+  You build the adapter once and return it from `createConnector`.
 
 | Connector | Package | Platform | Discovery | Notes |
 | --- | --- | --- | --- | --- |
@@ -20,14 +19,26 @@ A connector is a `WalletAdapter`. They reach butr two ways, both through
 | [WalletConnect](/docs/connectors/walletconnect) | `@butr/walletconnect` | evm | explicit | Mobile wallets; needs a Reown project id |
 | [Ledger](/docs/connectors/ledger) | `@butr/ledger` | evm | explicit | WebUSB, Chromium-only, signing-only |
 
-Registering an explicit connector is the same shape every time:
+Registering an explicit connector follows the same shape every time. Build the
+adapter at module scope (it's async), then wire it through the unified provider:
 
-```ts
+```tsx
+import { WalletManagerProvider } from "@butr/react";
+import { autoDiscovery } from "@butr/wallets";
+import { createWalletConnectAdapter } from "@butr/walletconnect";
+
+const discovery = autoDiscovery();
 const wc = await createWalletConnectAdapter({ projectId, onPairingUri });
 const extra = new Map([[wc.id, wc]]);
 
-const config: WalletManagerConfig = {
-  connectors: [{ id: wc.id, name: wc.name, chainPlatform: "evm" }],
-  createConnector: (id) => extra.get(id) ?? discovered.get(id) ?? null,
-};
+<WalletManagerProvider
+  discovery={discovery}
+  connectors={[{ id: wc.id, name: wc.name, chainPlatform: "evm" }]}
+  createConnector={(id) => extra.get(id) ?? null}
+>
+  {children}
+</WalletManagerProvider>
 ```
+
+When both `discovery` and `createConnector` are present, an id is resolved from
+discovered adapters first, then `createConnector`.

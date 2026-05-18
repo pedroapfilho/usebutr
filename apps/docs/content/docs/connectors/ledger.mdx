@@ -32,9 +32,29 @@ const ledger = await createLedgerAdapter({
 | `derivationPathPrefix` | `string` | `44'/60'/0'/0` | Standard Ethereum path; `getAccounts(n)` appends the index. |
 | `id` / `name` / `icon` | `string` | `"ledger"` / `"Ledger"` / `LEDGER_DEFAULT_ICON` | |
 
-Register it through `createConnector` exactly like
-[WalletConnect](/docs/connectors/walletconnect). On `connect()` the browser
-shows the WebUSB permission prompt and the user unlocks the device.
+Register it through the unified provider exactly like
+[WalletConnect](/docs/connectors/walletconnect):
+
+```tsx
+import { WalletManagerProvider } from "@butr/react";
+import { autoDiscovery } from "@butr/wallets";
+import { createLedgerAdapter } from "@butr/ledger";
+
+const discovery = autoDiscovery();
+const ledger = await createLedgerAdapter({ chainId: 1, accountCount: 3 });
+const extra = new Map([[ledger.id, ledger]]);
+
+<WalletManagerProvider
+  discovery={discovery}
+  connectors={[{ id: ledger.id, name: ledger.name, chainPlatform: "evm" }]}
+  createConnector={(id) => extra.get(id) ?? null}
+>
+  {children}
+</WalletManagerProvider>
+```
+
+On `connect()` the browser shows the WebUSB permission prompt and the user
+unlocks the device.
 
 ## Capabilities
 

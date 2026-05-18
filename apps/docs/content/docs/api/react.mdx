@@ -8,10 +8,30 @@ description: The provider and every hook, grouped by what they do.
 ### `WalletManagerProvider`
 
 ```tsx
-<WalletManagerProvider config={config}>{children}</WalletManagerProvider>
+<WalletManagerProvider discovery={discovery}>{children}</WalletManagerProvider>
 ```
 
-Props: `WalletManagerProviderProps` — `{ config: WalletManagerConfig; children }`.
+All props are flat — there is no nested `config` object. Props captured once at
+mount; later changes are silently ignored. Pass stable references (module-level
+values, `useRef`, `useCallback`).
+
+| Prop | Type | Notes |
+| --- | --- | --- |
+| `children` | `React.ReactNode` | Required. |
+| `discovery` | `WalletSource` | Auto-discovery source. Omit for a fully-manual provider (no protocol code enters the bundle). |
+| `connectors` | `Array<ConnectorMeta>` | Metadata for explicitly-registered connectors. |
+| `createConnector` | `(id: string) => WalletAdapter \| null` | Explicit connector factory. Resolved after `discovery`. |
+| `onConnect` | `WalletManagerConfig["onConnect"]` | Lifecycle callback. |
+| `onConnectError` | `WalletManagerConfig["onConnectError"]` | Lifecycle callback. |
+| `onDisconnect` | `WalletManagerConfig["onDisconnect"]` | Lifecycle callback. |
+| `onHydrated` | `WalletManagerConfig["onHydrated"]` | Lifecycle callback. |
+| `onReset` | `WalletManagerConfig["onReset"]` | Lifecycle callback. |
+| `onSlowConnect` | `WalletManagerConfig["onSlowConnect"]` | Lifecycle callback. |
+| `onStorageError` | `WalletManagerConfig["onStorageError"]` | Lifecycle callback. |
+| `slowConnectThresholdMs` | `number` | Threshold before `onSlowConnect` fires. |
+| `storage` | `WalletPersistence` | Custom storage. Defaults to `localStorage`. |
+| `storageKeyPrefix` | `string` | Prefix for all persisted keys. |
+
 Also exports `WalletStoreContext` and `useWalletStoreContext()` (the raw store,
 used in custom discovery wiring).
 
@@ -34,12 +54,25 @@ used in custom discovery wiring).
 | `useSelectedWallet(platform)` | `ConnectedWallet \| undefined` |
 | `useIsPlatformConnected(platform)` | `boolean` |
 | `useAccounts(connectorId?)` | `ReadonlyArray<Account>` (active wallet if omitted) |
+| `useDiscoveredWallets()` | `ReadonlyArray<WalletAdapter>` (empty without `discovery`) |
 
 ### Stable accessors (return functions, safe in callbacks/deps)
 
 - `useGetWallet()` → `(connectorId) => ConnectedWallet | undefined`
 - `useGetSelectedWallet()` → `(platform) => ConnectedWallet | undefined`
 - `useGetConnectorInstance()` → `(id) => WalletAdapter | null`
+
+### `useDiscoveredWallets()`
+
+```tsx
+import { useDiscoveredWallets } from "@butr/react";
+
+const wallets = useDiscoveredWallets();
+// ReadonlyArray<WalletAdapter> — empty when no `discovery` prop was passed
+```
+
+Live list of adapters announced via the `discovery` source since the provider
+mounted. Sourced from `@butr/react`.
 
 ### `useWalletStore(selector)`
 

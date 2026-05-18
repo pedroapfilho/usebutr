@@ -49,15 +49,28 @@ const wc = await createWalletConnectAdapter({
 ## Register it
 
 The adapter is fully formed but **un-paired** — pairing happens when butr's
-runtime calls `adapter.connect()` (when the user clicks "Connect"):
+runtime calls `adapter.connect()` (when the user clicks "Connect"). Build the
+adapter once at module scope, then pass it through the unified provider:
 
-```ts
+```tsx
+import { WalletManagerProvider } from "@butr/react";
+import { autoDiscovery } from "@butr/wallets";
+import { createWalletConnectAdapter } from "@butr/walletconnect";
+
+const discovery = autoDiscovery();
+const wc = await createWalletConnectAdapter({
+  projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
+  onPairingUri: (uri) => setQrUri(uri),
+});
 const extra = new Map([[wc.id, wc]]);
 
-const config: WalletManagerConfig = {
-  connectors: [{ id: wc.id, name: wc.name, chainPlatform: "evm" }],
-  createConnector: (id) => extra.get(id) ?? discovered.get(id) ?? null,
-};
+<WalletManagerProvider
+  discovery={discovery}
+  connectors={[{ id: wc.id, name: wc.name, chainPlatform: "evm" }]}
+  createConnector={(id) => extra.get(id) ?? null}
+>
+  {children}
+</WalletManagerProvider>
 ```
 
 Build the adapter **once at app boot**, cache it, and re-register on each

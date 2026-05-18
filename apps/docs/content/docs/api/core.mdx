@@ -5,6 +5,30 @@ description: Types, the wallet store, persistence, and the discovery seam. No Re
 
 ## Functions
 
+### `createWalletSource(subscribe): WalletSource`
+
+```ts
+import { createWalletSource } from "@butr/core";
+
+const source = createWalletSource(discoverEvmAdapters);
+// Pass as: <WalletManagerProvider discovery={source}>
+```
+
+Wraps a bare `(onAdapter: (adapter: WalletAdapter) => void) => () => void`
+discoverer into a `WalletSource`. Use this when you want EVM-only or SVM-only
+discovery without importing `@butr/wallets`:
+
+```ts
+import { createWalletSource } from "@butr/core";
+import { discoverEvmAdapters } from "@butr/evm";
+import { discoverSvmAdapters } from "@butr/svm";
+
+const evmOnly = createWalletSource(discoverEvmAdapters);
+const svmOnly = createWalletSource(discoverSvmAdapters);
+```
+
+`WalletSource` — the discovery seam — is `{ subscribe(onAdapter): () => void }`.
+
 ### `createWalletStore(config: WalletManagerConfig): WalletStore`
 
 Creates the Zustand-backed wallet store. `@butr/react`'s provider wraps this;

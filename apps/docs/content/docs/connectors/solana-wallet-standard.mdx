@@ -8,16 +8,20 @@ description: Wallet Standard discovery for Solana wallets, via @butr/svm.
 
 ## Discovery
 
+`autoDiscovery()` from `@butr/wallets` handles SVM discovery automatically.
+For an SVM-only setup, wire it directly with `createWalletSource`:
+
 ```ts
+import { createWalletSource } from "@butr/core";
 import { discoverSvmAdapters } from "@butr/svm";
+import { WalletManagerProvider } from "@butr/react";
 
-const unsubscribe = discoverSvmAdapters((adapter) => {
-  adapters.set(adapter.id, adapter);
-  void store.getState()._tryRestoreFromPending(adapter.id);
-});
+const discovery = createWalletSource(discoverSvmAdapters);
+
+<WalletManagerProvider discovery={discovery}>
+  {children}
+</WalletManagerProvider>
 ```
-
-`AutoWalletManagerProvider` does this when SVM discovery is enabled (default).
 
 <Callout type="info">
   `@butr/svm` lazily imports `@wallet-standard/app` (an optional peer

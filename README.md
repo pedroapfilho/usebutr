@@ -9,7 +9,7 @@
 
 butr is a multi-chain wallet management library for React. It discovers EVM and Solana wallets in the browser, manages their connections across the lifetime of an app, and exposes them through composable hooks — so a single component can talk to a MetaMask account and a Phantom account in the same render pass.
 
-The library is split across small focused packages so consumers bundle only what they need. The monorepo also ships nine demo apps that exercise butr across the major React frameworks and integration patterns.
+The library is split across small focused packages so consumers bundle only what they need. The monorepo also ships eleven demo apps that exercise butr across the major React frameworks and integration patterns.
 
 ## Highlights
 
@@ -17,7 +17,7 @@ The library is split across small focused packages so consumers bundle only what
 - **Framework-agnostic core.** `@usebutr/core` is React-free. `@usebutr/react` is the binding, not the foundation. Use the core directly from any TS runtime.
 - **Modular packages.** Install only the protocol adapters you ship. EVM-only dapp? Skip `@usebutr/svm` entirely.
 - **No middleware lock-in.** Every adapter is just a `WalletAdapter`. Bring WalletConnect, Ledger, or your own.
-- **Composes with the ecosystem.** Sits beside viem, wagmi, `@solana/web3.js`, `@solana/wallet-adapter-react`, `@solana/kit`. butr owns discovery and connection state; your existing library owns RPC and signing.
+- **Composes with the ecosystem.** Sits beside viem, wagmi, `gill`, framework-kit (`@solana/client` + `@solana/react-hooks`), `@solana/kit`, `@solana/wallet-adapter-react` (and legacy `@solana/web3.js`). butr owns discovery and connection state; your existing library owns RPC and signing.
 
 ## Packages
 
@@ -63,11 +63,13 @@ Each integration demo shows butr composing with a library you may already be usi
 
 | App                               | Library                        | Network      | Dev URL                 |
 | --------------------------------- | ------------------------------ | ------------ | ----------------------- |
-| `demo-with-viem`                  | viem                           | EVM, Sepolia | `http://localhost:5175` |
-| `demo-with-wagmi`                 | wagmi + `@wagmi/core`          | EVM, Sepolia | `http://localhost:5176` |
-| `demo-with-solana-web3js`         | `@solana/web3.js`              | SVM, Devnet  | `http://localhost:5177` |
-| `demo-with-solana-wallet-adapter` | `@solana/wallet-adapter-react` | SVM, Devnet  | `http://localhost:5178` |
-| `demo-with-solana-kit`            | `@solana/kit`                  | SVM, Devnet  | `http://localhost:5179` |
+| `demo-with-viem`                  | viem                                  | EVM, Sepolia | `http://localhost:5175` |
+| `demo-with-wagmi`                 | wagmi + `@wagmi/core`                 | EVM, Sepolia | `http://localhost:5176` |
+| `demo-with-solana-framework-kit`  | framework-kit (`@solana/react-hooks`) | SVM, Devnet  | `http://localhost:5181` |
+| `demo-with-gill`                  | `gill`                                | SVM, Devnet  | `http://localhost:5180` |
+| `demo-with-solana-kit`            | `@solana/kit`                         | SVM, Devnet  | `http://localhost:5179` |
+| `demo-with-solana-wallet-adapter` | `@solana/wallet-adapter-react`        | SVM, Devnet  | `http://localhost:5178` |
+| `demo-with-solana-web3js`         | `@solana/web3.js` (legacy v1)         | SVM, Devnet  | `http://localhost:5177` |
 
 All web demos bind distinct ports so they can run concurrently.
 
@@ -98,7 +100,8 @@ pnpm dev --filter=demo-vite
 # or any of:
 #   demo-next, demo-tanstack-start, demo-expo-web,
 #   demo-with-viem, demo-with-wagmi,
-#   demo-with-solana-web3js, demo-with-solana-wallet-adapter, demo-with-solana-kit
+#   demo-with-solana-framework-kit, demo-with-gill, demo-with-solana-kit,
+#   demo-with-solana-wallet-adapter, demo-with-solana-web3js
 ```
 
 Open the URL from the table above. Distinct ports let every demo run side by side.

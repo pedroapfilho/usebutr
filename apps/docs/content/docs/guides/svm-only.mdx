@@ -1,0 +1,120 @@
+---
+title: SVM-only setup
+description: Ship @butr/react + @butr/svm with no @butr/evm or @butr/wallets in the bundle.
+---
+
+Pick this path when your app only touches Solana — a `@solana/web3.js`,
+`@solana/kit`, or `@solana/wallet-adapter-react` app with no EVM surface. You
+import `@butr/svm` for discovery instead of `autoDiscovery()` from
+`@butr/wallets`, and the EVM packages never enter your bundle. The provider and
+hooks are identical to every other setup.
+
+## Install
+
+`@butr/react` gives you the provider and hooks, `@butr/svm` does Wallet Standard
+discovery, and `createWalletSource` comes from `@butr/core`. No `@butr/wallets`,
+no `@butr/evm`.
+
+```npm
+npm install @butr/react @butr/svm @butr/core zustand
+```
+
+`@butr/svm` lazily imports `@wallet-standard/app` (an optional peer dependency).
+Install it for discovery to work; if it is absent, SVM discovery becomes a
+graceful no-op rather than throwing.
+
+```npm
+npm install @wallet-standard/app
+```
+
+## Provider
+
+Build the `WalletSource` with `createWalletSource` from `@butr/core` and
+`discoverSvmAdapters` from `@butr/svm`. Hoist it to module scope so it is created
+once, not on every render.
+
+```tsx title="src/wallet-provider.tsx"
+import type { ReactNode } from "react";
+import { createWalletSource } from "@butr/core";
+import { WalletManagerProvider, useDiscoveredWallets } from "@butr/react";
+import { discoverSvmAdapters } from "@butr/svm";
+
+// SVM-only: @butr/react + @butr/svm.
+const svmDiscovery = createWalletSource(discoverSvmAdapters);
+
+const WalletProvider = ({ children }: { children: ReactNode }) => (
+  <WalletManagerProvider discovery={svmDiscovery} storageKeyPrefix="butr-solana-web3js-demo">
+    {children}
+  </WalletManagerProvider>
+);
+
+export { WalletProvider, useDiscoveredWallets };
+```
+
+`demo-with-solana-web3js`, `demo-with-solana-kit`, and
+`demo-with-solana-wallet-adapter` all use exactly this pattern (each with its own
+`storageKeyPrefix`). They re-export `useDiscoveredWallets` from the local
+`wallet-provider` module so consuming files import it from one place.
+
+## The bundle guarantee
+
+The isolation is not a flag — it is your import graph. `@butr/svm` depends only
+on `@butr/core`; it carries no EVM or EIP-6963 code. `autoDiscovery()` lives in
+`@butr/wallets`, which depends on both `@butr/evm` and `@butr/svm`, so importing
+it would pull EVM in. Here you import `discoverSvmAdapters` from `@butr/svm`
+directly, so `@butr/evm` and `@butr/wallets` are never referenced and the bundler
+tree-shakes them out (`"sideEffects": false` is set on every package). See
+[Platforms](/docs/concepts/platforms).
+
+## Chains
+
+Pull the chain list from `@butr/svm` directly. `CHAINS_BY_PLATFORM` from
+`@butr/wallets` would re-introduce the bundle you just avoided.
+
+```tsx
+import { SVM_CHAINS_LIST } from "@butr/svm";
+const CHAINS_BY_PLATFORM = { evm: [] as const, svm: SVM_CHAINS_LIST };
+```
+
+`SVM_CHAINS` (keyed: `mainnet`, `devnet`, `testnet`) and `SVM_CHAINS_LIST` (the
+same as an array) are both exported from `@butr/svm`. These use Wallet Standard
+shortnames (`solana:mainnet`, not the strict CAIP-2 genesis-hash form) because
+that is what real wallets — Phantom, Solflare, Backpack — advertise in
+`wallet.chains`.
+
+## Capabilities and caveats
+
+`@butr/svm` discovers wallets via the
+[Wallet Standard](https://github.com/wallet-standard/wallet-standard). Because it
+lazily imports `@wallet-standard/app`, there is an asynchronous warmup: a
+restored wallet can land in `pendingIds` for a moment before it resolves — see
+[Hydration](/docs/concepts/hydration).
+
+Capabilities are resolved from the wallet's advertised Wallet Standard features:
+`signMessage` is true only if the wallet advertises `solana:signMessage`,
+`sendTransaction` only if it advertises `solana:signAndSendTransaction`,
+`subscribe` via the Standard `change` event. `requestAccounts` is generally a
+no-op — Standard wallets expose all accounts at once, there is no picker. Always
+branch on [`wallet.connector.capabilities`](/docs/concepts/capabilities).
+
+`getSigner()` on an SVM adapter returns the `WalletStandardWallet`; you call its
+features directly or bridge into a Solana library. See the integration pages for
+the full build-and-send flow.
+
+## Next steps
+
+- [Solana Wallet Standard connector](/docs/connectors/solana-wallet-standard) —
+  the discovery and signer detail.
+- [solana-web3js](/docs/integrations/solana-web3js) /
+  [solana-kit](/docs/integrations/solana-kit) /
+  [solana-wallet-adapter](/docs/integrations/solana-wallet-adapter) — build and
+  send transactions.
+- [Provider setup](/docs/guides/provider-setup) — auto, manual, and composed
+  variants.
+
+<Callout type="info">
+  **Source:** `apps/demo-with-solana-web3js/src/wallet-provider.tsx`,
+  `apps/demo-with-solana-kit/src/wallet-provider.tsx`, and
+  `apps/demo-with-solana-wallet-adapter/src/wallet-provider.tsx` in the
+  [butr repository](https://github.com/pedroapfilho/butr).
+</Callout>

@@ -35,6 +35,8 @@ export default defineConfig({
       files: [
         "apps/demo-vite/src/**/*.tsx",
         "apps/demo-tanstack-start/src/**/*.tsx",
+        "apps/demo-with-viem/src/**/*.tsx",
+        "apps/demo-with-wagmi/src/**/*.tsx",
       ],
       rules: {
         "no-img-element": "off",

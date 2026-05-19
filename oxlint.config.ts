@@ -57,6 +57,15 @@ export default defineConfig({
         "prefer-node-protocol": "off",
       },
     },
+    // proxy.ts's matcher must be a plain string literal — Next 16 statically
+    // extracts the `config` export and cannot parse a `String.raw` tagged
+    // template, so `prefer-string-raw` is unworkable for this one file.
+    {
+      files: ["apps/docs/proxy.ts"],
+      rules: {
+        "prefer-string-raw": "off",
+      },
+    },
     // oxfmt always lowercases hex literals, while `number-literal-case` wants
     // uppercase. The two tools are in conflict: disable the oxlint rule for test
     // files where hex literals appear only as fixture values (not production code).

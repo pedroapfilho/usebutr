@@ -39,11 +39,7 @@ const storage = new WalletStorage({
 });
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <WalletManagerProvider
-    discovery={discovery}
-    storage={storage}
-    storageKeyPrefix={KEY_PREFIX}
-  >
+  <WalletManagerProvider discovery={discovery} storage={storage} storageKeyPrefix={KEY_PREFIX}>
     {children}
   </WalletManagerProvider>
 );
@@ -52,15 +48,15 @@ export { WalletProvider };
 ```
 
 <Callout type="warn">
-  `demo-expo-web` targets the **web** bundle (`expo start --web`), where
-  browser wallet discovery works. Native iOS/Android wallet transports
-  (deep links, in-app browsers) are out of scope for this provider; on native
-  you'd pair through [WalletConnect](/docs/connectors/walletconnect) instead.
+  `demo-expo-web` targets the **web** bundle (`expo start --web`), where browser wallet discovery
+  works. Native iOS/Android wallet transports (deep links, in-app browsers) are out of scope for
+  this provider; on native you'd pair through [WalletConnect](/docs/connectors/walletconnect)
+  instead.
 </Callout>
 
 <Callout type="info">
-  **Source:** `apps/demo-expo-web/src/wallet-provider.tsx` in the
-  [butr repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-expo-web).
-  Run `pnpm dev --filter=demo-expo-web` → `http://localhost:8081`. See
-  [custom storage](/docs/guides/custom-storage) for the session-storage caveat.
+  **Source:** `apps/demo-expo-web/src/wallet-provider.tsx` in the [butr
+  repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-expo-web). Run `pnpm dev
+  --filter=demo-expo-web` → `http://localhost:8081`. See [custom
+  storage](/docs/guides/custom-storage) for the session-storage caveat.
 </Callout>

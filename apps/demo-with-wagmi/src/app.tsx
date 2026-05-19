@@ -10,12 +10,7 @@ import {
   signMessage,
 } from "@wagmi/core";
 import { injected } from "@wagmi/connectors";
-import {
-  useActiveWallet,
-  useConnectWallet,
-  useDisconnectWallet,
-  useIsHydrated,
-} from "@butr/react";
+import { useActiveWallet, useConnectWallet, useDisconnectWallet, useIsHydrated } from "@butr/react";
 import { useDiscoveredWallets } from "./wallet-provider";
 
 const BURN_ADDRESS: Address = "0x000000000000000000000000000000000000dEaD";
@@ -44,7 +39,9 @@ const buildWagmiConfig = (provider: EIP1193Provider, butrName: string, butrId: s
   });
 
 const formatError = (e: unknown): string => {
-  if (e instanceof Error) {return e.message;}
+  if (e instanceof Error) {
+    return e.message;
+  }
   return String(e);
 };
 
@@ -80,7 +77,9 @@ const Connected = ({
     void (async () => {
       try {
         const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         const cfg = buildWagmiConfig(provider, wallet.connector.name, wallet.connector.id);
         const connector = cfg.connectors[0];
         // Run wagmi's connect lifecycle through butr's provider so all subsequent
@@ -90,9 +89,13 @@ const Connected = ({
         if (connector) {
           await connect(cfg, { connector });
         }
-        if (!cancelled) {setWagmiConfig(cfg);}
+        if (!cancelled) {
+          setWagmiConfig(cfg);
+        }
       } catch (error) {
-        if (!cancelled) {setErrorMsg(formatError(error));}
+        if (!cancelled) {
+          setErrorMsg(formatError(error));
+        }
       }
     })();
     return () => {
@@ -101,14 +104,20 @@ const Connected = ({
   }, [account, wallet.connector]);
 
   useEffect(() => {
-    if (!wagmiConfig) {return;}
+    if (!wagmiConfig) {
+      return;
+    }
     let cancelled = false;
     void (async () => {
       try {
         const result = await getBalance(wagmiConfig, { address: account });
-        if (!cancelled) {setBalance(`${formatEther(result.value)} ${result.symbol}`);}
+        if (!cancelled) {
+          setBalance(`${formatEther(result.value)} ${result.symbol}`);
+        }
       } catch (error) {
-        if (!cancelled) {setBalance("error");}
+        if (!cancelled) {
+          setBalance("error");
+        }
         console.warn("getBalance failed:", error);
       }
     })();
@@ -118,7 +127,9 @@ const Connected = ({
   }, [account, wagmiConfig]);
 
   const handleSign = async () => {
-    if (!wagmiConfig) {return;}
+    if (!wagmiConfig) {
+      return;
+    }
     setErrorMsg(null);
     try {
       const sig = await signMessage(wagmiConfig, { message: "Hello from butr + wagmi" });
@@ -129,7 +140,9 @@ const Connected = ({
   };
 
   const handleSendTx = async () => {
-    if (!wagmiConfig) {return;}
+    if (!wagmiConfig) {
+      return;
+    }
     setErrorMsg(null);
     try {
       const hash = await sendTransaction(wagmiConfig, {
@@ -197,7 +210,9 @@ const Connected = ({
         </Row>
       ) : null}
       {errorMsg ? (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMsg}</p>
+        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {errorMsg}
+        </p>
       ) : null}
     </section>
   );
@@ -220,8 +235,8 @@ const Content = () => {
         <h2 className="font-semibold">Available wallets</h2>
         {discovered.length === 0 ? (
           <p className="text-sm text-neutral-500">
-            No EIP-6963 wallets detected. Install MetaMask, Rabby, or another EVM browser
-            wallet and refresh.
+            No EIP-6963 wallets detected. Install MetaMask, Rabby, or another EVM browser wallet and
+            refresh.
           </p>
         ) : (
           <ul className="space-y-2">
@@ -253,10 +268,9 @@ const App = () => (
     <header className="mb-8">
       <h1 className="text-3xl font-bold tracking-tight">butr + wagmi</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        butr discovers and manages the wallet connection (EIP-6963 + multi-platform
-        pool). wagmi (via <code>@wagmi/core</code>) handles chain reads, signing, and
-        tx submission against the same EIP-1193 provider butr exposes through{" "}
-        <code>wallet.connector.getSigner()</code>.
+        butr discovers and manages the wallet connection (EIP-6963 + multi-platform pool). wagmi
+        (via <code>@wagmi/core</code>) handles chain reads, signing, and tx submission against the
+        same EIP-1193 provider butr exposes through <code>wallet.connector.getSigner()</code>.
       </p>
     </header>
     <Content />

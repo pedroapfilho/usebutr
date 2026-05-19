@@ -15,9 +15,7 @@ const connect = useConnectWallet();
 const discovered = useDiscoveredWallets();
 const connected = useConnectedWallets();
 
-const available = discovered.filter(
-  (d) => !connected.some((c) => c.connector.id === d.id),
-);
+const available = discovered.filter((d) => !connected.some((c) => c.connector.id === d.id));
 ```
 
 ## Connect
@@ -26,15 +24,13 @@ const available = discovered.filter(
 success/error callbacks:
 
 ```tsx
-{available.map((wallet) => (
-  <button
-    key={wallet.id}
-    type="button"
-    onClick={() => connect(wallet.id)}
-  >
-    Connect {wallet.name} ({wallet.chainPlatform})
-  </button>
-))}
+{
+  available.map((wallet) => (
+    <button key={wallet.id} type="button" onClick={() => connect(wallet.id)}>
+      Connect {wallet.name} ({wallet.chainPlatform})
+    </button>
+  ));
+}
 ```
 
 A single brand can expose more than one adapter (Phantom EVM + Phantom SVM).
@@ -49,10 +45,16 @@ import { useConnectionStatus, useConnectionError } from "@butr/react";
 const status = useConnectionStatus(); // "idle" | "connecting" | "success" | "error"
 const error = useConnectionError(); // ConnectionError | null
 
-{error ? <p>{error.kind} — {error.message}</p> : null}
+{
+  error ? (
+    <p>
+      {error.kind} — {error.message}
+    </p>
+  ) : null;
+}
 ```
 
-`useIsConnecting()` and `useConnectingConnectorId()` tell you *which* wallet is
+`useIsConnecting()` and `useConnectingConnectorId()` tell you _which_ wallet is
 mid-flight, so you can spin only that button.
 
 ## Disconnect
@@ -63,7 +65,7 @@ mid-flight, so you can spin only that button.
 import { useDisconnectWallet } from "@butr/react";
 
 const disconnect = useDisconnectWallet();
-<button onClick={() => disconnect(wallet.connector.id)}>Disconnect</button>
+<button onClick={() => disconnect(wallet.connector.id)}>Disconnect</button>;
 ```
 
 Disconnecting one wallet leaves the rest of the pool intact. It also sets the
@@ -73,7 +75,7 @@ which suppresses auto-reconnect for the rest of the session — see
 `useResetWallet()`.
 
 <Callout type="info">
-  **Source:** `apps/demo-vite/src/app.tsx` and `apps/demo-next/src/app/page.tsx`
-  in the [butr repository](https://github.com/pedroapfilho/butr/tree/main/apps).
-  Run `pnpm dev --filter=demo-vite` (`http://localhost:5173`).
+  **Source:** `apps/demo-vite/src/app.tsx` and `apps/demo-next/src/app/page.tsx` in the [butr
+  repository](https://github.com/pedroapfilho/butr/tree/main/apps). Run `pnpm dev
+  --filter=demo-vite` (`http://localhost:5173`).
 </Callout>

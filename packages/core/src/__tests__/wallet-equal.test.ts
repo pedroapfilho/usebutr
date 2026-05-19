@@ -4,7 +4,12 @@ import { walletEqual } from "../wallet-equal";
 
 const buildWallet = (id: string, address: string, chainId: string): ConnectedWallet => ({
   account: {
-    chain: { id: chainId, name: "Ethereum", namespace: "eip155", reference: chainId.split(":")[1] ?? "1" },
+    chain: {
+      id: chainId,
+      name: "Ethereum",
+      namespace: "eip155",
+      reference: chainId.split(":")[1] ?? "1",
+    },
     id: `${chainId}:${address}`,
     walletAddress: address,
   },

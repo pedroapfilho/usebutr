@@ -25,7 +25,9 @@ const handleSign = async () => {
   await wallet.connector.signMessage(bytes, account);
 };
 
-{canSign ? <button onClick={() => void handleSign()}>Sign</button> : null}
+{
+  canSign ? <button onClick={() => void handleSign()}>Sign</button> : null;
+}
 ```
 
 Always gate the affordance on `capabilities.signMessage`.
@@ -44,10 +46,9 @@ const [output] = await feature.signMessage({ account, message });
 ```
 
 <Callout type="warn">
-  Verify the signature against the returned `signedMessage`, **not** your input
-  bytes. Solana Wallet Standard wallets may prefix or re-encode the message
-  internally. EVM wallets echo the input, so there it's the same bytes — but
-  writing verification against `signedMessage` works for both.
+  Verify the signature against the returned `signedMessage`, **not** your input bytes. Solana Wallet
+  Standard wallets may prefix or re-encode the message internally. EVM wallets echo the input, so
+  there it's the same bytes — but writing verification against `signedMessage` works for both.
 </Callout>
 
 ## Signing through an integration library
@@ -65,6 +66,5 @@ const sig = await signMessage(wagmiConfig, { message: "Hello" });
 
 <Callout type="info">
   **Source:** `AccountRow` in `apps/demo-vite/src/app.tsx`; `handleSign` in
-  `apps/demo-with-solana-kit/src/app.tsx` and
-  `apps/demo-with-viem/src/app.tsx`.
+  `apps/demo-with-solana-kit/src/app.tsx` and `apps/demo-with-viem/src/app.tsx`.
 </Callout>

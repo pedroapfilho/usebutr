@@ -4,7 +4,7 @@ description: Restoring the previous session is asynchronous because wallet adapt
 ---
 
 On mount, butr tries to restore the wallets from the last session. The catch:
-wallet adapters announce themselves *asynchronously* (EIP-6963 dispatches
+wallet adapters announce themselves _asynchronously_ (EIP-6963 dispatches
 events; the Solana Wallet Standard module is lazily imported). So a stored
 wallet's adapter may not exist yet at restore time.
 
@@ -56,7 +56,7 @@ if (!isHydrated) return <p>Loading…</p>;
 
 ## Late restore merges, never replaces
 
-If a pending adapter announces and completes its restore *before* the main
+If a pending adapter announces and completes its restore _before_ the main
 hydration pass finishes, the store **merges** it into the pool rather than
 overwriting. Both eager- and late-restored entries survive.
 

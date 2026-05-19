@@ -16,9 +16,9 @@ const active = useActiveWallet();
 const setActive = useSetActiveConnector();
 
 const isActive = active?.connector.id === wallet.connector.id;
-{isActive ? null : (
-  <button onClick={() => setActive(wallet.connector.id)}>Make active</button>
-)}
+{
+  isActive ? null : <button onClick={() => setActive(wallet.connector.id)}>Make active</button>;
+}
 ```
 
 See [pool, selection, active](/docs/concepts/pool-selection-active) for why
@@ -55,7 +55,9 @@ const ChainPicker = ({ wallet }) => {
 Gate the picker on the capability — not every wallet can switch:
 
 ```tsx
-{wallet.connector.capabilities.switchChain ? <ChainPicker wallet={wallet} /> : null}
+{
+  wallet.connector.capabilities.switchChain ? <ChainPicker wallet={wallet} /> : null;
+}
 ```
 
 EVM wallets switch for real via `wallet_switchEthereumChain`. SVM "switching"
@@ -64,12 +66,11 @@ next `accountChanged` event, bridged automatically into
 `wallet.account.chain`.
 
 <Callout type="info">
-  EVM-only manual setups don't bundle `@butr/wallets`. Use `EVM_CHAINS_LIST`
-  from `@butr/evm` instead — `demo-next` does exactly this.
+  EVM-only manual setups don't bundle `@butr/wallets`. Use `EVM_CHAINS_LIST` from `@butr/evm`
+  instead — `demo-next` does exactly this.
 </Callout>
 
 <Callout type="info">
-  **Source:** `ChainPicker` in `apps/demo-vite/src/app.tsx` (uses
-  `CHAINS_BY_PLATFORM`) and `apps/demo-next/src/app/page.tsx` (uses
-  `EVM_CHAINS_LIST`).
+  **Source:** `ChainPicker` in `apps/demo-vite/src/app.tsx` (uses `CHAINS_BY_PLATFORM`) and
+  `apps/demo-next/src/app/page.tsx` (uses `EVM_CHAINS_LIST`).
 </Callout>

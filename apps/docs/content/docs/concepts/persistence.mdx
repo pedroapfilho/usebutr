@@ -26,11 +26,11 @@ type StorageDriver = {
 };
 ```
 
-| Factory | Backing store |
-| --- | --- |
-| `createBrowserStorageDriver()` | `localStorage` (default) |
+| Factory                              | Backing store                         |
+| ------------------------------------ | ------------------------------------- |
+| `createBrowserStorageDriver()`       | `localStorage` (default)              |
 | `createCookieStorageDriver(options)` | cookies (domain/path/SameSite/secure) |
-| `createMemoryStorageDriver()` | in-memory (no persistence) |
+| `createMemoryStorageDriver()`        | in-memory (no persistence)            |
 
 Wrap a driver in `WalletStorage` and pass it as `storage`:
 
@@ -55,10 +55,9 @@ without corrupting the in-memory store. Each storage key is durable on its own;
 the writes race intentionally.
 
 <Callout type="warn">
-  Because writes are unobserved, a failed write is invisible unless you ask. Set
-  `onStorageError` to surface them. `context` is a short string naming the
-  failed write (e.g. `"failed to persist pool"`). The default behaviour when no
-  callback is set is `console.warn`.
+  Because writes are unobserved, a failed write is invisible unless you ask. Set `onStorageError` to
+  surface them. `context` is a short string naming the failed write (e.g. `"failed to persist
+  pool"`). The default behaviour when no callback is set is `console.warn`.
 </Callout>
 
 ```tsx

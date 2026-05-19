@@ -38,9 +38,8 @@ Omit `connectorId` to read the active wallet. Pass `mint` for an SPL/token
 balance where the connector supports it.
 
 <Callout type="warn">
-  `useBalance` only returns a real value when
-  `wallet.connector.capabilities.getBalance` is `true`. Ledger, for example, is
-  signing-only and has no RPC — its `getBalance` is `false`. Query an RPC
+  `useBalance` only returns a real value when `wallet.connector.capabilities.getBalance` is `true`.
+  Ledger, for example, is signing-only and has no RPC — its `getBalance` is `false`. Query an RPC
   yourself for those.
 </Callout>
 
@@ -60,7 +59,6 @@ const sol = `${Number(value) / 1_000_000_000} SOL`;
 ```
 
 <Callout type="info">
-  **Source:** `useBalance` usage in `apps/demo-vite/src/app.tsx`; manual RPC
-  reads in `apps/demo-with-viem/src/app.tsx` and
-  `apps/demo-with-solana-kit/src/app.tsx`.
+  **Source:** `useBalance` usage in `apps/demo-vite/src/app.tsx`; manual RPC reads in
+  `apps/demo-with-viem/src/app.tsx` and `apps/demo-with-solana-kit/src/app.tsx`.
 </Callout>

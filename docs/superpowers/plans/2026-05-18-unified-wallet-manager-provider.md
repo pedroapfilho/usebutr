@@ -19,6 +19,7 @@
 ### Task A1: Add `createWalletSource` helper
 
 **Files:**
+
 - Modify: `packages/core/src/wallet-source.ts`
 - Modify: `packages/core/src/index.ts`
 - Test: `packages/core/src/__tests__/wallet-source.test.ts` (create)
@@ -117,6 +118,7 @@ git commit -m "feat(core): add createWalletSource helper"
 ### Task B1: Rewrite `WalletManagerProvider` with flat props + discovery
 
 **Files:**
+
 - Modify: `packages/react/src/context.tsx`
 - Modify: `packages/react/src/index.ts`
 - Test: `packages/react/src/__tests__/context.test.tsx` (rewrite)
@@ -203,11 +205,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { WalletAdapter, WalletSource } from "@butr/core";
 import { createFakeAdapter, createFakePersistence } from "@butr/testing";
-import {
-  WalletManagerProvider,
-  useDiscoveredWallets,
-  useWalletStoreContext,
-} from "../context";
+import { WalletManagerProvider, useDiscoveredWallets, useWalletStoreContext } from "../context";
 import { useConnectWallet, useConnectedWallets } from "../hooks";
 
 const sourceOf = (...adapters: Array<WalletAdapter>): WalletSource => ({
@@ -311,16 +309,12 @@ Replace `packages/react/src/context.tsx` with:
 
 ```tsx
 import React, { createContext, use, useEffect, useMemo, useRef, useState } from "react";
-import type {
-  ConnectorMeta,
-  WalletAdapter,
-  WalletManagerConfig,
-  WalletSource,
-} from "@butr/core";
+import type { ConnectorMeta, WalletAdapter, WalletManagerConfig, WalletSource } from "@butr/core";
 import { type WalletStore, createWalletStore } from "@butr/core";
 
-const WalletStoreContext: React.Context<WalletStore | null> =
-  createContext<WalletStore | null>(null);
+const WalletStoreContext: React.Context<WalletStore | null> = createContext<WalletStore | null>(
+  null,
+);
 
 const EMPTY_DISCOVERED: ReadonlyArray<WalletAdapter> = [];
 const DiscoveredWalletsContext: React.Context<ReadonlyArray<WalletAdapter>> =
@@ -437,16 +431,10 @@ const useWalletStoreContext = (): WalletStore => {
 
 /** Reactive list of wallets announced via the `discovery` source since
  *  the provider mounted. Empty when no `discovery` was passed. */
-const useDiscoveredWallets = (): ReadonlyArray<WalletAdapter> =>
-  use(DiscoveredWalletsContext);
+const useDiscoveredWallets = (): ReadonlyArray<WalletAdapter> => use(DiscoveredWalletsContext);
 
 export type { WalletManagerProviderProps };
-export {
-  WalletManagerProvider,
-  WalletStoreContext,
-  useDiscoveredWallets,
-  useWalletStoreContext,
-};
+export { WalletManagerProvider, WalletStoreContext, useDiscoveredWallets, useWalletStoreContext };
 ```
 
 - [ ] **Step 5: Export `useDiscoveredWallets` from the package**
@@ -496,6 +484,7 @@ git commit -m "feat(react): unified flat-prop WalletManagerProvider with discove
 ### Task C1: Add `autoDiscovery`, drop `AutoWalletManagerProvider`
 
 **Files:**
+
 - Delete: `packages/wallets/src/auto-provider.tsx`
 - Create: `packages/wallets/src/auto-discovery.ts`
 - Modify: `packages/wallets/src/index.ts`
@@ -601,6 +590,7 @@ to `@butr/react`.
 ### Task D1: Batteries-included demos (`demo-vite`, `demo-expo-web`)
 
 **Files:**
+
 - Modify: `apps/demo-vite/src/wallet-provider.tsx`
 - Modify: `apps/demo-vite/src/app.tsx`
 - Modify: `apps/demo-expo-web/src/wallet-provider.tsx`
@@ -786,6 +776,7 @@ rewritten demos. Keep the existing "Source:" citations.
 ### Task E1: Concepts + getting-started + index
 
 **Files:**
+
 - `apps/docs/content/docs/index.mdx`
 - `apps/docs/content/docs/getting-started/installation.mdx`
 - `apps/docs/content/docs/getting-started/quickstart.mdx`
@@ -800,7 +791,7 @@ import { autoDiscovery } from "@butr/wallets";
 
 <WalletManagerProvider discovery={autoDiscovery()} storageKeyPrefix="app">
   {children}
-</WalletManagerProvider>
+</WalletManagerProvider>;
 ```
 
 - [ ] **Step 2:** In `concepts/hydration.mdx`, replace the "manual discovery setup you trigger `tryRestoreFromPending` yourself" paragraph with: the provider now does this internally whenever you pass `discovery`; you only call `tryRestoreFromPending` if you implement a fully custom `WalletSource`. In `concepts/connectors-and-wallets.mdx`, update the `createConnector` seam section to note discovery+createConnector compose (discovered id resolved first).
@@ -817,6 +808,7 @@ git commit -m "docs: unified provider in concepts/getting-started"
 ### Task E2: Guides + frameworks
 
 **Files:**
+
 - `apps/docs/content/docs/guides/provider-setup.mdx` (largest rewrite)
 - `apps/docs/content/docs/guides/connect-disconnect.mdx`
 - `apps/docs/content/docs/guides/multi-chain.mdx`
@@ -841,6 +833,7 @@ git commit -m "docs: unified provider in guides + framework pages"
 ### Task E3: Connectors + integrations + API reference
 
 **Files:**
+
 - `apps/docs/content/docs/connectors/index.mdx`, `injected-evm.mdx`, `solana-wallet-standard.mdx`, `walletconnect.mdx`, `ledger.mdx`
 - `apps/docs/content/docs/integrations/*.mdx` (provider snippets only)
 - `apps/docs/content/docs/api/react.mdx`, `api/wallets.mdx`, `api/core.mdx`

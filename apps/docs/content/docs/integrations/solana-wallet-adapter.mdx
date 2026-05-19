@@ -72,11 +72,7 @@ providers:
 
 ```tsx
 const ws = (await wallet.connector.getSigner()) as WalletStandardWallet;
-const bridge = new ButrAdapterBridge(
-  wallet.connector,
-  ws,
-  wallet.account.walletAddress,
-);
+const bridge = new ButrAdapterBridge(wallet.connector, ws, wallet.account.walletAddress);
 
 <ConnectionProvider endpoint={DEVNET}>
   <SolanaWalletProvider wallets={[bridge]} autoConnect>
@@ -91,15 +87,15 @@ to consumer code.
 <Callout type="warn">
   The demo bridge implements `signMessage` and `sendTransaction` (which wraps
   `signAndSendTransaction`). `signTransaction` is intentionally unimplemented —
-  `solana:signTransaction` isn't advertised uniformly across wallets. A real
-  app that needs raw signing would feature-detect and either implement the
-  wallet-specific path or fall back to `signAndSendTransaction`.
+  `solana:signTransaction` isn't advertised uniformly across wallets. A real app that needs raw
+  signing would feature-detect and either implement the wallet-specific path or fall back to
+  `signAndSendTransaction`.
 </Callout>
 
 <Callout type="info">
-  **Source:** `apps/demo-with-solana-wallet-adapter/src/butr-adapter-bridge.ts`
-  and `app.tsx` in the
-  [butr repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-with-solana-wallet-adapter).
-  Targets Solana devnet. Run `pnpm dev --filter=demo-with-solana-wallet-adapter`
-  → `http://localhost:5178`.
+  **Source:** `apps/demo-with-solana-wallet-adapter/src/butr-adapter-bridge.ts` and `app.tsx` in the
+  [butr
+  repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-with-solana-wallet-adapter).
+  Targets Solana devnet. Run `pnpm dev --filter=demo-with-solana-wallet-adapter` →
+  `http://localhost:5178`.
 </Callout>

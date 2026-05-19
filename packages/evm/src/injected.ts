@@ -35,9 +35,7 @@ type InjectedDiscoveryOptions = {
   target?: { ethereum?: unknown } | null;
 };
 
-const readEthereum = (
-  target: InjectedDiscoveryOptions["target"],
-): Eip1193Provider | null => {
+const readEthereum = (target: InjectedDiscoveryOptions["target"]): Eip1193Provider | null => {
   // Resolve the host object: use the caller's override if given, otherwise
   // fall back to the global window (or null in SSR environments).
   const globalWindow =

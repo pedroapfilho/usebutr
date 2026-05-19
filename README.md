@@ -23,24 +23,24 @@ The library is split across small focused packages so consumers bundle only what
 
 The published library is split across eight packages, each with a single responsibility and a small public surface.
 
-| Package               | Purpose                                                                                       |
-| --------------------- | --------------------------------------------------------------------------------------------- |
-| `@butr/core`          | Types, store, storage, and the `WalletSource` discovery seam. No React, no protocols.         |
-| `@butr/react`         | React provider and hooks on top of `@butr/core`.                                              |
-| `@butr/evm`           | EIP-1193 / EIP-6963 / injected wallet discovery and adapters.                                 |
-| `@butr/svm`           | Wallet Standard adapter for Solana / SVM.                                                     |
-| `@butr/wallets`       | Batteries-included composition: EVM + SVM discovery + `AutoWalletManagerProvider`.            |
-| `@butr/walletconnect` | WalletConnect v2 adapter (composes over `@butr/evm`).                                         |
-| `@butr/ledger`        | Ledger hardware-wallet adapter (EVM).                                                         |
-| `@butr/testing`       | Fake adapters, fake persistence, mock storage for tests.                                      |
+| Package               | Purpose                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| `@butr/core`          | Types, store, storage, and the `WalletSource` discovery seam. No React, no protocols. |
+| `@butr/react`         | React provider and hooks on top of `@butr/core`.                                      |
+| `@butr/evm`           | EIP-1193 / EIP-6963 / injected wallet discovery and adapters.                         |
+| `@butr/svm`           | Wallet Standard adapter for Solana / SVM.                                             |
+| `@butr/wallets`       | Batteries-included composition: EVM + SVM discovery + `AutoWalletManagerProvider`.    |
+| `@butr/walletconnect` | WalletConnect v2 adapter (composes over `@butr/evm`).                                 |
+| `@butr/ledger`        | Ledger hardware-wallet adapter (EVM).                                                 |
+| `@butr/testing`       | Fake adapters, fake persistence, mock storage for tests.                              |
 
 Workspace-internal packages (not published):
 
-| Package                   | Purpose                                                                  |
-| ------------------------- | ------------------------------------------------------------------------ |
-| `@repo/typescript-config` | Shared tsconfig bases.                                                   |
-| `@repo/config-vitest`     | Shared Vitest configs for node and React environments.                   |
-| `@repo/wallet-extensions` | Static registry of wallet metadata and Playwright fixtures for tests.    |
+| Package                   | Purpose                                                               |
+| ------------------------- | --------------------------------------------------------------------- |
+| `@repo/typescript-config` | Shared tsconfig bases.                                                |
+| `@repo/config-vitest`     | Shared Vitest configs for node and React environments.                |
+| `@repo/wallet-extensions` | Static registry of wallet metadata and Playwright fixtures for tests. |
 
 ## Demos
 
@@ -61,13 +61,13 @@ Each one exercises every public hook in `@butr/react` against discovered wallets
 
 Each integration demo shows butr composing with a library you may already be using. butr handles wallet discovery and connection state; the integration library handles chain reads, signing, and submission. Every demo covers the same four scenarios: **connect → read balance → sign message → send transaction.**
 
-| App                                | Library                            | Network            | Dev URL                 |
-| ---------------------------------- | ---------------------------------- | ------------------ | ----------------------- |
-| `demo-with-viem`                   | viem                               | EVM, Sepolia       | `http://localhost:5175` |
-| `demo-with-wagmi`                  | wagmi + `@wagmi/core`              | EVM, Sepolia       | `http://localhost:5176` |
-| `demo-with-solana-web3js`          | `@solana/web3.js`                  | SVM, Devnet        | `http://localhost:5177` |
-| `demo-with-solana-wallet-adapter`  | `@solana/wallet-adapter-react`     | SVM, Devnet        | `http://localhost:5178` |
-| `demo-with-solana-kit`             | `@solana/kit`                      | SVM, Devnet        | `http://localhost:5179` |
+| App                               | Library                        | Network      | Dev URL                 |
+| --------------------------------- | ------------------------------ | ------------ | ----------------------- |
+| `demo-with-viem`                  | viem                           | EVM, Sepolia | `http://localhost:5175` |
+| `demo-with-wagmi`                 | wagmi + `@wagmi/core`          | EVM, Sepolia | `http://localhost:5176` |
+| `demo-with-solana-web3js`         | `@solana/web3.js`              | SVM, Devnet  | `http://localhost:5177` |
+| `demo-with-solana-wallet-adapter` | `@solana/wallet-adapter-react` | SVM, Devnet  | `http://localhost:5178` |
+| `demo-with-solana-kit`            | `@solana/kit`                  | SVM, Devnet  | `http://localhost:5179` |
 
 All web demos bind distinct ports so they can run concurrently.
 

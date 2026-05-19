@@ -7,7 +7,10 @@ import { discoverSvmAdapters } from "@butr/svm";
 const svmDiscovery = createWalletSource(discoverSvmAdapters);
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <WalletManagerProvider discovery={svmDiscovery} storageKeyPrefix="butr-solana-wallet-adapter-demo">
+  <WalletManagerProvider
+    discovery={svmDiscovery}
+    storageKeyPrefix="butr-solana-wallet-adapter-demo"
+  >
     {children}
   </WalletManagerProvider>
 );

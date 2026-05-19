@@ -36,14 +36,14 @@
     "@butr/core": "workspace:*",
     "@butr/evm": "workspace:*"
   },
-  "peerDependencies": {
-    "@walletconnect/universal-provider": "^2.0.0"
-  },
   "devDependencies": {
     "@repo/config-vitest": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@walletconnect/universal-provider": "^2.23.9",
     "typescript": "^6.0.3",
     "vitest": "^4.1.6"
+  },
+  "peerDependencies": {
+    "@walletconnect/universal-provider": "^2.0.0"
   }
 }

@@ -12,13 +12,17 @@
     "clean": "rm -rf .next .source node_modules"
   },
   "dependencies": {
+    "@radix-ui/react-popover": "^1.1.15",
     "@tailwindcss/postcss": "^4.3.0",
+    "class-variance-authority": "^0.7.1",
     "fumadocs-core": "^16.8.11",
     "fumadocs-mdx": "^15.0.6",
     "fumadocs-ui": "^16.8.11",
+    "lucide-react": "^1.14.0",
     "next": "^16.0.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.0"
   },
   "devDependencies": {

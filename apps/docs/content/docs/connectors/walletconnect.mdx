@@ -36,15 +36,15 @@ const wc = await createWalletConnectAdapter({
 
 `createWalletConnectAdapter(options)` returns a `Promise<WalletAdapter>`.
 
-| Option | Type | Notes |
-| --- | --- | --- |
-| `projectId` | `string` (required) | From [Reown Cloud](https://cloud.reown.com). |
-| `metadata` | `{ name?; url?; description?; icons? }` | Shown in the mobile wallet during pairing. **Some wallets refuse to pair without `name` and `url`.** |
-| `chains` | `ReadonlyArray<string>` | CAIP-2 ids. Default: `["eip155:1"]`. |
-| `onPairingUri` | `(uri: string) => void` | Fires when a QR / deep link must be shown. |
-| `id` | `string` | Adapter id. Default `"walletconnect"`. |
-| `name` | `string` | Display name. Default `"WalletConnect"`. |
-| `icon` | `string` | Override icon (`WALLETCONNECT_DEFAULT_ICON` is the fallback). |
+| Option         | Type                                    | Notes                                                                                                |
+| -------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `projectId`    | `string` (required)                     | From [Reown Cloud](https://cloud.reown.com).                                                         |
+| `metadata`     | `{ name?; url?; description?; icons? }` | Shown in the mobile wallet during pairing. **Some wallets refuse to pair without `name` and `url`.** |
+| `chains`       | `ReadonlyArray<string>`                 | CAIP-2 ids. Default: `["eip155:1"]`.                                                                 |
+| `onPairingUri` | `(uri: string) => void`                 | Fires when a QR / deep link must be shown.                                                           |
+| `id`           | `string`                                | Adapter id. Default `"walletconnect"`.                                                               |
+| `name`         | `string`                                | Display name. Default `"WalletConnect"`.                                                             |
+| `icon`         | `string`                                | Override icon (`WALLETCONNECT_DEFAULT_ICON` is the fallback).                                        |
 
 ## Register it
 
@@ -70,7 +70,7 @@ const extra = new Map([[wc.id, wc]]);
   createConnector={(id) => extra.get(id) ?? null}
 >
   {children}
-</WalletManagerProvider>
+</WalletManagerProvider>;
 ```
 
 Build the adapter **once at app boot**, cache it, and re-register on each
@@ -80,9 +80,9 @@ on the relay.
 ## Rendering the QR
 
 <Callout type="warn">
-  butr ships **no** QR renderer. `onPairingUri` hands you the URI string; you
-  render it (`@walletconnect/modal`, a `qrcode` lib, or your own UI). On mobile,
-  forward it to `window.location` to trigger the OS wallet picker.
+  butr ships **no** QR renderer. `onPairingUri` hands you the URI string; you render it
+  (`@walletconnect/modal`, a `qrcode` lib, or your own UI). On mobile, forward it to
+  `window.location` to trigger the OS wallet picker.
 </Callout>
 
 ## Capabilities & caveats
@@ -109,6 +109,6 @@ against the relay):
 
 <Callout type="info">
   **Source:** `packages/walletconnect/src` (`adapter.ts`, `capabilities.ts`,
-  `__tests__/adapter.test.ts`) in the
-  [butr repository](https://github.com/pedroapfilho/butr/tree/main/packages/walletconnect).
+  `__tests__/adapter.test.ts`) in the [butr
+  repository](https://github.com/pedroapfilho/butr/tree/main/packages/walletconnect).
 </Callout>

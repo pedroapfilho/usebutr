@@ -24,14 +24,14 @@ adapter.connect = () => Promise.reject(new Error("user rejected"));
 
 ### `FakeAdapterOptions`
 
-| Field | Default |
-| --- | --- |
-| `id` | `"fake"` |
-| `name` | `"Fake Wallet"` |
-| `chainPlatform` | `"evm"` |
-| `accounts` | `[]` |
-| `icon` | — |
-| `capabilities` | all `true` (merged over your overrides) |
+| Field           | Default                                 |
+| --------------- | --------------------------------------- |
+| `id`            | `"fake"`                                |
+| `name`          | `"Fake Wallet"`                         |
+| `chainPlatform` | `"evm"`                                 |
+| `accounts`      | `[]`                                    |
+| `icon`          | —                                       |
+| `capabilities`  | all `true` (merged over your overrides) |
 
 Stub returns include: `getAccount()` → first account or `null`; `sendTx()` →
 `"0xfakehash"`; `signMessage(msg)` → `{ signature: msg, signedMessage: msg }`;
@@ -78,7 +78,7 @@ const persistence = createFakePersistence({
 persistence without side effects. `clearAll()` resets everything.
 
 <Callout type="info">
-  **Source:** `packages/testing/src` (`fake-adapter.ts`,
-  `fake-persistence.ts`, and their `__tests__`) in the
-  [butr repository](https://github.com/pedroapfilho/butr/tree/main/packages/testing).
+  **Source:** `packages/testing/src` (`fake-adapter.ts`, `fake-persistence.ts`, and their
+  `__tests__`) in the [butr
+  repository](https://github.com/pedroapfilho/butr/tree/main/packages/testing).
 </Callout>

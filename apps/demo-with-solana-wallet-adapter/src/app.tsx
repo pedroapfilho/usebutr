@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import {
-  LAMPORTS_PER_SOL,
-  PublicKey,
-  SystemProgram,
-  Transaction,
-} from "@solana/web3.js";
-import { ConnectionProvider, WalletProvider as SolanaWalletProvider, useConnection, useWallet } from "@solana/wallet-adapter-react";
+  ConnectionProvider,
+  WalletProvider as SolanaWalletProvider,
+  useConnection,
+  useWallet,
+} from "@solana/wallet-adapter-react";
 import type { WalletStandardWallet } from "@butr/svm";
 import { useActiveWallet, useConnectWallet, useDisconnectWallet, useIsHydrated } from "@butr/react";
 import { useDiscoveredWallets } from "./wallet-provider";
@@ -17,7 +17,9 @@ const BURN_ADDRESS = new PublicKey("11111111111111111111111111111111");
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const toBase58 = (bytes: Uint8Array): string => {
   let intVal = 0n;
-  for (const byte of bytes) { intVal = (intVal << 8n) | BigInt(byte); }
+  for (const byte of bytes) {
+    intVal = (intVal << 8n) | BigInt(byte);
+  }
   let out = "";
   while (intVal > 0n) {
     const remainder = intVal % 58n;
@@ -25,14 +27,18 @@ const toBase58 = (bytes: Uint8Array): string => {
     out = BASE58_ALPHABET[Number(remainder)] + out;
   }
   for (const byte of bytes) {
-    if (byte !== 0) { break; }
+    if (byte !== 0) {
+      break;
+    }
     out = `1${out}`;
   }
   return out;
 };
 
 const formatError = (e: unknown): string => {
-  if (e instanceof Error) { return e.message; }
+  if (e instanceof Error) {
+    return e.message;
+  }
   return String(e);
 };
 
@@ -63,14 +69,20 @@ const AdapterConsumer = ({
   const pubkey = useMemo(() => publicKey ?? null, [publicKey]);
 
   useEffect(() => {
-    if (!pubkey) { return; }
+    if (!pubkey) {
+      return;
+    }
     let cancelled = false;
     void (async () => {
       try {
         const lamports = await connection.getBalance(pubkey);
-        if (!cancelled) { setBalance(`${lamports / LAMPORTS_PER_SOL} SOL`); }
+        if (!cancelled) {
+          setBalance(`${lamports / LAMPORTS_PER_SOL} SOL`);
+        }
       } catch (error) {
-        if (!cancelled) { setBalance("error"); }
+        if (!cancelled) {
+          setBalance("error");
+        }
         console.warn("getBalance failed:", error);
       }
     })();
@@ -80,7 +92,9 @@ const AdapterConsumer = ({
   }, [connection, pubkey]);
 
   const handleSign = async () => {
-    if (!signMessage) { return; }
+    if (!signMessage) {
+      return;
+    }
     setErrorMsg(null);
     try {
       const sig = await signMessage(
@@ -93,7 +107,9 @@ const AdapterConsumer = ({
   };
 
   const handleSendTx = async () => {
-    if (!pubkey) { return; }
+    if (!pubkey) {
+      return;
+    }
     setErrorMsg(null);
     try {
       const tx = new Transaction().add(
@@ -165,7 +181,9 @@ const AdapterConsumer = ({
         </Row>
       ) : null}
       {errorMsg ? (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMsg}</p>
+        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {errorMsg}
+        </p>
       ) : null}
     </section>
   );
@@ -180,10 +198,14 @@ const BridgeAndExplore = ({ wallet }: { wallet: ReturnType<typeof useActiveWalle
     void (async () => {
       try {
         const ws = (await wallet.connector.getSigner()) as WalletStandardWallet;
-        if (cancelled) { return; }
+        if (cancelled) {
+          return;
+        }
         setBridge(new ButrAdapterBridge(wallet.connector, ws, wallet.account.walletAddress));
       } catch (error) {
-        if (!cancelled) { setErrorMsg(formatError(error)); }
+        if (!cancelled) {
+          setErrorMsg(formatError(error));
+        }
       }
     })();
     return () => {
@@ -193,7 +215,9 @@ const BridgeAndExplore = ({ wallet }: { wallet: ReturnType<typeof useActiveWalle
 
   if (errorMsg) {
     return (
-      <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMsg}</p>
+      <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        {errorMsg}
+      </p>
     );
   }
 
@@ -218,7 +242,9 @@ const Content = () => {
   const connect = useConnectWallet();
   const discovered = useDiscoveredWallets();
 
-  if (!isHydrated) { return <p className="text-sm text-neutral-500">Loading…</p>; }
+  if (!isHydrated) {
+    return <p className="text-sm text-neutral-500">Loading…</p>;
+  }
 
   if (!active) {
     return (
@@ -226,8 +252,7 @@ const Content = () => {
         <h2 className="font-semibold">Available wallets</h2>
         {discovered.length === 0 ? (
           <p className="text-sm text-neutral-500">
-            No Wallet Standard wallets detected. Install Phantom, Solflare, or Backpack
-            and refresh.
+            No Wallet Standard wallets detected. Install Phantom, Solflare, or Backpack and refresh.
           </p>
         ) : (
           <ul className="space-y-2">
@@ -238,7 +263,9 @@ const Content = () => {
                   onClick={() => void connect(wallet.id)}
                   type="button"
                 >
-                  {wallet.icon ? <img alt="" className="h-6 w-6 rounded" src={wallet.icon} /> : null}
+                  {wallet.icon ? (
+                    <img alt="" className="h-6 w-6 rounded" src={wallet.icon} />
+                  ) : null}
                   <span className="font-medium">{wallet.name}</span>
                 </button>
               </li>
@@ -257,10 +284,10 @@ const App = () => (
     <header className="mb-8">
       <h1 className="text-3xl font-bold tracking-tight">butr + @solana/wallet-adapter-react</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        butr handles wallet discovery and selection. A thin bridge wraps the active
-        butr wallet as a <code>BaseMessageSignerWalletAdapter</code> so the standard
-        Solana adapter hooks (<code>useWallet</code>, <code>useConnection</code>) and
-        any dapp/lib that consumes them work unchanged.
+        butr handles wallet discovery and selection. A thin bridge wraps the active butr wallet as a{" "}
+        <code>BaseMessageSignerWalletAdapter</code> so the standard Solana adapter hooks (
+        <code>useWallet</code>, <code>useConnection</code>) and any dapp/lib that consumes them work
+        unchanged.
       </p>
     </header>
     <Content />

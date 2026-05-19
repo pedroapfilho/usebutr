@@ -1,11 +1,5 @@
 import { useState } from "react";
-import {
-  Image,
-  Linking,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
+import { Image, Linking, Pressable, Text, View } from "react-native";
 import type { Account, ConnectedWallet, WalletAdapter } from "@butr/core";
 import {
   useActiveWallet,
@@ -51,9 +45,7 @@ const getBalanceText = (balance: UseBalanceResult): string => {
   return "—";
 };
 
-const groupByBrand = (
-  wallets: ReadonlyArray<WalletAdapter>,
-): Array<WalletBrand> => {
+const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand> => {
   const byName = new Map<string, WalletBrand>();
   for (const wallet of wallets) {
     const key = wallet.name.toLowerCase();
@@ -72,13 +64,7 @@ const groupByBrand = (
   return [...byName.values()];
 };
 
-const AccountRow = ({
-  account,
-  wallet,
-}: {
-  account: Account;
-  wallet: ConnectedWallet;
-}) => {
+const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWallet }) => {
   const isCurrent = account.walletAddress === wallet.account.walletAddress;
   const canSign = wallet.connector.capabilities.signMessage;
   const [state, setState] = useState<SignState>({ kind: "idle" });
@@ -105,12 +91,8 @@ const AccountRow = ({
   }
 
   return (
-    <View
-      style={[styles.accountRow, isCurrent ? styles.accountRowCurrent : null]}
-    >
-      <Text
-        style={isCurrent ? styles.accountAddressActive : styles.accountAddress}
-      >
+    <View style={[styles.accountRow, isCurrent ? styles.accountRowCurrent : null]}>
+      <Text style={isCurrent ? styles.accountAddressActive : styles.accountAddress}>
         {account.walletAddress}
       </Text>
       {canSign ? (
@@ -123,9 +105,7 @@ const AccountRow = ({
             }}
             style={styles.signButton}
           >
-            <Text style={styles.signButtonText}>
-              {state.kind === "signing" ? "…" : "Sign"}
-            </Text>
+            <Text style={styles.signButtonText}>{state.kind === "signing" ? "…" : "Sign"}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -139,8 +119,7 @@ const AccountPicker = ({ wallet }: { wallet: ConnectedWallet }) => (
       <AccountRow account={account} key={account.id} wallet={wallet} />
     ))}
     <Text style={styles.muted}>
-      Active account is set in your wallet. Use Sign to test per-account
-      signing.
+      Active account is set in your wallet. Use Sign to test per-account signing.
     </Text>
   </View>
 );
@@ -157,16 +136,9 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
             onPress={() => {
               void wallet.connector.switchChain(chain);
             }}
-            style={[
-              styles.chainChip,
-              isCurrent ? styles.chainChipCurrent : null,
-            ]}
+            style={[styles.chainChip, isCurrent ? styles.chainChipCurrent : null]}
           >
-            <Text
-              style={
-                isCurrent ? styles.chainChipTextCurrent : styles.chainChipText
-              }
-            >
+            <Text style={isCurrent ? styles.chainChipTextCurrent : styles.chainChipText}>
               {chain.name}
             </Text>
           </Pressable>
@@ -200,10 +172,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
       <View style={styles.activeHeader}>
         <View style={styles.walletRowLeft}>
           {wallet.connector.icon ? (
-            <Image
-              source={{ uri: wallet.connector.icon }}
-              style={styles.activeIcon}
-            />
+            <Image source={{ uri: wallet.connector.icon }} style={styles.activeIcon} />
           ) : null}
           <View>
             <View style={styles.titleRow}>
@@ -219,17 +188,11 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
         </View>
         <View style={styles.actionRow}>
           {isActive ? null : (
-            <Pressable
-              onPress={() => setActive(wallet.connector.id)}
-              style={styles.outlineButton}
-            >
+            <Pressable onPress={() => setActive(wallet.connector.id)} style={styles.outlineButton}>
               <Text style={styles.outlineButtonText}>Make active</Text>
             </Pressable>
           )}
-          <Pressable
-            onPress={() => disconnect(wallet.connector.id)}
-            style={styles.outlineButton}
-          >
+          <Pressable onPress={() => disconnect(wallet.connector.id)} style={styles.outlineButton}>
             <Text style={styles.outlineButtonText}>Disconnect</Text>
           </Pressable>
         </View>
@@ -264,11 +227,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
   );
 };
 
-const ConnectedList = ({
-  wallets,
-}: {
-  wallets: ReadonlyArray<ConnectedWallet>;
-}) => (
+const ConnectedList = ({ wallets }: { wallets: ReadonlyArray<ConnectedWallet> }) => (
   <View>
     <View style={styles.groupHeader}>
       <Text style={styles.h2}>Connected</Text>
@@ -293,21 +252,13 @@ const WalletBrandRow = ({
 }) => (
   <View style={styles.walletRow}>
     <View style={styles.walletRowLeft}>
-      {brand.icon ? (
-        <Image source={{ uri: brand.icon }} style={styles.walletIcon} />
-      ) : null}
+      {brand.icon ? <Image source={{ uri: brand.icon }} style={styles.walletIcon} /> : null}
       <Text style={styles.walletName}>{brand.name}</Text>
     </View>
     <View style={styles.brandPlatformList}>
       {brand.adapters.map((adapter) => (
-        <Pressable
-          key={adapter.id}
-          onPress={() => connect(adapter.id)}
-          style={styles.platformChip}
-        >
-          <Text style={styles.platformChipText}>
-            {adapter.chainPlatform.toUpperCase()}
-          </Text>
+        <Pressable key={adapter.id} onPress={() => connect(adapter.id)} style={styles.platformChip}>
+          <Text style={styles.platformChipText}>{adapter.chainPlatform.toUpperCase()}</Text>
         </Pressable>
       ))}
     </View>
@@ -328,9 +279,8 @@ const WalletPicker = ({
       <View style={styles.emptyCard}>
         <Text style={styles.h2}>No wallets detected</Text>
         <Text style={styles.bodySmall}>
-          Wallet discovery on native requires WalletConnect or a chain-specific
-          SDK. The web target discovers browser-extension wallets via EIP-6963
-          and the Solana Wallet Standard.
+          Wallet discovery on native requires WalletConnect or a chain-specific SDK. The web target
+          discovers browser-extension wallets via EIP-6963 and the Solana Wallet Standard.
         </Text>
         <Pressable
           onPress={() => Linking.openURL("https://metamask.io/download")}
@@ -349,9 +299,7 @@ const WalletPicker = ({
 
   return (
     <View>
-      <Text style={styles.h2}>
-        {hasConnected ? "Connect another" : "Available wallets"}
-      </Text>
+      <Text style={styles.h2}>{hasConnected ? "Connect another" : "Available wallets"}</Text>
       <View style={[styles.stackSmall, { marginTop: 12 }]}>
         {brands.map((brand) => (
           <WalletBrandRow brand={brand} connect={connect} key={brand.name} />
@@ -372,9 +320,7 @@ const Content = () => {
     return <Text style={styles.muted}>Loading…</Text>;
   }
 
-  const available = discovered.filter(
-    (d) => !connected.some((c) => c.connector.id === d.id),
-  );
+  const available = discovered.filter((d) => !connected.some((c) => c.connector.id === d.id));
 
   return (
     <View style={styles.stack}>

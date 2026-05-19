@@ -11,12 +11,7 @@ import type {
   SolanaSignMessageFeature,
   WalletStandardWallet,
 } from "@butr/svm";
-import {
-  useActiveWallet,
-  useConnectWallet,
-  useDisconnectWallet,
-  useIsHydrated,
-} from "@butr/react";
+import { useActiveWallet, useConnectWallet, useDisconnectWallet, useIsHydrated } from "@butr/react";
 import { useDiscoveredWallets } from "./wallet-provider";
 
 const DEVNET = "https://api.devnet.solana.com";
@@ -249,7 +244,9 @@ const Connected = ({
         </Row>
       ) : null}
       {errorMsg ? (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMsg}</p>
+        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {errorMsg}
+        </p>
       ) : null}
     </section>
   );
@@ -272,8 +269,7 @@ const Content = () => {
         <h2 className="font-semibold">Available wallets</h2>
         {discovered.length === 0 ? (
           <p className="text-sm text-neutral-500">
-            No Wallet Standard wallets detected. Install Phantom, Solflare, or Backpack
-            and refresh.
+            No Wallet Standard wallets detected. Install Phantom, Solflare, or Backpack and refresh.
           </p>
         ) : (
           <ul className="space-y-2">
@@ -306,10 +302,9 @@ const App = () => (
       <h1 className="text-3xl font-bold tracking-tight">butr + @solana/web3.js</h1>
       <p className="mt-1 text-sm text-neutral-500">
         butr discovers Solana Wallet Standard wallets and manages the connection.{" "}
-        <code>@solana/web3.js</code> provides <code>Connection</code> for chain reads
-        and the <code>Transaction</code>/<code>SystemProgram</code> builders;{" "}
-        signing + sending flow through the wallet&apos;s native Wallet Standard
-        features.
+        <code>@solana/web3.js</code> provides <code>Connection</code> for chain reads and the{" "}
+        <code>Transaction</code>/<code>SystemProgram</code> builders; signing + sending flow through
+        the wallet&apos;s native Wallet Standard features.
       </p>
     </header>
     <Content />

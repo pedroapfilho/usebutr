@@ -104,7 +104,12 @@ describe("createFakeAdapter", () => {
 
   it("all stubbed lifecycle methods resolve without throwing", async () => {
     const a = createFakeAdapter();
-    const chain = { id: "eip155:1", name: "Ethereum", namespace: "eip155" as const, reference: "1" };
+    const chain = {
+      id: "eip155:1",
+      name: "Ethereum",
+      namespace: "eip155" as const,
+      reference: "1",
+    };
     await expect(a.connect()).resolves.toBeUndefined();
     await expect(a.disconnect?.()).resolves.toBeUndefined();
     await expect(a.requestAccounts?.()).resolves.toBeUndefined();

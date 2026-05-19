@@ -169,7 +169,8 @@ describe("createConnectorLifecycle", () => {
     const { connector, emit, unsubscribe } = createSubscribableConnector();
     let unsubAtCallTime = 0;
     const onDisconnected = vi.fn().mockImplementation(() => {
-      unsubAtCallTime = (unsubscribe as unknown as { mock: { calls: Array<unknown> } }).mock.calls.length;
+      unsubAtCallTime = (unsubscribe as unknown as { mock: { calls: Array<unknown> } }).mock.calls
+        .length;
     });
     const lifecycle = createConnectorLifecycle({ onAccountChanged: vi.fn(), onDisconnected });
     lifecycle.attach("wallet-a", connector);

@@ -27,13 +27,15 @@ The reference apps do exactly this — the "Request more accounts" button only
 renders when the capability is real:
 
 ```tsx
-{wallet.connector.capabilities.requestAccounts ? (
-  <button onClick={() => requestAccounts(wallet.connector.id)}>
-    Request more accounts
-  </button>
-) : null}
+{
+  wallet.connector.capabilities.requestAccounts ? (
+    <button onClick={() => requestAccounts(wallet.connector.id)}>Request more accounts</button>
+  ) : null;
+}
 
-{wallet.connector.capabilities.switchChain ? <ChainPicker wallet={wallet} /> : null}
+{
+  wallet.connector.capabilities.switchChain ? <ChainPicker wallet={wallet} /> : null;
+}
 ```
 
 ## Where flags come from
@@ -44,22 +46,21 @@ renders when the capability is real:
 - **Hand-rolled adapters** declare them explicitly. The shipped optional
   connectors are fixed:
 
-| Capability | WalletConnect | Ledger |
-| --- | --- | --- |
-| `getBalance` | ✅ | ❌ (no RPC) |
-| `getTransactionReceipt` | ✅ | ❌ |
-| `requestAccounts` | ❌ (re-pair to change) | ❌ |
-| `sendTransaction` | ✅ | ❌ (signing only) |
-| `signMessage` | ✅ | ✅ |
-| `subscribe` | ✅ | ❌ (no events) |
-| `switchAccount` | ❌ | ❌ |
-| `switchChain` | ✅ | ✅ (local chainId) |
+| Capability              | WalletConnect          | Ledger             |
+| ----------------------- | ---------------------- | ------------------ |
+| `getBalance`            | ✅                     | ❌ (no RPC)        |
+| `getTransactionReceipt` | ✅                     | ❌                 |
+| `requestAccounts`       | ❌ (re-pair to change) | ❌                 |
+| `sendTransaction`       | ✅                     | ❌ (signing only)  |
+| `signMessage`           | ✅                     | ✅                 |
+| `subscribe`             | ✅                     | ❌ (no events)     |
+| `switchAccount`         | ❌                     | ❌                 |
+| `switchChain`           | ✅                     | ✅ (local chainId) |
 
 <Callout type="warn">
-  SVM wallets that don't advertise `solana:signAndSendTransaction` report
-  `sendTransaction: false`; those without `solana:signMessage` report
-  `signMessage: false`. Always branch on the flag before showing the
-  affordance.
+  SVM wallets that don't advertise `solana:signAndSendTransaction` report `sendTransaction: false`;
+  those without `solana:signMessage` report `signMessage: false`. Always branch on the flag before
+  showing the affordance.
 </Callout>
 
 **Source:** `packages/core/src/types/wallet.ts`,

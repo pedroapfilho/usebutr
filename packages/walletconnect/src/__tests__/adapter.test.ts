@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type {
-  UniversalProviderConstructor,
-  UniversalProviderLike,
-} from "../adapter";
+import type { UniversalProviderConstructor, UniversalProviderLike } from "../adapter";
 import { createWalletConnectAdapter } from "../adapter";
 
 type ConnectArgs = Parameters<UniversalProviderLike["connect"]>[0];

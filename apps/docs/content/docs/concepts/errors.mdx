@@ -56,9 +56,8 @@ It recognises:
 - **anything else** → `Unknown` with `cause` set to the original value
 
 <Callout type="warn">
-  Normalisation is best-effort. A custom connector that throws an
-  unrecognised shape lands in `Unknown`. butr does no retrying — you decide
-  whether to retry based on `kind`.
+  Normalisation is best-effort. A custom connector that throws an unrecognised shape lands in
+  `Unknown`. butr does no retrying — you decide whether to retry based on `kind`.
 </Callout>
 
 **Source:** `packages/core/src/types/errors.ts`.

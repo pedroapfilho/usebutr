@@ -20,7 +20,9 @@ import type {
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const bytesToBase58 = (bytes: Uint8Array): string => {
   let intVal = 0n;
-  for (const byte of bytes) { intVal = (intVal << 8n) | BigInt(byte); }
+  for (const byte of bytes) {
+    intVal = (intVal << 8n) | BigInt(byte);
+  }
   let out = "";
   while (intVal > 0n) {
     const remainder = intVal % 58n;
@@ -28,7 +30,9 @@ const bytesToBase58 = (bytes: Uint8Array): string => {
     out = BASE58_ALPHABET[Number(remainder)] + out;
   }
   for (const byte of bytes) {
-    if (byte !== 0) { break; }
+    if (byte !== 0) {
+      break;
+    }
     out = `1${out}`;
   }
   return out;
@@ -89,11 +93,15 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
   connect(): Promise<void> {
     // butr already handled the actual connect handshake; this is the
     // adapter-library lifecycle hook that signals "we're ready".
-    if (this.connected) { return Promise.resolve(); }
+    if (this.connected) {
+      return Promise.resolve();
+    }
     this._connecting = true;
     try {
       const pk = this._publicKey;
-      if (!pk) { return Promise.resolve(); }
+      if (!pk) {
+        return Promise.resolve();
+      }
       this.emit("connect", pk);
       return Promise.resolve();
     } finally {
@@ -111,11 +119,17 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     const feature = this._wallet.features["solana:signMessage"] as
       | SolanaSignMessageFeature
       | undefined;
-    if (!feature) { throw new Error("Wallet does not advertise solana:signMessage"); }
+    if (!feature) {
+      throw new Error("Wallet does not advertise solana:signMessage");
+    }
     const account = this._wallet.accounts[0];
-    if (!account) { throw new Error("No exposed account"); }
+    if (!account) {
+      throw new Error("No exposed account");
+    }
     const [output] = await feature.signMessage({ account, message });
-    if (!output) { throw new Error("signMessage returned no outputs"); }
+    if (!output) {
+      throw new Error("signMessage returned no outputs");
+    }
     return output.signature;
   }
 
@@ -141,9 +155,13 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     const feature = this._wallet.features["solana:signAndSendTransaction"] as
       | SolanaSignAndSendTransactionFeature
       | undefined;
-    if (!feature) { throw new Error("Wallet does not advertise solana:signAndSendTransaction"); }
+    if (!feature) {
+      throw new Error("Wallet does not advertise solana:signAndSendTransaction");
+    }
     const account = this._wallet.accounts[0];
-    if (!account) { throw new Error("No exposed account"); }
+    if (!account) {
+      throw new Error("No exposed account");
+    }
     const serialised =
       transaction instanceof Transaction
         ? transaction.serialize({ requireAllSignatures: false })
@@ -153,7 +171,9 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
       chain: "solana:devnet",
       transaction: new Uint8Array(serialised),
     });
-    if (!output) { throw new Error("signAndSendTransaction returned no outputs"); }
+    if (!output) {
+      throw new Error("signAndSendTransaction returned no outputs");
+    }
     return bytesToBase58(output.signature);
   }
 }

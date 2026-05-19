@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type {
-  EthAppConstructor,
-  EthAppLike,
-  TransportFactory,
-  TransportLike,
-} from "../adapter";
+import type { EthAppConstructor, EthAppLike, TransportFactory, TransportLike } from "../adapter";
 import { createLedgerAdapter } from "../adapter";
 
 const FAKE_ADDRESSES = [
@@ -33,7 +28,10 @@ const buildFakeEthCtor = (addresses: ReadonlyArray<string> = FAKE_ADDRESSES): Et
   };
 };
 
-const buildFakeTransport = (): { factory: TransportFactory; lastTransport: TransportLike | null } => {
+const buildFakeTransport = (): {
+  factory: TransportFactory;
+  lastTransport: TransportLike | null;
+} => {
   let lastTransport: TransportLike | null = null;
   const factory: TransportFactory = {
     create(): Promise<TransportLike> {
@@ -162,9 +160,9 @@ describe("createLedgerAdapter", () => {
     expect(result.signature).toBeInstanceOf(Uint8Array);
     expect(result.signature.length).toBe(65);
     // First 32 bytes are r (0xaa repeated), next 32 are s (0xbb), last byte is v (0x1b = 27)
-    expect(result.signature[0]).toBe(0xAA);
-    expect(result.signature[32]).toBe(0xBB);
-    expect(result.signature[64]).toBe(0x1B);
+    expect(result.signature[0]).toBe(0xaa);
+    expect(result.signature[32]).toBe(0xbb);
+    expect(result.signature[64]).toBe(0x1b);
   });
 
   it("signMessage() with a non-active account walks paths to find it", async () => {
@@ -178,7 +176,7 @@ describe("createLedgerAdapter", () => {
     await adapter.connect();
     const result = await adapter.signMessage(new TextEncoder().encode("hello"), {
       chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" },
-      id: `eip155:1:${  (FAKE_ADDRESSES[2] ?? "0x0").toLowerCase()}`,
+      id: `eip155:1:${(FAKE_ADDRESSES[2] ?? "0x0").toLowerCase()}`,
       walletAddress: FAKE_ADDRESSES[2] ?? "0x0",
     });
     expect(result.signature.length).toBe(65);

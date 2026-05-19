@@ -25,12 +25,12 @@ const ledger = await createLedgerAdapter({
 });
 ```
 
-| Option | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `chainId` | `number` | `1` | EIP-155 chain number. Ledger has no internal "current chain"; `switchChain` just updates this locally. |
-| `accountCount` | `number` | `1` | How many derivation paths to enumerate via `getAccounts()`. Each walk hits the device (~1–2s) — keep it small. |
-| `derivationPathPrefix` | `string` | `44'/60'/0'/0` | Standard Ethereum path; `getAccounts(n)` appends the index. |
-| `id` / `name` / `icon` | `string` | `"ledger"` / `"Ledger"` / `LEDGER_DEFAULT_ICON` | |
+| Option                 | Type     | Default                                         | Notes                                                                                                          |
+| ---------------------- | -------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `chainId`              | `number` | `1`                                             | EIP-155 chain number. Ledger has no internal "current chain"; `switchChain` just updates this locally.         |
+| `accountCount`         | `number` | `1`                                             | How many derivation paths to enumerate via `getAccounts()`. Each walk hits the device (~1–2s) — keep it small. |
+| `derivationPathPrefix` | `string` | `44'/60'/0'/0`                                  | Standard Ethereum path; `getAccounts(n)` appends the index.                                                    |
+| `id` / `name` / `icon` | `string` | `"ledger"` / `"Ledger"` / `LEDGER_DEFAULT_ICON` |                                                                                                                |
 
 Register it through the unified provider exactly like
 [WalletConnect](/docs/connectors/walletconnect):
@@ -50,7 +50,7 @@ const extra = new Map([[ledger.id, ledger]]);
   createConnector={(id) => extra.get(id) ?? null}
 >
   {children}
-</WalletManagerProvider>
+</WalletManagerProvider>;
 ```
 
 On `connect()` the browser shows the WebUSB permission prompt and the user
@@ -76,15 +76,14 @@ unlocks the device.
 ## Caveats
 
 <Callout type="warn">
-  **WebUSB only.** Works in Chromium browsers (Chrome, Edge, Brave, Arc). Not
-  Firefox, not Safari. Gate the Ledger affordance accordingly.
+  **WebUSB only.** Works in Chromium browsers (Chrome, Edge, Brave, Arc). Not Firefox, not Safari.
+  Gate the Ledger affordance accordingly.
 </Callout>
 
 <Callout type="warn">
-  **Signing only.** `sendTx`, `sendTxToChain`, `getBalance`, and
-  `getTransactionReceipt` reject with descriptive errors. To submit a
-  transaction, wrap `getSigner()` with viem/ethers and your own RPC, then
-  broadcast there.
+  **Signing only.** `sendTx`, `sendTxToChain`, `getBalance`, and `getTransactionReceipt` reject with
+  descriptive errors. To submit a transaction, wrap `getSigner()` with viem/ethers and your own RPC,
+  then broadcast there.
 </Callout>
 
 - **No persistence** — the device must be reconnected on reload (no session
@@ -96,13 +95,12 @@ unlocks the device.
 - **Manual chain** — call `switchChain()` to update the adapter's local
   chainId; it isn't written to the device.
 
-Error messages you may surface: *"sendTx not supported — Ledger signs but
-doesn't broadcast"*, *"getBalance not supported — Ledger has no RPC"*,
-*"received non-EVM chain"*, *"address not found on this device"* (outside the
+Error messages you may surface: _"sendTx not supported — Ledger signs but
+doesn't broadcast"_, _"getBalance not supported — Ledger has no RPC"_,
+_"received non-EVM chain"_, _"address not found on this device"_ (outside the
 configured `accountCount`).
 
 <Callout type="info">
-  **Source:** `packages/ledger/src` (`adapter.ts`, `capabilities.ts`,
-  `__tests__/adapter.test.ts`) in the
-  [butr repository](https://github.com/pedroapfilho/butr/tree/main/packages/ledger).
+  **Source:** `packages/ledger/src` (`adapter.ts`, `capabilities.ts`, `__tests__/adapter.test.ts`)
+  in the [butr repository](https://github.com/pedroapfilho/butr/tree/main/packages/ledger).
 </Callout>

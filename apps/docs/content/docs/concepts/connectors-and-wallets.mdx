@@ -42,7 +42,12 @@ type Wallet = {
   getSigner(): Promise<unknown>; // cast to viem WalletClient, WalletStandardWallet, …
   getTransactionReceipt(tx: string): Promise<{ status: "Success" | "Error" | "Pending" }>;
   sendTx(tx: unknown, account?: Account): Promise<string>;
-  sendTxToChain(tx: unknown, targetChainId: string, account?: Account, cb?: () => void): Promise<string>;
+  sendTxToChain(
+    tx: unknown,
+    targetChainId: string,
+    account?: Account,
+    cb?: () => void,
+  ): Promise<string>;
   signMessage(
     msg: Uint8Array,
     account?: Account,
@@ -53,10 +58,9 @@ type Wallet = {
 ```
 
 <Callout type="warn">
-  `signMessage` returns **both** `signature` and `signedMessage`. Solana Wallet
-  Standard wallets may prefix or re-encode the message internally. Verify the
-  signature against `signedMessage`, not your input bytes. EVM wallets echo the
-  input.
+  `signMessage` returns **both** `signature` and `signedMessage`. Solana Wallet Standard wallets may
+  prefix or re-encode the message internally. Verify the signature against `signedMessage`, not your
+  input bytes. EVM wallets echo the input.
 </Callout>
 
 ## The seam: `discovery` and `createConnector`
@@ -102,7 +106,7 @@ type ConnectedWallet = {
 ```
 
 `Account` is `{ chain: ChainBase; id: string; walletAddress: string }`. The
-chain travels *inside* the account. Switching chains re-wraps the address with
+chain travels _inside_ the account. Switching chains re-wraps the address with
 new chain data.
 
 **Source:** `packages/core/src/types/wallet.ts`.

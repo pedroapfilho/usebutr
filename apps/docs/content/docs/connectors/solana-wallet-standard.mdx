@@ -24,9 +24,8 @@ const discovery = createWalletSource(discoverSvmAdapters);
 ```
 
 <Callout type="info">
-  `@butr/svm` lazily imports `@wallet-standard/app` (an optional peer
-  dependency). That asynchronous warmup is one reason restored SVM wallets can
-  land in `pendingIds` for a moment — see
+  `@butr/svm` lazily imports `@wallet-standard/app` (an optional peer dependency). That asynchronous
+  warmup is one reason restored SVM wallets can land in `pendingIds` for a moment — see
   [hydration](/docs/concepts/hydration).
 </Callout>
 
@@ -69,6 +68,6 @@ build-and-send flow with `@solana/web3.js`, `@solana/kit`, and
 authors.
 
 <Callout type="info">
-  **Source:** `packages/svm/src`. Used by all `apps/demo-with-solana-*` demos
-  and (via `@butr/wallets`) `apps/demo-vite`.
+  **Source:** `packages/svm/src`. Used by all `apps/demo-with-solana-*` demos and (via
+  `@butr/wallets`) `apps/demo-vite`.
 </Callout>

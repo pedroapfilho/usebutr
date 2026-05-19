@@ -236,7 +236,12 @@ const createWalletConnectAdapter = async (
   return adapter;
 };
 
-export type { UniversalProviderConstructor, UniversalProviderLike, WalletConnectMetadata, WalletConnectOptions };
+export type {
+  UniversalProviderConstructor,
+  UniversalProviderLike,
+  WalletConnectMetadata,
+  WalletConnectOptions,
+};
 export { DEFAULT_ICON as WALLETCONNECT_DEFAULT_ICON, createWalletConnectAdapter };
 
 // Account type re-exported for adapter authors who want to construct

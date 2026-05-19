@@ -63,15 +63,13 @@ Message signing uses `solana:signMessage` exactly as in the
 [`@solana/web3.js` integration](/docs/integrations/solana-web3js).
 
 <Callout type="info">
-  The demo hand-rolls the System Program transfer instruction (a 12-byte buffer:
-  `u32` variant `2` + `u64` lamports) rather than depending on
-  `@solana-program/system`, whose codec imports drift between `@solana/kit`
-  versions. Either approach works.
+  The demo hand-rolls the System Program transfer instruction (a 12-byte buffer: `u32` variant `2` +
+  `u64` lamports) rather than depending on `@solana-program/system`, whose codec imports drift
+  between `@solana/kit` versions. Either approach works.
 </Callout>
 
 <Callout type="info">
-  **Source:** `apps/demo-with-solana-kit/src/app.tsx` in the
-  [butr repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-with-solana-kit).
-  Targets Solana devnet. Run `pnpm dev --filter=demo-with-solana-kit` →
-  `http://localhost:5179`.
+  **Source:** `apps/demo-with-solana-kit/src/app.tsx` in the [butr
+  repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-with-solana-kit). Targets
+  Solana devnet. Run `pnpm dev --filter=demo-with-solana-kit` → `http://localhost:5179`.
 </Callout>

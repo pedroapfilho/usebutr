@@ -27,15 +27,15 @@ const discovery = autoDiscovery();
 >
 ```
 
-| Callback | Signature | Fires when |
-| --- | --- | --- |
-| `onConnect` | `(wallet: ConnectedWallet) => void` | a wallet connects successfully |
-| `onConnectError` | `(error: ConnectionError, connectorId: string) => void` | a connect attempt fails |
-| `onHydrated` | `(outcome: HydrationOutcome) => void` | once, after the mount-time restore pass |
-| `onDisconnect` | `(chainPlatform: ChainPlatform) => void` | a wallet disconnects |
-| `onReset` | `() => void \| Promise<void>` | all wallets are reset (clear auth tokens here) |
-| `onSlowConnect` | `(connectorId: string) => void` | a connect exceeds `slowConnectThresholdMs` |
-| `onStorageError` | `(error: unknown, context: string) => void` | a persistence write fails |
+| Callback         | Signature                                               | Fires when                                     |
+| ---------------- | ------------------------------------------------------- | ---------------------------------------------- |
+| `onConnect`      | `(wallet: ConnectedWallet) => void`                     | a wallet connects successfully                 |
+| `onConnectError` | `(error: ConnectionError, connectorId: string) => void` | a connect attempt fails                        |
+| `onHydrated`     | `(outcome: HydrationOutcome) => void`                   | once, after the mount-time restore pass        |
+| `onDisconnect`   | `(chainPlatform: ChainPlatform) => void`                | a wallet disconnects                           |
+| `onReset`        | `() => void \| Promise<void>`                           | all wallets are reset (clear auth tokens here) |
+| `onSlowConnect`  | `(connectorId: string) => void`                         | a connect exceeds `slowConnectThresholdMs`     |
+| `onStorageError` | `(error: unknown, context: string) => void`             | a persistence write fails                      |
 
 ## Notes
 

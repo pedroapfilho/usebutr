@@ -15,46 +15,46 @@ All props are flat — there is no nested `config` object. Props captured once a
 mount; later changes are silently ignored. Pass stable references (module-level
 values, `useRef`, `useCallback`).
 
-| Prop | Type | Notes |
-| --- | --- | --- |
-| `children` | `React.ReactNode` | Required. |
-| `discovery` | `WalletSource` | Auto-discovery source (e.g. `autoDiscovery()`). Omit to skip auto-discovery; no protocol code enters the bundle. |
-| `connectors` | `Array<ConnectorMeta>` | Metadata for explicitly-registered connectors. |
-| `createConnector` | `(id: string) => WalletAdapter \| null` | Explicit connector factory. Resolved after `discovery`. |
-| `onConnect` | `WalletManagerConfig["onConnect"]` | Lifecycle callback. |
-| `onConnectError` | `WalletManagerConfig["onConnectError"]` | Lifecycle callback. |
-| `onDisconnect` | `WalletManagerConfig["onDisconnect"]` | Lifecycle callback. |
-| `onHydrated` | `WalletManagerConfig["onHydrated"]` | Lifecycle callback. |
-| `onReset` | `WalletManagerConfig["onReset"]` | Lifecycle callback. |
-| `onSlowConnect` | `WalletManagerConfig["onSlowConnect"]` | Lifecycle callback. |
-| `onStorageError` | `WalletManagerConfig["onStorageError"]` | Lifecycle callback. |
-| `slowConnectThresholdMs` | `number` | Threshold before `onSlowConnect` fires. |
-| `storage` | `WalletPersistence` | Custom storage. Defaults to `localStorage`. |
-| `storageKeyPrefix` | `string` | Prefix for all persisted keys. |
+| Prop                     | Type                                    | Notes                                                                                                            |
+| ------------------------ | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `children`               | `React.ReactNode`                       | Required.                                                                                                        |
+| `discovery`              | `WalletSource`                          | Auto-discovery source (e.g. `autoDiscovery()`). Omit to skip auto-discovery; no protocol code enters the bundle. |
+| `connectors`             | `Array<ConnectorMeta>`                  | Metadata for explicitly-registered connectors.                                                                   |
+| `createConnector`        | `(id: string) => WalletAdapter \| null` | Explicit connector factory. Resolved after `discovery`.                                                          |
+| `onConnect`              | `WalletManagerConfig["onConnect"]`      | Lifecycle callback.                                                                                              |
+| `onConnectError`         | `WalletManagerConfig["onConnectError"]` | Lifecycle callback.                                                                                              |
+| `onDisconnect`           | `WalletManagerConfig["onDisconnect"]`   | Lifecycle callback.                                                                                              |
+| `onHydrated`             | `WalletManagerConfig["onHydrated"]`     | Lifecycle callback.                                                                                              |
+| `onReset`                | `WalletManagerConfig["onReset"]`        | Lifecycle callback.                                                                                              |
+| `onSlowConnect`          | `WalletManagerConfig["onSlowConnect"]`  | Lifecycle callback.                                                                                              |
+| `onStorageError`         | `WalletManagerConfig["onStorageError"]` | Lifecycle callback.                                                                                              |
+| `slowConnectThresholdMs` | `number`                                | Threshold before `onSlowConnect` fires.                                                                          |
+| `storage`                | `WalletPersistence`                     | Custom storage. Defaults to `localStorage`.                                                                      |
+| `storageKeyPrefix`       | `string`                                | Prefix for all persisted keys.                                                                                   |
 
 Also exports `WalletStoreContext` and `useWalletStoreContext()` (the raw store,
 used in custom discovery wiring).
 
 ## Sync hooks — read state
 
-| Hook | Returns |
-| --- | --- |
-| `useConnectionStatus()` | `"idle" \| "connecting" \| "success" \| "error"` |
-| `useIsConnecting()` | `boolean` |
-| `useConnectingConnectorId()` | `string \| null` |
-| `useActiveConnectorId()` | `string \| null` |
-| `useConnectionError()` | `ConnectionError \| null` |
-| `useWalletConnected()` | `boolean` (pool non-empty) |
-| `useIsHydrated()` | `boolean` |
-| `useIsUserDisconnected()` | `boolean` (session-scoped) |
-| `usePool()` | `Map<string, ConnectedWallet>` |
-| `useConnectedWallets()` | `Array<ConnectedWallet>` |
-| `useSelection()` | `Map<ChainPlatform, string>` |
-| `useActiveWallet()` | `ConnectedWallet \| undefined` |
-| `useSelectedWallet(platform)` | `ConnectedWallet \| undefined` |
-| `useIsPlatformConnected(platform)` | `boolean` |
-| `useAccounts(connectorId?)` | `ReadonlyArray<Account>` (active wallet if omitted) |
-| `useDiscoveredWallets()` | `ReadonlyArray<WalletAdapter>` (empty without `discovery`) |
+| Hook                               | Returns                                                    |
+| ---------------------------------- | ---------------------------------------------------------- |
+| `useConnectionStatus()`            | `"idle" \| "connecting" \| "success" \| "error"`           |
+| `useIsConnecting()`                | `boolean`                                                  |
+| `useConnectingConnectorId()`       | `string \| null`                                           |
+| `useActiveConnectorId()`           | `string \| null`                                           |
+| `useConnectionError()`             | `ConnectionError \| null`                                  |
+| `useWalletConnected()`             | `boolean` (pool non-empty)                                 |
+| `useIsHydrated()`                  | `boolean`                                                  |
+| `useIsUserDisconnected()`          | `boolean` (session-scoped)                                 |
+| `usePool()`                        | `Map<string, ConnectedWallet>`                             |
+| `useConnectedWallets()`            | `Array<ConnectedWallet>`                                   |
+| `useSelection()`                   | `Map<ChainPlatform, string>`                               |
+| `useActiveWallet()`                | `ConnectedWallet \| undefined`                             |
+| `useSelectedWallet(platform)`      | `ConnectedWallet \| undefined`                             |
+| `useIsPlatformConnected(platform)` | `boolean`                                                  |
+| `useAccounts(connectorId?)`        | `ReadonlyArray<Account>` (active wallet if omitted)        |
+| `useDiscoveredWallets()`           | `ReadonlyArray<WalletAdapter>` (empty without `discovery`) |
 
 ### Stable accessors (return functions, safe in callbacks/deps)
 
@@ -90,18 +90,18 @@ const { pool, activeConnectorId } = useWalletStore((s) => ({
 
 Each returns a stable function.
 
-| Hook | Function |
-| --- | --- |
-| `useConnectWallet()` | `(connectorId, onSuccess?, onError?) => Promise<void>` |
-| `useDisconnectWallet()` | `(connectorId) => void` |
-| `useSetActiveConnector()` | `(connectorId \| null) => void` |
-| `useSetSelection()` | `(platform, connectorId \| null) => void` |
-| `useResetWallet()` | `() => void` |
-| `useUpdateWalletAccount()` | `(connectorId, account) => void` |
-| `useRefreshWallet()` | `(connectorId) => void` |
-| `useRequestAccounts()` | `(connectorId) => Promise<void>` |
-| `useResetConnectionStatus()` | `() => void` |
-| `useSetConnectionError()` | `(error \| null) => void` |
+| Hook                         | Function                                               |
+| ---------------------------- | ------------------------------------------------------ |
+| `useConnectWallet()`         | `(connectorId, onSuccess?, onError?) => Promise<void>` |
+| `useDisconnectWallet()`      | `(connectorId) => void`                                |
+| `useSetActiveConnector()`    | `(connectorId \| null) => void`                        |
+| `useSetSelection()`          | `(platform, connectorId \| null) => void`              |
+| `useResetWallet()`           | `() => void`                                           |
+| `useUpdateWalletAccount()`   | `(connectorId, account) => void`                       |
+| `useRefreshWallet()`         | `(connectorId) => void`                                |
+| `useRequestAccounts()`       | `(connectorId) => Promise<void>`                       |
+| `useResetConnectionStatus()` | `() => void`                                           |
+| `useSetConnectionError()`    | `(error \| null) => void`                              |
 
 `useRequestAccounts` opens the wallet's account-selection UI (EVM:
 `wallet_requestPermissions`) then refreshes the pool entry's `accounts`. Hide
@@ -119,11 +119,11 @@ type AsyncState<T> =
 type UseBalanceResult = AsyncState<Balance> & { refetch: () => void };
 ```
 
-| Hook | Returns |
-| --- | --- |
-| `useSigner(connectorId?)` | `AsyncState<unknown>` |
-| `useBalance(connectorId?, mint?)` | `UseBalanceResult` |
-| `useWalletEntry(connectorId?)` | `ConnectedWallet \| undefined` |
+| Hook                              | Returns                        |
+| --------------------------------- | ------------------------------ |
+| `useSigner(connectorId?)`         | `AsyncState<unknown>`          |
+| `useBalance(connectorId?, mint?)` | `UseBalanceResult`             |
+| `useWalletEntry(connectorId?)`    | `ConnectedWallet \| undefined` |
 
 These use `walletEqual` so internal metadata changes don't invalidate the
 signer/balance. See [balances](/docs/guides/balances).

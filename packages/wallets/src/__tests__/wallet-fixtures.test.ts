@@ -172,9 +172,7 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
     it("re-throws on user rejection (code 4001) without trying the fallback", async () => {
       const provider = createMockProvider({
         wallet_requestPermissions: () =>
-          Promise.reject(
-            Object.assign(new Error("User rejected the request"), { code: 4001 }),
-          ),
+          Promise.reject(Object.assign(new Error("User rejected the request"), { code: 4001 })),
       });
       // Use MetaMask info so the capability flag is true and the
       // requestAccounts path is exercised (it works the same for any

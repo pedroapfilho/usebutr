@@ -18,8 +18,8 @@ import type { StorageDriver } from "@butr/core";
  */
 const asyncStorageDriver: StorageDriver = {
   getItem: (key) => AsyncStorage.getItem(key),
-  setItem: (key, value) => AsyncStorage.setItem(key, value),
   removeItem: (key) => AsyncStorage.removeItem(key),
+  setItem: (key, value) => AsyncStorage.setItem(key, value),
 };
 
 export { asyncStorageDriver };

@@ -119,9 +119,13 @@ const createHydrationCoordinator = (
   const pending = new Map<string, StoredPoolEntry>();
 
   const removeBrokenEntry = (connectorId: string) => {
-    storage.removePoolEntry(connectorId).catch((error: unknown) => {
-      reportStorageError("failed to remove broken entry", error);
-    });
+    void (async () => {
+      try {
+        await storage.removePoolEntry(connectorId);
+      } catch (error: unknown) {
+        reportStorageError("failed to remove broken entry", error);
+      }
+    })();
   };
 
   return {

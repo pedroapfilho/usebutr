@@ -15,6 +15,10 @@ type CookieDriverOptions = {
    */
   maxAgeSeconds?: number;
   /**
+   * URL path the cookie applies to. Defaults to `/` (whole origin).
+   */
+  path?: string;
+  /**
    * `SameSite` attribute. Defaults to `"lax"` — restrictive enough
    * to avoid CSRF on cross-origin POSTs, permissive enough for
    * top-level navigations.
@@ -25,10 +29,6 @@ type CookieDriverOptions = {
    * HTTPS). Force `false` for local development on plain `http://`.
    */
   secure?: boolean;
-  /**
-   * URL path the cookie applies to. Defaults to `/` (whole origin).
-   */
-  path?: string;
 };
 
 const DEFAULT_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
@@ -71,8 +71,7 @@ const buildCookieString = (
   options: CookieDriverOptions,
   expired = false,
 ): string => {
-  const parts: Array<string> = [`${name}=${encode(value)}`];
-  parts.push(`Path=${options.path ?? "/"}`);
+  const parts: Array<string> = [`${name}=${encode(value)}`, `Path=${options.path ?? "/"}`];
   if (options.domain) {
     parts.push(`Domain=${options.domain}`);
   }
@@ -131,9 +130,11 @@ const createCookieStorageDriver = (options: CookieDriverOptions = {}): StorageDr
       return readCookies().get(key) ?? null;
     },
     removeItem(key) {
+      // eslint-disable-next-line unicorn/no-document-cookie -- cookie storage driver is the document.cookie abstraction by design
       document.cookie = buildCookieString(key, "", options, true);
     },
     setItem(key, value) {
+      // eslint-disable-next-line unicorn/no-document-cookie -- cookie storage driver is the document.cookie abstraction by design
       document.cookie = buildCookieString(key, value, options);
     },
   };

@@ -20,7 +20,7 @@ const buildEntry = (connectorId: string): StoredPoolEntry => ({
 
 const createFakeStorage = (init: FakeStorageInit = {}): WalletPersistence => {
   const removed: Array<string> = [];
-  let pool = { ...(init.pool ?? {}) };
+  let pool = { ...init.pool };
   return {
     clearAll: vi.fn().mockResolvedValue(undefined),
     clearPool: vi.fn().mockResolvedValue(undefined),

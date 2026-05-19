@@ -11,13 +11,13 @@ const fakeDocument = (initial = ""): { cookie: string } => {
       // Only append the name=value portion to mimic how browsers
       // accumulate cookies in document.cookie reads.
       const head = value.split(";")[0]?.trim() ?? "";
-      if (!head) return;
+      if (!head) { return; }
       const [name] = head.split("=");
-      if (!name) return;
+      if (!name) { return; }
       const segments = cookie ? cookie.split("; ").filter(Boolean) : [];
       const filtered = segments.filter((s) => !s.startsWith(`${name}=`));
       // Honour Max-Age=0 as "delete this cookie".
-      if (/Max-Age=0(\b|$)/.test(value)) {
+      if (/Max-Age=0(\b|$)/v.test(value)) {
         cookie = filtered.join("; ");
         return;
       }

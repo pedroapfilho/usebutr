@@ -19,22 +19,20 @@ import { createMockAccount, createMockChain, createMockConnector } from "../../_
 
 const buildEvmAdapter = (): WalletAdapter =>
   createMockConnector({
-    id: "io.metamask",
-    name: "MetaMask",
     chainPlatform: "evm",
     getAccount: vi.fn().mockResolvedValue(
       createMockAccount({
         chain: createMockChain({ id: "eip155:1", name: "Ethereum" }),
-        walletAddress: "0xevmaddress",
         id: "eip155:1:0xevmaddress",
+        walletAddress: "0xevmaddress",
       }),
     ),
+    id: "io.metamask",
+    name: "MetaMask",
   });
 
 const buildSvmAdapter = (): WalletAdapter =>
   createMockConnector({
-    id: "phantom",
-    name: "Phantom",
     chainPlatform: "svm",
     getAccount: vi.fn().mockResolvedValue(
       createMockAccount({
@@ -44,10 +42,12 @@ const buildSvmAdapter = (): WalletAdapter =>
           namespace: "solana",
           reference: "mainnet",
         }),
-        walletAddress: "SoLaNaAdDrEsS",
         id: "solana:mainnet:SoLaNaAdDrEsS",
+        walletAddress: "SoLaNaAdDrEsS",
       }),
     ),
+    id: "phantom",
+    name: "Phantom",
   });
 
 const buildSharedStorage = () => {
@@ -64,8 +64,9 @@ const collectConnected = async (
 ): Promise<Array<ConnectedWallet>> => {
   // Wait for hydration to finish (it's async after store creation).
   for (let i = 0; i < 50; i += 1) {
-    if (store.getState().isHydrated) break;
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    if (store.getState().isHydrated) { break; }
+    // eslint-disable-next-line no-await-in-loop -- sequential polling: each iteration must wait before checking state again
+    await new Promise<void>((resolve) => { setTimeout(resolve, 10); });
   }
   return [...store.getState().pool.values()];
 };
@@ -95,7 +96,7 @@ describe("multi-platform hydration (EVM + SVM)", () => {
 
     // Verify it persisted both — sanity check before the reload step.
     const persisted = await storage.getPool();
-    expect(Object.keys(persisted).sort()).toEqual(["io.metamask", "phantom"]);
+    expect(Object.keys(persisted).toSorted()).toEqual(["io.metamask", "phantom"]);
   });
 
   it("eagerly restores both wallets when both adapters are registered before hydration", async () => {
@@ -126,7 +127,7 @@ describe("multi-platform hydration (EVM + SVM)", () => {
     await reloadedStore.getState().hydrateWallets();
 
     const connected = await collectConnected(reloadedStore);
-    const ids = connected.map((w) => w.connector.id).sort();
+    const ids = connected.map((w) => w.connector.id).toSorted();
     expect(ids).toEqual(["io.metamask", "phantom"]);
   });
 
@@ -168,7 +169,7 @@ describe("multi-platform hydration (EVM + SVM)", () => {
     await reloadedStore.getState().tryRestoreFromPending(svmAdapter.id);
 
     const connected = await collectConnected(reloadedStore);
-    const ids = connected.map((w) => w.connector.id).sort();
+    const ids = connected.map((w) => w.connector.id).toSorted();
     expect(ids).toEqual(["io.metamask", "phantom"]);
   });
 
@@ -216,7 +217,7 @@ describe("multi-platform hydration (EVM + SVM)", () => {
     await hydratePromise;
 
     // Both entries must be in the final pool.
-    const ids = [...reloadedStore.getState().pool.keys()].sort();
+    const ids = [...reloadedStore.getState().pool.keys()].toSorted();
     expect(ids).toEqual(["io.metamask", "phantom"]);
   });
 
@@ -253,7 +254,7 @@ describe("multi-platform hydration (EVM + SVM)", () => {
     await reloadedStore.getState().tryRestoreFromPending(evmAdapter.id);
 
     const connected = await collectConnected(reloadedStore);
-    const ids = connected.map((w) => w.connector.id).sort();
+    const ids = connected.map((w) => w.connector.id).toSorted();
     expect(ids).toEqual(["io.metamask", "phantom"]);
   });
 });

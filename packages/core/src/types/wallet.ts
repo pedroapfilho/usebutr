@@ -1,5 +1,6 @@
 import type { WalletPersistence } from "../storage/persistence";
 import type { ChainBase } from "./chain";
+import type { ConnectionError } from "./errors";
 
 type ChainPlatform = "evm" | "svm";
 
@@ -268,14 +269,6 @@ type WalletManagerConfig = {
   /** Called after a wallet is successfully connected */
   onConnect?: (wallet: ConnectedWallet) => void;
   /**
-   * Called once after butr's mount-time hydration finishes. Receives a
-   * `HydrationOutcome` summarising which stored wallets were restored,
-   * which are pending an adapter announcement, and which failed.
-   * Useful for surfacing "Phantom couldn't be reconnected — try
-   * again" UX or piping a metric to telemetry.
-   */
-  onHydrated?: (outcome: HydrationOutcome) => void;
-  /**
    * Called after a connection attempt fails (user rejected, wallet
    * locked, chain mismatch, timeout, …). Receives the normalised
    * `ConnectionError` plus the id of the connector that was being
@@ -283,9 +276,17 @@ type WalletManagerConfig = {
    * (Sentry, OTel) without each consumer wiring `try/catch`s around
    * `connectWallet` themselves.
    */
-  onConnectError?: (error: import("./errors").ConnectionError, connectorId: string) => void;
+  onConnectError?: (error: ConnectionError, connectorId: string) => void;
   /** Called after a wallet is disconnected */
   onDisconnect?: (chainPlatform: ChainPlatform) => void;
+  /**
+   * Called once after butr's mount-time hydration finishes. Receives a
+   * `HydrationOutcome` summarising which stored wallets were restored,
+   * which are pending an adapter announcement, and which failed.
+   * Useful for surfacing "Phantom couldn't be reconnected — try
+   * again" UX or piping a metric to telemetry.
+   */
+  onHydrated?: (outcome: HydrationOutcome) => void;
   /** Called after all wallets are reset (e.g., to clear auth tokens) */
   onReset?: () => void | Promise<void>;
   /**

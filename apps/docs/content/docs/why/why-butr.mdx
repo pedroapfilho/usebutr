@@ -3,7 +3,7 @@ title: Why use butr
 description: Five concrete payoffs — multi-chain pool, no chain-library lock-in, modular install, a React-free core, and standards compliance — each backed by a guide.
 ---
 
-[Why butr exists](/docs/why/motivation) covers the problem. This page is the
+[Why butr exists](/why/motivation) covers the problem. This page is the
 payoff: what you get, and the guide that proves each claim.
 
 ## One pool for EVM and SVM
@@ -12,7 +12,7 @@ A single user can connect MetaMask (EVM) and Phantom (SVM) at once. Each
 platform tracks its own selection independently; one component reads both in the
 same render. No second stack, no second hydration path.
 
-→ [Multi-wallet and chain switching](/docs/guides/multi-chain)
+→ [Multi-wallet and chain switching](/guides/multi-chain)
 
 ## No chain-library lock-in
 
@@ -21,7 +21,7 @@ same render. No second stack, no second hydration path.
 for reads and signing. butr owns discovery and connection state; your library
 owns RPC.
 
-→ [Integrations](/docs/integrations/viem)
+→ [Integrations](/integrations/viem)
 
 ## Install only what you ship
 
@@ -29,7 +29,7 @@ The core has no React and no protocol code. An EVM-only dapp drops
 `@usebutr/svm` entirely; a custom discovery pipeline skips the
 batteries-included package. You bundle the seams you use, nothing else.
 
-→ [EVM-only setup](/docs/guides/evm-only)
+→ [EVM-only setup](/guides/evm-only)
 
 ## A core that is not React
 
@@ -37,7 +37,7 @@ batteries-included package. You bundle the seams you use, nothing else.
 TypeScript runtime. `@usebutr/react` is the binding, so the same connection
 model works across Vite, Next.js, TanStack Start, and Expo without rewrites.
 
-→ [Frameworks](/docs/frameworks/vite)
+→ [Frameworks](/frameworks/vite)
 
 ## Standards-compliant and testable
 
@@ -46,7 +46,7 @@ edges documented rather than hidden. `@usebutr/testing` ships fake adapters and
 fake persistence, so wallet flows are unit-testable without a browser
 extension.
 
-→ [Standards compliance](/docs/concepts/standards) · [Testing](/docs/testing)
+→ [Standards compliance](/concepts/standards) · [Testing](/testing)
 
 ## When butr is the wrong tool
 

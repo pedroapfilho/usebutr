@@ -1,9 +1,9 @@
 import { createMDX } from "fumadocs-mdx/next";
+import type { NextConfig } from "next";
 
 const withMDX = createMDX();
 
-/** @type {import('next').NextConfig} */
-const config = {
+const config: NextConfig = {
   reactStrictMode: true,
   // Serve any docs page as Markdown by appending `.md` (used by the
   // "Copy Markdown" / "View as Markdown" page actions).

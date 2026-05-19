@@ -28,7 +28,8 @@ type ConnectionErrorKind = ConnectionError["kind"];
  *  - butr's own `Error("Connection timeout")` (from the 90s connect timeout)
  *  - butr's own `Error("Failed to get account")` (from the connect flow)
  *  - EIP-1193 numeric `code` properties (`4001` → UserRejected,
- *    `-32002` → RequestPending)
+ *    `-32002` → RequestPending, `4100`/`4900`/`4901` → NotConnected —
+ *    unauthorized / disconnected from all-or-one chains)
  *  - common message substrings: "user rejected" / "user denied",
  *    "locked", "chain", etc.
  *  - anything else → `Unknown` with `cause` set to the original value.
@@ -51,6 +52,12 @@ const mapConnectionError = (raw: unknown): ConnectionError => {
     }
     if (code === -32_002) {
       return { kind: "RequestPending", message };
+    }
+    // EIP-1193: 4100 unauthorized, 4900 disconnected (all chains),
+    // 4901 disconnected (requested chain). All mean "no usable session"
+    // from butr's perspective → NotConnected.
+    if (code === 4100 || code === 4900 || code === 4901) {
+      return { kind: "NotConnected", message };
     }
 
     if (lower.includes("user rejected") || lower.includes("user denied")) {

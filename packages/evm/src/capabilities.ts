@@ -22,7 +22,12 @@ const resolveEip6963Capabilities = (input: Eip6963CapabilityInput): WalletCapabi
   getTransactionReceipt: true,
   requestAccounts: EIP6963_RDNS_WITH_REQUEST_ACCOUNTS.has(input.rdns),
   sendTransaction: true,
+  // SIWS is Solana-only.
+  signIn: false,
   signMessage: true,
+  // EVM adapters don't expose a standalone signTransaction (most
+  // wallets reject eth_signTransaction); use sendTx.
+  signTransaction: false,
   subscribe: true,
   // EIP-1193 has no silent "use address X" RPC.
   switchAccount: false,

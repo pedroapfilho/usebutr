@@ -60,6 +60,12 @@ type StandardDisconnectFeature = {
 type StandardEventsListener = (changes: {
   accounts?: ReadonlyArray<WalletStandardWalletAccount>;
   chains?: ReadonlyArray<string>;
+  /** Present when the wallet's advertised feature set changes at
+   *  runtime. butr resolves `capabilities` once at adapter construction
+   *  (same as the EIP-1193 side) — a `ConnectorEvent` for capability
+   *  changes doesn't exist, so the adapter doesn't act on this. Listed
+   *  for spec completeness / future use. */
+  features?: ReadonlyArray<string>;
 }) => void;
 
 type StandardEventsFeature = {
@@ -98,13 +104,48 @@ type SolanaSignAndSendTransactionFeature = {
   ): Promise<ReadonlyArray<SolanaSignAndSendTransactionOutput>>;
 };
 
+type SolanaSignTransactionInput = {
+  account: WalletStandardWalletAccount;
+  chain?: string;
+  transaction: Uint8Array;
+};
+
+type SolanaSignTransactionOutput = {
+  signedTransaction: Uint8Array;
+};
+
+type SolanaSignTransactionFeature = {
+  signTransaction(
+    ...inputs: ReadonlyArray<SolanaSignTransactionInput>
+  ): Promise<ReadonlyArray<SolanaSignTransactionOutput>>;
+};
+
+/** SIWS message fields — all optional; the wallet fills defaults. */
+type SolanaSignInInput = Record<string, unknown>;
+
+type SolanaSignInOutput = {
+  account: WalletStandardWalletAccount;
+  signature: Uint8Array;
+  signedMessage: Uint8Array;
+};
+
+type SolanaSignInFeature = {
+  signIn(input?: SolanaSignInInput): Promise<ReadonlyArray<SolanaSignInOutput>>;
+};
+
 export type {
   SolanaSignAndSendTransactionFeature,
   SolanaSignAndSendTransactionInput,
   SolanaSignAndSendTransactionOutput,
+  SolanaSignInFeature,
+  SolanaSignInInput,
+  SolanaSignInOutput,
   SolanaSignMessageFeature,
   SolanaSignMessageInput,
   SolanaSignMessageOutput,
+  SolanaSignTransactionFeature,
+  SolanaSignTransactionInput,
+  SolanaSignTransactionOutput,
   StandardConnectFeature,
   StandardDisconnectFeature,
   StandardEventsFeature,

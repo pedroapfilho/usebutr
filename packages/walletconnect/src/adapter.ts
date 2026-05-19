@@ -197,12 +197,17 @@ const createWalletConnectAdapter = async (
   const adapter: WalletAdapter = {
     ...base,
     capabilities: WALLETCONNECT_CAPABILITIES,
-    async connect() {
+    async connect(opts) {
       // If a previous session is still live (e.g., across reloads),
       // skip the pairing handshake — the provider already has the
       // session topic and can route requests through the relay.
       if (provider.session) {
         return;
+      }
+      if (opts?.silent) {
+        // No live session to resume. Refuse instead of popping the
+        // pairing QR modal on page load — hydration drops the entry.
+        throw new Error("No WalletConnect session for silent reconnect");
       }
       await provider.connect({
         namespaces: {

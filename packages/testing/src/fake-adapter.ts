@@ -19,7 +19,9 @@ const DEFAULT_CAPABILITIES: WalletCapabilities = {
   getTransactionReceipt: true,
   requestAccounts: true,
   sendTransaction: true,
+  signIn: true,
   signMessage: true,
+  signTransaction: true,
   subscribe: true,
   switchAccount: true,
   switchChain: true,
@@ -65,7 +67,15 @@ const createFakeAdapter = (options: FakeAdapterOptions = {}): WalletAdapter => {
     requestAccounts: () => Promise.resolve(),
     sendTx: () => Promise.resolve("0xfakehash"),
     sendTxToChain: () => Promise.resolve("0xfakehash"),
+    signIn: () =>
+      Promise.resolve({
+        account: account ?? { chain: { id: "", name: "", namespace: "", reference: "" }, id: "", walletAddress: "" },
+        signature: new Uint8Array(),
+        signedMessage: new Uint8Array(),
+      }),
     signMessage: (msg) => Promise.resolve({ signature: msg, signedMessage: msg }),
+    signTransaction: (tx) =>
+      Promise.resolve(tx instanceof Uint8Array ? tx : new Uint8Array()),
     subscribe: () => () => {},
     switchAccount: () => Promise.resolve(),
     switchChain: () => Promise.resolve(),

@@ -1,5 +1,5 @@
 import type { WalletAdapter } from "@butr/core";
-import { buildSvmAdapter } from "./wallet-standard-adapter";
+import { buildSvmAdapter, slugify } from "./wallet-standard-adapter";
 import type { WalletStandardAppModule, WalletStandardWallet } from "./wallet-standard-types";
 
 /**
@@ -52,8 +52,14 @@ const discoverSvmAdapters = (onAdapter: (adapter: WalletAdapter) => void): (() =
     }
 
     const seen = new Set<string>();
+    // id → emitter that pushes a synthetic `disconnected` to that
+    // adapter's subscribers. Populated by buildSvmAdapter; drained on
+    // Wallet Standard `unregister`.
+    const disconnectors = new Map<string, () => void>();
     const tryAdd = (wallet: WalletStandardWallet) => {
-      const adapter = buildSvmAdapter(wallet);
+      const adapter = buildSvmAdapter(wallet, (id, emit) => {
+        disconnectors.set(id, emit);
+      });
       if (!adapter || seen.has(adapter.id)) {
         return;
       }
@@ -71,7 +77,20 @@ const discoverSvmAdapters = (onAdapter: (adapter: WalletAdapter) => void): (() =
         tryAdd(wallet);
       }
     });
-    internalUnsub = () => offRegister();
+    // Extension disabled/removed mid-session: tear down any connected
+    // pool entry for it instead of leaving a stale adapter.
+    const offUnregister = app.on("unregister", (...wallets) => {
+      for (const wallet of wallets) {
+        const id = slugify(wallet.name);
+        disconnectors.get(id)?.();
+        disconnectors.delete(id);
+        seen.delete(id);
+      }
+    });
+    internalUnsub = () => {
+      offRegister();
+      offUnregister();
+    };
   })();
 
   return () => {

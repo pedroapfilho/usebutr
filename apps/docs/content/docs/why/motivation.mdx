@@ -1,0 +1,58 @@
+---
+title: Why butr exists
+description: Wallet tooling makes you pick a chain, couples connection state to a chain library, or locks you into a connect modal — butr is the layer that does none of that.
+---
+
+Browser wallet tooling grew up single-chain. Pick a stack and the assumptions
+come baked in: an EVM connect kit owns the modal and the connection state, a
+Solana adapter owns its own provider and accounts, and a chain library decides
+how you talk to the network. Each works well alone. None of them was built to
+sit next to the others.
+
+## The problem
+
+A wallet-aware app needs three things before it does anything useful: find the
+wallets the user has, hold which ones are connected across reloads, and hand the
+rest of the app a way to sign. Today those three jobs are bundled into tools
+that also do other things you may not want:
+
+- **Chain choice is forced.** Most kits are EVM-only or Solana-only. An app that
+  wants both runs two parallel stacks that never share a pool, hydration model,
+  or persistence layer. "Which wallet is active" becomes two unrelated answers.
+- **Connection state is coupled to a chain library.** Discovery and the
+  connected set live inside wagmi, or inside an adapter context. Swap the chain
+  library and you re-implement connection state too.
+- **The modal owns you.** Connect-kit products bundle discovery with their UI
+  and their styling. Using their wallet detection means rendering their modal.
+
+Multi-chain apps feel this most. Two stacks, two notions of "connected", two
+hydration paths, and no single place that knows the whole wallet picture.
+
+## The gap butr fills
+
+butr is only the layer those tools skip: **wallet discovery and connection
+state**. It sits _underneath_ chain libraries and _beside_ wallet SDKs.
+
+- EVM (EIP-6963 / EIP-1193) and Solana (Wallet Standard) are equal first-class
+  platforms in one pool. A user can have MetaMask and Phantom connected in the
+  same render pass.
+- `getSigner()` hands back the raw underlying provider. butr never wraps RPC or
+  signing — you keep viem, wagmi, `@solana/web3.js`, or whatever you already
+  know.
+- There is no butr modal. Discovery is data, not UI; you render connection
+  however you want.
+
+## The design stance
+
+The shape follows from the goal. The core is framework-agnostic and React-free
+— `@usebutr/react` is a binding over it, not its foundation. Every wallet,
+injected or hardware or WalletConnect, is the same `WalletAdapter` plugged into
+one seam. Protocols live in separate packages so an EVM-only app never ships
+Solana code. butr has no opinion about how you read chain state or submit
+transactions, and that absence is the point — see
+[Comparison with other solutions](/docs/why/comparison).
+
+<Callout type="info">
+  The mechanics behind these claims are in [Core concepts](/docs/concepts), and the standards butr
+  follows (and the deliberate edges) are in [Standards compliance](/docs/concepts/standards).
+</Callout>

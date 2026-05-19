@@ -5,8 +5,8 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    allowedHosts: [".localhost"],
     host: true,
     port: 5181,
-    allowedHosts: [".localhost"],
   },
 });

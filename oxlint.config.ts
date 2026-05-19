@@ -47,6 +47,16 @@ export default defineConfig({
         "no-img-element": "off",
       },
     },
+    // metro.config.js is a CommonJS Expo Metro configuration file — Metro does
+    // not support ESM config, so `require()` calls here are unavoidable. Scope
+    // the exception tightly to this one file.
+    {
+      files: ["apps/demo-expo-web/metro.config.js"],
+      rules: {
+        "no-require-imports": "off",
+        "prefer-node-protocol": "off",
+      },
+    },
     // butr is a published library that has no shared logger to inject. It uses
     // `console.warn` / `console.error` in error paths (storage failures,
     // connector restoration failures, devtools-only diagnostics) so consumers

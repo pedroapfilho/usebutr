@@ -1,13 +1,13 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
+  clean: false,
+  dts: true,
   entry: ["src/index.ts"],
   format: "esm",
-  platform: "neutral",
-  target: "es2022",
-  dts: true,
-  sourcemap: true,
   minify: true,
-  clean: false,
+  platform: "neutral",
+  sourcemap: true,
+  target: "es2022",
   treeshake: true,
 });

@@ -6,17 +6,17 @@ import { useConnectWallet } from "../../hooks";
 import { useBalance } from "../../hooks-async";
 import { renderHookWithProvider } from "../render-with-provider";
 
-describe("useBalance", () => {
-  const buildAdapter = () => {
-    const account = {
-      chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155" as const, reference: "1" },
-      id: "eip155:1:0xc",
-      walletAddress: "0xc",
-    };
-    const adapter = createFakeAdapter({ accounts: [account], chainPlatform: "evm", id: "fake" });
-    return { account, adapter };
+const buildAdapter = () => {
+  const account = {
+    chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155" as const, reference: "1" },
+    id: "eip155:1:0xc",
+    walletAddress: "0xc",
   };
+  const adapter = createFakeAdapter({ accounts: [account], chainPlatform: "evm", id: "fake" });
+  return { account, adapter };
+};
 
+describe("useBalance", () => {
   it("is idle when nothing is connected", () => {
     const { result } = renderHookWithProvider(() => useBalance());
     expect(result.current.status).toBe("idle");

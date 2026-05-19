@@ -6,14 +6,14 @@ import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 
 const config = defineConfig({
-  resolve: { tsconfigPaths: true },
   plugins: [
     devtools(),
-    nitro({ rollupConfig: { external: [/^@sentry\//] } }),
+    nitro({ rollupConfig: { external: [/^@sentry\//v] } }),
     tailwindcss(),
     tanstackStart(),
     viteReact(),
   ],
+  resolve: { tsconfigPaths: true },
 });
 
 export default config;

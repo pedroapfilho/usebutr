@@ -23,7 +23,7 @@ const proxy = (request: NextRequest) => {
 // only: skip the Markdown/llms endpoints (else they'd be rewritten onto
 // themselves), the search API, and any file-extension asset.
 export const config = {
-  matcher: ["/((?!api|llms\\.mdx|llms\\.txt|llms-full\\.txt|_next|.*\\.).*)"],
+  matcher: [String.raw`/((?!api|llms\.mdx|llms\.txt|llms-full\.txt|_next|.*\.).*)`],
 };
 
 export default proxy;

@@ -19,11 +19,7 @@ import { autoDiscovery } from "@butr/wallets";
 const discovery = autoDiscovery();
 
 export function App() {
-  return (
-    <WalletManagerProvider discovery={discovery}>
-      {children}
-    </WalletManagerProvider>
-  );
+  return <WalletManagerProvider discovery={discovery}>{children}</WalletManagerProvider>;
 }
 ```
 

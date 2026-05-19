@@ -15,11 +15,7 @@ const storage = new WalletStorage({
 });
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <WalletManagerProvider
-    discovery={discovery}
-    storage={storage}
-    storageKeyPrefix={KEY_PREFIX}
-  >
+  <WalletManagerProvider discovery={discovery} storage={storage} storageKeyPrefix={KEY_PREFIX}>
     {children}
   </WalletManagerProvider>
 );

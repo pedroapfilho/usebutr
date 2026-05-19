@@ -50,11 +50,7 @@ describe("createDiscoveryBus", () => {
     bus.register(pathThatEmits("wallet-a", "wallet-b").path);
     bus.register(pathThatEmits("wallet-b", "wallet-c").path);
 
-    expect(onAdapter.mock.calls.map((c) => c[0].id)).toEqual([
-      "wallet-a",
-      "wallet-b",
-      "wallet-c",
-    ]);
+    expect(onAdapter.mock.calls.map((c) => c[0].id)).toEqual(["wallet-a", "wallet-b", "wallet-c"]);
   });
 
   it("hasAny returns false before any emit", () => {
@@ -144,9 +140,6 @@ describe("createDiscoveryBus", () => {
 
     expect(() => bus.unsubscribeAll()).not.toThrow();
     expect(b.unsubscribe).toHaveBeenCalledTimes(1);
-    expect(logWarn).toHaveBeenCalledWith(
-      "[butr] discovery unsubscribe threw:",
-      expect.any(Error),
-    );
+    expect(logWarn).toHaveBeenCalledWith("[butr] discovery unsubscribe threw:", expect.any(Error));
   });
 });

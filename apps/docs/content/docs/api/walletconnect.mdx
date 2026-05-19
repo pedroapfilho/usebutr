@@ -18,15 +18,15 @@ const wc = await createWalletConnectAdapter({
 
 ### `WalletConnectOptions`
 
-| Field | Type | Default |
-| --- | --- | --- |
-| `projectId` | `string` (required) | — |
-| `metadata` | `WalletConnectMetadata` | — |
-| `chains` | `ReadonlyArray<string>` | `["eip155:1"]` |
-| `onPairingUri` | `(uri: string) => void` | — |
-| `id` | `string` | `"walletconnect"` |
-| `name` | `string` | `"WalletConnect"` |
-| `icon` | `string` | `WALLETCONNECT_DEFAULT_ICON` |
+| Field          | Type                    | Default                      |
+| -------------- | ----------------------- | ---------------------------- |
+| `projectId`    | `string` (required)     | —                            |
+| `metadata`     | `WalletConnectMetadata` | —                            |
+| `chains`       | `ReadonlyArray<string>` | `["eip155:1"]`               |
+| `onPairingUri` | `(uri: string) => void` | —                            |
+| `id`           | `string`                | `"walletconnect"`            |
+| `name`         | `string`                | `"WalletConnect"`            |
+| `icon`         | `string`                | `WALLETCONNECT_DEFAULT_ICON` |
 
 `WalletConnectMetadata = { name?; url?; description?; icons? }`.
 

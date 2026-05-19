@@ -34,9 +34,7 @@ const lamports = await connection.getBalance(publicKey);
 ## Sign a message
 
 ```ts
-const feature = walletStd.features["solana:signMessage"] as
-  | SolanaSignMessageFeature
-  | undefined;
+const feature = walletStd.features["solana:signMessage"] as SolanaSignMessageFeature | undefined;
 if (!feature) throw new Error("Wallet does not advertise solana:signMessage");
 const account = walletStd.accounts[0];
 const [output] = await feature.signMessage({ account, message });
@@ -63,15 +61,12 @@ const [output] = await feature.signAndSendTransaction({
 ```
 
 <Callout type="warn">
-  Feature-detect every time (`if (!feature) throw`). Wallets advertise the
-  Wallet Standard features unevenly; gate UI on
-  `wallet.connector.capabilities.sendTransaction` /
-  `.signMessage`.
+  Feature-detect every time (`if (!feature) throw`). Wallets advertise the Wallet Standard features
+  unevenly; gate UI on `wallet.connector.capabilities.sendTransaction` / `.signMessage`.
 </Callout>
 
 <Callout type="info">
-  **Source:** `apps/demo-with-solana-web3js/src/app.tsx` in the
-  [butr repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-with-solana-web3js).
-  Targets Solana devnet. Run `pnpm dev --filter=demo-with-solana-web3js` →
-  `http://localhost:5177`.
+  **Source:** `apps/demo-with-solana-web3js/src/app.tsx` in the [butr
+  repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-with-solana-web3js). Targets
+  Solana devnet. Run `pnpm dev --filter=demo-with-solana-web3js` → `http://localhost:5177`.
 </Callout>

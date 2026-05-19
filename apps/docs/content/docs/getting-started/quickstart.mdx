@@ -76,9 +76,7 @@ const WalletPicker = () => {
   const discovered = useDiscoveredWallets();
   const connected = useConnectedWallets();
 
-  const available = discovered.filter(
-    (d) => !connected.some((c) => c.connector.id === d.id),
-  );
+  const available = discovered.filter((d) => !connected.some((c) => c.connector.id === d.id));
 
   return (
     <ul>
@@ -108,10 +106,7 @@ const Connected = () => {
       {wallets.map((wallet) => (
         <li key={wallet.connector.id}>
           {wallet.connector.name} — {wallet.account.walletAddress}
-          <button
-            type="button"
-            onClick={() => disconnect(wallet.connector.id)}
-          >
+          <button type="button" onClick={() => disconnect(wallet.connector.id)}>
             Disconnect
           </button>
         </li>
@@ -126,10 +121,9 @@ exposes `signMessage`, `sendTx`, `switchChain`, and `getSigner` — see the
 [guides](/docs/guides/provider-setup).
 
 <Callout type="info">
-  **Source:** `apps/demo-vite` in the
-  [butr repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-vite).
-  Run it locally with `pnpm dev --filter=demo-vite` (serves on
-  `http://localhost:5173`).
+  **Source:** `apps/demo-vite` in the [butr
+  repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-vite). Run it locally with
+  `pnpm dev --filter=demo-vite` (serves on `http://localhost:5173`).
 </Callout>
 
 ## Next steps

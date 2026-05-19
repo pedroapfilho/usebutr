@@ -1,8 +1,11 @@
+import { MarkdownCopyButton, ViewOptionsPopover } from "@/components/ai/page-actions";
 import { getMDXComponents } from "@/mdx-components";
 import { source } from "@/lib/source";
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/page";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+
+const GITHUB_DOCS_BASE = "https://github.com/pedroapfilho/butr/blob/main/apps/docs/content/docs";
 
 type PageProps = {
   params: Promise<{ slug?: Array<string> }>;
@@ -16,11 +19,17 @@ const Page = async ({ params }: PageProps) => {
   }
 
   const MDXContent = page.data.body;
+  const markdownUrl = `${page.url}.md`;
+  const githubUrl = `${GITHUB_DOCS_BASE}/${page.path}`;
 
   return (
     <DocsPage full={page.data.full} toc={page.data.toc}>
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
+      <div className="flex flex-row items-center gap-2 border-b pt-2 pb-6">
+        <MarkdownCopyButton markdownUrl={markdownUrl} />
+        <ViewOptionsPopover githubUrl={githubUrl} markdownUrl={markdownUrl} />
+      </div>
       <DocsBody>
         <MDXContent components={getMDXComponents()} />
       </DocsBody>

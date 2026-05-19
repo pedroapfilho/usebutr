@@ -39,11 +39,11 @@ structural typing; butr passes the whole object through untouched.
 Static lists ship with the protocol packages. You don't have to use them — any
 `ChainBase`-shaped object works — but they cover the common networks.
 
-| Export | Package | Contents |
-| --- | --- | --- |
-| `EVM_CHAINS`, `EVM_CHAINS_LIST` | `@butr/evm` | Ethereum (+ Sepolia, Holesky), Polygon, Arbitrum, Optimism, Base, and more. |
-| `SVM_CHAINS`, `SVM_CHAINS_LIST` | `@butr/svm` | Solana mainnet / testnet / devnet. |
-| `CHAINS`, `CHAINS_BY_PLATFORM` | `@butr/wallets` | Both of the above, keyed by platform. |
+| Export                          | Package         | Contents                                                                    |
+| ------------------------------- | --------------- | --------------------------------------------------------------------------- |
+| `EVM_CHAINS`, `EVM_CHAINS_LIST` | `@butr/evm`     | Ethereum (+ Sepolia, Holesky), Polygon, Arbitrum, Optimism, Base, and more. |
+| `SVM_CHAINS`, `SVM_CHAINS_LIST` | `@butr/svm`     | Solana mainnet / testnet / devnet.                                          |
+| `CHAINS`, `CHAINS_BY_PLATFORM`  | `@butr/wallets` | Both of the above, keyed by platform.                                       |
 
 `CHAINS_BY_PLATFORM[wallet.connector.chainPlatform]` is the idiomatic way to
 get the right chain list for a connected wallet — see
@@ -51,13 +51,13 @@ get the right chain list for a connected wallet — see
 
 ## EVM vs. SVM differences
 
-| | EVM | SVM |
-| --- | --- | --- |
-| Discovery | EIP-6963 (+ injected fallback) | Wallet Standard |
-| Accounts exposed | one or many (MetaMask multi-account) | all at once |
-| `requestAccounts` | prompts via `wallet_requestPermissions` | no picker — resolves as a refresh |
-| Chain switching | real, via `wallet_switchEthereumChain` | local state + per-call `chain` input |
-| Signature format | EIP-191 / 712, input echoed | Solana format, may re-encode `signedMessage` |
+|                   | EVM                                     | SVM                                          |
+| ----------------- | --------------------------------------- | -------------------------------------------- |
+| Discovery         | EIP-6963 (+ injected fallback)          | Wallet Standard                              |
+| Accounts exposed  | one or many (MetaMask multi-account)    | all at once                                  |
+| `requestAccounts` | prompts via `wallet_requestPermissions` | no picker — resolves as a refresh            |
+| Chain switching   | real, via `wallet_switchEthereumChain`  | local state + per-call `chain` input         |
+| Signature format  | EIP-191 / 712, input echoed             | Solana format, may re-encode `signedMessage` |
 
 **Source:** `packages/core/src/types/chain.ts`,
 `packages/{evm,svm,wallets}/src/chains.ts`.

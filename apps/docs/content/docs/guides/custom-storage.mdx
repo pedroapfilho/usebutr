@@ -76,27 +76,22 @@ const storage = new WalletStorage({
 });
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <WalletManagerProvider
-    discovery={discovery}
-    storage={storage}
-    storageKeyPrefix={KEY_PREFIX}
-  >
+  <WalletManagerProvider discovery={discovery} storage={storage} storageKeyPrefix={KEY_PREFIX}>
     {children}
   </WalletManagerProvider>
 );
 ```
 
 <Callout type="warn">
-  AsyncStorage has no true session-storage equivalent. The demo backs both
-  drivers with the same store and accepts that session entries outlive the
-  session — harmless here, since butr's session storage only holds the
-  active-connector id, which is overwritten on the next connect. If you need
+  AsyncStorage has no true session-storage equivalent. The demo backs both drivers with the same
+  store and accepts that session entries outlive the session — harmless here, since butr's session
+  storage only holds the active-connector id, which is overwritten on the next connect. If you need
   strict session semantics, namespace session keys and sweep them on startup.
 </Callout>
 
 <Callout type="info">
   **Source:** `apps/demo-expo-web/src/async-storage-driver.ts` and
-  `apps/demo-expo-web/src/wallet-provider.tsx` in the
-  [butr repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-expo-web).
-  See also [persistence concepts](/docs/concepts/persistence).
+  `apps/demo-expo-web/src/wallet-provider.tsx` in the [butr
+  repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-expo-web). See also
+  [persistence concepts](/docs/concepts/persistence).
 </Callout>

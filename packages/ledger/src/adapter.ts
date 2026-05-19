@@ -124,7 +124,8 @@ const buildEvmAccount = (address: string, chain: ChainBase): Account => ({
   walletAddress: address,
 });
 
-const SUBSCRIBE_NOT_AVAILABLE = "[butr/ledger] subscribe is not implemented — device emits no events";
+const SUBSCRIBE_NOT_AVAILABLE =
+  "[butr/ledger] subscribe is not implemented — device emits no events";
 
 /**
  * Build a Ledger hardware-wallet adapter usable with butr's
@@ -237,9 +238,7 @@ const createLedgerAdapter = (options: LedgerOptions = {}): Promise<WalletAdapter
 
     getTransactionReceipt() {
       return Promise.reject(
-        new Error(
-          "[butr/ledger] getTransactionReceipt not supported — Ledger has no RPC.",
-        ),
+        new Error("[butr/ledger] getTransactionReceipt not supported — Ledger has no RPC."),
       );
     },
 
@@ -293,9 +292,7 @@ const createLedgerAdapter = (options: LedgerOptions = {}): Promise<WalletAdapter
       // the `0x` prefix and signs the keccak-prefixed message as
       // EIP-191 dictates. Format the signature back to a standard
       // 65-byte (r || s || v) Uint8Array.
-      const hex = [...message]
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
+      const hex = [...message].map((b) => b.toString(16).padStart(2, "0")).join("");
       const { r, s, v } = await eth.signPersonalMessage(path, hex);
       const sigHex = `${r.padStart(64, "0")}${s.padStart(64, "0")}${v.toString(16).padStart(2, "0")}`;
       const signature = new Uint8Array(sigHex.length / 2);

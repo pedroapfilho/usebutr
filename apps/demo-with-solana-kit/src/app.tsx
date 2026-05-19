@@ -20,11 +20,7 @@ import {
 //   bytes 0..4   : u32 little-endian variant index (2 = Transfer)
 //   bytes 4..12  : u64 little-endian lamports
 const SYSTEM_PROGRAM = address("11111111111111111111111111111111");
-const buildTransferInstruction = (
-  from: Address,
-  to: Address,
-  lamports: bigint,
-): Instruction => {
+const buildTransferInstruction = (from: Address, to: Address, lamports: bigint): Instruction => {
   const data = new Uint8Array(12);
   const view = new DataView(data.buffer);
   view.setUint32(0, 2, true);
@@ -43,12 +39,7 @@ import type {
   SolanaSignMessageFeature,
   WalletStandardWallet,
 } from "@butr/svm";
-import {
-  useActiveWallet,
-  useConnectWallet,
-  useDisconnectWallet,
-  useIsHydrated,
-} from "@butr/react";
+import { useActiveWallet, useConnectWallet, useDisconnectWallet, useIsHydrated } from "@butr/react";
 import { useDiscoveredWallets } from "./wallet-provider";
 
 const DEVNET = "https://api.devnet.solana.com";
@@ -200,7 +191,8 @@ const Connected = ({
         createTransactionMessage({ version: 0 }),
         (m) => setTransactionMessageFeePayer(addr, m),
         (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
-        (m) => appendTransactionMessageInstruction(buildTransferInstruction(addr, BURN_ADDRESS, 0n), m),
+        (m) =>
+          appendTransactionMessageInstruction(buildTransferInstruction(addr, BURN_ADDRESS, 0n), m),
       );
       // 2. Compile to a wire transaction and hand it to the wallet.
       const compiled = compileTransaction(message);
@@ -285,7 +277,9 @@ const Connected = ({
         </Row>
       ) : null}
       {errorMsg ? (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMsg}</p>
+        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {errorMsg}
+        </p>
       ) : null}
     </section>
   );
@@ -308,8 +302,7 @@ const Content = () => {
         <h2 className="font-semibold">Available wallets</h2>
         {discovered.length === 0 ? (
           <p className="text-sm text-neutral-500">
-            No Wallet Standard wallets detected. Install Phantom, Solflare, or Backpack
-            and refresh.
+            No Wallet Standard wallets detected. Install Phantom, Solflare, or Backpack and refresh.
           </p>
         ) : (
           <ul className="space-y-2">
@@ -320,7 +313,9 @@ const Content = () => {
                   onClick={() => void connect(wallet.id)}
                   type="button"
                 >
-                  {wallet.icon ? <img alt="" className="h-6 w-6 rounded" src={wallet.icon} /> : null}
+                  {wallet.icon ? (
+                    <img alt="" className="h-6 w-6 rounded" src={wallet.icon} />
+                  ) : null}
                   <span className="font-medium">{wallet.name}</span>
                 </button>
               </li>
@@ -339,10 +334,10 @@ const App = () => (
     <header className="mb-8">
       <h1 className="text-3xl font-bold tracking-tight">butr + @solana/kit</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Solana&apos;s next-generation modular SDK (formerly{" "}
-        <code>@solana/web3.js</code> v2). butr discovers and manages the wallet;{" "}
-        <code>@solana/kit</code> handles the RPC and transaction-message builder; the
-        wallet&apos;s Wallet Standard features supply signing + submission.
+        Solana&apos;s next-generation modular SDK (formerly <code>@solana/web3.js</code> v2). butr
+        discovers and manages the wallet; <code>@solana/kit</code> handles the RPC and
+        transaction-message builder; the wallet&apos;s Wallet Standard features supply signing +
+        submission.
       </p>
     </header>
     <Content />

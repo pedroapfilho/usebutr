@@ -74,15 +74,14 @@ The [`@solana/kit` integration](/docs/integrations/solana-kit) shows the same
 flow with kit's functional `pipe()` message builder.
 
 <Callout type="warn">
-  Solana wallets advertise features unevenly — Phantom exposes
-  `solana:signAndSendTransaction`; some don't expose
-  `solana:signTransaction` at all. Feature-detect (`if (!feature) throw`) and
-  branch on `wallet.connector.capabilities.sendTransaction`.
+  Solana wallets advertise features unevenly — Phantom exposes `solana:signAndSendTransaction`; some
+  don't expose `solana:signTransaction` at all. Feature-detect (`if (!feature) throw`) and branch on
+  `wallet.connector.capabilities.sendTransaction`.
 </Callout>
 
 <Callout type="info">
-  **Source:** `apps/demo-with-viem`, `apps/demo-with-wagmi`,
-  `apps/demo-with-solana-web3js`, `apps/demo-with-solana-kit` in the
-  [butr repository](https://github.com/pedroapfilho/butr/tree/main/apps). These
-  target Sepolia / Solana devnet.
+  **Source:** `apps/demo-with-viem`, `apps/demo-with-wagmi`, `apps/demo-with-solana-web3js`,
+  `apps/demo-with-solana-kit` in the [butr
+  repository](https://github.com/pedroapfilho/butr/tree/main/apps). These target Sepolia / Solana
+  devnet.
 </Callout>

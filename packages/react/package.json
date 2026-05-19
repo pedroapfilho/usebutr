@@ -35,10 +35,6 @@
   "dependencies": {
     "@butr/core": "workspace:*"
   },
-  "peerDependencies": {
-    "react": ">=18.0.0",
-    "zustand": ">=4.0.0"
-  },
   "devDependencies": {
     "@butr/testing": "workspace:*",
     "@repo/config-vitest": "workspace:*",
@@ -53,5 +49,9 @@
     "typescript": "^6.0.3",
     "vitest": "^4.1.6",
     "zustand": "^5.0.0"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "zustand": ">=4.0.0"
   }
 }

@@ -328,7 +328,9 @@ const WalletPicker = ({
 
   return (
     <section>
-      <h2 className="mb-3 font-semibold">{hasConnected ? "Connect another" : "Available wallets"}</h2>
+      <h2 className="mb-3 font-semibold">
+        {hasConnected ? "Connect another" : "Available wallets"}
+      </h2>
       <ul className="space-y-2">
         {brands.map((brand) => (
           <li key={brand.name}>
@@ -351,9 +353,7 @@ const Content = () => {
     return <p className="text-sm text-neutral-500">Loading…</p>;
   }
 
-  const available = discovered.filter(
-    (d) => !connected.some((c) => c.connector.id === d.id),
-  );
+  const available = discovered.filter((d) => !connected.some((c) => c.connector.id === d.id));
 
   return (
     <div className="space-y-6">
@@ -374,8 +374,8 @@ const App = () => (
     <header className="mb-8">
       <h1 className="text-3xl font-bold tracking-tight">butr · Vite</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Batteries-included install via <code>@butr/wallets</code>. EVM (EIP-6963) and
-        SVM (Wallet Standard) discovered in one provider; persisted in localStorage.
+        Batteries-included install via <code>@butr/wallets</code>. EVM (EIP-6963) and SVM (Wallet
+        Standard) discovered in one provider; persisted in localStorage.
       </p>
     </header>
     <Content />

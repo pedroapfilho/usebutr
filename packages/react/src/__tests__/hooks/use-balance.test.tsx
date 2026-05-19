@@ -24,7 +24,12 @@ describe("useBalance", () => {
 
   it("transitions to success after a wallet connects", async () => {
     const { adapter } = buildAdapter();
-    const balance = { decimals: 18, formatted: "1.5", symbol: "ETH", value: 1_500_000_000_000_000_000n };
+    const balance = {
+      decimals: 18,
+      formatted: "1.5",
+      symbol: "ETH",
+      value: 1_500_000_000_000_000_000n,
+    };
     adapter.getBalance = () => Promise.resolve(balance);
     const { result } = renderHookWithProvider(
       () => ({ balance: useBalance(), connect: useConnectWallet() }),

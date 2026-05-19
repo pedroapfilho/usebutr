@@ -337,9 +337,9 @@ describe("SVM wallet fixtures — protocol-level uniformity", () => {
       connect: vi.fn().mockResolvedValue({ accounts: [] }),
     };
     const signMessageFeature: SolanaSignMessageFeature = {
-      signMessage: vi.fn().mockResolvedValue([
-        { signature: new Uint8Array(64), signedMessage: new Uint8Array() },
-      ]),
+      signMessage: vi
+        .fn()
+        .mockResolvedValue([{ signature: new Uint8Array(64), signedMessage: new Uint8Array() }]),
     };
     const signAndSendFeature: SolanaSignAndSendTransactionFeature = {
       signAndSendTransaction: vi.fn().mockResolvedValue([{ signature: new Uint8Array(64) }]),
@@ -404,7 +404,9 @@ describe("SVM wallet fixtures — protocol-level uniformity", () => {
     };
 
     const withFeature = withFeatures(buildWallet(), {
-      "solana:signAndSendTransaction": { signAndSendTransaction: vi.fn() } as SolanaSignAndSendTransactionFeature,
+      "solana:signAndSendTransaction": {
+        signAndSendTransaction: vi.fn(),
+      } as SolanaSignAndSendTransactionFeature,
       "standard:connect": connectFeature,
     });
     expect(buildSvmAdapter(withFeature)?.capabilities.sendTransaction).toBe(true);
@@ -493,9 +495,7 @@ describe("buildSvmAdapter.switchChain", () => {
       namespace: "solana",
       reference: "devnet",
     });
-    expect(listener).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "accountChanged" }),
-    );
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({ type: "accountChanged" }));
   });
 });
 
@@ -506,7 +506,9 @@ describe("buildSvmAdapter edge cases", () => {
 
   it("signMessage throws when no account is exposed", async () => {
     const signFeature: SolanaSignMessageFeature = {
-      signMessage: vi.fn().mockResolvedValue([{ signature: new Uint8Array(), signedMessage: new Uint8Array() }]),
+      signMessage: vi
+        .fn()
+        .mockResolvedValue([{ signature: new Uint8Array(), signedMessage: new Uint8Array() }]),
     };
     const wallet = buildWallet({ accounts: [] });
     const adapter = buildSvmAdapter(

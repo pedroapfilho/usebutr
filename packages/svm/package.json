@@ -35,6 +35,13 @@
   "dependencies": {
     "@butr/core": "workspace:*"
   },
+  "devDependencies": {
+    "@repo/config-vitest": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@wallet-standard/app": "^1.1.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  },
   "peerDependencies": {
     "@wallet-standard/app": "^1.1.0"
   },
@@ -42,12 +49,5 @@
     "@wallet-standard/app": {
       "optional": true
     }
-  },
-  "devDependencies": {
-    "@repo/config-vitest": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
-    "@wallet-standard/app": "^1.1.0",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.6"
   }
 }

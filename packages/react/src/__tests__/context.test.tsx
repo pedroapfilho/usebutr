@@ -3,11 +3,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { WalletAdapter, WalletSource } from "@butr/core";
 import { createFakeAdapter, createFakePersistence } from "@butr/testing";
-import {
-  WalletManagerProvider,
-  useDiscoveredWallets,
-  useWalletStoreContext,
-} from "../context";
+import { WalletManagerProvider, useDiscoveredWallets, useWalletStoreContext } from "../context";
 import { useConnectWallet, useConnectedWallets, useWalletStore } from "../hooks";
 
 const sourceOf = (...adapters: Array<WalletAdapter>): WalletSource => ({
@@ -58,7 +54,13 @@ describe("WalletManagerProvider (unified)", () => {
 
   it("resolves discovered id before falling back to createConnector", async () => {
     const discovered = createFakeAdapter({
-      accounts: [{ chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" }, id: "eip155:1:0x1", walletAddress: "0x1" }],
+      accounts: [
+        {
+          chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" },
+          id: "eip155:1:0x1",
+          walletAddress: "0x1",
+        },
+      ],
       id: "dup",
     });
     const fallback = vi.fn(() => null);
@@ -76,7 +78,13 @@ describe("WalletManagerProvider (unified)", () => {
 
   it("uses createConnector when discovery has no match", async () => {
     const manual = createFakeAdapter({
-      accounts: [{ chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" }, id: "eip155:1:0x1", walletAddress: "0x1" }],
+      accounts: [
+        {
+          chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" },
+          id: "eip155:1:0x1",
+          walletAddress: "0x1",
+        },
+      ],
       id: "manual",
     });
     const { result } = renderHook(

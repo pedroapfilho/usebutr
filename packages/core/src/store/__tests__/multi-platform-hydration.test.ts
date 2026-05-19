@@ -64,9 +64,13 @@ const collectConnected = async (
 ): Promise<Array<ConnectedWallet>> => {
   // Wait for hydration to finish (it's async after store creation).
   for (let i = 0; i < 50; i += 1) {
-    if (store.getState().isHydrated) { break; }
+    if (store.getState().isHydrated) {
+      break;
+    }
     // eslint-disable-next-line no-await-in-loop -- sequential polling: each iteration must wait before checking state again
-    await new Promise<void>((resolve) => { setTimeout(resolve, 10); });
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 10);
+    });
   }
   return [...store.getState().pool.values()];
 };

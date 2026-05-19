@@ -17,11 +17,7 @@ import { createConfig, http, type Config } from "@wagmi/core";
 import { injected } from "@wagmi/connectors";
 import { sepolia } from "viem/chains";
 
-const buildWagmiConfig = (
-  provider: EIP1193Provider,
-  name: string,
-  id: string,
-): Config =>
+const buildWagmiConfig = (provider: EIP1193Provider, name: string, id: string): Config =>
   createConfig({
     chains: [sepolia],
     connectors: [injected({ target: { id, name, provider: () => provider } })],
@@ -60,8 +56,7 @@ Every sign and every transaction hits the actual wallet butr connected — not a
 mock.
 
 <Callout type="info">
-  **Source:** `apps/demo-with-wagmi/src/app.tsx` in the
-  [butr repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-with-wagmi).
-  Targets Sepolia. Run `pnpm dev --filter=demo-with-wagmi` →
-  `http://localhost:5176`.
+  **Source:** `apps/demo-with-wagmi/src/app.tsx` in the [butr
+  repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-with-wagmi). Targets Sepolia.
+  Run `pnpm dev --filter=demo-with-wagmi` → `http://localhost:5176`.
 </Callout>

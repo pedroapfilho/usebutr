@@ -37,13 +37,13 @@ pnpm test                               # vitest unit tests
 
 **Integration demos** (one library each, EVM Sepolia or SVM Devnet):
 
-| App                               | Library                       | Dev URL                 |
-| --------------------------------- | ----------------------------- | ----------------------- |
-| `demo-with-viem`                  | viem                          | `http://localhost:5175` |
-| `demo-with-wagmi`                 | wagmi (@wagmi/core)           | `http://localhost:5176` |
-| `demo-with-solana-web3js`         | @solana/web3.js               | `http://localhost:5177` |
-| `demo-with-solana-wallet-adapter` | @solana/wallet-adapter-react  | `http://localhost:5178` |
-| `demo-with-solana-kit`            | @solana/kit                   | `http://localhost:5179` |
+| App                               | Library                      | Dev URL                 |
+| --------------------------------- | ---------------------------- | ----------------------- |
+| `demo-with-viem`                  | viem                         | `http://localhost:5175` |
+| `demo-with-wagmi`                 | wagmi (@wagmi/core)          | `http://localhost:5176` |
+| `demo-with-solana-web3js`         | @solana/web3.js              | `http://localhost:5177` |
+| `demo-with-solana-wallet-adapter` | @solana/wallet-adapter-react | `http://localhost:5178` |
+| `demo-with-solana-kit`            | @solana/kit                  | `http://localhost:5179` |
 
 ### Packages
 

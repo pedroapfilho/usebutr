@@ -131,9 +131,7 @@ describe("createHydrationCoordinator", () => {
     const result = await coordinator.hydrate();
 
     expect(result.pool.size).toBe(0);
-    expect(result.dropped).toEqual([
-      { connectorId: "broken-wallet", reason: expect.any(Error) },
-    ]);
+    expect(result.dropped).toEqual([{ connectorId: "broken-wallet", reason: expect.any(Error) }]);
     expect(getRemoved(storage)).toEqual(["broken-wallet"]);
   });
 

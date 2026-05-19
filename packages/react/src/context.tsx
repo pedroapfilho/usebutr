@@ -8,8 +8,9 @@ import type {
 } from "@butr/core";
 import { createWalletStore, logError } from "@butr/core";
 
-const WalletStoreContext: React.Context<WalletStore | null> =
-  createContext<WalletStore | null>(null);
+const WalletStoreContext: React.Context<WalletStore | null> = createContext<WalletStore | null>(
+  null,
+);
 
 const EMPTY_DISCOVERED: ReadonlyArray<WalletAdapter> = [];
 const DiscoveredWalletsContext: React.Context<ReadonlyArray<WalletAdapter>> =
@@ -87,7 +88,9 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
   // render and `adapters` (the stable Map). Subsequent re-renders do not
   // re-run this initializer.
   // eslint-disable-next-line react-hooks/exhaustive-deps -- captured once on mount
-  const [store] = useState<WalletStore>(() => createWalletStore(buildInitialConfig(adapters, props)));
+  const [store] = useState<WalletStore>(() =>
+    createWalletStore(buildInitialConfig(adapters, props)),
+  );
 
   // Discovery subscription ref is also locked to the first render value.
   // eslint-disable-next-line react-hooks/exhaustive-deps -- captured once on mount
@@ -146,13 +149,7 @@ const useWalletStoreContext = (): WalletStore => {
 
 /** Reactive list of wallets announced via the `discovery` source since
  *  the provider mounted. Empty when no `discovery` was passed. */
-const useDiscoveredWallets = (): ReadonlyArray<WalletAdapter> =>
-  use(DiscoveredWalletsContext);
+const useDiscoveredWallets = (): ReadonlyArray<WalletAdapter> => use(DiscoveredWalletsContext);
 
 export type { WalletManagerProviderProps };
-export {
-  WalletManagerProvider,
-  WalletStoreContext,
-  useDiscoveredWallets,
-  useWalletStoreContext,
-};
+export { WalletManagerProvider, WalletStoreContext, useDiscoveredWallets, useWalletStoreContext };

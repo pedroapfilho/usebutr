@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  EIP6963_RDNS_WITH_REQUEST_ACCOUNTS,
-  resolveEip6963Capabilities,
-} from "../capabilities";
+import { EIP6963_RDNS_WITH_REQUEST_ACCOUNTS, resolveEip6963Capabilities } from "../capabilities";
 
 describe("resolveEip6963Capabilities", () => {
   it("MetaMask gets requestAccounts: true (allow-listed)", () => {

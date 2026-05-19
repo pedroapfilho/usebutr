@@ -1,0 +1,81 @@
+---
+title: gill
+description: The ergonomic SDK on top of @solana/kit — the path the Solana Foundation recommends for most apps.
+---
+
+`gill` wraps `@solana/kit` with friendlier client and transaction builders. It
+is the path the Solana Foundation recommends for most app developers writing
+RPC and transaction code. butr owns the wallet; gill owns the RPC and
+transaction builder; the wallet's Wallet Standard features own signing.
+
+## Get the signer and read state
+
+`createSolanaClient` resolves the moniker to an RPC endpoint and returns a
+typed kit RPC client:
+
+```ts
+import { address, createSolanaClient, type Address } from "gill";
+
+const { rpc } = createSolanaClient({ urlOrMoniker: "devnet" });
+const walletStd = (await wallet.connector.getSigner()) as WalletStandardWallet;
+
+const addr: Address = address(wallet.account.walletAddress);
+const { value } = await rpc.getBalance(addr).send();
+const sol = `${Number(value) / 1_000_000_000} SOL`;
+```
+
+## Build and send a transaction
+
+The wallet — not gill — signs, so the fee payer is a no-op signer over butr's
+connected address. gill's program helpers stay fully typed; compile to a wire
+transaction and hand the bytes to `solana:signAndSendTransaction`:
+
+```ts
+import {
+  compileTransaction,
+  createNoopSigner,
+  createTransaction,
+  getBase64EncodedWireTransaction,
+} from "gill";
+import { getTransferSolInstruction } from "gill/programs";
+
+const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+const feePayer = createNoopSigner(addr);
+
+const tx = createTransaction({
+  feePayer,
+  instructions: [
+    getTransferSolInstruction({ amount: 0, destination: BURN_ADDRESS, source: feePayer }),
+  ],
+  latestBlockhash,
+  version: 0,
+});
+
+const compiled = compileTransaction(tx);
+const wire = getBase64EncodedWireTransaction(compiled);
+const bytes = base64ToBytes(wire);
+
+const feature = walletStd.features["solana:signAndSendTransaction"];
+if (!feature) throw new Error("Wallet does not advertise solana:signAndSendTransaction");
+const account = walletStd.accounts[0];
+const [output] = await feature.signAndSendTransaction({
+  account,
+  chain: "solana:devnet",
+  transaction: bytes,
+});
+```
+
+Message signing uses `solana:signMessage` exactly as in the
+[`@solana/kit` integration](/integrations/solana-kit).
+
+<Callout type="info">
+  gill re-exports `@solana/kit`, so kit primitives (`createNoopSigner`,
+  `compileTransaction`, `getBase64EncodedWireTransaction`) are available from the same
+  `gill` entry point — you do not need a separate `@solana/kit` dependency.
+</Callout>
+
+<Callout type="info">
+  **Source:** `apps/demo-with-gill/src/app.tsx` in the [butr
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-with-gill). Targets
+  Solana devnet. Run `pnpm dev --filter=demo-with-gill` → `http://localhost:5180`.
+</Callout>

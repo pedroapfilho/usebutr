@@ -5,9 +5,9 @@ description: butr is a set of multi-chain wallet-management primitives for React
 
 butr discovers EVM (EIP-6963 / EIP-1193) and Solana (Wallet Standard) wallets,
 manages their connection state across reloads, and exposes everything through
-small composable React hooks. It does not wrap viem, wagmi, or `@solana/web3.js`
-— it sits underneath them and hands you a raw signer so you keep using whatever
-chain library you already know.
+small composable React hooks. It does not wrap viem, wagmi, gill, or
+framework-kit — it sits underneath them and hands you a raw signer so you keep
+using whatever chain library you already know.
 
 ## What butr is
 
@@ -18,7 +18,8 @@ chain library you already know.
   you write yourself — is a `WalletAdapter` plugged in through a single seam:
   `WalletManagerConfig.createConnector`.
 - **No lock-in.** `getSigner()` returns the underlying provider. You bridge it
-  into viem / wagmi / `@solana/web3.js` / `@solana/kit` with a few lines.
+  into viem / wagmi / gill / framework-kit / `@solana/kit` (or legacy
+  `@solana/web3.js`) with a few lines.
 - **Modular.** Install only the packages you need. The core has no React and no
   protocol code; protocols live in separate packages.
 

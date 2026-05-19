@@ -1,0 +1,65 @@
+---
+title: framework-kit
+description: Solana Foundation's reactive toolkit (@solana/client + @solana/react-hooks) as the data layer, with butr owning the wallet.
+---
+
+framework-kit (`@solana/client` + `@solana/react-hooks`) is the Solana
+Foundation's reactive toolkit, built on `@solana/kit`. It is the recommended
+modern Solana stack: butr discovers and manages the wallet, framework-kit is
+the reactive RPC/data layer, and the wallet's Wallet Standard features supply
+signing and submission.
+
+framework-kit runs its own Wallet Standard discovery (`autoDiscover()`). Here
+butr owns discovery and connection instead, so no `walletConnectors` are passed
+to `createClient` — framework-kit is used purely for reactive reads.
+
+## Provider
+
+Create the client without wallet connectors and wrap the app. butr's
+`WalletProvider` stays the outer provider:
+
+```tsx title="src/main.tsx"
+import { createClient } from "@solana/client";
+import { SolanaProvider } from "@solana/react-hooks";
+
+const client = createClient({ cluster: "devnet", commitment: "confirmed" });
+
+<WalletProvider>
+  <SolanaProvider client={client}>
+    <App />
+  </SolanaProvider>
+</WalletProvider>;
+```
+
+## Reactive balance
+
+`useBalance` auto-fetches and watches the balance for butr's connected
+address — no manual refetch wiring:
+
+```ts
+import { useBalance } from "@solana/react-hooks";
+
+const { error, fetching, lamports } = useBalance(wallet.account.walletAddress);
+const balance = lamports !== null ? `${Number(lamports) / 1_000_000_000} SOL` : "…";
+```
+
+## Sign and send a transaction
+
+Transaction building rides on `@solana/kit` (the substrate framework-kit is
+built on); the wallet — managed by butr — signs and submits through
+`solana:signAndSendTransaction`, exactly as in the
+[`@solana/kit` integration](/integrations/solana-kit). Message signing
+uses `solana:signMessage` the same way.
+
+<Callout type="info">
+  `useBalance` needs only the client from `SolanaProvider` and an address — it does not
+  require framework-kit's own wallet connection, so it composes cleanly with a
+  butr-managed wallet.
+</Callout>
+
+<Callout type="info">
+  **Source:** `apps/demo-with-solana-framework-kit/src/app.tsx` in the [butr
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-with-solana-framework-kit).
+  Targets Solana devnet. Run `pnpm dev --filter=demo-with-solana-framework-kit` →
+  `http://localhost:5181`.
+</Callout>

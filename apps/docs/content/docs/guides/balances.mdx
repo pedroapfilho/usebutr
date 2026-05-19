@@ -53,12 +53,18 @@ library instead. butr stays out of the way:
 const wei = await publicClient.getBalance({ address: account });
 const eth = `${formatEther(wei)} ETH`;
 
-// @solana/kit
+// gill / @solana/kit
 const { value } = await rpc.getBalance(addr).send();
 const sol = `${Number(value) / 1_000_000_000} SOL`;
 ```
 
+For a reactive Solana read that auto-fetches and watches, framework-kit's
+`useBalance` works against a butr-managed wallet — see the
+[framework-kit integration](/integrations/solana-framework-kit).
+
 <Callout type="info">
   **Source:** `useBalance` usage in `apps/demo-vite/src/app.tsx`; manual RPC reads in
-  `apps/demo-with-viem/src/app.tsx` and `apps/demo-with-solana-kit/src/app.tsx`.
+  `apps/demo-with-viem/src/app.tsx`, `apps/demo-with-gill/src/app.tsx`, and
+  `apps/demo-with-solana-kit/src/app.tsx`; framework-kit's `useBalance` in
+  `apps/demo-with-solana-framework-kit/src/app.tsx`.
 </Callout>

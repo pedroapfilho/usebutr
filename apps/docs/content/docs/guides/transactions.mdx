@@ -5,7 +5,7 @@ description: butr exposes the signer; you build and submit transactions with you
 
 butr is deliberately not a transaction-building library. It hands you the
 underlying signer via `wallet.connector.getSigner()` and you submit through
-viem / wagmi / `@solana/web3.js` / `@solana/kit`. The connector also has
+viem / wagmi / gill / framework-kit / `@solana/kit`. The connector also has
 `sendTx` / `sendTxToChain` for the simple path, but real apps usually go
 through their chain library.
 
@@ -55,8 +55,8 @@ const hash = await sendTransaction(cfg, {
 ## Solana
 
 `getSigner()` on an SVM adapter returns the `WalletStandardWallet`. Build the
-transaction with your Solana library, then submit via the
-`solana:signAndSendTransaction` feature. The `@solana/web3.js` path:
+transaction with your Solana library — `gill` or `@solana/kit` for new apps —
+then submit via the `solana:signAndSendTransaction` feature:
 
 ```ts
 const walletStd = (await wallet.connector.getSigner()) as WalletStandardWallet;
@@ -70,8 +70,12 @@ const [output] = await feature.signAndSendTransaction({
 // output.signature is the raw signature (base58-encode for display)
 ```
 
-The [`@solana/kit` integration](/integrations/solana-kit) shows the same
-flow with kit's functional `pipe()` message builder.
+The [gill](/integrations/gill) and
+[`@solana/kit`](/integrations/solana-kit) integrations show the same flow
+with their message builders; [framework-kit](/integrations/solana-framework-kit)
+pairs it with reactive reads. The legacy
+[`@solana/web3.js`](/integrations/solana-web3js) path serializes a
+`Transaction` instead.
 
 <Callout type="warn">
   Solana wallets advertise features unevenly — Phantom exposes `solana:signAndSendTransaction`; some
@@ -80,8 +84,8 @@ flow with kit's functional `pipe()` message builder.
 </Callout>
 
 <Callout type="info">
-  **Source:** `apps/demo-with-viem`, `apps/demo-with-wagmi`, `apps/demo-with-solana-web3js`,
-  `apps/demo-with-solana-kit` in the [butr
+  **Source:** `apps/demo-with-viem`, `apps/demo-with-wagmi`, `apps/demo-with-gill`,
+  `apps/demo-with-solana-framework-kit`, `apps/demo-with-solana-kit` in the [butr
   repository](https://github.com/pedroapfilho/usebutr/tree/main/apps). These target Sepolia / Solana
   devnet.
 </Callout>

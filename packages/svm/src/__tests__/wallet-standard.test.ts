@@ -18,7 +18,7 @@ describe("discoverSvmAdapters", () => {
     const fakeApp = {
       get: () => [],
       on: (event: string, handler: (...wallets: ReadonlyArray<unknown>) => void) => {
-        if (event !== "register") return () => {};
+        if (event !== "register") {return () => {};}
         listeners.add(handler);
         return () => listeners.delete(handler);
       },
@@ -32,7 +32,7 @@ describe("discoverSvmAdapters", () => {
     const seen: Array<string> = [];
     const unsubscribe = subject((adapter) => seen.push(adapter.id));
     // Yield for the dynamic import inside the IIFE.
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
     // Simulate a wallet announcing itself.
     const fakeWallet = {
       accounts: [
@@ -63,7 +63,7 @@ describe("discoverSvmAdapters", () => {
     const { discoverSvmAdapters: subject } = await import("../wallet-standard");
     const onAdapter = vi.fn();
     const unsubscribe = subject(onAdapter);
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
     expect(onAdapter).not.toHaveBeenCalled();
     unsubscribe();
   });

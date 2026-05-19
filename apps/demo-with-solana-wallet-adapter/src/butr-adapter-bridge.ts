@@ -17,6 +17,23 @@ import type {
   WalletStandardWallet,
 } from "@butr/svm";
 
+const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const bytesToBase58 = (bytes: Uint8Array): string => {
+  let intVal = 0n;
+  for (const byte of bytes) { intVal = (intVal << 8n) | BigInt(byte); }
+  let out = "";
+  while (intVal > 0n) {
+    const remainder = intVal % 58n;
+    intVal /= 58n;
+    out = BASE58_ALPHABET[Number(remainder)] + out;
+  }
+  for (const byte of bytes) {
+    if (byte !== 0) { break; }
+    out = `1${out}`;
+  }
+  return out;
+};
+
 /**
  * Bridge a butr-managed Wallet Standard wallet into a
  * `BaseMessageSignerWalletAdapter` so the @solana/wallet-adapter-react
@@ -69,44 +86,50 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     return this._publicKey !== null;
   }
 
-  async connect(): Promise<void> {
+  connect(): Promise<void> {
     // butr already handled the actual connect handshake; this is the
     // adapter-library lifecycle hook that signals "we're ready".
-    if (this.connected) return;
+    if (this.connected) { return Promise.resolve(); }
     this._connecting = true;
     try {
-      this.emit("connect", this._publicKey!);
+      const pk = this._publicKey;
+      if (!pk) { return Promise.resolve(); }
+      this.emit("connect", pk);
+      return Promise.resolve();
     } finally {
       this._connecting = false;
     }
   }
 
-  async disconnect(): Promise<void> {
+  disconnect(): Promise<void> {
     this._publicKey = null;
     this.emit("disconnect");
+    return Promise.resolve();
   }
 
   async signMessage(message: Uint8Array): Promise<Uint8Array> {
     const feature = this._wallet.features["solana:signMessage"] as
       | SolanaSignMessageFeature
       | undefined;
-    if (!feature) throw new Error("Wallet does not advertise solana:signMessage");
+    if (!feature) { throw new Error("Wallet does not advertise solana:signMessage"); }
     const account = this._wallet.accounts[0];
-    if (!account) throw new Error("No exposed account");
+    if (!account) { throw new Error("No exposed account"); }
     const [output] = await feature.signMessage({ account, message });
-    if (!output) throw new Error("signMessage returned no outputs");
+    if (!output) { throw new Error("signMessage returned no outputs"); }
     return output.signature;
   }
 
-  async signTransaction<T extends Transaction | VersionedTransaction>(_transaction: T): Promise<T> {
+  signTransaction<T extends Transaction | VersionedTransaction>(_transaction: T): Promise<T> {
     // The Wallet Standard `solana:signTransaction` feature isn't
     // advertised uniformly across wallets — Phantom does, MetaMask Snap
     // (Solana) doesn't. Real dapps that need raw signing without sending
     // would feature-detect here and either implement the wallet-specific
     // path or fall back to signAndSendTransaction. This demo focuses on
     // signAndSendTransaction, so signTransaction stays unimplemented.
-    throw new Error(
-      "signTransaction is not implemented in this demo; use sendTransaction (which wraps signAndSendTransaction).",
+    return Promise.reject(
+      new Error(
+        "signTransaction is not implemented in this demo; use sendTransaction (which wraps signAndSendTransaction).",
+      ),
     );
   }
 
@@ -118,9 +141,9 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     const feature = this._wallet.features["solana:signAndSendTransaction"] as
       | SolanaSignAndSendTransactionFeature
       | undefined;
-    if (!feature) throw new Error("Wallet does not advertise solana:signAndSendTransaction");
+    if (!feature) { throw new Error("Wallet does not advertise solana:signAndSendTransaction"); }
     const account = this._wallet.accounts[0];
-    if (!account) throw new Error("No exposed account");
+    if (!account) { throw new Error("No exposed account"); }
     const serialised =
       transaction instanceof Transaction
         ? transaction.serialize({ requireAllSignatures: false })
@@ -130,26 +153,9 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
       chain: "solana:devnet",
       transaction: new Uint8Array(serialised),
     });
-    if (!output) throw new Error("signAndSendTransaction returned no outputs");
+    if (!output) { throw new Error("signAndSendTransaction returned no outputs"); }
     return bytesToBase58(output.signature);
   }
 }
-
-const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const bytesToBase58 = (bytes: Uint8Array): string => {
-  let intVal = 0n;
-  for (const byte of bytes) intVal = (intVal << 8n) | BigInt(byte);
-  let out = "";
-  while (intVal > 0n) {
-    const remainder = intVal % 58n;
-    intVal /= 58n;
-    out = BASE58_ALPHABET[Number(remainder)] + out;
-  }
-  for (const byte of bytes) {
-    if (byte !== 0) break;
-    out = "1" + out;
-  }
-  return out;
-};
 
 export { ButrAdapterBridge };

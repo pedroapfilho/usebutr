@@ -1,5 +1,6 @@
 import type { ChainPlatform, ConnectedWallet } from "../types";
 import { createBrowserStorageDriver } from "./browser-storage-driver";
+import { logWarn } from "../logger";
 import type {
   StorageDriver,
   StoredPoolEntry,
@@ -107,12 +108,12 @@ class WalletStorage implements WalletPersistence {
             accounts: value.accounts ?? [value.account],
           };
         } else {
-          console.warn(`[butr] dropping invalid pool entry for ${key}`);
+          logWarn(`[butr] dropping invalid pool entry for ${key}`);
         }
       }
       return result;
     } catch (error) {
-      console.warn("[butr] failed to parse pool from storage:", error);
+      logWarn("[butr] failed to parse pool from storage:", error);
       await this.clearPool();
       return {};
     }
@@ -131,7 +132,7 @@ class WalletStorage implements WalletPersistence {
       }
       await this.persistent.setItem(this.poolKey, JSON.stringify(serializable));
     } catch (error) {
-      console.warn("[butr] failed to persist pool:", error);
+      logWarn("[butr] failed to persist pool:", error);
     }
   }
 
@@ -143,7 +144,7 @@ class WalletStorage implements WalletPersistence {
         await this.persistent.setItem(this.poolKey, JSON.stringify(remaining));
       }
     } catch (error) {
-      console.warn(`[butr] failed to remove pool entry ${connectorId}:`, error);
+      logWarn(`[butr] failed to remove pool entry ${connectorId}:`, error);
     }
   }
 
@@ -175,7 +176,7 @@ class WalletStorage implements WalletPersistence {
       }
       return result;
     } catch (error) {
-      console.warn("[butr] failed to parse selection from storage:", error);
+      logWarn("[butr] failed to parse selection from storage:", error);
       return {};
     }
   }
@@ -188,7 +189,7 @@ class WalletStorage implements WalletPersistence {
       }
       await this.persistent.setItem(this.selectionKey, JSON.stringify(serializable));
     } catch (error) {
-      console.warn("[butr] failed to persist selection:", error);
+      logWarn("[butr] failed to persist selection:", error);
     }
   }
 
@@ -209,7 +210,7 @@ class WalletStorage implements WalletPersistence {
         ? this.persistent.removeItem(this.activeKey)
         : this.persistent.setItem(this.activeKey, connectorId));
     } catch (error) {
-      console.warn("[butr] failed to persist active connector id:", error);
+      logWarn("[butr] failed to persist active connector id:", error);
     }
   }
 

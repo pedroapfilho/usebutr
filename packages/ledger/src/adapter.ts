@@ -1,4 +1,5 @@
 import type { Account, ChainBase, WalletAdapter } from "@butr/core";
+import { logWarn } from "@butr/core";
 import { LEDGER_CAPABILITIES } from "./capabilities";
 
 /**
@@ -157,7 +158,7 @@ const SUBSCRIBE_NOT_AVAILABLE = "[butr/ledger] subscribe is not implemented — 
  * (via `getSigner()`) with viem / ethers and your own RPC client
  * to complete the send pipeline.
  */
-const createLedgerAdapter = async (options: LedgerOptions = {}): Promise<WalletAdapter> => {
+const createLedgerAdapter = (options: LedgerOptions = {}): Promise<WalletAdapter> => {
   const id = options.id ?? "ledger";
   const name = options.name ?? "Ledger";
   const icon = options.icon ?? DEFAULT_ICON;
@@ -188,18 +189,18 @@ const createLedgerAdapter = async (options: LedgerOptions = {}): Promise<WalletA
       try {
         await transport?.close();
       } catch (error) {
-        console.warn("[butr/ledger] transport.close threw:", error);
+        logWarn("[butr/ledger] transport.close threw:", error);
       }
       transport = null;
       eth = null;
       currentAddress = null;
     },
 
-    async getAccount() {
+    getAccount() {
       if (!currentAddress) {
-        return null;
+        return Promise.resolve(null);
       }
-      return buildEvmAccount(currentAddress, buildEvmChain(chainId, name));
+      return Promise.resolve(buildEvmAccount(currentAddress, buildEvmChain(chainId, name)));
     },
 
     async getAccounts() {
@@ -211,6 +212,7 @@ const createLedgerAdapter = async (options: LedgerOptions = {}): Promise<WalletA
       // Sequential walk — the device serialises USB requests; parallel
       // calls would deadlock the transport. Slow but correct.
       for (let i = 0; i < accountCount; i += 1) {
+        // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
         const { address } = await eth.getAddress(pathAt(i));
         accounts.push(buildEvmAccount(address, chain));
       }
@@ -273,6 +275,7 @@ const createLedgerAdapter = async (options: LedgerOptions = {}): Promise<WalletA
         let matched = false;
         for (let i = 0; i < accountCount; i += 1) {
           const candidatePath = pathAt(i);
+          // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
           const { address } = await eth.getAddress(candidatePath);
           if (address.toLowerCase() === account.walletAddress.toLowerCase()) {
             path = candidatePath;
@@ -290,7 +293,7 @@ const createLedgerAdapter = async (options: LedgerOptions = {}): Promise<WalletA
       // the `0x` prefix and signs the keccak-prefixed message as
       // EIP-191 dictates. Format the signature back to a standard
       // 65-byte (r || s || v) Uint8Array.
-      const hex = Array.from(message)
+      const hex = [...message]
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
       const { r, s, v } = await eth.signPersonalMessage(path, hex);
@@ -310,27 +313,34 @@ const createLedgerAdapter = async (options: LedgerOptions = {}): Promise<WalletA
       return () => {};
     },
 
-    async switchAccount() {
-      throw new Error(
-        "[butr/ledger] switchAccount not supported — pick a different account via signMessage(msg, account) using a different derivation path",
+    switchAccount() {
+      return Promise.reject(
+        new Error(
+          "[butr/ledger] switchAccount not supported — pick a different account via signMessage(msg, account) using a different derivation path",
+        ),
       );
     },
 
-    async switchChain(chain) {
+    switchChain(chain) {
       if (chain.namespace !== "eip155") {
-        throw new Error(
-          `[butr/ledger] received non-EVM chain "${chain.id}". Pass a chain with namespace "eip155".`,
+        return Promise.reject(
+          new Error(
+            `[butr/ledger] received non-EVM chain "${chain.id}". Pass a chain with namespace "eip155".`,
+          ),
         );
       }
       const next = Number.parseInt(chain.reference, 10);
       if (!Number.isFinite(next)) {
-        throw new Error(`[butr/ledger] chain reference is not a number: ${chain.reference}`);
+        return Promise.reject(
+          new TypeError(`[butr/ledger] chain reference is not a number: ${chain.reference}`),
+        );
       }
       chainId = next;
+      return Promise.resolve();
     },
   };
 
-  return adapter;
+  return Promise.resolve(adapter);
 };
 
 export type { EthAppConstructor, EthAppLike, LedgerOptions, TransportFactory, TransportLike };

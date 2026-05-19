@@ -14,13 +14,6 @@ const DEFAULT_SETTLE_MS = 150;
 
 type InjectedDiscoveryOptions = {
   /**
-   * How long to wait for EIP-6963 announcements before falling back
-   * to `window.ethereum`. Most wallets announce within the first
-   * frame; 150ms is a conservative settle window that keeps the
-   * picker responsive while giving slow announcements time to land.
-   */
-  settleMs?: number;
-  /**
    * Predicate the fallback consults before emitting — if any EIP-6963
    * adapter has been registered by the time the settle timer fires,
    * the injected fallback is skipped (the wallet is already covered
@@ -31,6 +24,13 @@ type InjectedDiscoveryOptions = {
    * directly should pass their own check or omit it (always emit).
    */
   hasAnyEip6963Adapter?: () => boolean;
+  /**
+   * How long to wait for EIP-6963 announcements before falling back
+   * to `window.ethereum`. Most wallets announce within the first
+   * frame; 150ms is a conservative settle window that keeps the
+   * picker responsive while giving slow announcements time to land.
+   */
+  settleMs?: number;
   /** Override the global `window` reference (tests, iframes). */
   target?: { ethereum?: unknown } | null;
 };
@@ -38,7 +38,11 @@ type InjectedDiscoveryOptions = {
 const readEthereum = (
   target: InjectedDiscoveryOptions["target"],
 ): Eip1193Provider | null => {
-  const host = target === undefined ? (typeof window === "undefined" ? null : window) : target;
+  // Resolve the host object: use the caller's override if given, otherwise
+  // fall back to the global window (or null in SSR environments).
+  const globalWindow =
+    typeof window === "undefined" ? null : (window as unknown as { ethereum?: unknown });
+  const host = target === undefined ? globalWindow : target;
   if (!host) {
     return null;
   }

@@ -12,7 +12,7 @@ describe("useBalance", () => {
       id: "eip155:1:0xc",
       walletAddress: "0xc",
     };
-    const adapter = createFakeAdapter({ id: "fake", chainPlatform: "evm", accounts: [account] });
+    const adapter = createFakeAdapter({ accounts: [account], chainPlatform: "evm", id: "fake" });
     return { account, adapter };
   };
 
@@ -24,7 +24,7 @@ describe("useBalance", () => {
 
   it("transitions to success after a wallet connects", async () => {
     const { adapter } = buildAdapter();
-    const balance = { decimals: 18, formatted: "1.5", symbol: "ETH", value: 1500000000000000000n };
+    const balance = { decimals: 18, formatted: "1.5", symbol: "ETH", value: 1_500_000_000_000_000_000n };
     adapter.getBalance = () => Promise.resolve(balance);
     const { result } = renderHookWithProvider(
       () => ({ balance: useBalance(), connect: useConnectWallet() }),

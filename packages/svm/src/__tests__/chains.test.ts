@@ -24,7 +24,7 @@ describe("SVM_CHAINS", () => {
 describe("SVM_CHAINS_LIST", () => {
   it("is the flat array projection of the registry", () => {
     expect(SVM_CHAINS_LIST.length).toBe(3);
-    const ids = SVM_CHAINS_LIST.map((c) => c.id).sort();
+    const ids = SVM_CHAINS_LIST.map((c) => c.id).toSorted();
     expect(ids).toEqual(["solana:devnet", "solana:mainnet", "solana:testnet"]);
   });
 });

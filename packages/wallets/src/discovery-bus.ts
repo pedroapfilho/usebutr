@@ -1,4 +1,5 @@
 import type { WalletAdapter } from "@butr/core";
+import { logWarn } from "@butr/core";
 
 /**
  * A discovery path registers itself by accepting an `emit` callback and
@@ -62,7 +63,7 @@ const createDiscoveryBus = (onAdapter: (adapter: WalletAdapter) => void): Discov
         try {
           unsub();
         } catch (error: unknown) {
-          console.warn("[butr] discovery unsubscribe threw:", error);
+          logWarn("[butr] discovery unsubscribe threw:", error);
         }
       }
       unsubs.length = 0;

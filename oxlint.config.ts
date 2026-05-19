@@ -29,6 +29,22 @@ export default defineConfig({
         "filename-case": "off",
       },
     },
+    // next/no-img-element only applies to Next.js apps — disable it for Vite-
+    // and TanStack Start-based demos where next/image is not available.
+    {
+      files: [
+        "apps/demo-vite/src/**/*.tsx",
+        "apps/demo-tanstack-start/src/**/*.tsx",
+        "apps/demo-with-viem/src/**/*.tsx",
+        "apps/demo-with-wagmi/src/**/*.tsx",
+        "apps/demo-with-solana-web3js/src/**/*.tsx",
+        "apps/demo-with-solana-kit/src/**/*.tsx",
+        "apps/demo-with-solana-wallet-adapter/src/**/*.tsx",
+      ],
+      rules: {
+        "no-img-element": "off",
+      },
+    },
     // butr is a published library that has no shared logger to inject. It uses
     // `console.warn` / `console.error` in error paths (storage failures,
     // connector restoration failures, devtools-only diagnostics) so consumers

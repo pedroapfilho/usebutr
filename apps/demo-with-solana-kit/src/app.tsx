@@ -57,61 +57,51 @@ const BURN_ADDRESS = address("11111111111111111111111111111111");
 
 const rpc = createSolanaRpc(DEVNET);
 
-const App = () => (
-  <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900">
-    <header className="mb-8">
-      <h1 className="text-3xl font-bold tracking-tight">butr + @solana/kit</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        Solana&apos;s next-generation modular SDK (formerly{" "}
-        <code>@solana/web3.js</code> v2). butr discovers and manages the wallet;{" "}
-        <code>@solana/kit</code> handles the RPC and transaction-message builder; the
-        wallet&apos;s Wallet Standard features supply signing + submission.
-      </p>
-    </header>
-    <Content />
-  </main>
-);
-
-const Content = () => {
-  const isHydrated = useIsHydrated();
-  const active = useActiveWallet();
-  const connect = useConnectWallet();
-  const disconnect = useDisconnectWallet();
-  const discovered = useDiscoveredWallets();
-
-  if (!isHydrated) return <p className="text-sm text-neutral-500">Loading…</p>;
-
-  if (!active) {
-    return (
-      <section className="space-y-3">
-        <h2 className="font-semibold">Available wallets</h2>
-        {discovered.length === 0 ? (
-          <p className="text-sm text-neutral-500">
-            No Wallet Standard wallets detected. Install Phantom, Solflare, or Backpack
-            and refresh.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {discovered.map((wallet) => (
-              <li key={wallet.id}>
-                <button
-                  className="flex w-full items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-left hover:bg-neutral-50"
-                  onClick={() => void connect(wallet.id)}
-                  type="button"
-                >
-                  {wallet.icon ? <img alt="" className="h-6 w-6 rounded" src={wallet.icon} /> : null}
-                  <span className="font-medium">{wallet.name}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    );
+const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const bytesToBase58 = (bytes: Uint8Array): string => {
+  let intVal = 0n;
+  for (const byte of bytes) {
+    intVal = (intVal << 8n) | BigInt(byte);
   }
-
-  return <Connected wallet={active} onDisconnect={() => disconnect(active.connector.id)} />;
+  let out = "";
+  while (intVal > 0n) {
+    const remainder = intVal % 58n;
+    intVal /= 58n;
+    out = BASE58_ALPHABET[Number(remainder)] + out;
+  }
+  for (const byte of bytes) {
+    if (byte !== 0) {
+      break;
+    }
+    out = `1${out}`;
+  }
+  return out;
 };
+
+const base64ToBytes = (b64: string): Uint8Array => {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.codePointAt(i) ?? 0;
+  }
+  return bytes;
+};
+
+const formatError = (e: unknown): string => {
+  if (e instanceof Error) {
+    return e.message;
+  }
+  return String(e);
+};
+
+const Row = ({ children, label }: { children: React.ReactNode; label: string }) => (
+  <div className="flex items-baseline gap-3 rounded-lg border border-neutral-200 bg-white p-4">
+    <span className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-neutral-500">
+      {label}
+    </span>
+    <span className="text-sm text-neutral-900">{children}</span>
+  </div>
+);
 
 const Connected = ({
   onDisconnect,
@@ -124,7 +114,7 @@ const Connected = ({
   const [balance, setBalance] = useState<string>("…");
   const [signature, setSignature] = useState<string | null>(null);
   const [txSignature, setTxSignature] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const addr: Address = useMemo(
     () => address(wallet.account.walletAddress),
@@ -136,9 +126,13 @@ const Connected = ({
     void (async () => {
       try {
         const ws = (await wallet.connector.getSigner()) as WalletStandardWallet;
-        if (!cancelled) setWalletStd(ws);
-      } catch (e) {
-        if (!cancelled) setError(formatError(e));
+        if (!cancelled) {
+          setWalletStd(ws);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setErrorMsg(formatError(error));
+        }
       }
     })();
     return () => {
@@ -155,9 +149,11 @@ const Connected = ({
           const sol = Number(value) / 1_000_000_000;
           setBalance(`${sol} SOL`);
         }
-      } catch (e) {
-        if (!cancelled) setBalance("error");
-        console.warn("getBalance failed:", e);
+      } catch (error) {
+        if (!cancelled) {
+          setBalance("error");
+        }
+        console.warn("getBalance failed:", error);
       }
     })();
     return () => {
@@ -166,27 +162,37 @@ const Connected = ({
   }, [addr]);
 
   const handleSign = async () => {
-    if (!walletStd) return;
-    setError(null);
+    if (!walletStd) {
+      return;
+    }
+    setErrorMsg(null);
     try {
       const feature = walletStd.features["solana:signMessage"] as
         | SolanaSignMessageFeature
         | undefined;
-      if (!feature) throw new Error("Wallet does not advertise solana:signMessage");
+      if (!feature) {
+        throw new Error("Wallet does not advertise solana:signMessage");
+      }
       const account = walletStd.accounts[0];
-      if (!account) throw new Error("No exposed account");
+      if (!account) {
+        throw new Error("No exposed account");
+      }
       const message = new TextEncoder().encode("Hello from butr + @solana/kit");
       const [output] = await feature.signMessage({ account, message });
-      if (!output) throw new Error("signMessage returned no outputs");
+      if (!output) {
+        throw new Error("signMessage returned no outputs");
+      }
       setSignature(bytesToBase58(output.signature));
-    } catch (e) {
-      setError(formatError(e));
+    } catch (error) {
+      setErrorMsg(formatError(error));
     }
   };
 
   const handleSendTx = async () => {
-    if (!walletStd) return;
-    setError(null);
+    if (!walletStd) {
+      return;
+    }
+    setErrorMsg(null);
     try {
       // 1. Build the transaction MESSAGE with kit's functional pipeline.
       const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
@@ -204,18 +210,24 @@ const Connected = ({
       const feature = walletStd.features["solana:signAndSendTransaction"] as
         | SolanaSignAndSendTransactionFeature
         | undefined;
-      if (!feature) throw new Error("Wallet does not advertise solana:signAndSendTransaction");
+      if (!feature) {
+        throw new Error("Wallet does not advertise solana:signAndSendTransaction");
+      }
       const account = walletStd.accounts[0];
-      if (!account) throw new Error("No exposed account");
+      if (!account) {
+        throw new Error("No exposed account");
+      }
       const [output] = await feature.signAndSendTransaction({
         account,
         chain: "solana:devnet",
         transaction: bytes,
       });
-      if (!output) throw new Error("signAndSendTransaction returned no outputs");
+      if (!output) {
+        throw new Error("signAndSendTransaction returned no outputs");
+      }
       setTxSignature(bytesToBase58(output.signature));
-    } catch (e) {
-      setError(formatError(e));
+    } catch (error) {
+      setErrorMsg(formatError(error));
     }
   };
 
@@ -272,49 +284,69 @@ const Connected = ({
           </a>
         </Row>
       ) : null}
-      {error ? (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
+      {errorMsg ? (
+        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMsg}</p>
       ) : null}
     </section>
   );
 };
 
-const Row = ({ children, label }: { children: React.ReactNode; label: string }) => (
-  <div className="flex items-baseline gap-3 rounded-lg border border-neutral-200 bg-white p-4">
-    <span className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-neutral-500">
-      {label}
-    </span>
-    <span className="text-sm text-neutral-900">{children}</span>
-  </div>
+const Content = () => {
+  const isHydrated = useIsHydrated();
+  const active = useActiveWallet();
+  const connect = useConnectWallet();
+  const disconnect = useDisconnectWallet();
+  const discovered = useDiscoveredWallets();
+
+  if (!isHydrated) {
+    return <p className="text-sm text-neutral-500">Loading…</p>;
+  }
+
+  if (!active) {
+    return (
+      <section className="space-y-3">
+        <h2 className="font-semibold">Available wallets</h2>
+        {discovered.length === 0 ? (
+          <p className="text-sm text-neutral-500">
+            No Wallet Standard wallets detected. Install Phantom, Solflare, or Backpack
+            and refresh.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {discovered.map((wallet) => (
+              <li key={wallet.id}>
+                <button
+                  className="flex w-full items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-left hover:bg-neutral-50"
+                  onClick={() => void connect(wallet.id)}
+                  type="button"
+                >
+                  {wallet.icon ? <img alt="" className="h-6 w-6 rounded" src={wallet.icon} /> : null}
+                  <span className="font-medium">{wallet.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    );
+  }
+
+  return <Connected onDisconnect={() => disconnect(active.connector.id)} wallet={active} />;
+};
+
+const App = () => (
+  <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900">
+    <header className="mb-8">
+      <h1 className="text-3xl font-bold tracking-tight">butr + @solana/kit</h1>
+      <p className="mt-1 text-sm text-neutral-500">
+        Solana&apos;s next-generation modular SDK (formerly{" "}
+        <code>@solana/web3.js</code> v2). butr discovers and manages the wallet;{" "}
+        <code>@solana/kit</code> handles the RPC and transaction-message builder; the
+        wallet&apos;s Wallet Standard features supply signing + submission.
+      </p>
+    </header>
+    <Content />
+  </main>
 );
-
-const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const bytesToBase58 = (bytes: Uint8Array): string => {
-  let intVal = 0n;
-  for (const byte of bytes) intVal = (intVal << 8n) | BigInt(byte);
-  let out = "";
-  while (intVal > 0n) {
-    const remainder = intVal % 58n;
-    intVal /= 58n;
-    out = BASE58_ALPHABET[Number(remainder)] + out;
-  }
-  for (const byte of bytes) {
-    if (byte !== 0) break;
-    out = "1" + out;
-  }
-  return out;
-};
-
-const base64ToBytes = (b64: string): Uint8Array => {
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-};
-
-const formatError = (e: unknown): string => {
-  if (e instanceof Error) return e.message;
-  return String(e);
-};
 
 export { App };

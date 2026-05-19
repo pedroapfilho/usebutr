@@ -26,64 +26,19 @@ const publicClient = createPublicClient({
   transport: http(),
 });
 
-const App = () => (
-  <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900">
-    <header className="mb-8">
-      <h1 className="text-3xl font-bold tracking-tight">butr + viem</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        butr handles wallet discovery and connection state. viem wraps the EIP-1193
-        provider returned by <code>wallet.connector.getSigner()</code> with{" "}
-        <code>createWalletClient</code> for chain reads, signing, and tx submission.
-      </p>
-    </header>
-    <Content />
-  </main>
-);
-
-const Content = () => {
-  const isHydrated = useIsHydrated();
-  const active = useActiveWallet();
-  const connect = useConnectWallet();
-  const disconnect = useDisconnectWallet();
-  const discovered = useDiscoveredWallets();
-
-  if (!isHydrated) {
-    return <p className="text-sm text-neutral-500">Loading…</p>;
-  }
-
-  if (!active) {
-    return (
-      <section className="space-y-3">
-        <h2 className="font-semibold">Available wallets</h2>
-        {discovered.length === 0 ? (
-          <p className="text-sm text-neutral-500">
-            No EIP-6963 wallets detected. Install MetaMask, Rabby, or another EVM browser
-            wallet and refresh.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {discovered.map((wallet) => (
-              <li key={wallet.id}>
-                <button
-                  className="flex w-full items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-left hover:bg-neutral-50"
-                  onClick={() => void connect(wallet.id)}
-                  type="button"
-                >
-                  {wallet.icon ? (
-                    <img alt="" className="h-6 w-6 rounded" src={wallet.icon} />
-                  ) : null}
-                  <span className="font-medium">{wallet.name}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    );
-  }
-
-  return <Connected wallet={active} onDisconnect={() => disconnect(active.connector.id)} />;
+const formatError = (e: unknown): string => {
+  if (e instanceof Error) {return e.message;}
+  return String(e);
 };
+
+const Row = ({ children, label }: { children: React.ReactNode; label: string }) => (
+  <div className="flex items-baseline gap-3 rounded-lg border border-neutral-200 bg-white p-4">
+    <span className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-neutral-500">
+      {label}
+    </span>
+    <span className="text-sm text-neutral-900">{children}</span>
+  </div>
+);
 
 const Connected = ({
   onDisconnect,
@@ -96,7 +51,7 @@ const Connected = ({
   const [balance, setBalance] = useState<string>("…");
   const [signature, setSignature] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const account: Address = useMemo(
     () => wallet.account.walletAddress as Address,
@@ -110,7 +65,7 @@ const Connected = ({
     void (async () => {
       try {
         const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
-        if (cancelled) return;
+        if (cancelled) {return;}
         setWalletClient(
           createWalletClient({
             account,
@@ -118,8 +73,8 @@ const Connected = ({
             transport: custom(provider),
           }),
         );
-      } catch (e) {
-        if (!cancelled) setError(formatError(e));
+      } catch (error) {
+        if (!cancelled) {setErrorMsg(formatError(error));}
       }
     })();
     return () => {
@@ -133,10 +88,10 @@ const Connected = ({
     void (async () => {
       try {
         const wei = await publicClient.getBalance({ address: account });
-        if (!cancelled) setBalance(`${formatEther(wei)} ETH`);
-      } catch (e) {
-        if (!cancelled) setBalance("error");
-        console.warn("getBalance failed:", e);
+        if (!cancelled) {setBalance(`${formatEther(wei)} ETH`);}
+      } catch (error) {
+        if (!cancelled) {setBalance("error");}
+        console.warn("getBalance failed:", error);
       }
     })();
     return () => {
@@ -145,19 +100,19 @@ const Connected = ({
   }, [account]);
 
   const handleSign = async () => {
-    if (!walletClient) return;
-    setError(null);
+    if (!walletClient) {return;}
+    setErrorMsg(null);
     try {
       const sig = await walletClient.signMessage({ account, message: "Hello from butr + viem" });
       setSignature(sig);
-    } catch (e) {
-      setError(formatError(e));
+    } catch (error) {
+      setErrorMsg(formatError(error));
     }
   };
 
   const handleSendTx = async () => {
-    if (!walletClient) return;
-    setError(null);
+    if (!walletClient) {return;}
+    setErrorMsg(null);
     try {
       const hash = await walletClient.sendTransaction({
         account,
@@ -166,8 +121,8 @@ const Connected = ({
         value: parseEther("0"),
       });
       setTxHash(hash);
-    } catch (e) {
-      setError(formatError(e));
+    } catch (error) {
+      setErrorMsg(formatError(error));
     }
   };
 
@@ -224,25 +179,70 @@ const Connected = ({
           </a>
         </Row>
       ) : null}
-      {error ? (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
+      {errorMsg ? (
+        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMsg}</p>
       ) : null}
     </section>
   );
 };
 
-const Row = ({ children, label }: { children: React.ReactNode; label: string }) => (
-  <div className="flex items-baseline gap-3 rounded-lg border border-neutral-200 bg-white p-4">
-    <span className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-neutral-500">
-      {label}
-    </span>
-    <span className="text-sm text-neutral-900">{children}</span>
-  </div>
-);
+const Content = () => {
+  const isHydrated = useIsHydrated();
+  const active = useActiveWallet();
+  const connectWallet = useConnectWallet();
+  const disconnect = useDisconnectWallet();
+  const discovered = useDiscoveredWallets();
 
-const formatError = (e: unknown): string => {
-  if (e instanceof Error) return e.message;
-  return String(e);
+  if (!isHydrated) {
+    return <p className="text-sm text-neutral-500">Loading…</p>;
+  }
+
+  if (!active) {
+    return (
+      <section className="space-y-3">
+        <h2 className="font-semibold">Available wallets</h2>
+        {discovered.length === 0 ? (
+          <p className="text-sm text-neutral-500">
+            No EIP-6963 wallets detected. Install MetaMask, Rabby, or another EVM browser
+            wallet and refresh.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {discovered.map((wallet) => (
+              <li key={wallet.id}>
+                <button
+                  className="flex w-full items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-left hover:bg-neutral-50"
+                  onClick={() => void connectWallet(wallet.id)}
+                  type="button"
+                >
+                  {wallet.icon ? (
+                    <img alt="" className="h-6 w-6 rounded" src={wallet.icon} />
+                  ) : null}
+                  <span className="font-medium">{wallet.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    );
+  }
+
+  return <Connected onDisconnect={() => disconnect(active.connector.id)} wallet={active} />;
 };
+
+const App = () => (
+  <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900">
+    <header className="mb-8">
+      <h1 className="text-3xl font-bold tracking-tight">butr + viem</h1>
+      <p className="mt-1 text-sm text-neutral-500">
+        butr handles wallet discovery and connection state. viem wraps the EIP-1193
+        provider returned by <code>wallet.connector.getSigner()</code> with{" "}
+        <code>createWalletClient</code> for chain reads, signing, and tx submission.
+      </p>
+    </header>
+    <Content />
+  </main>
+);
 
 export { App };

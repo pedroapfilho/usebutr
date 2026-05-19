@@ -196,7 +196,7 @@ describe("buildSvmAdapter", () => {
     };
     const wallet = withFeatures(buildWallet(), { "standard:connect": connectFeature });
     const adapter = buildSvmAdapter(wallet);
-    await expect(adapter?.signMessage(new Uint8Array())).rejects.toThrow(/solana:signMessage/);
+    await expect(adapter?.signMessage(new Uint8Array())).rejects.toThrow(/solana:signMessage/v);
   });
 
   it("sendTx() bridges through solana:signAndSendTransaction, returns base64 signature", async () => {
@@ -250,7 +250,7 @@ describe("buildSvmAdapter", () => {
     const wallet = withFeatures(buildWallet(), { "standard:connect": connectFeature });
     const adapter = buildSvmAdapter(wallet);
     await expect(adapter?.sendTx(new Uint8Array())).rejects.toThrow(
-      /solana:signAndSendTransaction/,
+      /solana:signAndSendTransaction/v,
     );
   });
 
@@ -459,7 +459,7 @@ describe("buildSvmAdapter.switchChain", () => {
         namespace: "eip155",
         reference: "1",
       }),
-    ).toThrow(/non-Solana/);
+    ).toThrow(/non-Solana/v);
   });
 
   it("rejects a Solana chain the wallet does not advertise", () => {
@@ -471,7 +471,7 @@ describe("buildSvmAdapter.switchChain", () => {
         namespace: "solana",
         reference: "testnet",
       }),
-    ).toThrow(/does not advertise chain/);
+    ).toThrow(/does not advertise chain/v);
   });
 
   it("happy path: switches and synthesises an accountChanged event", async () => {
@@ -511,12 +511,12 @@ describe("buildSvmAdapter edge cases", () => {
     const wallet = buildWallet({ accounts: [] });
     const adapter = buildSvmAdapter(
       withFeatures(wallet, {
-        "standard:connect": connectFeature,
         "solana:signMessage": signFeature,
+        "standard:connect": connectFeature,
       }),
     );
     await expect(adapter?.signMessage(new Uint8Array([1, 2, 3]))).rejects.toThrow(
-      /No connected account/,
+      /No connected account/v,
     );
   });
 
@@ -526,12 +526,12 @@ describe("buildSvmAdapter edge cases", () => {
     };
     const adapter = buildSvmAdapter(
       withFeatures(buildWallet(), {
-        "standard:connect": connectFeature,
         "solana:signMessage": signFeature,
+        "standard:connect": connectFeature,
       }),
     );
     await expect(adapter?.signMessage(new Uint8Array([1]))).rejects.toThrow(
-      /signMessage returned no outputs/,
+      /signMessage returned no outputs/v,
     );
   });
 

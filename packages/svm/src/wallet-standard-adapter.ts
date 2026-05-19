@@ -1,4 +1,5 @@
 import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@butr/core";
+import { logWarn } from "@butr/core";
 import { resolveWalletStandardCapabilities } from "./capabilities";
 import type {
   SolanaSignAndSendTransactionFeature,
@@ -29,7 +30,7 @@ const slugify = (name: string): string =>
   `wallet-standard:${name
     .trim()
     .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, "-")}`;
+    .replaceAll(/[^a-z0-9]+/gv, "-")}`;
 
 const getFeature = <T>(wallet: WalletStandardWallet, name: string): T | undefined => {
   const feature = wallet.features[name];
@@ -175,7 +176,7 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
         try {
           await disconnect.disconnect();
         } catch (error) {
-          console.warn("[butr] Wallet Standard disconnect threw:", error);
+          logWarn("[butr] Wallet Standard disconnect threw:", error);
         }
       }
     },

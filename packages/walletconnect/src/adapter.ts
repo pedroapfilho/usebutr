@@ -1,4 +1,5 @@
 import type { Account, WalletAdapter } from "@butr/core";
+import { logWarn } from "@butr/core";
 import type { Eip1193Provider, Eip6963ProviderInfo } from "@butr/evm";
 import { buildEvmAdapter } from "@butr/evm";
 import { WALLETCONNECT_CAPABILITIES } from "./capabilities";
@@ -114,8 +115,8 @@ const loadUniversalProvider = async (): Promise<UniversalProviderConstructor> =>
   // never pay the bundle cost, and the package install works without
   // the dep present.
   const mod = (await import("@walletconnect/universal-provider")) as unknown as {
-    UniversalProvider: UniversalProviderConstructor;
     default?: UniversalProviderConstructor;
+    UniversalProvider: UniversalProviderConstructor;
   };
   // Two possible export shapes across versions
   return mod.UniversalProvider ?? (mod.default as UniversalProviderConstructor);
@@ -196,9 +197,6 @@ const createWalletConnectAdapter = async (
   const adapter: WalletAdapter = {
     ...base,
     capabilities: WALLETCONNECT_CAPABILITIES,
-    id,
-    name,
-
     async connect() {
       // If a previous session is still live (e.g., across reloads),
       // skip the pairing handshake — the provider already has the
@@ -216,7 +214,6 @@ const createWalletConnectAdapter = async (
         },
       });
     },
-
     async disconnect() {
       if (!provider.session) {
         return;
@@ -227,9 +224,13 @@ const createWalletConnectAdapter = async (
         // The relay may already have dropped the session (mobile
         // wallet was uninstalled, etc.). Don't propagate — butr's
         // reducer marks the wallet disconnected on its side regardless.
-        console.warn("[butr/walletconnect] disconnect threw:", error);
+        logWarn("[butr/walletconnect] disconnect threw:", error);
       }
     },
+
+    id,
+
+    name,
   };
 
   return adapter;

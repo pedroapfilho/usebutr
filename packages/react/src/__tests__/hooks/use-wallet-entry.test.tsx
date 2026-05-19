@@ -22,7 +22,7 @@ describe("useWalletEntry", () => {
       id: "eip155:1:0xaa",
       walletAddress: "0xaa",
     };
-    const adapter = createFakeAdapter({ id: "fake", chainPlatform: "evm", accounts: [account] });
+    const adapter = createFakeAdapter({ accounts: [account], chainPlatform: "evm", id: "fake" });
     const { result } = renderHookWithProvider(
       () => ({ connect: useConnectWalletSync(), entry: useWalletEntry(undefined) }),
       { adapters: [adapter] },

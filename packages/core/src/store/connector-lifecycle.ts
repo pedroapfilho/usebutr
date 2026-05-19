@@ -1,4 +1,5 @@
 import type { Account, ChainPlatform, Connector } from "../types";
+import { logWarn } from "../logger";
 
 /**
  * Side-effect callbacks the lifecycle bridge invokes when the
@@ -25,7 +26,7 @@ type LifecycleHandlers = {
 /**
  * Owns the "exactly one subscription per connector" invariant plus the
  * event-to-handler choreography. Replaces three previously-scattered
- * call sites in the runtime (`hydrate`, `_tryRestoreFromPending`,
+ * call sites in the runtime (`hydrate`, `tryRestoreFromPending`,
  * `connectWallet`) and the matching teardown sites
  * (`disconnectWallet`, `reset`, the disconnect-event handler).
  */
@@ -56,7 +57,7 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
     try {
       unsub();
     } catch (error: unknown) {
-      console.warn("[butr] unsubscribe threw:", error);
+      logWarn("[butr] unsubscribe threw:", error);
     }
     unsubscribers.delete(connectorId);
   };
@@ -85,14 +86,14 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
               break;
             }
             default: {
-              const _exhaustive: never = event;
-              void _exhaustive;
+              const exhaustiveCheck: never = event;
+              void exhaustiveCheck;
             }
           }
         });
         unsubscribers.set(connectorId, unsub);
       } catch (error: unknown) {
-        console.warn(`[butr] subscribe failed for ${connectorId}:`, error);
+        logWarn(`[butr] subscribe failed for ${connectorId}:`, error);
       }
     },
 

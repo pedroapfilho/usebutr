@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
+import { logWarn } from "@butr/core";
+import type * as ButrCore from "@butr/core";
 import { createDiscoveryBus } from "../discovery-bus";
 import type { DiscoveryPath } from "../discovery-bus";
 import { createMockConnector } from "./helpers";
+
+vi.mock("@butr/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof ButrCore>();
+  return { ...actual, logWarn: vi.fn() };
+});
 
 const pathThatEmits = (
   ...adapterIds: ReadonlyArray<string>
@@ -125,7 +132,6 @@ describe("createDiscoveryBus", () => {
   });
 
   it("survives an unsubscribe that throws — neighbours still tear down", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const a = {
       path: (() => () => {
         throw new Error("unsub blew up");
@@ -138,10 +144,9 @@ describe("createDiscoveryBus", () => {
 
     expect(() => bus.unsubscribeAll()).not.toThrow();
     expect(b.unsubscribe).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith(
+    expect(logWarn).toHaveBeenCalledWith(
       "[butr] discovery unsubscribe threw:",
       expect.any(Error),
     );
-    warn.mockRestore();
   });
 });

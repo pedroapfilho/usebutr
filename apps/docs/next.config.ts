@@ -7,10 +7,10 @@ const config: NextConfig = {
   reactStrictMode: true,
   // Serve any docs page as Markdown by appending `.md` (used by the
   // "Copy Markdown" / "View as Markdown" page actions).
-  async rewrites() {
+  rewrites() {
     return [
-      { source: "/index.md", destination: "/llms.mdx" },
-      { source: "/:path*.md", destination: "/llms.mdx/:path*" },
+      { destination: "/llms.mdx", source: "/index.md" },
+      { destination: "/llms.mdx/:path*", source: "/:path*.md" },
     ];
   },
 };

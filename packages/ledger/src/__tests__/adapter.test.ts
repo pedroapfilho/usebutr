@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+
 import type { EthAppConstructor, EthAppLike, TransportFactory, TransportLike } from "../adapter";
 import { createLedgerAdapter } from "../adapter";
 

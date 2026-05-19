@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+
 import type { UniversalProviderConstructor, UniversalProviderLike } from "../adapter";
 import { createWalletConnectAdapter } from "../adapter";
 

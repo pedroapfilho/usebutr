@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import type { Eip1193Provider } from "../eip1193";
 import { discoverInjectedAdapter } from "../injected";
 

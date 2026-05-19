@@ -47,6 +47,25 @@ export default defineConfig({
         "no-img-element": "off",
       },
     },
+    // metro.config.js is a CommonJS Expo Metro configuration file — Metro does
+    // not support ESM config, so `require()` calls here are unavoidable. Scope
+    // the exception tightly to this one file.
+    {
+      files: ["apps/demo-expo-web/metro.config.js"],
+      rules: {
+        "no-require-imports": "off",
+        "prefer-node-protocol": "off",
+      },
+    },
+    // oxfmt always lowercases hex literals, while `number-literal-case` wants
+    // uppercase. The two tools are in conflict: disable the oxlint rule for test
+    // files where hex literals appear only as fixture values (not production code).
+    {
+      files: ["**/__tests__/**/*.ts", "**/__tests__/**/*.tsx", "**/*.test.ts", "**/*.test.tsx"],
+      rules: {
+        "number-literal-case": "off",
+      },
+    },
     // butr is a published library that has no shared logger to inject. It uses
     // `console.warn` / `console.error` in error paths (storage failures,
     // connector restoration failures, devtools-only diagnostics) so consumers

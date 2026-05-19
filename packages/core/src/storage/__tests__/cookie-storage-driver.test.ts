@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import { createCookieStorageDriver } from "../cookie-storage-driver";
 
 const fakeDocument = (initial = ""): { cookie: string } => {

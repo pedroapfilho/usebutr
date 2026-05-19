@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+
 import type { Eip1193Listener, Eip1193Provider, Eip6963ProviderInfo } from "../eip1193";
 import {
   buildEvmAdapter,

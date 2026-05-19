@@ -212,4 +212,4 @@ const styles = StyleSheet.create({
   walletRowLeft: { alignItems: "center", flexDirection: "row", gap: 12 },
 });
 
-export { styles, tokens };
+export { styles };

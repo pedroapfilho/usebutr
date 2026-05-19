@@ -1,5 +1,6 @@
 import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
 import { logWarn } from "@usebutr/core";
+
 import { resolveWalletStandardCapabilities } from "./capabilities";
 import type {
   SolanaSignAndSendTransactionFeature,
@@ -324,7 +325,9 @@ const buildSvmAdapter = (
               throw new Error("No connected account");
             }
             if (!(tx instanceof Uint8Array)) {
-              throw new TypeError("SVM signTransaction expects a serialized transaction (Uint8Array)");
+              throw new TypeError(
+                "SVM signTransaction expects a serialized transaction (Uint8Array)",
+              );
             }
             const [output] = await signTx.signTransaction({
               account: wsAccount,
@@ -367,9 +370,8 @@ const buildSvmAdapter = (
           // through it, mirroring `switchChain`'s local-state model.
           if (changes.chains) {
             const next =
-              changes.chains.find(
-                (c) => c === "solana:mainnet" || c === "solana:mainnet-beta",
-              ) ?? changes.chains.find((c) => c.startsWith(SOLANA_PREFIX));
+              changes.chains.find((c) => c === "solana:mainnet" || c === "solana:mainnet-beta") ??
+              changes.chains.find((c) => c.startsWith(SOLANA_PREFIX));
             if (next) {
               currentChainId = next;
             }

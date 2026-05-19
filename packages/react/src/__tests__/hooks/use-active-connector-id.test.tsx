@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { useActiveConnectorId } from "../../hooks";
 import { renderHookWithProvider } from "../render-with-provider";
 

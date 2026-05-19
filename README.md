@@ -23,14 +23,14 @@ The library is split across small focused packages so consumers bundle only what
 
 The published library is split across eight packages, each with a single responsibility and a small public surface.
 
-| Package               | Purpose                                                                               |
-| --------------------- | ------------------------------------------------------------------------------------- |
+| Package                  | Purpose                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------- |
 | `@usebutr/core`          | Types, store, storage, and the `WalletSource` discovery seam. No React, no protocols. |
-| `@usebutr/react`         | React provider and hooks on top of `@usebutr/core`.                                      |
+| `@usebutr/react`         | React provider and hooks on top of `@usebutr/core`.                                   |
 | `@usebutr/evm`           | EIP-1193 / EIP-6963 / injected wallet discovery and adapters.                         |
 | `@usebutr/svm`           | Wallet Standard adapter for Solana / SVM.                                             |
 | `@usebutr/wallets`       | Batteries-included composition: EVM + SVM discovery + `AutoWalletManagerProvider`.    |
-| `@usebutr/walletconnect` | WalletConnect v2 adapter (composes over `@usebutr/evm`).                                 |
+| `@usebutr/walletconnect` | WalletConnect v2 adapter (composes over `@usebutr/evm`).                              |
 | `@usebutr/ledger`        | Ledger hardware-wallet adapter (EVM).                                                 |
 | `@usebutr/testing`       | Fake adapters, fake persistence, mock storage for tests.                              |
 
@@ -61,8 +61,8 @@ Each one exercises every public hook in `@usebutr/react` against discovered wall
 
 Each integration demo shows butr composing with a library you may already be using. butr handles wallet discovery and connection state; the integration library handles chain reads, signing, and submission. Every demo covers the same four scenarios: **connect → read balance → sign message → send transaction.**
 
-| App                               | Library                        | Network      | Dev URL                 |
-| --------------------------------- | ------------------------------ | ------------ | ----------------------- |
+| App                               | Library                               | Network      | Dev URL                 |
+| --------------------------------- | ------------------------------------- | ------------ | ----------------------- |
 | `demo-with-viem`                  | viem                                  | EVM, Sepolia | `http://localhost:5175` |
 | `demo-with-wagmi`                 | wagmi + `@wagmi/core`                 | EVM, Sepolia | `http://localhost:5176` |
 | `demo-with-solana-framework-kit`  | framework-kit (`@solana/react-hooks`) | SVM, Devnet  | `http://localhost:5181` |

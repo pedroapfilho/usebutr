@@ -1,8 +1,9 @@
-import React, { type PropsWithChildren } from "react";
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
 import type { WalletAdapter, WalletSource } from "@usebutr/core";
 import { createFakeAdapter, createFakePersistence } from "@usebutr/testing";
+import React, { type PropsWithChildren } from "react";
+import { describe, expect, it, vi } from "vitest";
+
 import { WalletManagerProvider, useDiscoveredWallets, useWalletStoreContext } from "../context";
 import { useConnectWallet, useConnectedWallets, useWalletStore } from "../hooks";
 

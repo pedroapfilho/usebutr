@@ -1,4 +1,3 @@
-import { type ReactNode, useState } from "react";
 import type { Account, ConnectedWallet, WalletAdapter } from "@usebutr/core";
 import {
   useActiveWallet,
@@ -14,6 +13,7 @@ import {
   useSetActiveConnector,
 } from "@usebutr/react";
 import { CHAINS_BY_PLATFORM } from "@usebutr/wallets";
+import { type ReactNode, useState } from "react";
 
 type SignState =
   | { kind: "idle" }
@@ -61,7 +61,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
           : "border-neutral-200 text-neutral-700"
       }`}
     >
-      <span className="break-all font-mono text-xs">{account.walletAddress}</span>
+      <span className="font-mono text-xs break-all">{account.walletAddress}</span>
       {canSign ? (
         <span className="flex shrink-0 items-center gap-2">
           {signIndicator}

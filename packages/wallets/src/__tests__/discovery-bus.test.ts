@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
 import { logWarn } from "@usebutr/core";
 import type * as ButrCore from "@usebutr/core";
+import { describe, expect, it, vi } from "vitest";
+
 import { createDiscoveryBus } from "../discovery-bus";
 import type { DiscoveryPath } from "../discovery-bus";
+
 import { createMockConnector } from "./helpers";
 
 vi.mock("@usebutr/core", async (importOriginal) => {

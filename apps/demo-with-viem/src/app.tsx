@@ -1,3 +1,9 @@
+import {
+  useActiveWallet,
+  useConnectWallet,
+  useDisconnectWallet,
+  useIsHydrated,
+} from "@usebutr/react";
 import { useEffect, useMemo, useState } from "react";
 import {
   type Address,
@@ -11,7 +17,7 @@ import {
   parseEther,
 } from "viem";
 import { sepolia } from "viem/chains";
-import { useActiveWallet, useConnectWallet, useDisconnectWallet, useIsHydrated } from "@usebutr/react";
+
 import { useDiscoveredWallets } from "./wallet-provider";
 
 const BURN_ADDRESS: Address = "0x000000000000000000000000000000000000dEaD";
@@ -30,7 +36,7 @@ const formatError = (e: unknown): string => {
 
 const Row = ({ children, label }: { children: React.ReactNode; label: string }) => (
   <div className="flex items-baseline gap-3 rounded-lg border border-neutral-200 bg-white p-4">
-    <span className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-neutral-500">
+    <span className="w-28 shrink-0 text-xs font-medium tracking-wide text-neutral-500 uppercase">
       {label}
     </span>
     <span className="text-sm text-neutral-900">{children}</span>
@@ -139,7 +145,7 @@ const Connected = ({
     <section className="space-y-4">
       <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Connected</p>
+          <p className="text-xs font-medium tracking-wide text-emerald-700 uppercase">Connected</p>
           <p className="font-mono text-sm text-neutral-900">{wallet.connector.name}</p>
           <p className="font-mono text-xs text-neutral-500">{account}</p>
         </div>
@@ -173,13 +179,13 @@ const Connected = ({
       </div>
       {signature ? (
         <Row label="Signature">
-          <code className="break-all font-mono text-xs">{signature}</code>
+          <code className="font-mono text-xs break-all">{signature}</code>
         </Row>
       ) : null}
       {txHash ? (
         <Row label="Tx hash">
           <a
-            className="break-all font-mono text-xs text-blue-600 hover:underline"
+            className="font-mono text-xs break-all text-blue-600 hover:underline"
             href={`https://sepolia.etherscan.io/tx/${txHash}`}
             rel="noreferrer noopener"
             target="_blank"

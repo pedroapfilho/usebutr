@@ -47,11 +47,11 @@ pnpm test                               # vitest unit tests
 
 ### Packages
 
-| Package                   | Purpose                                                                                                                           |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Package                   | Purpose                                                                                                                                                                                                                                       |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@usebutr/*`              | The library (butr) — multi-chain wallet management primitives for React. Published as `@usebutr/core`, `@usebutr/react`, `@usebutr/evm`, `@usebutr/svm`, `@usebutr/wallets`, `@usebutr/walletconnect`, `@usebutr/ledger`, `@usebutr/testing`. |
-| `@repo/typescript-config` | Shared tsconfig bases: `base.json`, `library.json`, `nextjs.json`, `react-library.json`, `server.json`, `vite.json`, `expo.json`. |
-| `@repo/config-vitest`     | Shared Vitest config. Exports `react.ts` and `node.ts`.                                                                           |
+| `@repo/typescript-config` | Shared tsconfig bases: `base.json`, `library.json`, `nextjs.json`, `react-library.json`, `server.json`, `vite.json`, `expo.json`.                                                                                                             |
+| `@repo/config-vitest`     | Shared Vitest config. Exports `react.ts` and `node.ts`.                                                                                                                                                                                       |
 
 ## Tooling
 

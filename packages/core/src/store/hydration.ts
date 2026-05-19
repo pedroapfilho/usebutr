@@ -1,3 +1,4 @@
+import type { StoredPoolEntry, WalletPersistence } from "../storage";
 import type {
   Account,
   ChainPlatform,
@@ -5,7 +6,6 @@ import type {
   Connector,
   WalletManagerConfig,
 } from "../types";
-import type { StoredPoolEntry, WalletPersistence } from "../storage";
 
 /**
  * Restore outcome for a single pool entry. `kind: "ok"` carries the

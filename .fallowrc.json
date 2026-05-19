@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "apps/demo-expo-web/app/_layout.tsx",
+    "apps/demo-next/src/app/layout.tsx",
+    "apps/demo-tanstack-start/src/routes/__root.tsx",
+    "apps/docs/app/layout.tsx",
+    "apps/docs/source.config.ts",
+    "oxlint.config.ts",
+    "**/tsdown.config.ts"
+  ],
+  "ignorePatterns": ["apps/docs/content/**"],
+  "ignoreDependencies": [
+    "@solana/client",
+    "@solana/react-hooks",
+    "@tanstack/react-query",
+    "@usebutr/svm",
+    "@usebutr/testing",
+    "@usebutr/wallets",
+    "@vitest/coverage-v8",
+    "@wallet-standard/app",
+    "expo-status-bar",
+    "jsdom",
+    "nitro-nightly",
+    "react",
+    "react-dom",
+    "react-native-web",
+    "wagmi",
+    "zustand"
+  ]
+}

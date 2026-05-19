@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { LEDGER_CAPABILITIES } from "../capabilities";
 
 describe("LEDGER_CAPABILITIES", () => {

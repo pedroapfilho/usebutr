@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+
 import type { DiscoverOptions } from "../discover";
 
 type DiscoverMod = {
@@ -22,8 +23,8 @@ vi.mock("../discover", async (importOriginal) => {
   };
 });
 
-import { discoverWalletAdapters } from "../discover";
 import { autoDiscovery } from "../auto-discovery";
+import { discoverWalletAdapters } from "../discover";
 
 describe("autoDiscovery", () => {
   it("returns a WalletSource whose subscribe returns an unsubscribe fn", () => {

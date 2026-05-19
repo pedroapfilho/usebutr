@@ -1,9 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { createWalletSource } from "@usebutr/core";
-import { WalletManagerProvider, useDiscoveredWallets } from "@usebutr/react";
 import { discoverEvmAdapters } from "@usebutr/evm";
+import { WalletManagerProvider, useDiscoveredWallets } from "@usebutr/react";
+import type { ReactNode } from "react";
 
 // EVM-only: @usebutr/react + @usebutr/evm. No @usebutr/svm / @usebutr/wallets in the
 // bundle — discovery is a WalletSource built from the EVM discoverer.

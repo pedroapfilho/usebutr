@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+
 import { buildSvmAdapter, slugify } from "../wallet-standard-adapter";
 import type {
   StandardConnectFeature,
@@ -599,9 +600,7 @@ describe("buildSvmAdapter edge cases", () => {
 
   it("exposes signTransaction + capability when solana:signTransaction is advertised (D3)", async () => {
     const signTxFeature = {
-      signTransaction: vi
-        .fn()
-        .mockResolvedValue([{ signedTransaction: new Uint8Array([9, 9]) }]),
+      signTransaction: vi.fn().mockResolvedValue([{ signedTransaction: new Uint8Array([9, 9]) }]),
     };
     const adapter = buildSvmAdapter(
       withFeatures(buildWallet(), {

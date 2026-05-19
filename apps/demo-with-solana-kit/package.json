@@ -12,11 +12,11 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
+    "@solana/kit": "^2.1.0",
+    "@tailwindcss/vite": "^4.3.0",
     "@usebutr/core": "workspace:*",
     "@usebutr/react": "workspace:*",
     "@usebutr/svm": "workspace:*",
-    "@solana/kit": "^2.1.0",
-    "@tailwindcss/vite": "^4.3.0",
     "@wallet-standard/app": "^1.1.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

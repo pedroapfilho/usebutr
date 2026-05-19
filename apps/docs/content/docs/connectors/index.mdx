@@ -12,8 +12,8 @@ A connector is a `WalletAdapter`. They reach butr two ways, both through
 - **Registered explicitly** — WalletConnect and Ledger aren't browser-injected.
   You build the adapter once and return it from `createConnector`.
 
-| Connector                                                         | Package               | Platform | Discovery                    | Notes                                    |
-| ----------------------------------------------------------------- | --------------------- | -------- | ---------------------------- | ---------------------------------------- |
+| Connector                                                    | Package                  | Platform | Discovery                    | Notes                                    |
+| ------------------------------------------------------------ | ------------------------ | -------- | ---------------------------- | ---------------------------------------- |
 | [Injected EVM](/connectors/injected-evm)                     | `@usebutr/evm`           | evm      | EIP-6963 + injected fallback | MetaMask, Rabby, Brave, …                |
 | [Solana Wallet Standard](/connectors/solana-wallet-standard) | `@usebutr/svm`           | svm      | Wallet Standard              | Phantom, Solflare, Backpack, …           |
 | [WalletConnect](/connectors/walletconnect)                   | `@usebutr/walletconnect` | evm      | explicit                     | Mobile wallets; needs a Reown project id |

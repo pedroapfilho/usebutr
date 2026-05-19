@@ -1,8 +1,7 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
-import Image from "next/image";
 import type { Account, ConnectedWallet, WalletAdapter } from "@usebutr/core";
+import { EVM_CHAINS_LIST } from "@usebutr/evm";
 import {
   useActiveWallet,
   useBalance,
@@ -15,7 +14,9 @@ import {
   useRequestAccounts,
   useSetActiveConnector,
 } from "@usebutr/react";
-import { EVM_CHAINS_LIST } from "@usebutr/evm";
+import Image from "next/image";
+import { type ReactNode, useState } from "react";
+
 import { useDiscoveredWallets } from "../wallet-provider";
 
 // EVM-only demo: chain picker pulls from @usebutr/evm directly, no SVM
@@ -68,7 +69,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
           : "border-neutral-200 text-neutral-700"
       }`}
     >
-      <span className="break-all font-mono text-xs">{account.walletAddress}</span>
+      <span className="font-mono text-xs break-all">{account.walletAddress}</span>
       {canSign ? (
         <span className="flex shrink-0 items-center gap-2">
           {signIndicator}
@@ -389,8 +390,8 @@ const Page = () => (
     <header className="mb-8">
       <h1 className="text-3xl font-bold tracking-tight">butr · Next.js</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        EVM-only manual wiring with <code>@usebutr/react</code> + <code>@usebutr/evm</code>. Discovery via
-        EIP-6963; no SVM in the bundle.
+        EVM-only manual wiring with <code>@usebutr/react</code> + <code>@usebutr/evm</code>.
+        Discovery via EIP-6963; no SVM in the bundle.
       </p>
     </header>
     <Content />

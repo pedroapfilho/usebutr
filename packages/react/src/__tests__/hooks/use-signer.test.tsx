@@ -1,8 +1,9 @@
 import { act, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
 import { createFakeAdapter } from "@usebutr/testing";
-import { useSigner } from "../../hooks-async";
+import { describe, expect, it, vi } from "vitest";
+
 import { useConnectWallet } from "../../hooks";
+import { useSigner } from "../../hooks-async";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useSigner", () => {

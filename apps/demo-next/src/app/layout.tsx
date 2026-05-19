@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
-import { WalletProvider } from "../wallet-provider";
 import "./globals.css";
+
+import type { ReactNode } from "react";
+
+import { WalletProvider } from "../wallet-provider";
 
 export const metadata = {
   title: "butr · Next.js",

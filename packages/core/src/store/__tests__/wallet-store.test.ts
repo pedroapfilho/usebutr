@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createWalletStore } from "../wallet-store";
-import { WalletStorage } from "../../storage/wallet-storage";
+
 import {
   createMockAccount,
   createMockChain,
@@ -8,7 +7,9 @@ import {
   createMockConnector,
   createMockStorageDriver,
 } from "../../__tests__/helpers";
+import { WalletStorage } from "../../storage/wallet-storage";
 import type { WalletManagerConfig } from "../../types";
+import { createWalletStore } from "../wallet-store";
 
 const createTestStore = (overrides?: Partial<WalletManagerConfig>) => {
   const persistent = createMockStorageDriver();

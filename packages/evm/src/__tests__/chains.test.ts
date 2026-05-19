@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { EVM_CHAINS, EVM_CHAINS_LIST } from "../chains";
 
 describe("EVM_CHAINS", () => {

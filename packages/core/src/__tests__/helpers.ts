@@ -1,4 +1,6 @@
 import { vi } from "vitest";
+
+import type { StorageDriver } from "../storage/persistence";
 import type {
   Account,
   ChainBase,
@@ -6,7 +8,6 @@ import type {
   WalletAdapter,
   WalletManagerConfig,
 } from "../types";
-import type { StorageDriver } from "../storage/persistence";
 
 const createMockChain = (overrides?: Partial<ChainBase>): ChainBase => ({
   id: "eip155:1",

@@ -1,14 +1,16 @@
 import { createStore } from "zustand/vanilla";
+
+import { logError, logWarn } from "../logger";
+import { WalletStorage } from "../storage";
+import type { WalletPersistence } from "../storage";
 import type { Account, ChainPlatform, ConnectedWallet, WalletManagerConfig } from "../types";
 import type { ConnectionError } from "../types/errors";
 import { mapConnectionError } from "../types/errors";
-import { WalletStorage } from "../storage";
-import type { WalletPersistence } from "../storage";
-import { logError, logWarn } from "../logger";
-import { run } from "./wallet-store-helpers";
-import { createHydrationCoordinator } from "./hydration";
+
 import { createConnectorLifecycle } from "./connector-lifecycle";
+import { createHydrationCoordinator } from "./hydration";
 import { type Event, type State, initialState, reducer } from "./reducer";
+import { run } from "./wallet-store-helpers";
 
 const CONNECT_TIMEOUT_MS = 90_000;
 const DEFAULT_SLOW_CONNECT_THRESHOLD_MS = 5000;

@@ -9,9 +9,9 @@
 // different fallback path), update the test AND
 // `RDNS_WITH_REQUEST_ACCOUNTS` in `eip6963-adapter.ts` together.
 
-import { describe, expect, it } from "vitest";
 import type { Eip1193Provider, Eip6963ProviderInfo } from "@usebutr/evm";
 import { buildEvmAdapter } from "@usebutr/evm";
+import { describe, expect, it } from "vitest";
 
 const baseInfo = (rdns: string, name: string): Eip6963ProviderInfo => ({
   icon: "data:image/svg+xml;base64,Zm9v",

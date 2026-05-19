@@ -1,6 +1,7 @@
-import type { ChainPlatform, ConnectedWallet } from "../types";
-import { createBrowserStorageDriver } from "./browser-storage-driver";
 import { logWarn } from "../logger";
+import type { ChainPlatform, ConnectedWallet } from "../types";
+
+import { createBrowserStorageDriver } from "./browser-storage-driver";
 import type {
   StorageDriver,
   StoredPoolEntry,

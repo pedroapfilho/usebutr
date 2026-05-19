@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { WalletStorage } from "../wallet-storage";
-import type { StorageDriver } from "../persistence";
+
 import {
   createAsyncMockStorageDriver,
   createMockAccount,
@@ -9,6 +8,8 @@ import {
   createMockStoragePair,
 } from "../../__tests__/helpers";
 import type { ChainPlatform, ConnectedWallet } from "../../types";
+import type { StorageDriver } from "../persistence";
+import { WalletStorage } from "../wallet-storage";
 
 const createStorage = (overrides?: { persistent?: StorageDriver; session?: StorageDriver }) => {
   const persistent = overrides?.persistent ?? createMockStorageDriver();

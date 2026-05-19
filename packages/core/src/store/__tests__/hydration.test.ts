@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { createHydrationCoordinator } from "../hydration";
-import type { StoredPoolEntry, StoredPoolRecord, WalletPersistence } from "../../storage";
+
 import { createMockAccount, createMockConnector } from "../../__tests__/helpers";
+import type { StoredPoolEntry, StoredPoolRecord, WalletPersistence } from "../../storage";
 import type { WalletAdapter } from "../../types";
+import { createHydrationCoordinator } from "../hydration";
 
 type FakeStorageInit = {
   active?: string | null;
@@ -47,14 +48,30 @@ const createFakeStorage = (init: FakeStorageInit = {}): WalletPersistence => {
 const getRemoved = (storage: WalletPersistence): Array<string> =>
   (storage as unknown as { removed: Array<string> }).removed;
 
+const createConnectorEagerPath = (id: string) =>
+  id === "wallet-a" ? createMockConnector({ id }) : null;
+
+const createConnectorAlwaysFails = (id: string) =>
+  createMockConnector({
+    connect: vi.fn().mockRejectedValue(new Error("user rejected")),
+    id,
+  });
+
+const createConnectorReconcile = (id: string) =>
+  id === "evm-a"
+    ? createMockConnector({ id })
+    : createMockConnector({
+        connect: vi.fn().mockRejectedValue(new Error("nope")),
+        id,
+      });
+
 describe("createHydrationCoordinator", () => {
   it("restores entries whose adapter is registered (eager path)", async () => {
     const storage = createFakeStorage({
       active: "wallet-a",
       pool: { "wallet-a": buildEntry("wallet-a") },
     });
-    const createConnector = (id: string) =>
-      id === "wallet-a" ? createMockConnector({ id }) : null;
+    const createConnector = createConnectorEagerPath;
     const onStorageError = vi.fn();
     const coordinator = createHydrationCoordinator(storage, createConnector, onStorageError);
 
@@ -121,12 +138,7 @@ describe("createHydrationCoordinator", () => {
 
   it("drops entries whose restore throws and removes them from storage", async () => {
     const storage = createFakeStorage({ pool: { "broken-wallet": buildEntry("broken-wallet") } });
-    const createConnector = (id: string) =>
-      createMockConnector({
-        connect: vi.fn().mockRejectedValue(new Error("user rejected")),
-        id,
-      });
-    const coordinator = createHydrationCoordinator(storage, createConnector, vi.fn());
+    const coordinator = createHydrationCoordinator(storage, createConnectorAlwaysFails, vi.fn());
 
     const result = await coordinator.hydrate();
 
@@ -171,14 +183,7 @@ describe("createHydrationCoordinator", () => {
       },
       selection: { evm: "evm-a", svm: "ghost-svm" },
     });
-    const createConnector = (id: string) =>
-      id === "evm-a"
-        ? createMockConnector({ id })
-        : createMockConnector({
-            connect: vi.fn().mockRejectedValue(new Error("nope")),
-            id,
-          });
-    const coordinator = createHydrationCoordinator(storage, createConnector, vi.fn());
+    const coordinator = createHydrationCoordinator(storage, createConnectorReconcile, vi.fn());
 
     const result = await coordinator.hydrate();
 

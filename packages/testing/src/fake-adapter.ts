@@ -64,13 +64,16 @@ const createFakeAdapter = (options: FakeAdapterOptions = {}): WalletAdapter => {
     sendTxToChain: () => Promise.resolve("0xfakehash"),
     signIn: () =>
       Promise.resolve({
-        account: account ?? { chain: { id: "", name: "", namespace: "", reference: "" }, id: "", walletAddress: "" },
+        account: account ?? {
+          chain: { id: "", name: "", namespace: "", reference: "" },
+          id: "",
+          walletAddress: "",
+        },
         signature: new Uint8Array(),
         signedMessage: new Uint8Array(),
       }),
     signMessage: (msg) => Promise.resolve({ signature: msg, signedMessage: msg }),
-    signTransaction: (tx) =>
-      Promise.resolve(tx instanceof Uint8Array ? tx : new Uint8Array()),
+    signTransaction: (tx) => Promise.resolve(tx instanceof Uint8Array ? tx : new Uint8Array()),
     subscribe: () => () => {},
     switchAccount: () => Promise.resolve(),
     switchChain: () => Promise.resolve(),

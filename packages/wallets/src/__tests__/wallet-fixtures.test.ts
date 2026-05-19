@@ -28,13 +28,13 @@ const createMockProvider = (responses: Record<string, MockResponse>): MockProvid
   return {
     on() {},
     removeListener() {},
-    async request({ method }) {
+    request({ method }) {
       requests.push({ method });
       const handler = responses[method];
       if (!handler) {
-        throw new Error(`[test] unmocked: ${method}`);
+        return Promise.reject(new Error(`[test] unmocked: ${method}`));
       }
-      return handler();
+      return Promise.resolve(handler());
     },
     requests,
   } as MockProvider;
@@ -71,11 +71,12 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
       const provider = createMockProvider({
         eth_requestAccounts: () => ["0x53d120cf09b21c2fcc67814cdf10c8ca9bcc7670"],
         wallet_requestPermissions: () =>
-          Promise.reject({
-            code: -32603,
-            data: { originalError: { code: -32604, message: "not supported" } },
-            message: "this request method is not supported",
-          }),
+          Promise.reject(
+            Object.assign(new Error("this request method is not supported"), {
+              code: -32_603,
+              data: { originalError: { code: -32_604, message: "not supported" } },
+            }),
+          ),
       });
       const adapter = buildEvmAdapter(info, provider);
       await adapter.requestAccounts?.();
@@ -101,7 +102,7 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
       const provider = createMockProvider({
         eth_requestAccounts: () => ["0xabc"],
         wallet_requestPermissions: () =>
-          Promise.reject({ code: -32601, message: "method not found" }),
+          Promise.reject(Object.assign(new Error("method not found"), { code: -32_601 })),
       });
       const adapter = buildEvmAdapter(info, provider);
       await adapter.requestAccounts?.();
@@ -115,7 +116,7 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
       const provider = createMockProvider({
         eth_requestAccounts: () => ["0xabc"],
         wallet_requestPermissions: () =>
-          Promise.reject({ code: 4200, message: "method not supported" }),
+          Promise.reject(Object.assign(new Error("method not supported"), { code: 4200 })),
       });
       const adapter = buildEvmAdapter(info, provider);
       await adapter.requestAccounts?.();
@@ -157,7 +158,8 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
     it("falls back to eth_requestAccounts when an unknown wallet rejects with -32601", async () => {
       const provider = createMockProvider({
         eth_requestAccounts: () => ["0xabc"],
-        wallet_requestPermissions: () => Promise.reject({ code: -32601 }),
+        wallet_requestPermissions: () =>
+          Promise.reject(Object.assign(new Error("method not found"), { code: -32_601 })),
       });
       const adapter = buildEvmAdapter(baseInfo("xyz.unknown", "Unknown"), provider);
       await adapter.requestAccounts?.();
@@ -170,7 +172,9 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
     it("re-throws on user rejection (code 4001) without trying the fallback", async () => {
       const provider = createMockProvider({
         wallet_requestPermissions: () =>
-          Promise.reject({ code: 4001, message: "User rejected the request" }),
+          Promise.reject(
+            Object.assign(new Error("User rejected the request"), { code: 4001 }),
+          ),
       });
       // Use MetaMask info so the capability flag is true and the
       // requestAccounts path is exercised (it works the same for any
@@ -186,7 +190,7 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
         wallet_requestPermissions: () => Promise.reject(new Error("generic failure")),
       });
       const adapter = buildEvmAdapter(baseInfo("io.metamask", "MetaMask"), provider);
-      await expect(adapter.requestAccounts?.()).rejects.toThrow(/generic failure/);
+      await expect(adapter.requestAccounts?.()).rejects.toThrow(/generic failure/v);
       expect(provider.requests.map((r) => r.method)).toEqual(["wallet_requestPermissions"]);
     });
   });

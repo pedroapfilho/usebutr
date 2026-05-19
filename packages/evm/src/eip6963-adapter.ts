@@ -39,7 +39,7 @@ const formatEther = (wei: bigint): string => {
   if (remainder === 0n) {
     return integer.toString();
   }
-  const fraction = remainder.toString().padStart(Number(ETH_DECIMALS), "0").replace(/0+$/, "");
+  const fraction = remainder.toString().padStart(Number(ETH_DECIMALS), "0").replace(/0+$/v, "");
   return fraction.length > 0 ? `${integer}.${fraction}` : integer.toString();
 };
 
@@ -200,11 +200,11 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         const innerCode = err?.data?.originalError?.code;
         const isMethodNotSupported =
           outerCode === 4200 || // EIP-1474 "method not supported"
-          outerCode === -32601 || // JSON-RPC "method not found"
-          outerCode === -32603 || // JSON-RPC "internal error" (Coinbase wraps -32604 here)
+          outerCode === -32_601 || // JSON-RPC "method not found"
+          outerCode === -32_603 || // JSON-RPC "internal error" (Coinbase wraps -32604 here)
           innerCode === 4200 ||
-          innerCode === -32601 ||
-          innerCode === -32604; // Coinbase's custom "method not supported"
+          innerCode === -32_601 ||
+          innerCode === -32_604; // Coinbase's custom "method not supported"
         if (isMethodNotSupported) {
           await provider.request({ method: "eth_requestAccounts" });
           return;

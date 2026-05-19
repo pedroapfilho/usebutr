@@ -8,9 +8,9 @@ import { createWalletConnectAdapter } from "../adapter";
 type ConnectArgs = Parameters<UniversalProviderLike["connect"]>[0];
 
 const createFakeProvider = (): UniversalProviderLike & {
-  emit: (event: string, ...args: ReadonlyArray<unknown>) => void;
   connectCalls: Array<ConnectArgs>;
   readonly disconnectCalls: number;
+  emit: (event: string, ...args: ReadonlyArray<unknown>) => void;
 } => {
   const listeners = new Map<string, Set<(...args: ReadonlyArray<unknown>) => void>>();
   const requests: Array<{ method: string; params?: ReadonlyArray<unknown> | object }> = [];
@@ -22,7 +22,17 @@ const createFakeProvider = (): UniversalProviderLike & {
   const state = { disconnectCalls: 0 };
 
   return {
+    connect(opts) {
+      connectCalls.push(opts);
+      session = { topic: "fake-session" };
+      return Promise.resolve();
+    },
     connectCalls,
+    disconnect() {
+      state.disconnectCalls += 1;
+      session = null;
+      return Promise.resolve();
+    },
     get disconnectCalls() {
       return state.disconnectCalls;
     },
@@ -54,14 +64,6 @@ const createFakeProvider = (): UniversalProviderLike & {
         return Promise.resolve("0x1");
       }
       return Promise.resolve(undefined);
-    },
-    async connect(opts) {
-      connectCalls.push(opts);
-      session = { topic: "fake-session" };
-    },
-    async disconnect() {
-      state.disconnectCalls += 1;
-      session = null;
     },
     get session() {
       return session;

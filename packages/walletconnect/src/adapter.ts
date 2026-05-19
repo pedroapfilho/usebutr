@@ -115,8 +115,8 @@ const loadUniversalProvider = async (): Promise<UniversalProviderConstructor> =>
   // never pay the bundle cost, and the package install works without
   // the dep present.
   const mod = (await import("@walletconnect/universal-provider")) as unknown as {
-    UniversalProvider: UniversalProviderConstructor;
     default?: UniversalProviderConstructor;
+    UniversalProvider: UniversalProviderConstructor;
   };
   // Two possible export shapes across versions
   return mod.UniversalProvider ?? (mod.default as UniversalProviderConstructor);
@@ -197,9 +197,6 @@ const createWalletConnectAdapter = async (
   const adapter: WalletAdapter = {
     ...base,
     capabilities: WALLETCONNECT_CAPABILITIES,
-    id,
-    name,
-
     async connect() {
       // If a previous session is still live (e.g., across reloads),
       // skip the pairing handshake — the provider already has the
@@ -217,7 +214,6 @@ const createWalletConnectAdapter = async (
         },
       });
     },
-
     async disconnect() {
       if (!provider.session) {
         return;
@@ -231,6 +227,10 @@ const createWalletConnectAdapter = async (
         logWarn("[butr/walletconnect] disconnect threw:", error);
       }
     },
+
+    id,
+
+    name,
   };
 
   return adapter;

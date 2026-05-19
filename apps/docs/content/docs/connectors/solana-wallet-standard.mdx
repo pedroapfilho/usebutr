@@ -26,7 +26,7 @@ const discovery = createWalletSource(discoverSvmAdapters);
 <Callout type="info">
   `@usebutr/svm` lazily imports `@wallet-standard/app` (an optional peer dependency). That asynchronous
   warmup is one reason restored SVM wallets can land in `pendingIds` for a moment — see
-  [hydration](/docs/concepts/hydration).
+  [hydration](/concepts/hydration).
 </Callout>
 
 ## Capabilities
@@ -43,7 +43,7 @@ Resolved from the wallet's advertised Wallet Standard features via
 - `requestAccounts` — generally a no-op: Standard wallets expose all accounts
   at once, there is no picker.
 
-Always branch on [capabilities](/docs/concepts/capabilities).
+Always branch on [capabilities](/concepts/capabilities).
 
 ## Working with the signer
 
@@ -57,7 +57,7 @@ const account = walletStd.accounts[0];
 const [output] = await feature.signMessage({ account, message });
 ```
 
-See [Solana integrations](/docs/integrations/solana-web3js) for the full
+See [Solana integrations](/integrations/solana-web3js) for the full
 build-and-send flow with `@solana/web3.js`, `@solana/kit`, and
 `@solana/wallet-adapter-react`.
 

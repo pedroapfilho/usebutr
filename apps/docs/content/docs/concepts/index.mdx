@@ -6,23 +6,23 @@ description: The butr mental model — one store, a pool of connectors, two plat
 butr is a small state machine around a pool of wallet connectors. Understanding
 five ideas makes the whole API obvious.
 
-1. **[Connectors vs. wallets](/docs/concepts/connectors-and-wallets)** — every
+1. **[Connectors vs. wallets](/concepts/connectors-and-wallets)** — every
    wallet is a `WalletAdapter`. butr calls the _connector_ half (connect,
    getAccount, subscribe); your app calls the _wallet_ half (signMessage,
    sendTx, getSigner). All adapters plug in through one seam:
    `WalletManagerConfig.createConnector`.
-2. **[Platforms](/docs/concepts/platforms)** — every connector is `evm` or
+2. **[Platforms](/concepts/platforms)** — every connector is `evm` or
    `svm`. The two are tracked independently, so a user can hold both at once.
    Chains use CAIP-2 ids (`eip155:1`, `solana:…`).
-3. **[Pool, selection, active](/docs/concepts/pool-selection-active)** — the
+3. **[Pool, selection, active](/concepts/pool-selection-active)** — the
    pool is every connected wallet; selection is the chosen wallet _per
    platform_; the active wallet is the single one in front of the user now.
-4. **[Capabilities](/docs/concepts/capabilities)** — flags that say what a
+4. **[Capabilities](/concepts/capabilities)** — flags that say what a
    wallet can do _right now_. Gate UI on these, not on method existence.
-5. **[Hydration](/docs/concepts/hydration)** — restoring the previous session
+5. **[Hydration](/concepts/hydration)** — restoring the previous session
    is asynchronous because wallet adapters announce themselves asynchronously.
 
 Two supporting topics round it out:
-[persistence](/docs/concepts/persistence) (how state survives reloads, and why
-storage writes are silent) and [errors](/docs/concepts/errors) (how thrown
+[persistence](/concepts/persistence) (how state survives reloads, and why
+storage writes are silent) and [errors](/concepts/errors) (how thrown
 values from wildly different wallet SDKs become one tagged union).

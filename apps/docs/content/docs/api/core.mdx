@@ -37,7 +37,7 @@ call it directly only for non-React hosts.
 ### `mapConnectionError(raw: unknown): ConnectionError`
 
 Normalises any thrown value into a tagged
-[`ConnectionError`](/docs/concepts/errors).
+[`ConnectionError`](/concepts/errors).
 
 ### `walletEqual(a: ConnectedWallet, b: ConnectedWallet): boolean`
 
@@ -64,8 +64,8 @@ In-memory driver — no persistence.
 
 The default `WalletPersistence` implementation. Construct with
 `{ keyPrefix, persistent, session }` driver triple. See
-[persistence](/docs/concepts/persistence) and
-[custom storage](/docs/guides/custom-storage).
+[persistence](/concepts/persistence) and
+[custom storage](/guides/custom-storage).
 
 ## Types
 
@@ -118,7 +118,7 @@ type HydrationOutcome = {
 };
 ```
 
-See [connectors and wallets](/docs/concepts/connectors-and-wallets) for the
+See [connectors and wallets](/concepts/connectors-and-wallets) for the
 full `Connector` / `Wallet` / `WalletManagerConfig` definitions.
 
 **Source:** `packages/core/src/index.ts`.

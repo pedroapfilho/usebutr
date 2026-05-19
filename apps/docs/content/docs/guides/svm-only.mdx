@@ -66,7 +66,7 @@ on `@usebutr/core`; it carries no EVM or EIP-6963 code. `autoDiscovery()` lives 
 it would pull EVM in. Here you import `discoverSvmAdapters` from `@usebutr/svm`
 directly, so `@usebutr/evm` and `@usebutr/wallets` are never referenced and the bundler
 tree-shakes them out (`"sideEffects": false` is set on every package). See
-[Platforms](/docs/concepts/platforms).
+[Platforms](/concepts/platforms).
 
 ## Chains
 
@@ -90,14 +90,14 @@ that is what real wallets — Phantom, Solflare, Backpack — advertise in
 [Wallet Standard](https://github.com/wallet-standard/wallet-standard). Because it
 lazily imports `@wallet-standard/app`, there is an asynchronous warmup: a
 restored wallet can land in `pendingIds` for a moment before it resolves — see
-[Hydration](/docs/concepts/hydration).
+[Hydration](/concepts/hydration).
 
 Capabilities are resolved from the wallet's advertised Wallet Standard features:
 `signMessage` is true only if the wallet advertises `solana:signMessage`,
 `sendTransaction` only if it advertises `solana:signAndSendTransaction`,
 `subscribe` via the Standard `change` event. `requestAccounts` is generally a
 no-op — Standard wallets expose all accounts at once, there is no picker. Always
-branch on [`wallet.connector.capabilities`](/docs/concepts/capabilities).
+branch on [`wallet.connector.capabilities`](/concepts/capabilities).
 
 `getSigner()` on an SVM adapter returns the `WalletStandardWallet`; you call its
 features directly or bridge into a Solana library. See the integration pages for
@@ -105,15 +105,15 @@ the full build-and-send flow.
 
 ## Next steps
 
-- [Solana Wallet Standard connector](/docs/connectors/solana-wallet-standard) —
+- [Solana Wallet Standard connector](/connectors/solana-wallet-standard) —
   the discovery and signer detail.
-- [framework-kit](/docs/integrations/solana-framework-kit) /
-  [gill](/docs/integrations/gill) /
-  [solana-kit](/docs/integrations/solana-kit) /
-  [solana-wallet-adapter](/docs/integrations/solana-wallet-adapter) /
-  [solana-web3js](/docs/integrations/solana-web3js) (legacy) — build and send
+- [framework-kit](/integrations/solana-framework-kit) /
+  [gill](/integrations/gill) /
+  [solana-kit](/integrations/solana-kit) /
+  [solana-wallet-adapter](/integrations/solana-wallet-adapter) /
+  [solana-web3js](/integrations/solana-web3js) (legacy) — build and send
   transactions.
-- [Provider setup](/docs/guides/provider-setup) — auto, manual, and composed
+- [Provider setup](/guides/provider-setup) — auto, manual, and composed
   variants.
 
 <Callout type="info">

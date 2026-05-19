@@ -5,7 +5,7 @@ description: WalletManagerProvider with autoDiscovery() and an AsyncStorage-back
 
 Expo works with `WalletManagerProvider` and `autoDiscovery()`, but React Native
 has no `localStorage`, so you supply an `AsyncStorage`-backed
-[storage driver](/docs/guides/custom-storage). This is the `demo-expo-web`
+[storage driver](/guides/custom-storage). This is the `demo-expo-web`
 reference.
 
 ```ts title="src/async-storage-driver.ts"
@@ -50,7 +50,7 @@ export { WalletProvider };
 <Callout type="warn">
   `demo-expo-web` targets the **web** bundle (`expo start --web`), where browser wallet discovery
   works. Native iOS/Android wallet transports (deep links, in-app browsers) are out of scope for
-  this provider; on native you'd pair through [WalletConnect](/docs/connectors/walletconnect)
+  this provider; on native you'd pair through [WalletConnect](/connectors/walletconnect)
   instead.
 </Callout>
 
@@ -58,5 +58,5 @@ export { WalletProvider };
   **Source:** `apps/demo-expo-web/src/wallet-provider.tsx` in the [butr
   repository](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-expo-web). Run `pnpm dev
   --filter=demo-expo-web` → `http://localhost:8081`. See [custom
-  storage](/docs/guides/custom-storage) for the session-storage caveat.
+  storage](/guides/custom-storage) for the session-storage caveat.
 </Callout>

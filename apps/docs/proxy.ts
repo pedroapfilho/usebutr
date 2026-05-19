@@ -1,7 +1,7 @@
 import { isMarkdownPreferred, rewritePath } from "fumadocs-core/negotiation";
 import { type NextRequest, NextResponse } from "next/server";
 
-const { rewrite } = rewritePath("/docs{/*path}", "/llms.mdx/docs{/*path}");
+const { rewrite } = rewritePath("/{*path}", "/llms.mdx/{*path}");
 
 /**
  * Content negotiation: when an AI agent requests a docs URL with
@@ -17,6 +17,13 @@ const proxy = (request: NextRequest) => {
   }
 
   return NextResponse.next();
+};
+
+// Negotiation now lives at the site root, so scope it to rendered doc pages
+// only: skip the Markdown/llms endpoints (else they'd be rewritten onto
+// themselves), the search API, and any file-extension asset.
+export const config = {
+  matcher: ["/((?!api|llms\\.mdx|llms\\.txt|llms-full\\.txt|_next|.*\\.).*)"],
 };
 
 export default proxy;

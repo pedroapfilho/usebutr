@@ -40,15 +40,15 @@ const discovery = autoDiscovery();
 ## Notes
 
 - **`onConnectError`** receives the normalised
-  [`ConnectionError`](/docs/concepts/errors), so you branch on `error.kind`.
+  [`ConnectionError`](/concepts/errors), so you branch on `error.kind`.
 - **`onHydrated`** is the only place to learn which stored wallets came back —
-  see [hydration](/docs/concepts/hydration).
+  see [hydration](/concepts/hydration).
 - **`onSlowConnect`** fires at most once per attempt, and only if the connect
   hasn't resolved or rejected by the threshold (default `5000` ms). Useful for
   a "still trying — check your wallet" hint or a slow-path metric.
 - **`onStorageError`** is the only signal for otherwise-silent persistence
   failures. Default with no callback is `console.warn`. See
-  [persistence](/docs/concepts/persistence).
+  [persistence](/concepts/persistence).
 - **`onReset`** may return a promise — a good place to clear server-side
   sessions or auth tokens.
 

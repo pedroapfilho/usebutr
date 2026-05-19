@@ -51,9 +51,9 @@ Connector errors are normalized once, centrally: EIP-1193 codes `4001`
 (user rejected), `-32002` (request pending), and `4100` / `4900` / `4901`
 (unauthorized / disconnected) map to a typed `ConnectionError` so consumers
 branch on `kind` instead of regexing messages. See
-[errors](/docs/concepts/errors).
+[errors](/concepts/errors).
 
-Feature presence drives [capabilities](/docs/concepts/capabilities): a flag is
+Feature presence drives [capabilities](/concepts/capabilities): a flag is
 `true` only when the wallet actually advertises the underlying feature, so
 `signMessage`, `signTransaction`, `signIn`, `sendTransaction`, and `subscribe`
 never claim more than the wallet supports.

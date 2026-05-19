@@ -21,8 +21,8 @@ npm install @usebutr/wallets zustand
 
 Skip the Solana bundle entirely. Use `@usebutr/react` for the provider/hooks and
 `@usebutr/evm` for EIP-6963 discovery, wired with ~30 lines of your own discovery
-code (see [Provider setup](/docs/guides/provider-setup) and the
-[Next.js framework guide](/docs/frameworks/nextjs)).
+code (see [Provider setup](/guides/provider-setup) and the
+[Next.js framework guide](/frameworks/nextjs)).
 
 ```npm
 npm install @usebutr/react @usebutr/evm @usebutr/core zustand
@@ -53,7 +53,7 @@ npm install --save-dev @usebutr/testing
 
 `@usebutr/testing` provides `createFakeAdapter` and `createFakePersistence` so unit
 tests never touch a real wallet or `localStorage`. See the
-[Testing guide](/docs/testing).
+[Testing guide](/testing).
 
 ## Peer dependencies
 
@@ -68,5 +68,5 @@ tests never touch a real wallet or `localStorage`. See the
 
 <Callout type="info">
   No environment variables are required to use butr. WalletConnect needs a project ID, but that is
-  passed in code — see the [WalletConnect connector](/docs/connectors/walletconnect).
+  passed in code — see the [WalletConnect connector](/connectors/walletconnect).
 </Callout>

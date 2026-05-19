@@ -39,6 +39,7 @@ export default defineConfig({
         "apps/demo-with-wagmi/src/**/*.tsx",
         "apps/demo-with-solana-web3js/src/**/*.tsx",
         "apps/demo-with-solana-kit/src/**/*.tsx",
+        "apps/demo-with-solana-wallet-adapter/src/**/*.tsx",
       ],
       rules: {
         "no-img-element": "off",

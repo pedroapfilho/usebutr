@@ -5,7 +5,7 @@ description: How connection state survives reloads, the storage driver interface
 
 butr persists the pool, the per-platform selection, the active connector id,
 and the session-scoped disconnect flag, so a reload restores the previous
-session (subject to [hydration](/docs/concepts/hydration)).
+session (subject to [hydration](/concepts/hydration)).
 
 ## Storage keys
 
@@ -44,7 +44,7 @@ const storage = new WalletStorage({
 });
 ```
 
-See the [custom storage guide](/docs/guides/custom-storage) for the React
+See the [custom storage guide](/guides/custom-storage) for the React
 Native / Expo `AsyncStorage` driver.
 
 ## Writes are silent by design

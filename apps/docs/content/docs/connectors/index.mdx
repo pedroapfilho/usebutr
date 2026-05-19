@@ -14,10 +14,10 @@ A connector is a `WalletAdapter`. They reach butr two ways, both through
 
 | Connector                                                         | Package               | Platform | Discovery                    | Notes                                    |
 | ----------------------------------------------------------------- | --------------------- | -------- | ---------------------------- | ---------------------------------------- |
-| [Injected EVM](/docs/connectors/injected-evm)                     | `@usebutr/evm`           | evm      | EIP-6963 + injected fallback | MetaMask, Rabby, Brave, …                |
-| [Solana Wallet Standard](/docs/connectors/solana-wallet-standard) | `@usebutr/svm`           | svm      | Wallet Standard              | Phantom, Solflare, Backpack, …           |
-| [WalletConnect](/docs/connectors/walletconnect)                   | `@usebutr/walletconnect` | evm      | explicit                     | Mobile wallets; needs a Reown project id |
-| [Ledger](/docs/connectors/ledger)                                 | `@usebutr/ledger`        | evm      | explicit                     | WebUSB, Chromium-only, signing-only      |
+| [Injected EVM](/connectors/injected-evm)                     | `@usebutr/evm`           | evm      | EIP-6963 + injected fallback | MetaMask, Rabby, Brave, …                |
+| [Solana Wallet Standard](/connectors/solana-wallet-standard) | `@usebutr/svm`           | svm      | Wallet Standard              | Phantom, Solflare, Backpack, …           |
+| [WalletConnect](/connectors/walletconnect)                   | `@usebutr/walletconnect` | evm      | explicit                     | Mobile wallets; needs a Reown project id |
+| [Ledger](/connectors/ledger)                                 | `@usebutr/ledger`        | evm      | explicit                     | WebUSB, Chromium-only, signing-only      |
 
 Registering an explicit connector follows the same shape every time. Build the
 adapter at module scope (it's async), then wire it through the unified provider:

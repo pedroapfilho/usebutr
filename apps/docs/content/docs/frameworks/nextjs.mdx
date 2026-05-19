@@ -10,7 +10,7 @@ must be a client component.
 ## The `"use client"` boundary
 
 The `demo-next` reference is EVM-only (no `@usebutr/svm` or `@usebutr/wallets` in the
-bundle) — see [EVM-only setup](/docs/guides/evm-only) for the install, chain
+bundle) — see [EVM-only setup](/guides/evm-only) for the install, chain
 list, and bundle rationale. This page covers only what is specific to the App
 Router. The provider module starts with `"use client"`:
 
@@ -67,13 +67,13 @@ const CHAINS_BY_PLATFORM = { evm: EVM_CHAINS_LIST, svm: [] as const };
 ```
 
 Why this keeps Solana out of the bundle is covered in
-[EVM-only setup](/docs/guides/evm-only#the-bundle-guarantee).
+[EVM-only setup](/guides/evm-only#the-bundle-guarantee).
 
 ## Want EVM + SVM instead?
 
 Use `autoDiscovery()` from `@usebutr/wallets` in a `"use client"` module — same as
-[Vite](/docs/frameworks/vite), just with the directive at the top. See
-[Provider setup](/docs/guides/provider-setup) for the full pattern.
+[Vite](/frameworks/vite), just with the directive at the top. See
+[Provider setup](/guides/provider-setup) for the full pattern.
 
 <Callout type="info">
   **Source:** `apps/demo-next/src/wallet-provider.tsx` in the [butr

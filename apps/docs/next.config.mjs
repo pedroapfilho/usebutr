@@ -9,8 +9,8 @@ const config = {
   // "Copy Markdown" / "View as Markdown" page actions).
   async rewrites() {
     return [
-      { source: "/docs.md", destination: "/llms.mdx/docs" },
-      { source: "/docs/:path*.md", destination: "/llms.mdx/docs/:path*" },
+      { source: "/index.md", destination: "/llms.mdx" },
+      { source: "/:path*.md", destination: "/llms.mdx/:path*" },
     ];
   },
 };

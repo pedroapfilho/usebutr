@@ -48,7 +48,7 @@ use exactly this pattern. They re-export `useDiscoveredWallets` from the local
 `wallet-provider` module so consuming files import it from one place.
 
 On Next.js the same module needs a `"use client"` directive at the top — see
-[Next.js (App Router)](/docs/frameworks/nextjs).
+[Next.js (App Router)](/frameworks/nextjs).
 
 ## The bundle guarantee
 
@@ -58,7 +58,7 @@ lives in `@usebutr/wallets`, which depends on both `@usebutr/evm` and `@usebutr/
 importing it would pull Solana in. Here you import `discoverEvmAdapters` from
 `@usebutr/evm` directly, so `@usebutr/svm` and `@usebutr/wallets` are never referenced and
 the bundler tree-shakes them out (`"sideEffects": false` is set on every
-package). See [Platforms](/docs/concepts/platforms).
+package). See [Platforms](/concepts/platforms).
 
 ## Chains
 
@@ -85,18 +85,18 @@ raw EIP-1193 `window.ethereum` and never announce; `discoverInjectedAdapter`
 
 EVM connectors switch chains for real via `wallet_switchEthereumChain`.
 Capability values are derived from the wallet's EIP-6963 provider info — always
-branch on [`wallet.connector.capabilities`](/docs/concepts/capabilities) rather
+branch on [`wallet.connector.capabilities`](/concepts/capabilities) rather
 than assuming a wallet supports an operation.
 
 ## Next steps
 
-- [Injected EVM connector](/docs/connectors/injected-evm) — the discovery and
+- [Injected EVM connector](/connectors/injected-evm) — the discovery and
   injected-fallback detail.
-- [viem integration](/docs/integrations/viem) /
-  [wagmi integration](/docs/integrations/wagmi) — build and send transactions.
-- [Provider setup](/docs/guides/provider-setup) — auto, manual, and composed
+- [viem integration](/integrations/viem) /
+  [wagmi integration](/integrations/wagmi) — build and send transactions.
+- [Provider setup](/guides/provider-setup) — auto, manual, and composed
   variants.
-- [Next.js (App Router)](/docs/frameworks/nextjs) — the RSC `"use client"`
+- [Next.js (App Router)](/frameworks/nextjs) — the RSC `"use client"`
   boundary.
 
 <Callout type="info">

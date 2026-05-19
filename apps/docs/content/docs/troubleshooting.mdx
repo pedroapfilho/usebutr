@@ -17,11 +17,11 @@ for a "still trying — check your wallet" hint.
 Persistence is **fire-and-forget by design** — a failed write (quota exceeded,
 IndexedDB shutdown, cross-tab conflict, cookie size limit) does not throw.
 You'll only see it if you set `onStorageError`. The default with no callback is
-`console.warn`. See [persistence](/docs/concepts/persistence).
+`console.warn`. See [persistence](/concepts/persistence).
 
 ## An error shows up as `Unknown`
 
-[Error normalisation](/docs/concepts/errors) is best-effort. A connector that
+[Error normalisation](/concepts/errors) is best-effort. A connector that
 throws a shape `mapConnectionError` doesn't recognise lands in
 `{ kind: "Unknown", cause }`. Inspect `cause` for the raw value. butr never
 retries — you decide based on `kind`.
@@ -38,7 +38,7 @@ so it doesn't render for SVM.
 `@usebutr/ledger` uses WebUSB, which only exists in Chromium browsers (Chrome,
 Edge, Brave, Arc). It's also signing-only — `sendTx`, `getBalance`, and
 `getTransactionReceipt` reject. See the
-[Ledger connector](/docs/connectors/ledger).
+[Ledger connector](/connectors/ledger).
 
 ## A previously-connected wallet doesn't come back on reload
 
@@ -65,7 +65,7 @@ Set a distinct `storageKeyPrefix` per app sharing an origin.
 
 Verify against the `signedMessage` returned by `signMessage`, not your input
 bytes — Solana Wallet Standard wallets may prefix/re-encode the message. See
-[signing](/docs/guides/signing).
+[signing](/guides/signing).
 
 ## UI flashes "not connected" on every reload
 

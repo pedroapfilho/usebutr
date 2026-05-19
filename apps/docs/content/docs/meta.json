@@ -2,14 +2,18 @@
   "title": "Docs",
   "root": true,
   "pages": [
+    "---Start here---",
     "index",
     "why",
     "getting-started",
+    "---Learn---",
     "concepts",
     "guides",
+    "---Reference---",
     "connectors",
     "integrations",
     "api",
+    "---Help---",
     "testing",
     "troubleshooting"
   ]

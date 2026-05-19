@@ -29,5 +29,3 @@ export function PopoverContent({
     </PopoverPrimitive.Portal>
   );
 }
-
-export const PopoverClose = PopoverPrimitive.PopoverClose;

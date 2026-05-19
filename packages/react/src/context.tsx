@@ -6,7 +6,7 @@ import type {
   WalletSource,
   WalletStore,
 } from "@butr/core";
-import { createWalletStore } from "@butr/core";
+import { createWalletStore, logError } from "@butr/core";
 
 const WalletStoreContext: React.Context<WalletStore | null> =
   createContext<WalletStore | null>(null);
@@ -105,8 +105,7 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
       try {
         await state.hydrateWallets();
       } catch (error: unknown) {
-        // eslint-disable-next-line no-console -- intentional user-facing error
-        console.error("[butr] failed to hydrate wallets:", error);
+        logError("[butr] failed to hydrate wallets:", error);
       }
     })();
   }, [store]);

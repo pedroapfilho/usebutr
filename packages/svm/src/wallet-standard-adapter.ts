@@ -1,4 +1,5 @@
 import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@butr/core";
+import { logWarn } from "@butr/core";
 import { resolveWalletStandardCapabilities } from "./capabilities";
 import type {
   SolanaSignAndSendTransactionFeature,
@@ -175,7 +176,7 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
         try {
           await disconnect.disconnect();
         } catch (error) {
-          console.warn("[butr] Wallet Standard disconnect threw:", error);
+          logWarn("[butr] Wallet Standard disconnect threw:", error);
         }
       }
     },

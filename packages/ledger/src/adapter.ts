@@ -1,4 +1,5 @@
 import type { Account, ChainBase, WalletAdapter } from "@butr/core";
+import { logWarn } from "@butr/core";
 import { LEDGER_CAPABILITIES } from "./capabilities";
 
 /**
@@ -188,7 +189,7 @@ const createLedgerAdapter = async (options: LedgerOptions = {}): Promise<WalletA
       try {
         await transport?.close();
       } catch (error) {
-        console.warn("[butr/ledger] transport.close threw:", error);
+        logWarn("[butr/ledger] transport.close threw:", error);
       }
       transport = null;
       eth = null;

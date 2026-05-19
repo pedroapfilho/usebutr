@@ -4,6 +4,7 @@ import type { ConnectionError } from "../types/errors";
 import { mapConnectionError } from "../types/errors";
 import { WalletStorage } from "../storage";
 import type { WalletPersistence } from "../storage";
+import { logError, logWarn } from "../logger";
 import { run } from "./wallet-store-helpers";
 import { createHydrationCoordinator } from "./hydration";
 import { createConnectorLifecycle } from "./connector-lifecycle";
@@ -52,11 +53,11 @@ const createWalletStore = (config: WalletManagerConfig) => {
       try {
         config.onStorageError(error, context);
       } catch (cbError: unknown) {
-        console.warn("[butr] onStorageError threw:", cbError);
+        logWarn("[butr] onStorageError threw:", cbError);
       }
       return;
     }
-    console.warn(`[butr] ${context}:`, error);
+    logWarn(`[butr] ${context}:`, error);
   };
 
   // Owns the full restore lifecycle: read storage, instantiate adapters,
@@ -196,13 +197,13 @@ const createWalletStore = (config: WalletManagerConfig) => {
                   restoredIds: [...result.pool.keys()],
                 });
               } catch (cbError: unknown) {
-                console.warn("[butr] onHydrated threw:", cbError);
+                logWarn("[butr] onHydrated threw:", cbError);
               }
             } else if (result.dropped.length > 0) {
               // Preserve the pre-`onHydrated` console.warn behaviour
               // when no callback is set, so silent drops still log.
               for (const { connectorId, reason } of result.dropped) {
-                console.warn(`[butr] failed to restore connector ${connectorId}:`, reason);
+                logWarn(`[butr] failed to restore connector ${connectorId}:`, reason);
               }
             }
           },
@@ -217,7 +218,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               return;
             }
             if (outcome.kind === "fail") {
-              console.warn(`[butr] late restore failed for ${connectorId}:`, outcome.error);
+              logWarn(`[butr] late restore failed for ${connectorId}:`, outcome.error);
               return;
             }
             // Reuse the reducer's connect-success path so selection /
@@ -257,7 +258,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
                   try {
                     config.onSlowConnect?.(connectorId);
                   } catch (cbError: unknown) {
-                    console.warn("[butr] onSlowConnect threw:", cbError);
+                    logWarn("[butr] onSlowConnect threw:", cbError);
                   }
                 }, slowThreshold)
               : null;
@@ -304,12 +305,12 @@ const createWalletStore = (config: WalletManagerConfig) => {
               try {
                 await connector.disconnect?.();
               } catch (disconnectError: unknown) {
-                console.warn("[butr] disconnect during error recovery failed:", disconnectError);
+                logWarn("[butr] disconnect during error recovery failed:", disconnectError);
               }
               try {
                 config.onConnectError?.(normalised, connectorId);
               } catch (cbError: unknown) {
-                console.warn("[butr] onConnectError threw:", cbError);
+                logWarn("[butr] onConnectError threw:", cbError);
               }
               onError?.(error as Error);
               throw error;
@@ -334,7 +335,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
 
             lifecycle.detach(connectorId);
 
-            void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), console.error);
+            void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), logError);
 
             const platform = wallet.connector.chainPlatform;
             dispatch({ connectorId, type: "DISCONNECTED" });
@@ -389,14 +390,14 @@ const createWalletStore = (config: WalletManagerConfig) => {
             lifecycle.detachAll();
 
             for (const wallet of state.pool.values()) {
-              void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), console.error);
+              void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), logError);
             }
 
             void run(() => storage.clearAll(), reportStorageError("failed to clear storage"));
 
             if (config.onReset) {
               const onReset = config.onReset;
-              void run(() => Promise.resolve(onReset()), console.error);
+              void run(() => Promise.resolve(onReset()), logError);
             }
 
             dispatch({ type: "RESET" });

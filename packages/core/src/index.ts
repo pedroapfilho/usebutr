@@ -47,3 +47,6 @@ export {
 
 // Equality helper used by async hooks in @butr/react
 export { walletEqual } from "./wallet-equal";
+
+// Logger — re-exported so consuming packages can import from @butr/core
+export { logError, logWarn } from "./logger";

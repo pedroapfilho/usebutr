@@ -1,4 +1,5 @@
 import type { Account, ChainPlatform, Connector } from "../types";
+import { logWarn } from "../logger";
 
 /**
  * Side-effect callbacks the lifecycle bridge invokes when the
@@ -56,7 +57,7 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
     try {
       unsub();
     } catch (error: unknown) {
-      console.warn("[butr] unsubscribe threw:", error);
+      logWarn("[butr] unsubscribe threw:", error);
     }
     unsubscribers.delete(connectorId);
   };
@@ -92,7 +93,7 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
         });
         unsubscribers.set(connectorId, unsub);
       } catch (error: unknown) {
-        console.warn(`[butr] subscribe failed for ${connectorId}:`, error);
+        logWarn(`[butr] subscribe failed for ${connectorId}:`, error);
       }
     },
 

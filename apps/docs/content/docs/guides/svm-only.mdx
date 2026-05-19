@@ -3,8 +3,9 @@ title: SVM-only setup
 description: Ship @usebutr/react + @usebutr/svm with no @usebutr/evm or @usebutr/wallets in the bundle.
 ---
 
-Pick this path when your app only touches Solana — a `@solana/web3.js`,
-`@solana/kit`, or `@solana/wallet-adapter-react` app with no EVM surface. You
+Pick this path when your app only touches Solana — a framework-kit, `gill`,
+`@solana/kit`, `@solana/wallet-adapter-react`, or legacy `@solana/web3.js` app
+with no EVM surface. You
 import `@usebutr/svm` for discovery instead of `autoDiscovery()` from
 `@usebutr/wallets`, and the EVM packages never enter your bundle. The provider and
 hooks are identical to every other setup.
@@ -51,9 +52,10 @@ const WalletProvider = ({ children }: { children: ReactNode }) => (
 export { WalletProvider, useDiscoveredWallets };
 ```
 
-`demo-with-solana-web3js`, `demo-with-solana-kit`, and
-`demo-with-solana-wallet-adapter` all use exactly this pattern (each with its own
-`storageKeyPrefix`). They re-export `useDiscoveredWallets` from the local
+`demo-with-solana-framework-kit`, `demo-with-gill`, `demo-with-solana-kit`,
+`demo-with-solana-wallet-adapter`, and `demo-with-solana-web3js` all use exactly
+this pattern (each with its own `storageKeyPrefix`). They re-export
+`useDiscoveredWallets` from the local
 `wallet-provider` module so consuming files import it from one place.
 
 ## The bundle guarantee
@@ -105,10 +107,12 @@ the full build-and-send flow.
 
 - [Solana Wallet Standard connector](/docs/connectors/solana-wallet-standard) —
   the discovery and signer detail.
-- [solana-web3js](/docs/integrations/solana-web3js) /
+- [framework-kit](/docs/integrations/solana-framework-kit) /
+  [gill](/docs/integrations/gill) /
   [solana-kit](/docs/integrations/solana-kit) /
-  [solana-wallet-adapter](/docs/integrations/solana-wallet-adapter) — build and
-  send transactions.
+  [solana-wallet-adapter](/docs/integrations/solana-wallet-adapter) /
+  [solana-web3js](/docs/integrations/solana-web3js) (legacy) — build and send
+  transactions.
 - [Provider setup](/docs/guides/provider-setup) — auto, manual, and composed
   variants.
 

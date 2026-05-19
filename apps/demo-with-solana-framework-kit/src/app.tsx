@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Connection,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-  SystemProgram,
-  Transaction,
-} from "@solana/web3.js";
+  AccountRole,
+  type Address,
+  type Instruction,
+  address,
+  appendTransactionMessageInstruction,
+  createSolanaRpc,
+  createTransactionMessage,
+  pipe,
+  setTransactionMessageFeePayer,
+  setTransactionMessageLifetimeUsingBlockhash,
+  compileTransaction,
+  getBase64EncodedWireTransaction,
+} from "@solana/kit";
+import { useBalance } from "@solana/react-hooks";
 import type {
   SolanaSignAndSendTransactionFeature,
   SolanaSignMessageFeature,
@@ -15,16 +23,31 @@ import { useActiveWallet, useConnectWallet, useDisconnectWallet, useIsHydrated }
 import { useDiscoveredWallets } from "./wallet-provider";
 
 const DEVNET = "https://api.devnet.solana.com";
-// SOL burn-equivalent: System Program address. Sending 0 lamports here
-// is harmless and proves the signer + connection are wired.
-const BURN_ADDRESS = new PublicKey("11111111111111111111111111111111");
+// System program (also doubles as a safe burn destination on devnet).
+const BURN_ADDRESS = address("11111111111111111111111111111111");
 
-const connection = new Connection(DEVNET, "confirmed");
+// Transaction building rides on @solana/kit (the substrate framework-kit is
+// built on); the wallet — managed by butr — signs and submits.
+const SYSTEM_PROGRAM = address("11111111111111111111111111111111");
+const rpc = createSolanaRpc(DEVNET);
+
+const buildTransferInstruction = (from: Address, to: Address, lamports: bigint): Instruction => {
+  const data = new Uint8Array(12);
+  const view = new DataView(data.buffer);
+  view.setUint32(0, 2, true);
+  view.setBigUint64(4, lamports, true);
+  return {
+    accounts: [
+      { address: from, role: AccountRole.WRITABLE_SIGNER },
+      { address: to, role: AccountRole.WRITABLE },
+    ],
+    data,
+    programAddress: SYSTEM_PROGRAM,
+  };
+};
 
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const bytesToBase58 = (bytes: Uint8Array): string => {
-  // Tiny base58 encoder so the demo doesn't pull bs58 just for one display.
-  // Not for production use — Solana provides bs58 in its tooling.
   let intVal = 0n;
   for (const byte of bytes) {
     intVal = (intVal << 8n) | BigInt(byte);
@@ -42,6 +65,15 @@ const bytesToBase58 = (bytes: Uint8Array): string => {
     out = `1${out}`;
   }
   return out;
+};
+
+const base64ToBytes = (b64: string): Uint8Array => {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.codePointAt(i) ?? 0;
+  }
+  return bytes;
 };
 
 const formatError = (e: unknown): string => {
@@ -68,15 +100,27 @@ const Connected = ({
   wallet: ReturnType<typeof useActiveWallet> & object;
 }) => {
   const [walletStd, setWalletStd] = useState<WalletStandardWallet | null>(null);
-  const [balance, setBalance] = useState<string>("…");
   const [signature, setSignature] = useState<string | null>(null);
   const [txSignature, setTxSignature] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const publicKey = useMemo(
-    () => new PublicKey(wallet.account.walletAddress),
+  const addr: Address = useMemo(
+    () => address(wallet.account.walletAddress),
     [wallet.account.walletAddress],
   );
+
+  // framework-kit reactive read: auto-fetches and watches the balance for
+  // butr's connected address — no manual refetch wiring.
+  const { error: balanceError, fetching, lamports } = useBalance(wallet.account.walletAddress);
+  const balance = useMemo(() => {
+    if (lamports !== null) {
+      return `${Number(lamports) / 1_000_000_000} SOL`;
+    }
+    if (balanceError) {
+      return "error";
+    }
+    return fetching ? "…" : "—";
+  }, [lamports, fetching, balanceError]);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,26 +141,6 @@ const Connected = ({
     };
   }, [wallet.connector]);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const lamports = await connection.getBalance(publicKey);
-        if (!cancelled) {
-          setBalance(`${lamports / LAMPORTS_PER_SOL} SOL`);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setBalance("error");
-        }
-        console.warn("getBalance failed:", error);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [publicKey]);
-
   const handleSign = async () => {
     if (!walletStd) {
       return;
@@ -129,11 +153,11 @@ const Connected = ({
       if (!feature) {
         throw new Error("Wallet does not advertise solana:signMessage");
       }
-      const message = new TextEncoder().encode("Hello from butr + @solana/web3.js");
       const account = walletStd.accounts[0];
       if (!account) {
         throw new Error("No exposed account");
       }
+      const message = new TextEncoder().encode("Hello from butr + framework-kit");
       const [output] = await feature.signMessage({ account, message });
       if (!output) {
         throw new Error("signMessage returned no outputs");
@@ -150,19 +174,18 @@ const Connected = ({
     }
     setErrorMsg(null);
     try {
-      // Build the tx with @solana/web3.js
-      const tx = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          lamports: 0,
-          toPubkey: BURN_ADDRESS,
-        }),
+      const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+      const message = pipe(
+        createTransactionMessage({ version: 0 }),
+        (m) => setTransactionMessageFeePayer(addr, m),
+        (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+        (m) =>
+          appendTransactionMessageInstruction(buildTransferInstruction(addr, BURN_ADDRESS, 0n), m),
       );
-      const { blockhash } = await connection.getLatestBlockhash();
-      tx.recentBlockhash = blockhash;
-      tx.feePayer = publicKey;
+      const compiled = compileTransaction(message);
+      const wire = getBase64EncodedWireTransaction(compiled);
+      const bytes = base64ToBytes(wire);
 
-      // Hand the serialized tx to the wallet's Wallet Standard feature.
       const feature = walletStd.features["solana:signAndSendTransaction"] as
         | SolanaSignAndSendTransactionFeature
         | undefined;
@@ -173,11 +196,10 @@ const Connected = ({
       if (!account) {
         throw new Error("No exposed account");
       }
-      const serialised = tx.serialize({ requireAllSignatures: false });
       const [output] = await feature.signAndSendTransaction({
         account,
         chain: "solana:devnet",
-        transaction: new Uint8Array(serialised),
+        transaction: bytes,
       });
       if (!output) {
         throw new Error("signAndSendTransaction returned no outputs");
@@ -194,9 +216,7 @@ const Connected = ({
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Connected</p>
           <p className="font-mono text-sm text-neutral-900">{wallet.connector.name}</p>
-          <p className="break-all font-mono text-xs text-neutral-500">
-            {wallet.account.walletAddress}
-          </p>
+          <p className="break-all font-mono text-xs text-neutral-500">{addr}</p>
         </div>
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
@@ -206,7 +226,7 @@ const Connected = ({
           Disconnect
         </button>
       </div>
-      <Row label="Network">Solana Devnet (via web3.js Connection)</Row>
+      <Row label="Network">Solana Devnet (framework-kit useBalance)</Row>
       <Row label="Balance">{balance}</Row>
       <div className="flex flex-wrap gap-2">
         <button
@@ -215,7 +235,7 @@ const Connected = ({
           onClick={() => void handleSign()}
           type="button"
         >
-          Sign &quot;Hello from butr + @solana/web3.js&quot;
+          Sign &quot;Hello from butr + framework-kit&quot;
         </button>
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
@@ -299,18 +319,13 @@ const Content = () => {
 const App = () => (
   <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900">
     <header className="mb-8">
-      <h1 className="text-3xl font-bold tracking-tight">butr + @solana/web3.js</h1>
+      <h1 className="text-3xl font-bold tracking-tight">butr + framework-kit</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        butr discovers Solana Wallet Standard wallets and manages the connection.{" "}
-        <code>@solana/web3.js</code> provides <code>Connection</code> for chain reads and the{" "}
-        <code>Transaction</code>/<code>SystemProgram</code> builders; signing + sending flow through
-        the wallet&apos;s native Wallet Standard features.
-      </p>
-      <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-        <strong>Legacy.</strong> <code>@solana/web3.js</code> v1 is in maintenance mode. For new
-        apps, prefer framework-kit (<code>demo-with-solana-framework-kit</code>), gill (
-        <code>demo-with-gill</code>), or <code>@solana/kit</code> (
-        <code>demo-with-solana-kit</code>).
+        The recommended modern Solana stack. butr discovers and manages the wallet; Solana
+        Foundation&apos;s framework-kit (<code>@solana/client</code> +{" "}
+        <code>@solana/react-hooks</code>) is the reactive RPC/data layer — <code>useBalance</code>{" "}
+        auto-fetches and watches; the wallet&apos;s Wallet Standard features supply signing +
+        submission.
       </p>
     </header>
     <Content />

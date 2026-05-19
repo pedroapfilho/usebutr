@@ -40,6 +40,8 @@ export default defineConfig({
         "apps/demo-with-solana-web3js/src/**/*.tsx",
         "apps/demo-with-solana-kit/src/**/*.tsx",
         "apps/demo-with-solana-wallet-adapter/src/**/*.tsx",
+        "apps/demo-with-gill/src/**/*.tsx",
+        "apps/demo-with-solana-framework-kit/src/**/*.tsx",
       ],
       rules: {
         "no-img-element": "off",

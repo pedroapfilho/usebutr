@@ -9,7 +9,11 @@
     "oxlint.config.ts",
     "**/tsdown.config.ts"
   ],
-  "ignorePatterns": ["apps/docs/content/**"],
+  "ignorePatterns": [
+    "apps/docs/content/**",
+    "apps/demo-next/next-env.d.ts",
+    "apps/demo-tanstack-start/src/router.tsx"
+  ],
   "ignoreDependencies": [
     "@solana/client",
     "@solana/react-hooks",

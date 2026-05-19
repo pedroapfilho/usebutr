@@ -30,7 +30,7 @@ const slugify = (name: string): string =>
   `wallet-standard:${name
     .trim()
     .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, "-")}`;
+    .replaceAll(/[^a-z0-9]+/gv, "-")}`;
 
 const getFeature = <T>(wallet: WalletStandardWallet, name: string): T | undefined => {
   const feature = wallet.features[name];

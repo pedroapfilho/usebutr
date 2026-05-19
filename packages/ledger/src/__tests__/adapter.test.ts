@@ -18,17 +18,17 @@ const buildFakeEthCtor = (addresses: ReadonlyArray<string> = FAKE_ADDRESSES): Et
     constructor(private readonly _transport: unknown) {
       void _transport;
     }
-    async getAddress(path: string) {
+    getAddress(path: string): Promise<{ address: string; publicKey: string }> {
       // Parse the trailing index off the path (e.g. "44'/60'/0'/0/2" → 2)
       const idx = Number.parseInt(path.split("/").pop() ?? "0", 10);
       const address = addresses[idx] ?? addresses[0];
-      return { address: address ?? "0x0", publicKey: "0xpubkey" };
+      return Promise.resolve({ address: address ?? "0x0", publicKey: "0xpubkey" });
     }
-    async signPersonalMessage(_path: string, _hex: string) {
-      return { r: "a".repeat(64), s: "b".repeat(64), v: 27 };
+    signPersonalMessage(_path: string, _hex: string): Promise<{ r: string; s: string; v: number }> {
+      return Promise.resolve({ r: "a".repeat(64), s: "b".repeat(64), v: 27 });
     }
-    async signTransaction(_path: string, _hex: string) {
-      return { r: "ff", s: "ee", v: "1b" };
+    signTransaction(_path: string, _hex: string): Promise<{ r: string; s: string; v: string }> {
+      return Promise.resolve({ r: "ff", s: "ee", v: "1b" });
     }
   };
 };
@@ -36,12 +36,12 @@ const buildFakeEthCtor = (addresses: ReadonlyArray<string> = FAKE_ADDRESSES): Et
 const buildFakeTransport = (): { factory: TransportFactory; lastTransport: TransportLike | null } => {
   let lastTransport: TransportLike | null = null;
   const factory: TransportFactory = {
-    async create() {
+    create(): Promise<TransportLike> {
       const t: TransportLike = {
         close: vi.fn().mockResolvedValue(undefined),
       };
       lastTransport = t;
-      return t;
+      return Promise.resolve(t);
     },
   };
   return {
@@ -147,7 +147,7 @@ describe("createLedgerAdapter", () => {
         namespace: "solana",
         reference: "mainnet",
       }),
-    ).rejects.toThrow(/non-EVM chain/);
+    ).rejects.toThrow(/non-EVM chain/v);
   });
 
   it("signMessage() returns a 65-byte (r||s||v) signature", async () => {
@@ -162,9 +162,9 @@ describe("createLedgerAdapter", () => {
     expect(result.signature).toBeInstanceOf(Uint8Array);
     expect(result.signature.length).toBe(65);
     // First 32 bytes are r (0xaa repeated), next 32 are s (0xbb), last byte is v (0x1b = 27)
-    expect(result.signature[0]).toBe(0xaa);
-    expect(result.signature[32]).toBe(0xbb);
-    expect(result.signature[64]).toBe(0x1b);
+    expect(result.signature[0]).toBe(0xAA);
+    expect(result.signature[32]).toBe(0xBB);
+    expect(result.signature[64]).toBe(0x1B);
   });
 
   it("signMessage() with a non-active account walks paths to find it", async () => {
@@ -178,7 +178,7 @@ describe("createLedgerAdapter", () => {
     await adapter.connect();
     const result = await adapter.signMessage(new TextEncoder().encode("hello"), {
       chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" },
-      id: "eip155:1:" + (FAKE_ADDRESSES[2] ?? "0x0").toLowerCase(),
+      id: `eip155:1:${  (FAKE_ADDRESSES[2] ?? "0x0").toLowerCase()}`,
       walletAddress: FAKE_ADDRESSES[2] ?? "0x0",
     });
     expect(result.signature.length).toBe(65);
@@ -199,7 +199,7 @@ describe("createLedgerAdapter", () => {
         id: "eip155:1:0xdeadbeef",
         walletAddress: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
       }),
-    ).rejects.toThrow(/not found on this device/);
+    ).rejects.toThrow(/not found on this device/v);
   });
 
   it("sendTx() / sendTxToChain() / getBalance() / getTransactionReceipt() reject", async () => {
@@ -209,11 +209,11 @@ describe("createLedgerAdapter", () => {
       transport: factory,
     });
 
-    await expect(adapter.sendTx({})).rejects.toThrow(/sendTx not supported/);
-    await expect(adapter.sendTxToChain({}, "137")).rejects.toThrow(/sendTxToChain not supported/);
-    await expect(adapter.getBalance()).rejects.toThrow(/getBalance not supported/);
+    await expect(adapter.sendTx({})).rejects.toThrow(/sendTx not supported/v);
+    await expect(adapter.sendTxToChain({}, "137")).rejects.toThrow(/sendTxToChain not supported/v);
+    await expect(adapter.getBalance()).rejects.toThrow(/getBalance not supported/v);
     await expect(adapter.getTransactionReceipt("0x0")).rejects.toThrow(
-      /getTransactionReceipt not supported/,
+      /getTransactionReceipt not supported/v,
     );
   });
 });

@@ -44,7 +44,7 @@ Edge, Brave, Arc). It's also signing-only — `sendTx`, `getBalance`, and
 
 Hydration is asynchronous because adapters announce asynchronously. The wallet
 likely sat in `pendingIds` and its adapter hadn't announced yet.
-`WalletManagerProvider` calls `_tryRestoreFromPending` internally each time a
+`WalletManagerProvider` calls `tryRestoreFromPending` internally each time a
 new adapter is announced when you pass `discovery`. You only need to call it
 yourself if you implement a fully custom `WalletSource` outside the provider.
 Inspect `onHydrated`'s `HydrationOutcome` to see which bucket each wallet fell into.

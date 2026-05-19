@@ -40,12 +40,12 @@ const createFakeStorage = (init: FakeStorageInit = {}): WalletPersistence => {
     setPool: vi.fn().mockResolvedValue(undefined),
     setSelection: vi.fn().mockResolvedValue(undefined),
     // Helper not on the interface — call via cast in tests.
-    __removed: removed,
+    removed,
   } as unknown as WalletPersistence;
 };
 
 const getRemoved = (storage: WalletPersistence): Array<string> =>
-  (storage as unknown as { __removed: Array<string> }).__removed;
+  (storage as unknown as { removed: Array<string> }).removed;
 
 describe("createHydrationCoordinator", () => {
   it("restores entries whose adapter is registered (eager path)", async () => {

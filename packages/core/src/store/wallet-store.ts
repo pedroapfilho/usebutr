@@ -16,10 +16,10 @@ type ExtractState<S> = S extends { getState: () => infer T } ? T : never;
 
 type RuntimeMembers = {
   _config: WalletManagerConfig;
-  _hydrateWallets: () => Promise<void>;
-  _markUserDisconnected: (value: boolean) => void;
+  hydrateWallets: () => Promise<void>;
+  setUserDisconnected: (value: boolean) => void;
   _storage: WalletPersistence;
-  _tryRestoreFromPending: (connectorId: string) => Promise<void>;
+  tryRestoreFromPending: (connectorId: string) => Promise<void>;
   connectWallet: (
     connectorId: string,
     onSuccess?: (wallet: ConnectedWallet) => void,
@@ -153,7 +153,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
         return {
           ...initialState,
           _config: config,
-          _hydrateWallets: async () => {
+          hydrateWallets: async () => {
             const result = await hydration.hydrate();
             dispatch({
               activeConnectorId: result.activeConnectorId,
@@ -174,14 +174,14 @@ const createWalletStore = (config: WalletManagerConfig) => {
             // Drain: catch the race where a Wallet Standard adapter
             // announced BEFORE hydration finished populating its queue.
             // Without this, the discovery callback's
-            // `_tryRestoreFromPending(adapter.id)` would have hit the
+            // `tryRestoreFromPending(adapter.id)` would have hit the
             // empty queue and silently returned, leaving SVM wallets
             // un-restored on reload. The coordinator's `pendingIds()`
             // is the post-hydrate snapshot; each id resolves
             // independently. Late-restore failures surface per-entry
-            // inside `_tryRestoreFromPending`.
+            // inside `tryRestoreFromPending`.
             void Promise.all(
-              hydration.pendingIds().map((id) => get()._tryRestoreFromPending(id)),
+              hydration.pendingIds().map((id) => get().tryRestoreFromPending(id)),
             );
             // Surface the hydration outcome. Three buckets: restored,
             // pending (waiting for adapter announcement), dropped
@@ -206,7 +206,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               }
             }
           },
-          _tryRestoreFromPending: async (connectorId) => {
+          tryRestoreFromPending: async (connectorId) => {
             // Note: deliberately NOT gating on `isUserDisconnected`.
             // The eager hydration path doesn't check that flag either —
             // stored entries restore on reload regardless of whether
@@ -229,7 +229,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
             persistActive();
             config.onConnect?.(outcome.entry);
           },
-          _markUserDisconnected: (value: boolean) => {
+          setUserDisconnected: (value: boolean) => {
             dispatch({ type: "USER_DISCONNECTED_SET", value });
             void run(
               () => storage.markUserDisconnected(value),
@@ -239,7 +239,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
           _storage: storage,
 
           connectWallet: async (connectorId, onSuccess, onError) => {
-            get()._markUserDisconnected(false);
+            get().setUserDisconnected(false);
 
             const connector = config.createConnector(connectorId);
             if (!connector) {
@@ -321,7 +321,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
           },
 
           disconnectWallet: (connectorId) => {
-            get()._markUserDisconnected(true);
+            get().setUserDisconnected(true);
 
             const state = get();
             if (!state.isHydrated) {
@@ -379,7 +379,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
           },
 
           reset: () => {
-            get()._markUserDisconnected(true);
+            get().setUserDisconnected(true);
 
             const state = get();
             if (!state.isHydrated) {

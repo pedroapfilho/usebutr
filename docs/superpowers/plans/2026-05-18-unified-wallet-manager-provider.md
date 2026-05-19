@@ -394,7 +394,7 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
     const state = store.getState();
     void (async () => {
       try {
-        await state._hydrateWallets();
+        await state.hydrateWallets();
       } catch (error: unknown) {
         console.error("[butr] failed to hydrate wallets:", error);
       }
@@ -411,7 +411,7 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
       }
       adapters.set(adapter.id, adapter);
       setDiscoveredList((prev) => [...prev, adapter]);
-      void store.getState()._tryRestoreFromPending(adapter.id);
+      void store.getState().tryRestoreFromPending(adapter.id);
     });
     return unsubscribe;
   }, [adapters, discovery, store]);
@@ -803,7 +803,7 @@ import { autoDiscovery } from "@butr/wallets";
 </WalletManagerProvider>
 ```
 
-- [ ] **Step 2:** In `concepts/hydration.mdx`, replace the "manual discovery setup you trigger `_tryRestoreFromPending` yourself" paragraph with: the provider now does this internally whenever you pass `discovery`; you only call `_tryRestoreFromPending` if you implement a fully custom `WalletSource`. In `concepts/connectors-and-wallets.mdx`, update the `createConnector` seam section to note discovery+createConnector compose (discovered id resolved first).
+- [ ] **Step 2:** In `concepts/hydration.mdx`, replace the "manual discovery setup you trigger `tryRestoreFromPending` yourself" paragraph with: the provider now does this internally whenever you pass `discovery`; you only call `tryRestoreFromPending` if you implement a fully custom `WalletSource`. In `concepts/connectors-and-wallets.mdx`, update the `createConnector` seam section to note discovery+createConnector compose (discovered id resolved first).
 
 - [ ] **Step 3:** In `getting-started/installation.mdx`, keep package install tabs as-is; ensure prose says `@butr/wallets` provides `autoDiscovery` (not a provider). In `index.mdx` package table, change the `@butr/wallets` row description to "batteries-included EVM+SVM discovery source (`autoDiscovery`)".
 

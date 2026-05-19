@@ -61,12 +61,12 @@ hydration pass finishes, the store **merges** it into the pool rather than
 overwriting. Both eager- and late-restored entries survive.
 
 When you pass `discovery` to `WalletManagerProvider`, the provider calls
-`_tryRestoreFromPending` internally each time a new adapter is announced — you
+`tryRestoreFromPending` internally each time a new adapter is announced — you
 do not need to wire this yourself. You only call it directly if you implement a
 fully custom `WalletSource` outside the provider:
 
 ```ts
-void store.getState()._tryRestoreFromPending(adapter.id);
+void store.getState().tryRestoreFromPending(adapter.id);
 ```
 
 **Source:** `packages/core/src/store/wallet-store.ts`,

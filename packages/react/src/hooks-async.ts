@@ -36,8 +36,8 @@ const asyncReducer = <T>(_state: AsyncState<T>, action: AsyncAction<T>): AsyncSt
     default: {
       // Exhaustiveness check — TS errors here if `AsyncAction` grows
       // a variant without a case.
-      const _exhaustive: never = action;
-      void _exhaustive;
+      const exhaustiveCheck: never = action;
+      void exhaustiveCheck;
       return { data: null, error: null, status: "idle" };
     }
   }

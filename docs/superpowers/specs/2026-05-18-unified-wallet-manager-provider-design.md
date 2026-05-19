@@ -71,7 +71,7 @@ prop switch that's less clean and risk the bundle guarantee).
   context, same shape as today's `DiscoverySubscriber`) calls
   `discovery.subscribe(onAdapter)`, and per announced adapter: dedupes into the
   Map, appends to a discovered-list state, and calls
-  `store.getState()._tryRestoreFromPending(adapter.id)` (the hydration glue).
+  `store.getState().tryRestoreFromPending(adapter.id)` (the hydration glue).
 - `useDiscoveredWallets()` **moves to `@butr/react`**, reading the provider's
   discovered-list context. Returns `ReadonlyArray<WalletAdapter>`. When no
   `discovery` is passed it returns `[]`.

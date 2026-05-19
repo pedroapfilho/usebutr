@@ -24,7 +24,7 @@ const createTestStore = (overrides?: Partial<WalletManagerConfig>) => {
 };
 
 const hydrateStore = async (store: ReturnType<typeof createWalletStore>) => {
-  await store.getState()._hydrateWallets();
+  await store.getState().hydrateWallets();
 };
 
 describe("createWalletStore", () => {
@@ -663,7 +663,7 @@ describe("createWalletStore", () => {
     });
   });
 
-  describe("_hydrateWallets", () => {
+  describe("hydrateWallets", () => {
     it("restores pool, selection, and active from storage", async () => {
       const account = createMockAccount();
       const connector = createMockConnector({

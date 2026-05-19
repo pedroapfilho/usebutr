@@ -50,7 +50,6 @@ const buildInitialConfig = (
   const userCreate = props.createConnector;
   return {
     connectors: props.connectors ?? [],
-    // eslint-disable-next-line no-underscore-dangle -- internal store API
     createConnector: (id) => adapters.get(id) ?? userCreate?.(id) ?? null,
     onConnect: props.onConnect,
     onConnectError: props.onConnectError,
@@ -104,8 +103,7 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
     const state = store.getState();
     void (async () => {
       try {
-        // eslint-disable-next-line no-underscore-dangle -- internal store API
-        await state._hydrateWallets();
+        await state.hydrateWallets();
       } catch (error: unknown) {
         // eslint-disable-next-line no-console -- intentional user-facing error
         console.error("[butr] failed to hydrate wallets:", error);
@@ -123,8 +121,7 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
       }
       adapters.set(adapter.id, adapter);
       setDiscoveredList((prev) => [...prev, adapter]);
-      // eslint-disable-next-line no-underscore-dangle -- internal store API
-      void store.getState()._tryRestoreFromPending(adapter.id);
+      void store.getState().tryRestoreFromPending(adapter.id);
     });
     return unsubscribe;
   }, [adapters, discovery, store]);

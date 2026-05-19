@@ -25,7 +25,7 @@ type LifecycleHandlers = {
 /**
  * Owns the "exactly one subscription per connector" invariant plus the
  * event-to-handler choreography. Replaces three previously-scattered
- * call sites in the runtime (`hydrate`, `_tryRestoreFromPending`,
+ * call sites in the runtime (`hydrate`, `tryRestoreFromPending`,
  * `connectWallet`) and the matching teardown sites
  * (`disconnectWallet`, `reset`, the disconnect-event handler).
  */
@@ -85,8 +85,8 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
               break;
             }
             default: {
-              const _exhaustive: never = event;
-              void _exhaustive;
+              const exhaustiveCheck: never = event;
+              void exhaustiveCheck;
             }
           }
         });

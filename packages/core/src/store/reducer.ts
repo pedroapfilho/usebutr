@@ -75,7 +75,7 @@ const reducer = (state: State, event: Event): State => {
     case "HYDRATED": {
       // Merge instead of replace. CONNECT_SUCCEEDED can fire during the
       // late-restore window — discovery announces an adapter, the runtime
-      // calls _tryRestoreFromPending, drainPending succeeds, the reducer
+      // calls tryRestoreFromPending, drainPending succeeds, the reducer
       // adds the entry to state.pool — all BEFORE hydrate's outer await
       // resolves and HYDRATED dispatches. A wholesale replace at that
       // point wipes the freshly-restored late entry. Merging keeps both
@@ -294,8 +294,8 @@ const reducer = (state: State, event: Event): State => {
 
     default: {
       // Exhaustiveness check — TS errors if a new event type is added without a case.
-      const _exhaustive: never = event;
-      void _exhaustive;
+      const exhaustiveCheck: never = event;
+      void exhaustiveCheck;
       return state;
     }
   }

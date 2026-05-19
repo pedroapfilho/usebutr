@@ -1,0 +1,87 @@
+---
+title: Standards compliance
+description: How butr follows the Wallet Standard, EIP-6963, and EIP-1193 — what is covered, and the deliberate edges.
+---
+
+butr discovers wallets through the published standards only. There is no
+`window.solana` poking, no `isMetaMask` branching, no hardcoded wallet list.
+Solana goes through the [Wallet
+Standard](https://github.com/wallet-standard/wallet-standard); EVM goes through
+[EIP-6963](https://eips.ethereum.org/EIPS/eip-6963) over
+[EIP-1193](https://eips.ethereum.org/EIPS/eip-1193). Every chain identifier is
+[CAIP-2](https://chainagnostic.org/CAIPs/caip-2) (`solana:mainnet`,
+`eip155:1`).
+
+## Discovery is spec-only
+
+- **Solana** — `@butr/svm` lazily imports `@wallet-standard/app` and uses
+  `getWallets()`: `get()` for wallets already present, `on('register')` for
+  ones that load later, and `on('unregister')` to drop a wallet whose
+  extension is disabled or removed mid-session.
+- **EVM** — `@butr/evm` adds the `eip6963:announceProvider` listener *before*
+  dispatching `eip6963:requestProvider`, so wallets that announced early
+  aren't missed. Providers are de-duplicated by `info.rdns`.
+- **Legacy fallback** — a raw `window.ethereum` is adopted only after a 150 ms
+  settle window in which no EIP-6963 wallet answered. It suppresses itself the
+  moment a compliant wallet is present, so it never double-lists.
+
+## What's covered
+
+| Capability | Wallet Standard (SVM) | EIP-6963 / EIP-1193 (EVM) |
+| --- | --- | --- |
+| Discovery | `getWallets()` `get` + `register` + `unregister` | `requestProvider` / `announceProvider`, dedupe by `rdns` |
+| Connect | `standard:connect` | `eth_requestAccounts` |
+| Silent reconnect | `standard:connect({ silent: true })` on hydration | `eth_accounts` probe on hydration |
+| Disconnect | `standard:disconnect` | `wallet_revokePermissions` (best-effort) |
+| Account / chain events | `standard:events` `change` (`accounts` **and** `chains`) | `accountsChanged`, `chainChanged`, `connect`, `disconnect` |
+| Sign message | `solana:signMessage` | `personal_sign` |
+| Send transaction | `solana:signAndSendTransaction` | `eth_sendTransaction` |
+| Sign-only | `solana:signTransaction` (consumer broadcasts) | — |
+| Sign in | `solana:signIn` (SIWS) | — |
+| Switch chain | per-call `chain` + local state | `wallet_switchEthereumChain` |
+
+Eager hydration asks the wallet to restore already-authorized accounts
+**without prompting** — Wallet Standard's `silent` input, the `eth_accounts`
+read on EIP-1193. A wallet that can't reconnect silently fails the restore
+cleanly instead of popping a connect dialog on page load. Hardware (Ledger)
+and WalletConnect adapters, which are inherently interactive, reject a silent
+reconnect rather than show UI.
+
+Connector errors are normalized once, centrally: EIP-1193 codes `4001`
+(user rejected), `-32002` (request pending), and `4100` / `4900` / `4901`
+(unauthorized / disconnected) map to a typed `ConnectionError` so consumers
+branch on `kind` instead of regexing messages. See
+[errors](/docs/concepts/errors).
+
+Feature presence drives [capabilities](/docs/concepts/capabilities): a flag is
+`true` only when the wallet actually advertises the underlying feature, so
+`signMessage`, `signTransaction`, `signIn`, `sendTransaction`, and `subscribe`
+never claim more than the wallet supports.
+
+## Deliberate edges
+
+These are intentional boundaries, not gaps:
+
+- **No RPC.** `getBalance` / `getTransactionReceipt` return placeholders —
+  butr hands you a signer and stays out of the RPC business. Wrap your own
+  client (viem, `@solana/kit`, …).
+- **`solana:signTransaction` is sign-only.** butr returns the signed bytes;
+  you broadcast them, because butr ships no RPC. Gated by
+  `capabilities.signTransaction`.
+- **No silent account switch.** Neither spec has a "use address X" RPC, so
+  `switchAccount` is a no-op on auto adapters — the user picks the active
+  account in the wallet's own UI; butr mirrors it via the change event.
+- **Feature changes don't re-derive capabilities.** A wallet that swaps its
+  advertised feature set at runtime won't change a connected entry's
+  capabilities (same as EVM); reconnect to pick up the new set.
+- **EIP-1193 `message` / `eth_subscribe` is a non-goal.** Subscription push
+  streams are a consumer concern; butr surfaces the raw provider via
+  `getSigner()` for that.
+
+<Callout type="info">
+  **Source:** `packages/svm/src` (Wallet Standard), `packages/evm/src`
+  (EIP-6963 / EIP-1193), `packages/core/src/store/hydration.ts` (silent
+  reconnect), `packages/core/src/types/errors.ts` (error mapping). Behaviour
+  is exercised by the package test suites and the runnable
+  `apps/demo-with-*` demos.
+</Callout>

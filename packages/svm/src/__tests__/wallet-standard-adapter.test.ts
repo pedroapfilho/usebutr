@@ -537,7 +537,7 @@ describe("buildSvmAdapter edge cases", () => {
     );
   });
 
-  it("subscribe ignores `change` events without an accounts field", () => {
+  it("subscribe ignores `change` events with neither accounts nor chains", () => {
     let captured: StandardEventsListener | null = null;
     const eventsFeature: StandardEventsFeature = {
       on: vi.fn((_event, listener) => {
@@ -553,7 +553,112 @@ describe("buildSvmAdapter edge cases", () => {
     );
     const fireListener = vi.fn();
     adapter?.subscribe?.(fireListener);
-    captured?.({ chains: ["solana:mainnet"] });
+    captured?.({ features: ["solana:signIn"] });
     expect(fireListener).not.toHaveBeenCalled();
+  });
+
+  it("subscribe propagates a chain-only `change` (D5: cluster switch)", () => {
+    let captured: StandardEventsListener | null = null;
+    const eventsFeature: StandardEventsFeature = {
+      on: vi.fn((_event, listener) => {
+        captured = listener;
+        return () => {};
+      }),
+    };
+    const adapter = buildSvmAdapter(
+      withFeatures(buildWallet({ chains: ["solana:mainnet", "solana:devnet"] }), {
+        "standard:connect": connectFeature,
+        "standard:events": eventsFeature,
+      }),
+    );
+    const fireListener = vi.fn();
+    adapter?.subscribe?.(fireListener);
+    captured?.({ chains: ["solana:devnet"] });
+    expect(fireListener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: expect.objectContaining({
+          chain: expect.objectContaining({ id: "solana:devnet" }),
+        }),
+        type: "accountChanged",
+      }),
+    );
+  });
+
+  it("connect forwards { silent: true } to standard:connect (D2)", async () => {
+    const silentConnect: StandardConnectFeature = {
+      connect: vi.fn().mockResolvedValue({ accounts: [] }),
+    };
+    const adapter = buildSvmAdapter(
+      withFeatures(buildWallet(), { "standard:connect": silentConnect }),
+    );
+    await adapter?.connect({ silent: true });
+    expect(silentConnect.connect).toHaveBeenCalledWith({ silent: true });
+    await adapter?.connect();
+    expect(silentConnect.connect).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it("exposes signTransaction + capability when solana:signTransaction is advertised (D3)", async () => {
+    const signTxFeature = {
+      signTransaction: vi
+        .fn()
+        .mockResolvedValue([{ signedTransaction: new Uint8Array([9, 9]) }]),
+    };
+    const adapter = buildSvmAdapter(
+      withFeatures(buildWallet(), {
+        "solana:signTransaction": signTxFeature,
+        "standard:connect": connectFeature,
+      }),
+    );
+    expect(adapter?.capabilities.signTransaction).toBe(true);
+    const signed = await adapter?.signTransaction?.(new Uint8Array([1]));
+    expect(signed).toEqual(new Uint8Array([9, 9]));
+
+    const without = buildSvmAdapter(
+      withFeatures(buildWallet(), { "standard:connect": connectFeature }),
+    );
+    expect(without?.capabilities.signTransaction).toBe(false);
+    expect(without?.signTransaction).toBeUndefined();
+  });
+
+  it("exposes signIn + capability when solana:signIn is advertised (D4)", async () => {
+    const signInFeature = {
+      signIn: vi.fn().mockResolvedValue([
+        {
+          account: buildAccount("So1Address1"),
+          signature: new Uint8Array([1]),
+          signedMessage: new Uint8Array([2]),
+        },
+      ]),
+    };
+    const adapter = buildSvmAdapter(
+      withFeatures(buildWallet(), {
+        "solana:signIn": signInFeature,
+        "standard:connect": connectFeature,
+      }),
+    );
+    expect(adapter?.capabilities.signIn).toBe(true);
+    const out = await adapter?.signIn?.({ statement: "Sign in" });
+    expect(signInFeature.signIn).toHaveBeenCalledWith({ statement: "Sign in" });
+    expect(out?.account.walletAddress).toBe("So1Address1");
+
+    const without = buildSvmAdapter(
+      withFeatures(buildWallet(), { "standard:connect": connectFeature }),
+    );
+    expect(without?.capabilities.signIn).toBe(false);
+    expect(without?.signIn).toBeUndefined();
+  });
+
+  it("registerDisconnector emits a synthetic disconnected on invocation (D1)", () => {
+    let emit: (() => void) | null = null;
+    const adapter = buildSvmAdapter(
+      withFeatures(buildWallet(), { "standard:connect": connectFeature }),
+      (_id, fn) => {
+        emit = fn;
+      },
+    );
+    const fireListener = vi.fn();
+    adapter?.subscribe?.(fireListener);
+    emit?.();
+    expect(fireListener).toHaveBeenCalledWith({ type: "disconnected" });
   });
 });

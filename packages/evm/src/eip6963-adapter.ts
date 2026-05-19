@@ -92,7 +92,20 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     capabilities: resolveEip6963Capabilities({ rdns: info.rdns }),
     chainPlatform: "evm",
 
-    async connect() {
+    async connect(opts) {
+      if (opts?.silent) {
+        // EIP-1193 has no silent variant of `eth_requestAccounts`. The
+        // closest non-interactive probe is `eth_accounts`, which returns
+        // the already-authorized set without a prompt. Empty → reject so
+        // hydration drops the stale entry instead of restoring nothing.
+        const accounts = (await provider.request({
+          method: "eth_accounts",
+        })) as Array<string>;
+        if (accounts.length === 0) {
+          throw new Error("No authorized accounts for silent reconnect");
+        }
+        return;
+      }
       await provider.request({ method: "eth_requestAccounts" });
     },
 
@@ -324,13 +337,45 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         listener({ type: "disconnected" });
       };
 
+      // EIP-1193 `connect` fires when the provider (re)connects to a
+      // chain — e.g. the wallet comes back after being unreachable.
+      // Re-read accounts + chain and resync the pool entry; state is
+      // otherwise only derived from `accountsChanged`/`chainChanged`.
+      const onConnect: Eip1193Listener = () => {
+        void Promise.all([
+          provider.request({ method: "eth_accounts" }),
+          provider.request({ method: "eth_chainId" }),
+        ])
+          // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async
+          .then(([accountsRaw, chainIdHex]) => {
+            const accs = accountsRaw as Array<string>;
+            if (accs.length === 0) {
+              return undefined;
+            }
+            const chain = buildEvmChain(chainIdHex as string, info.name);
+            const built = accs.map((addr) => buildEvmAccount(addr, chain));
+            const first = built[0];
+            if (!first) {
+              return undefined;
+            }
+            listener({ account: first, accounts: built, type: "accountChanged" });
+            return undefined;
+          })
+          // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async
+          .catch(() => {
+            // Drop silently — a later event will resync.
+          });
+      };
+
       provider.on("accountsChanged", onAccountsChanged);
       provider.on("chainChanged", onChainChanged);
+      provider.on("connect", onConnect);
       provider.on("disconnect", onDisconnect);
 
       return () => {
         provider.removeListener("accountsChanged", onAccountsChanged);
         provider.removeListener("chainChanged", onChainChanged);
+        provider.removeListener("connect", onConnect);
         provider.removeListener("disconnect", onDisconnect);
       };
     },

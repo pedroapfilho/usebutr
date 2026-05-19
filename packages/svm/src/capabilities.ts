@@ -5,7 +5,9 @@ type WalletStandardCapabilityInput = {
   features: {
     events: boolean;
     signAndSendTransaction: boolean;
+    signIn: boolean;
     signMessage: boolean;
+    signTransaction: boolean;
   };
 };
 
@@ -28,7 +30,9 @@ const resolveWalletStandardCapabilities = (
   getTransactionReceipt: false,
   requestAccounts: false,
   sendTransaction: input.features.signAndSendTransaction,
+  signIn: input.features.signIn,
   signMessage: input.features.signMessage,
+  signTransaction: input.features.signTransaction,
   subscribe: input.features.events,
   switchAccount: false,
   switchChain: input.chainCount > 1,

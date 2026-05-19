@@ -86,9 +86,18 @@ type WalletCapabilities = {
   /** `sendTx` / `sendTxToChain` will work. False for SVM wallets that
    *  don't advertise `solana:signAndSendTransaction`. */
   sendTransaction: boolean;
+  /** `signIn` works — Sign In With Solana (`solana:signIn`). True only
+   *  for SVM wallets advertising the feature. */
+  signIn: boolean;
   /** `signMessage` will work. False for SVM wallets that don't
    *  advertise `solana:signMessage`. */
   signMessage: boolean;
+  /** `signTransaction` returns a signed-but-unbroadcast transaction the
+   *  consumer submits with their own RPC client. True only for SVM
+   *  wallets advertising `solana:signTransaction`; butr ships no RPC so
+   *  it can't broadcast the result itself. EVM/hardware adapters leave
+   *  this `false` (no `signTransaction` method). */
+  signTransaction: boolean;
   /** Wallet emits account/chain change events that butr can bridge. */
   subscribe: boolean;
   /** `switchAccount` is real. Almost always `false` for auto adapters
@@ -112,8 +121,16 @@ type Connector = {
   capabilities: WalletCapabilities;
   chainPlatform: ChainPlatform;
   /** Begin a connection request. Resolves when the wallet is connected,
-   *  rejects on user cancellation or other error. */
-  connect(): Promise<void>;
+   *  rejects on user cancellation or other error.
+   *
+   *  `opts.silent` requests a non-interactive reconnect to
+   *  already-authorized accounts — butr's mount-time hydration passes it
+   *  so a reload restores wallets without re-prompting (Wallet Standard
+   *  `standard:connect`'s `silent` input; the `eth_accounts` read on
+   *  EIP-1193). Adapters that can't reconnect without a prompt should
+   *  reject when `silent` is set rather than show UI; hydration treats
+   *  the rejection as a clean restore failure. */
+  connect(opts?: { silent?: boolean }): Promise<void>;
   /** Optional teardown. butr calls this on disconnect, error recovery, and reset. */
   disconnect?(): Promise<void>;
   /** Read the currently-active account. butr uses this to populate the pool
@@ -186,6 +203,19 @@ type Wallet = {
     cb?: () => void,
   ): Promise<string>;
   /**
+   * Optional. Sign In With Solana (SIWS, `solana:signIn`). Authenticates
+   * the user and returns the connected account plus the signed
+   * statement so the consumer can verify it server-side. `input` is the
+   * SIWS message fields (domain, statement, nonce, …) — pass `{}` or
+   * omit for wallet defaults. Present only when `capabilities.signIn`
+   * is true.
+   */
+  signIn?(input?: Record<string, unknown>): Promise<{
+    account: Account;
+    signature: Uint8Array;
+    signedMessage: Uint8Array;
+  }>;
+  /**
    * Sign a message and return both the signature and the bytes the wallet
    * actually signed. Solana Wallet Standard wallets may prefix or re-encode
    * the message internally; verifiers must check the signature against
@@ -200,6 +230,15 @@ type Wallet = {
     msg: Uint8Array,
     account?: Account,
   ): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
+  /**
+   * Optional. Sign a transaction WITHOUT broadcasting it, returning the
+   * signed transaction bytes. For Solana Wallet Standard wallets that
+   * advertise `solana:signTransaction` but not
+   * `solana:signAndSendTransaction` (sign-only wallets). butr ships no
+   * RPC, so the consumer broadcasts the returned bytes with their own
+   * client. Present only when `capabilities.signTransaction` is true.
+   */
+  signTransaction?(tx: unknown, account?: Account): Promise<Uint8Array>;
   /** Switch to a different account on the same wallet (some wallets
    *  expose multiple accounts simultaneously). */
   switchAccount?(address: string): Promise<void>;

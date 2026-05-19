@@ -177,7 +177,13 @@ const createLedgerAdapter = (options: LedgerOptions = {}): Promise<WalletAdapter
     capabilities: LEDGER_CAPABILITIES,
     chainPlatform: "evm",
 
-    async connect() {
+    async connect(opts) {
+      if (opts?.silent) {
+        // Ledger connect always shows the browser's WebUSB device
+        // picker — there is no silent reconnect. Reject so eager
+        // hydration doesn't pop the chooser on page load.
+        throw new Error("Ledger requires an interactive connect");
+      }
       const TransportFactory = options.transport ?? (await loadTransport());
       const EthApp = options.eth ?? (await loadEth());
       transport = await TransportFactory.create();

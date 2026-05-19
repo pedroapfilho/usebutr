@@ -3,7 +3,9 @@ import { logWarn } from "@butr/core";
 import { resolveWalletStandardCapabilities } from "./capabilities";
 import type {
   SolanaSignAndSendTransactionFeature,
+  SolanaSignInFeature,
   SolanaSignMessageFeature,
+  SolanaSignTransactionFeature,
   StandardConnectFeature,
   StandardDisconnectFeature,
   StandardEventsFeature,
@@ -112,7 +114,14 @@ const pickAccountByAddress = (
  *    accepts an `account` input, so consumers needing per-tx address
  *    selection can pick one from `accounts` at call time.
  */
-const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => {
+const buildSvmAdapter = (
+  wallet: WalletStandardWallet,
+  /** Optional. Called with the adapter id and a function that pushes a
+   *  synthetic `disconnected` event to all current subscribers. The
+   *  discovery layer invokes it on Wallet Standard `unregister` so a
+   *  connected pool entry tears down when its extension is removed. */
+  registerDisconnector?: (id: string, emit: () => void) => void,
+): WalletAdapter | null => {
   const solanaChainId = pickSolanaChain(wallet);
   if (!solanaChainId) {
     return null;
@@ -129,6 +138,8 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
     wallet,
     "solana:signAndSendTransaction",
   );
+  const signTx = getFeature<SolanaSignTransactionFeature>(wallet, "solana:signTransaction");
+  const signIn = getFeature<SolanaSignInFeature>(wallet, "solana:signIn");
 
   // Current Solana cluster. Mutable so `switchChain` can route subsequent
   // `signAndSendTransaction` calls through a different cluster without
@@ -156,19 +167,34 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
     }
   };
 
+  const adapterId = slugify(wallet.name);
+  // Wallet Standard fires `unregister` when an extension is disabled or
+  // removed mid-session. There's no wallet-side `change` for that, so
+  // the discovery layer drives this to flush stale pool entries.
+  registerDisconnector?.(adapterId, () => {
+    for (const listener of listeners) {
+      listener({ type: "disconnected" });
+    }
+  });
+
   return {
     capabilities: resolveWalletStandardCapabilities({
       chainCount: wallet.chains.length,
       features: {
         events: Boolean(events),
         signAndSendTransaction: Boolean(signAndSendTx),
+        signIn: Boolean(signIn),
         signMessage: Boolean(signMessage),
+        signTransaction: Boolean(signTx),
       },
     }),
     chainPlatform: "svm",
 
-    async connect() {
-      await connect.connect();
+    async connect(opts) {
+      // Forward `silent` so eager hydration restores already-authorized
+      // accounts without re-opening the wallet's approval UI. Wallets
+      // that don't honour `silent` fall back to their normal behaviour.
+      await connect.connect(opts?.silent ? { silent: true } : undefined);
     },
 
     async disconnect() {
@@ -218,7 +244,7 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
     },
 
     icon: wallet.icon,
-    id: slugify(wallet.name),
+    id: adapterId,
     name: wallet.name,
 
     async requestAccounts() {
@@ -284,31 +310,98 @@ const buildSvmAdapter = (wallet: WalletStandardWallet): WalletAdapter | null => 
       return { signature: output.signature, signedMessage: output.signedMessage };
     },
 
+    ...(signTx
+      ? {
+          async signTransaction(tx, account) {
+            // Sign-only path for wallets without
+            // solana:signAndSendTransaction. butr ships no RPC, so the
+            // caller broadcasts the returned bytes with their own
+            // client. Gated by capabilities.signTransaction.
+            const wsAccount = account
+              ? pickAccountByAddress(wallet.accounts, account.walletAddress)
+              : (wallet.accounts[0] ?? null);
+            if (!wsAccount) {
+              throw new Error("No connected account");
+            }
+            if (!(tx instanceof Uint8Array)) {
+              throw new TypeError("SVM signTransaction expects a serialized transaction (Uint8Array)");
+            }
+            const [output] = await signTx.signTransaction({
+              account: wsAccount,
+              chain: currentChainId,
+              transaction: tx,
+            });
+            if (!output) {
+              throw new Error("signTransaction returned no outputs");
+            }
+            return output.signedTransaction;
+          },
+        }
+      : {}),
+
+    ...(signIn
+      ? {
+          async signIn(input) {
+            // Sign In With Solana. Returns the authenticated account
+            // plus the signed statement for server-side verification.
+            const [output] = await signIn.signIn(input);
+            if (!output) {
+              throw new Error("signIn returned no outputs");
+            }
+            return {
+              account: buildSolanaAccount(output.account.address, currentChain()),
+              signature: output.signature,
+              signedMessage: output.signedMessage,
+            };
+          },
+        }
+      : {}),
+
     subscribe(listener) {
       listeners.add(listener);
       let unsubWallet: (() => void) | null = null;
       if (events) {
         const unsub = events.on("change", (changes) => {
-          if (!changes.accounts) {
+          // Chain change: the wallet switched cluster. Re-point
+          // currentChainId so subsequent signAndSendTransaction routes
+          // through it, mirroring `switchChain`'s local-state model.
+          if (changes.chains) {
+            const next =
+              changes.chains.find(
+                (c) => c === "solana:mainnet" || c === "solana:mainnet-beta",
+              ) ?? changes.chains.find((c) => c.startsWith(SOLANA_PREFIX));
+            if (next) {
+              currentChainId = next;
+            }
+          }
+
+          if (changes.accounts) {
+            if (changes.accounts.length === 0) {
+              listener({ type: "disconnected" });
+              return;
+            }
+            // Forward the FULL accounts list — Wallet Standard's
+            // change.accounts reflects the wallet's current exposure
+            // set. Mirroring it into the pool entry keeps the array in
+            // sync with what the wallet actually allows us to sign with,
+            // so single-account-exposure wallets (Phantom Solana,
+            // MetaMask Snap) don't accumulate stale addresses.
+            const chain = currentChain();
+            const built = changes.accounts.map((a) => buildSolanaAccount(a.address, chain));
+            const first = built[0];
+            if (!first) {
+              return;
+            }
+            listener({ account: first, accounts: built, type: "accountChanged" });
             return;
           }
-          if (changes.accounts.length === 0) {
-            listener({ type: "disconnected" });
-            return;
+
+          // Chains changed without an accounts change — still push the
+          // new chain into the pool entry via the same path switchChain
+          // uses, so consumers see the cluster swap.
+          if (changes.chains) {
+            notifyAccountChanged();
           }
-          // Forward the FULL accounts list — Wallet Standard's
-          // change.accounts reflects the wallet's current exposure
-          // set. Mirroring it into the pool entry keeps the array in
-          // sync with what the wallet actually allows us to sign with,
-          // so single-account-exposure wallets (Phantom Solana,
-          // MetaMask Snap) don't accumulate stale addresses.
-          const chain = currentChain();
-          const built = changes.accounts.map((a) => buildSolanaAccount(a.address, chain));
-          const first = built[0];
-          if (!first) {
-            return;
-          }
-          listener({ account: first, accounts: built, type: "accountChanged" });
         });
         unsubWallet = () => unsub();
       }

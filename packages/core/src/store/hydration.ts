@@ -89,7 +89,12 @@ const restoreOneEntry = async (
   connector: Connector,
 ): Promise<RestoreOutcome> => {
   try {
-    await connector.connect();
+    // Eager restore: ask the wallet to reconnect to already-authorized
+    // accounts without prompting (Wallet Standard `silent`, EIP-1193
+    // `eth_accounts`). A wallet that can't do this silently rejects, and
+    // the entry is dropped as a clean restore failure rather than the
+    // user being surprised by a connect popup on page load.
+    await connector.connect({ silent: true });
     const freshAccount = await connector.getAccount();
     const accountToUse = freshAccount || entry.account;
     const accounts = await resolveHydratedAccounts(connector, entry.accounts, accountToUse);

@@ -6,7 +6,9 @@ const LEDGER_CAPABILITIES: WalletCapabilities = {
   getTransactionReceipt: false,
   requestAccounts: false,
   sendTransaction: false,
+  signIn: false,
   signMessage: true,
+  signTransaction: false,
   subscribe: false,
   switchAccount: false,
   // Local state — `switchChain` updates the adapter's chainId.

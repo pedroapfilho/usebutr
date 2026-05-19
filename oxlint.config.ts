@@ -57,6 +57,15 @@ export default defineConfig({
         "prefer-node-protocol": "off",
       },
     },
+    // oxfmt always lowercases hex literals, while `number-literal-case` wants
+    // uppercase. The two tools are in conflict: disable the oxlint rule for test
+    // files where hex literals appear only as fixture values (not production code).
+    {
+      files: ["**/__tests__/**/*.ts", "**/__tests__/**/*.tsx", "**/*.test.ts", "**/*.test.tsx"],
+      rules: {
+        "number-literal-case": "off",
+      },
+    },
     // butr is a published library that has no shared logger to inject. It uses
     // `console.warn` / `console.error` in error paths (storage failures,
     // connector restoration failures, devtools-only diagnostics) so consumers

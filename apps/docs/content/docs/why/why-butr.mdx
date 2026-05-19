@@ -1,0 +1,62 @@
+---
+title: Why use butr
+description: Five concrete payoffs — multi-chain pool, no chain-library lock-in, modular install, a React-free core, and standards compliance — each backed by a guide.
+---
+
+[Why butr exists](/docs/why/motivation) covers the problem. This page is the
+payoff: what you get, and the guide that proves each claim.
+
+## One pool for EVM and SVM
+
+A single user can connect MetaMask (EVM) and Phantom (SVM) at once. Each
+platform tracks its own selection independently; one component reads both in the
+same render. No second stack, no second hydration path.
+
+→ [Multi-wallet and chain switching](/docs/guides/multi-chain)
+
+## No chain-library lock-in
+
+`getSigner()` returns the underlying provider. You bridge it into viem, wagmi,
+`@solana/web3.js`, or `@solana/kit` in a few lines and keep that library's API
+for reads and signing. butr owns discovery and connection state; your library
+owns RPC.
+
+→ [Integrations](/docs/integrations/viem)
+
+## Install only what you ship
+
+The core has no React and no protocol code. An EVM-only dapp drops
+`@usebutr/svm` entirely; a custom discovery pipeline skips the
+batteries-included package. You bundle the seams you use, nothing else.
+
+→ [EVM-only setup](/docs/guides/evm-only)
+
+## A core that is not React
+
+`@usebutr/core` is the store, persistence, and discovery seam — usable from any
+TypeScript runtime. `@usebutr/react` is the binding, so the same connection
+model works across Vite, Next.js, TanStack Start, and Expo without rewrites.
+
+→ [Frameworks](/docs/frameworks/vite)
+
+## Standards-compliant and testable
+
+butr follows EIP-6963, EIP-1193, and the Wallet Standard, with the deliberate
+edges documented rather than hidden. `@usebutr/testing` ships fake adapters and
+fake persistence, so wallet flows are unit-testable without a browser
+extension.
+
+→ [Standards compliance](/docs/concepts/standards) · [Testing](/docs/testing)
+
+## When butr is the wrong tool
+
+butr earns its place when you have more than one wallet, more than one chain
+platform, or you want connection state independent of your chain library. A
+single-chain app with one wallet that is already happy on wagmi + RainbowKit
+does not need butr — adding it is a layer you would not use. Reach for it when
+the wallet picture stops fitting in one library's mental model.
+
+<Callout type="info">
+  Every code sample in the linked guides comes from the runnable demo apps in the repository, not
+  invented snippets.
+</Callout>

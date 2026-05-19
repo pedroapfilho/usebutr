@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
 import type { WalletExtension } from "./types";
 
 const WEB_STORE_UPDATE_URL = "https://clients2.google.com/service/update2/crx";

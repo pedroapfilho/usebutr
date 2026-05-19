@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
 import { WalletStorage } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
+import type { ReactNode } from "react";
+
 import { asyncStorageDriver } from "./async-storage-driver";
 
 const KEY_PREFIX = "butr-demo";

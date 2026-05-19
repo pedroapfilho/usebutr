@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { ANNOUNCE_EVENT, REQUEST_EVENT, discoverEvmAdapters } from "../eip6963";
+
 import type { Eip1193Provider, Eip6963ProviderDetail } from "../eip1193";
+import { ANNOUNCE_EVENT, REQUEST_EVENT, discoverEvmAdapters } from "../eip6963";
 
 const noopProvider: Eip1193Provider = {
   on() {},

@@ -12,10 +12,10 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.3.0",
     "@usebutr/core": "workspace:*",
     "@usebutr/react": "workspace:*",
     "@usebutr/svm": "workspace:*",
-    "@tailwindcss/vite": "^4.3.0",
     "@wallet-standard/app": "^1.1.0",
     "gill": "^0.14.0",
     "react": "^19.2.6",

@@ -3,6 +3,7 @@
 // (the Tailwind v4 port) is still in preview and has compatibility
 // gaps with react-native-web 0.21; revisit once it stabilises.
 import { ScrollView, Text, View } from "react-native";
+
 import { Content } from "./_components";
 import { styles } from "./_styles";
 
@@ -12,8 +13,8 @@ const Index = () => (
       <View style={styles.header}>
         <Text style={styles.h1}>butr · Expo</Text>
         <Text style={styles.lede}>
-          React Native target. EVM (EIP-6963) and SVM (Wallet Standard) discovery via @usebutr/wallets;
-          persistence via an AsyncStorage-backed WalletStorage driver.
+          React Native target. EVM (EIP-6963) and SVM (Wallet Standard) discovery via
+          @usebutr/wallets; persistence via an AsyncStorage-backed WalletStorage driver.
         </Text>
       </View>
       <Content />

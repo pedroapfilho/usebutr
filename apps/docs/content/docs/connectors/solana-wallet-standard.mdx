@@ -24,8 +24,8 @@ const discovery = createWalletSource(discoverSvmAdapters);
 ```
 
 <Callout type="info">
-  `@usebutr/svm` lazily imports `@wallet-standard/app` (an optional peer dependency). That asynchronous
-  warmup is one reason restored SVM wallets can land in `pendingIds` for a moment — see
+  `@usebutr/svm` lazily imports `@wallet-standard/app` (an optional peer dependency). That
+  asynchronous warmup is one reason restored SVM wallets can land in `pendingIds` for a moment — see
   [hydration](/concepts/hydration).
 </Callout>
 

@@ -12,11 +12,11 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "@tanstack/react-query": "^5.0.0",
     "@usebutr/core": "workspace:*",
     "@usebutr/evm": "workspace:*",
     "@usebutr/react": "workspace:*",
-    "@tailwindcss/vite": "^4.3.0",
-    "@tanstack/react-query": "^5.0.0",
     "@wagmi/connectors": "^5.0.0",
     "@wagmi/core": "^2.0.0",
     "react": "^19.2.6",

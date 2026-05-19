@@ -1,5 +1,3 @@
-import { useState } from "react";
-import { Image, Linking, Pressable, Text, View } from "react-native";
 import type { Account, ConnectedWallet, WalletAdapter } from "@usebutr/core";
 import {
   useActiveWallet,
@@ -16,6 +14,9 @@ import {
 } from "@usebutr/react";
 import type { UseBalanceResult } from "@usebutr/react";
 import { CHAINS_BY_PLATFORM } from "@usebutr/wallets";
+import { useState } from "react";
+import { Image, Linking, Pressable, Text, View } from "react-native";
+
 import { styles } from "./_styles";
 
 type SignState =

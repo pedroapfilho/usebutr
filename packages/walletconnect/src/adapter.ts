@@ -2,6 +2,7 @@ import type { Account, WalletAdapter } from "@usebutr/core";
 import { logWarn } from "@usebutr/core";
 import type { Eip1193Provider, Eip6963ProviderInfo } from "@usebutr/evm";
 import { buildEvmAdapter } from "@usebutr/evm";
+
 import { WALLETCONNECT_CAPABILITIES } from "./capabilities";
 
 /**

@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { createConnectorLifecycle } from "../connector-lifecycle";
-import type { Connector, ConnectorEvent } from "../../types";
+
 import { createMockAccount, createMockConnector } from "../../__tests__/helpers";
+import type { Connector, ConnectorEvent } from "../../types";
+import { createConnectorLifecycle } from "../connector-lifecycle";
 
 type EmitFn = (event: ConnectorEvent) => void;
 

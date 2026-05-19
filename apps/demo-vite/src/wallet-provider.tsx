@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
 import { WalletManagerProvider } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
+import type { ReactNode } from "react";
 
 const discovery = autoDiscovery();
 

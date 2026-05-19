@@ -1,9 +1,10 @@
-import { MarkdownCopyButton, ViewOptionsPopover } from "@/components/ai/page-actions";
-import { getMDXComponents } from "@/mdx-components";
-import { source } from "@/lib/source";
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/page";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+
+import { MarkdownCopyButton, ViewOptionsPopover } from "@/components/ai/page-actions";
+import { source } from "@/lib/source";
+import { getMDXComponents } from "@/mdx-components";
 
 const GITHUB_DOCS_BASE = "https://github.com/pedroapfilho/usebutr/blob/main/apps/docs/content/docs";
 

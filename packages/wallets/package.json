@@ -39,13 +39,13 @@
     "@usebutr/svm": "workspace:*"
   },
   "devDependencies": {
-    "@usebutr/testing": "workspace:*",
     "@repo/config-vitest": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@usebutr/testing": "workspace:*",
     "jsdom": "^29.1.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

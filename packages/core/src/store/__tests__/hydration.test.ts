@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { createHydrationCoordinator } from "../hydration";
-import type { StoredPoolEntry, StoredPoolRecord, WalletPersistence } from "../../storage";
+
 import { createMockAccount, createMockConnector } from "../../__tests__/helpers";
+import type { StoredPoolEntry, StoredPoolRecord, WalletPersistence } from "../../storage";
 import type { WalletAdapter } from "../../types";
+import { createHydrationCoordinator } from "../hydration";
 
 type FakeStorageInit = {
   active?: string | null;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { CHAINS, CHAINS_BY_PLATFORM } from "../chains";
 
 describe("CHAINS", () => {

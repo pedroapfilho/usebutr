@@ -1,5 +1,5 @@
-import type { Account, ChainPlatform, Connector } from "../types";
 import { logWarn } from "../logger";
+import type { Account, ChainPlatform, Connector } from "../types";
 
 /**
  * Side-effect callbacks the lifecycle bridge invokes when the

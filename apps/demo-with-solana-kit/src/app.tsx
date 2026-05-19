@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from "react";
 import {
   AccountRole,
   type Address,
@@ -13,6 +12,7 @@ import {
   compileTransaction,
   getBase64EncodedWireTransaction,
 } from "@solana/kit";
+import { useEffect, useMemo, useState } from "react";
 
 // Hand-rolled System Program transfer instruction — saves a dep
 // (@solana-program/system) whose codec imports drift between
@@ -34,12 +34,18 @@ const buildTransferInstruction = (from: Address, to: Address, lamports: bigint):
     programAddress: SYSTEM_PROGRAM,
   };
 };
+import {
+  useActiveWallet,
+  useConnectWallet,
+  useDisconnectWallet,
+  useIsHydrated,
+} from "@usebutr/react";
 import type {
   SolanaSignAndSendTransactionFeature,
   SolanaSignMessageFeature,
   WalletStandardWallet,
 } from "@usebutr/svm";
-import { useActiveWallet, useConnectWallet, useDisconnectWallet, useIsHydrated } from "@usebutr/react";
+
 import { useDiscoveredWallets } from "./wallet-provider";
 
 const DEVNET = "https://api.devnet.solana.com";
@@ -87,7 +93,7 @@ const formatError = (e: unknown): string => {
 
 const Row = ({ children, label }: { children: React.ReactNode; label: string }) => (
   <div className="flex items-baseline gap-3 rounded-lg border border-neutral-200 bg-white p-4">
-    <span className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-neutral-500">
+    <span className="w-28 shrink-0 text-xs font-medium tracking-wide text-neutral-500 uppercase">
       {label}
     </span>
     <span className="text-sm text-neutral-900">{children}</span>
@@ -227,9 +233,9 @@ const Connected = ({
     <section className="space-y-4">
       <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Connected</p>
+          <p className="text-xs font-medium tracking-wide text-emerald-700 uppercase">Connected</p>
           <p className="font-mono text-sm text-neutral-900">{wallet.connector.name}</p>
-          <p className="break-all font-mono text-xs text-neutral-500">{addr}</p>
+          <p className="font-mono text-xs break-all text-neutral-500">{addr}</p>
         </div>
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
@@ -261,13 +267,13 @@ const Connected = ({
       </div>
       {signature ? (
         <Row label="Signature">
-          <code className="break-all font-mono text-xs">{signature}</code>
+          <code className="font-mono text-xs break-all">{signature}</code>
         </Row>
       ) : null}
       {txSignature ? (
         <Row label="Tx signature">
           <a
-            className="break-all font-mono text-xs text-blue-600 hover:underline"
+            className="font-mono text-xs break-all text-blue-600 hover:underline"
             href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
             rel="noreferrer noopener"
             target="_blank"

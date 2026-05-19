@@ -12,10 +12,11 @@
 // DiscoverySubscriber drives the real auto-discovery path.
 
 import { describe, expect, it, vi } from "vitest";
-import { createMemoryStorageDriver, WalletStorage } from "../../storage";
-import { createWalletStore } from "../wallet-store";
-import type { ConnectedWallet, WalletAdapter } from "../../types";
+
 import { createMockAccount, createMockChain, createMockConnector } from "../../__tests__/helpers";
+import { createMemoryStorageDriver, WalletStorage } from "../../storage";
+import type { ConnectedWallet, WalletAdapter } from "../../types";
+import { createWalletStore } from "../wallet-store";
 
 const buildEvmAdapter = (): WalletAdapter =>
   createMockConnector({

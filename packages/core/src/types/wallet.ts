@@ -1,4 +1,5 @@
 import type { WalletPersistence } from "../storage/persistence";
+
 import type { ChainBase } from "./chain";
 import type { ConnectionError } from "./errors";
 

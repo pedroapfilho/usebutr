@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import { discoverWalletAdapters, resolveDiscoverOptions } from "../discover";
 
 describe("resolveDiscoverOptions", () => {

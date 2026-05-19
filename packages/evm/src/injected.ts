@@ -1,6 +1,7 @@
 import type { WalletAdapter } from "@usebutr/core";
-import { buildEvmAdapter } from "./eip6963-adapter";
+
 import type { Eip1193Provider, Eip6963ProviderInfo } from "./eip1193";
+import { buildEvmAdapter } from "./eip6963-adapter";
 
 /**
  * Generic wallet icon (a stylised purse SVG, ~600 bytes). Used as

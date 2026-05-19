@@ -1,4 +1,5 @@
 import type { WalletSource } from "@usebutr/core";
+
 import { type DiscoverOptions, discoverWalletAdapters } from "./discover";
 
 /**

@@ -1,4 +1,3 @@
-import { vi } from "vitest";
 import type {
   Account,
   ChainBase,
@@ -7,6 +6,7 @@ import type {
   WalletAdapter,
   WalletManagerConfig,
 } from "@usebutr/core";
+import { vi } from "vitest";
 
 const createMockChain = (overrides?: Partial<ChainBase>): ChainBase => ({
   id: "eip155:1",

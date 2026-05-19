@@ -1,6 +1,7 @@
 import type { WalletAdapter } from "@usebutr/core";
-import { buildEvmAdapter } from "./eip6963-adapter";
+
 import type { Eip6963AnnounceEvent, Eip6963ProviderInfo } from "./eip1193";
+import { buildEvmAdapter } from "./eip6963-adapter";
 
 const ANNOUNCE_EVENT = "eip6963:announceProvider";
 const REQUEST_EVENT = "eip6963:requestProvider";

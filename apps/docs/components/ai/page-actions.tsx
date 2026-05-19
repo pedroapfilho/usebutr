@@ -1,11 +1,12 @@
 "use client";
-import { type ComponentProps, useMemo, useState } from "react";
-import { Check, ChevronDown, Copy, ExternalLinkIcon, TextIcon } from "lucide-react";
-import { cn } from "../../lib/cn";
-import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
-import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
-import { buttonVariants } from "../ui/button";
 import { usePathname } from "fumadocs-core/framework";
+import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
+import { Check, ChevronDown, Copy, ExternalLinkIcon, TextIcon } from "lucide-react";
+import { type ComponentProps, useMemo, useState } from "react";
+
+import { cn } from "../../lib/cn";
+import { buttonVariants } from "../ui/button";
+import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 
 const cache = new Map<string, Promise<string>>();
 
@@ -229,12 +230,12 @@ export function ViewOptionsPopover({
             color: "secondary",
             size: "sm",
           }),
-          "gap-2 data-[state=open]:bg-fd-accent data-[state=open]:text-fd-accent-foreground",
+          "data-[state=open]:bg-fd-accent data-[state=open]:text-fd-accent-foreground gap-2",
           props.className,
         )}
       >
         {props.children ?? "Open"}
-        <ChevronDown className="size-3.5 text-fd-muted-foreground" />
+        <ChevronDown className="text-fd-muted-foreground size-3.5" />
       </PopoverTrigger>
       <PopoverContent className="flex flex-col">
         {items.map((item) => (
@@ -243,11 +244,11 @@ export function ViewOptionsPopover({
             href={item.href}
             rel="noreferrer noopener"
             target="_blank"
-            className="text-sm p-2 rounded-lg inline-flex items-center gap-2 hover:text-fd-accent-foreground hover:bg-fd-accent [&_svg]:size-4"
+            className="hover:text-fd-accent-foreground hover:bg-fd-accent inline-flex items-center gap-2 rounded-lg p-2 text-sm [&_svg]:size-4"
           >
             {item.icon}
             {item.title}
-            <ExternalLinkIcon className="text-fd-muted-foreground size-3.5 ms-auto" />
+            <ExternalLinkIcon className="text-fd-muted-foreground ms-auto size-3.5" />
           </a>
         ))}
       </PopoverContent>

@@ -12,13 +12,13 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
-    "@usebutr/core": "workspace:*",
-    "@usebutr/react": "workspace:*",
-    "@usebutr/svm": "workspace:*",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/wallet-adapter-react": "^0.15.35",
     "@solana/web3.js": "^1.95.0",
     "@tailwindcss/vite": "^4.3.0",
+    "@usebutr/core": "workspace:*",
+    "@usebutr/react": "workspace:*",
+    "@usebutr/svm": "workspace:*",
     "@wallet-standard/app": "^1.1.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

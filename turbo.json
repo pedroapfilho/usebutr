@@ -7,14 +7,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [
-        "dist/**",
-        ".next/**",
-        "!.next/cache/**",
-        ".output/**",
-        ".vinxi/**",
-        ".expo/**"
-      ]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", ".output/**", ".vinxi/**", ".expo/**"]
     },
     "lint": {
       "dependsOn": ["^build"],

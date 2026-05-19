@@ -1,4 +1,3 @@
-import React, { createContext, use, useEffect, useRef, useState } from "react";
 import type {
   ConnectorMeta,
   WalletAdapter,
@@ -7,6 +6,7 @@ import type {
   WalletStore,
 } from "@usebutr/core";
 import { createWalletStore, logError } from "@usebutr/core";
+import React, { createContext, use, useEffect, useRef, useState } from "react";
 
 const WalletStoreContext: React.Context<WalletStore | null> = createContext<WalletStore | null>(
   null,

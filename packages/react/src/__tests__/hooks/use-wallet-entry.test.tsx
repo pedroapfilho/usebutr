@@ -1,9 +1,10 @@
 import { act } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
 import { createFakeAdapter } from "@usebutr/testing";
+import { describe, expect, it } from "vitest";
+
+import { useConnectWallet as useConnectWalletSync } from "../../hooks";
 import { useConnectWallet, useWalletEntry } from "../../hooks-async";
 import { renderHookWithProvider } from "../render-with-provider";
-import { useConnectWallet as useConnectWalletSync } from "../../hooks";
 
 describe("useWalletEntry", () => {
   it("returns undefined when nothing is connected and no id is provided", () => {

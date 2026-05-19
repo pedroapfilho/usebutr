@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
 import type { ConnectedWallet } from "@usebutr/core";
+import { describe, expect, it } from "vitest";
+
 import { createFakeAdapter } from "../fake-adapter";
 import { createFakePersistence } from "../fake-persistence";
 

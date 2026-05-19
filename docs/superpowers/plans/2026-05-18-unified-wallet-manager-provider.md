@@ -309,7 +309,12 @@ Replace `packages/react/src/context.tsx` with:
 
 ```tsx
 import React, { createContext, use, useEffect, useMemo, useRef, useState } from "react";
-import type { ConnectorMeta, WalletAdapter, WalletManagerConfig, WalletSource } from "@usebutr/core";
+import type {
+  ConnectorMeta,
+  WalletAdapter,
+  WalletManagerConfig,
+  WalletSource,
+} from "@usebutr/core";
 import { type WalletStore, createWalletStore } from "@usebutr/core";
 
 const WalletStoreContext: React.Context<WalletStore | null> = createContext<WalletStore | null>(

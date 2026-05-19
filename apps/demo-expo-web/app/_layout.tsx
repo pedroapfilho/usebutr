@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+
 import { WalletProvider } from "../src/wallet-provider";
 
 const RootLayout = () => (

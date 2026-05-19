@@ -46,8 +46,7 @@ const createFakePersistence = (seed: FakePersistenceSeed = {}): WalletPersistenc
       return Promise.resolve();
     },
     removePoolEntry: (connectorId) => {
-      const next: StoredPoolRecord = { ...pool };
-      delete next[connectorId];
+      const { [connectorId]: _removed, ...next } = pool;
       pool = next;
       return Promise.resolve();
     },

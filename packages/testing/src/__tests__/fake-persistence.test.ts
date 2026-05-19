@@ -56,7 +56,7 @@ describe("createFakePersistence", () => {
     ]);
     await p.setPool(pool);
     const stored = await p.getPool();
-    expect(Object.keys(stored).sort()).toEqual(["a", "b"]);
+    expect(Object.keys(stored).toSorted()).toEqual(["a", "b"]);
     expect(stored["a"]?.connectorId).toBe("a");
     expect(stored["b"]?.chainPlatform).toBe("evm");
   });

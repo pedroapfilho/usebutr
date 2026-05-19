@@ -24,10 +24,10 @@ describe("createFakeAdapter", () => {
 
   it("honours id, name, icon, and chainPlatform overrides", () => {
     const a = createFakeAdapter({
+      chainPlatform: "svm",
+      icon: "data:img/svg",
       id: "x",
       name: "X Wallet",
-      icon: "data:img/svg",
-      chainPlatform: "svm",
     });
     expect(a.id).toBe("x");
     expect(a.name).toBe("X Wallet");

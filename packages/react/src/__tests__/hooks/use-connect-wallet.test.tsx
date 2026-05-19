@@ -17,9 +17,9 @@ describe("useConnectWallet", () => {
       walletAddress: "0x1",
     };
     const adapter = createFakeAdapter({
-      id: "fake",
-      chainPlatform: "evm",
       accounts: [account],
+      chainPlatform: "evm",
+      id: "fake",
     });
     const { result } = renderHookWithProvider(
       () => ({ connect: useConnectWallet(), pool: usePool() }),

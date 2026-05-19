@@ -46,15 +46,10 @@ const createFakeAdapter = (options: FakeAdapterOptions = {}): WalletAdapter => {
   return {
     capabilities: { ...DEFAULT_CAPABILITIES, ...options.capabilities },
     chainPlatform,
-    icon,
-    id,
-    name,
     connect: () => Promise.resolve(),
     disconnect: () => Promise.resolve(),
     getAccount: () => Promise.resolve(account),
     getAccounts: () => Promise.resolve(accounts),
-    requestAccounts: () => Promise.resolve(),
-    subscribe: () => () => {},
     getBalance: () =>
       Promise.resolve({
         decimals: 18,
@@ -64,9 +59,14 @@ const createFakeAdapter = (options: FakeAdapterOptions = {}): WalletAdapter => {
       }),
     getSigner: () => Promise.resolve({}),
     getTransactionReceipt: () => Promise.resolve({ status: "Success" as const }),
+    icon,
+    id,
+    name,
+    requestAccounts: () => Promise.resolve(),
     sendTx: () => Promise.resolve("0xfakehash"),
     sendTxToChain: () => Promise.resolve("0xfakehash"),
     signMessage: (msg) => Promise.resolve({ signature: msg, signedMessage: msg }),
+    subscribe: () => () => {},
     switchAccount: () => Promise.resolve(),
     switchChain: () => Promise.resolve(),
   };

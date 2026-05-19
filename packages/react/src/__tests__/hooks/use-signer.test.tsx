@@ -21,9 +21,9 @@ describe("useSigner", () => {
     };
     const signer = { kind: "fake-signer" };
     const adapter = createFakeAdapter({
-      id: "fake",
-      chainPlatform: "evm",
       accounts: [account],
+      chainPlatform: "evm",
+      id: "fake",
     });
     adapter.getSigner = () => Promise.resolve(signer);
     const { result } = renderHookWithProvider(
@@ -51,9 +51,9 @@ describe("useSigner", () => {
     };
     const boom = new Error("getSigner blew up");
     const adapter = createFakeAdapter({
-      id: "fake",
-      chainPlatform: "evm",
       accounts: [account],
+      chainPlatform: "evm",
+      id: "fake",
     });
     adapter.getSigner = () => Promise.reject(boom);
     const { result } = renderHookWithProvider(

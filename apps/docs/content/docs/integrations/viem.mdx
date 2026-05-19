@@ -17,7 +17,9 @@ useEffect(() => {
   let cancelled = false;
   void (async () => {
     const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
-    if (cancelled) return;
+    if (cancelled) {
+      return;
+    }
     setWalletClient(
       createWalletClient({
         account,

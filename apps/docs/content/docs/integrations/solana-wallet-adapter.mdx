@@ -33,7 +33,9 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
 
   async signMessage(message: Uint8Array): Promise<Uint8Array> {
     const feature = this._wallet.features["solana:signMessage"];
-    if (!feature) throw new Error("Wallet does not advertise solana:signMessage");
+    if (!feature) {
+      throw new Error("Wallet does not advertise solana:signMessage");
+    }
     const account = this._wallet.accounts[0];
     const [output] = await feature.signMessage({ account, message });
     return output.signature;
@@ -41,7 +43,9 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
 
   async sendTransaction(transaction, _connection): Promise<string> {
     const feature = this._wallet.features["solana:signAndSendTransaction"];
-    if (!feature) throw new Error("Wallet does not advertise solana:signAndSendTransaction");
+    if (!feature) {
+      throw new Error("Wallet does not advertise solana:signAndSendTransaction");
+    }
     const account = this._wallet.accounts[0];
     const serialised =
       transaction instanceof Transaction

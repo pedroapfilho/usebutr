@@ -38,7 +38,10 @@ through butr, so this resolves **silently — no second popup**:
 ```ts
 const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
 const cfg = buildWagmiConfig(provider, wallet.connector.name, wallet.connector.id);
-await connect(cfg, { connector: cfg.connectors[0]! });
+const connector = cfg.connectors[0];
+if (connector) {
+  await connect(cfg, { connector });
+}
 ```
 
 ## Use wagmi actions

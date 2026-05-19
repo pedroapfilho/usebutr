@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer } from "react";
 import { useStoreWithEqualityFn } from "zustand/traditional";
-import type { Balance } from "@butr/core";
-import { walletEqual } from "@butr/core";
+import type { Balance } from "@usebutr/core";
+import { walletEqual } from "@usebutr/core";
 import { useWalletStoreContext } from "./context";
 
 type AsyncState<T> =

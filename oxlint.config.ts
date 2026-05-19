@@ -57,8 +57,12 @@ export default defineConfig({
     // the callbacks fire), and `_`-prefixed fallow type-markers are intentional.
     {
       files: [
-        "packages/butr/src/**/*.ts",
-        "packages/butr/src/**/*.tsx",
+        // oxlint runs per-package as `oxlint src` (cwd = package dir), so
+        // override globs must be `**/`-anchored — repo-root-prefixed or bare
+        // `src/**` patterns silently never match. `**/src/**` covers every
+        // first-party package's source uniformly.
+        "**/src/**/*.ts",
+        "**/src/**/*.tsx",
         "apps/**/*.ts",
         "apps/**/*.tsx",
       ],

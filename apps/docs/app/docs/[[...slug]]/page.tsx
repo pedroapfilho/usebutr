@@ -5,7 +5,7 @@ import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/page
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-const GITHUB_DOCS_BASE = "https://github.com/pedroapfilho/butr/blob/main/apps/docs/content/docs";
+const GITHUB_DOCS_BASE = "https://github.com/pedroapfilho/usebutr/blob/main/apps/docs/content/docs";
 
 type PageProps = {
   params: Promise<{ slug?: Array<string> }>;

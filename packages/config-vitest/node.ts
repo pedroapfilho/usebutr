@@ -17,8 +17,8 @@ const nodeConfig = defineConfig({
       reporter: ["text", "html", "json-summary"],
       // Per-package threshold. Each package can ratchet up by overriding
       // in its own vitest.config.ts (`mergeConfig` + a stricter floor).
-      // The realistic floor today: protocol adapters (@butr/evm, @butr/
-      // ledger, @butr/walletconnect) have EIP-1193 error-handling branches
+      // The realistic floor today: protocol adapters (@usebutr/evm, @usebutr/
+      // ledger, @usebutr/walletconnect) have EIP-1193 error-handling branches
       // and protocol-specific wallet quirks that need expensive mocks
       // to reach; the floor is set so they pass without forcing low-value
       // coverage tests.

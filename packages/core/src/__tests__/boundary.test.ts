@@ -35,16 +35,16 @@ const collectDeps = (packageName: string): Set<string> => {
   return seen;
 };
 
-describe("@butr/core dependency boundary", () => {
-  it("does not depend on React, @butr/react, or any protocol package", () => {
-    const deps = collectDeps("@butr/core");
+describe("@usebutr/core dependency boundary", () => {
+  it("does not depend on React, @usebutr/react, or any protocol package", () => {
+    const deps = collectDeps("@usebutr/core");
     expect(deps.has("react")).toBe(false);
-    expect(deps.has("@butr/react")).toBe(false);
-    expect(deps.has("@butr/evm")).toBe(false);
-    expect(deps.has("@butr/svm")).toBe(false);
-    expect(deps.has("@butr/walletconnect")).toBe(false);
-    expect(deps.has("@butr/ledger")).toBe(false);
-    expect(deps.has("@butr/wallets")).toBe(false);
-    expect(deps.has("@butr/testing")).toBe(false);
+    expect(deps.has("@usebutr/react")).toBe(false);
+    expect(deps.has("@usebutr/evm")).toBe(false);
+    expect(deps.has("@usebutr/svm")).toBe(false);
+    expect(deps.has("@usebutr/walletconnect")).toBe(false);
+    expect(deps.has("@usebutr/ledger")).toBe(false);
+    expect(deps.has("@usebutr/wallets")).toBe(false);
+    expect(deps.has("@usebutr/testing")).toBe(false);
   });
 });

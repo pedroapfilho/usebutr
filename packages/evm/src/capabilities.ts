@@ -1,4 +1,4 @@
-import type { WalletCapabilities } from "@butr/core";
+import type { WalletCapabilities } from "@usebutr/core";
 
 // Allow-list of EIP-6963 wallets whose `wallet_requestPermissions` call
 // actually surfaces a fresh account-picker UI (the spec intent).

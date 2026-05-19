@@ -1,4 +1,4 @@
-// @butr/walletconnect — WalletConnect v2 transport for EVM mobile
+// @usebutr/walletconnect — WalletConnect v2 transport for EVM mobile
 // wallets (Trust, Rainbow, Argent, Zerion, MetaMask Mobile, etc.).
 //
 // Requires the optional peer dep `@walletconnect/universal-provider`.
@@ -6,7 +6,7 @@
 // Usage:
 //
 // ```ts
-// import { createWalletConnectAdapter } from "@butr/walletconnect";
+// import { createWalletConnectAdapter } from "@usebutr/walletconnect";
 //
 // const wc = await createWalletConnectAdapter({
 //   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,

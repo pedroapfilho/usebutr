@@ -1,4 +1,4 @@
-import type { WalletCapabilities } from "@butr/core";
+import type { WalletCapabilities } from "@usebutr/core";
 
 type WalletStandardCapabilityInput = {
   chainCount: number;

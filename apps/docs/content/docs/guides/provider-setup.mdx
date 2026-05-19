@@ -3,20 +3,20 @@ title: Provider setup
 description: One WalletManagerProvider with flat props — auto-discovery, platform-only, manual, or composed.
 ---
 
-There is one provider: `WalletManagerProvider` from `@butr/react`. You control
+There is one provider: `WalletManagerProvider` from `@usebutr/react`. You control
 discovery by passing a `discovery` prop (a `WalletSource`) or a `createConnector`
 prop, or both. Pick the setup that fits your bundle constraints.
 
 ## Auto (batteries-included)
 
-Use `autoDiscovery()` from `@butr/wallets`. It discovers EVM (EIP-6963) and SVM
+Use `autoDiscovery()` from `@usebutr/wallets`. It discovers EVM (EIP-6963) and SVM
 (Wallet Standard) wallets and persists state to `localStorage`. Hoist the source
 to module scope so it is created once.
 
 ```tsx title="src/wallet-provider.tsx"
 import type { ReactNode } from "react";
-import { WalletManagerProvider } from "@butr/react";
-import { autoDiscovery } from "@butr/wallets";
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 
 const discovery = autoDiscovery();
 
@@ -31,13 +31,13 @@ export { WalletProvider };
 
 <Callout type="info">
   **Source:** `apps/demo-vite/src/wallet-provider.tsx` (auto, EVM + SVM) in the [butr
-  repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-vite).
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-vite).
 </Callout>
 
 ## Platform-only bundles
 
-For an EVM-only build (`@butr/react` + `@butr/evm`, no `@butr/svm` /
-`@butr/wallets`) or an SVM-only build, the only thing that changes is the
+For an EVM-only build (`@usebutr/react` + `@usebutr/evm`, no `@usebutr/svm` /
+`@usebutr/wallets`) or an SVM-only build, the only thing that changes is the
 `discovery` value — the provider API is identical. Each has a complete path,
 including install, chains, and platform caveats:
 
@@ -53,7 +53,7 @@ Skip `discovery` and pass `createConnector` instead. butr calls
 
 ```tsx title="src/wallet-provider.tsx"
 import type { ReactNode } from "react";
-import { WalletManagerProvider } from "@butr/react";
+import { WalletManagerProvider } from "@usebutr/react";
 import { myWalletConnectConnector } from "./connectors";
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
@@ -80,8 +80,8 @@ source. This lets you mix injected wallets (EIP-6963) with static connectors
 
 ```tsx title="src/wallet-provider.tsx"
 import type { ReactNode } from "react";
-import { WalletManagerProvider } from "@butr/react";
-import { autoDiscovery } from "@butr/wallets";
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 import { myWalletConnectConnector } from "./connectors";
 
 const discovery = autoDiscovery();

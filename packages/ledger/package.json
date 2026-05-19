@@ -1,12 +1,12 @@
 {
-  "name": "@butr/ledger",
+  "name": "@usebutr/ledger",
   "version": "0.1.0",
   "description": "Ledger hardware-wallet adapter for butr (EVM).",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pedroapfilho/butr.git",
+    "url": "git+https://github.com/pedroapfilho/usebutr.git",
     "directory": "packages/ledger"
   },
   "files": [
@@ -33,7 +33,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@butr/core": "workspace:*"
+    "@usebutr/core": "workspace:*"
   },
   "devDependencies": {
     "@ledgerhq/hw-app-eth": "^7.8.2",

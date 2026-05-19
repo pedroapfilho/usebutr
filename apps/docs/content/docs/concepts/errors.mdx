@@ -25,7 +25,7 @@ type ConnectionError =
 ## Reading the error
 
 ```tsx
-import { useConnectionError } from "@butr/react";
+import { useConnectionError } from "@usebutr/react";
 
 const error = useConnectionError();
 if (error?.kind === "UserRejected") {
@@ -41,7 +41,7 @@ The reference apps render `{error.kind} — {error.message}` directly.
 
 ## What `mapConnectionError` recognises
 
-`mapConnectionError(raw)` (exported from `@butr/core`) does the normalisation.
+`mapConnectionError(raw)` (exported from `@usebutr/core`) does the normalisation.
 It recognises:
 
 - butr's own `Error("Connection timeout")` (the 90-second connect timeout) →

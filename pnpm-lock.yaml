@@ -35,21 +35,21 @@ importers:
 
   apps/demo-expo-web:
     dependencies:
-      '@butr/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@butr/react':
-        specifier: workspace:*
-        version: link:../../packages/react
-      '@butr/wallets':
-        specifier: workspace:*
-        version: link:../../packages/wallets
       '@expo/metro-runtime':
         specifier: ^55.0.11
         version: 55.0.11(@expo/dom-webview@55.0.6)(expo@55.0.23)(react-dom@19.2.6(react@19.2.6))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(bufferutil@4.1.0)(react@19.2.6)(utf-8-validate@5.0.10))(react@19.2.6)
       '@react-native-async-storage/async-storage':
         specifier: ^2.1.2
         version: 2.2.0(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(bufferutil@4.1.0)(react@19.2.6)(utf-8-validate@5.0.10))
+      '@usebutr/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@usebutr/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      '@usebutr/wallets':
+        specifier: workspace:*
+        version: link:../../packages/wallets
       expo:
         specifier: ^55.0.23
         version: 55.0.23(@babel/core@7.29.0)(@expo/dom-webview@55.0.6)(@expo/metro-runtime@55.0.11)(bufferutil@4.1.0)(expo-router@55.0.14)(react-dom@19.2.6(react@19.2.6))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(bufferutil@4.1.0)(react@19.2.6)(utf-8-validate@5.0.10))(react@19.2.6))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(bufferutil@4.1.0)(react@19.2.6)(utf-8-validate@5.0.10))(react@19.2.6)(typescript@6.0.3)(utf-8-validate@5.0.10)
@@ -102,18 +102,18 @@ importers:
 
   apps/demo-next:
     dependencies:
-      '@butr/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@butr/evm':
-        specifier: workspace:*
-        version: link:../../packages/evm
-      '@butr/react':
-        specifier: workspace:*
-        version: link:../../packages/react
       '@tailwindcss/postcss':
         specifier: ^4.3.0
         version: 4.3.0
+      '@usebutr/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@usebutr/evm':
+        specifier: workspace:*
+        version: link:../../packages/evm
+      '@usebutr/react':
+        specifier: workspace:*
+        version: link:../../packages/react
       next:
         specifier: ^16.0.0
         version: 16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -148,15 +148,6 @@ importers:
 
   apps/demo-tanstack-start:
     dependencies:
-      '@butr/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@butr/evm':
-        specifier: workspace:*
-        version: link:../../packages/evm
-      '@butr/react':
-        specifier: workspace:*
-        version: link:../../packages/react
       '@tailwindcss/vite':
         specifier: ^4.3.0
         version: 4.3.0(vite@8.0.12(@types/node@25.6.2)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.9.0))
@@ -178,6 +169,15 @@ importers:
       '@tanstack/router-plugin':
         specifier: ^1.167.41
         version: 1.167.41(@tanstack/react-router@1.169.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(vite@8.0.12(@types/node@25.6.2)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.9.0))
+      '@usebutr/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@usebutr/evm':
+        specifier: workspace:*
+        version: link:../../packages/evm
+      '@usebutr/react':
+        specifier: workspace:*
+        version: link:../../packages/react
       lucide-react:
         specifier: ^1.14.0
         version: 1.14.0(react@19.2.6)
@@ -239,18 +239,18 @@ importers:
 
   apps/demo-vite:
     dependencies:
-      '@butr/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@butr/react':
-        specifier: workspace:*
-        version: link:../../packages/react
-      '@butr/wallets':
-        specifier: workspace:*
-        version: link:../../packages/wallets
       '@tailwindcss/vite':
         specifier: ^4.3.0
         version: 4.3.0(vite@8.0.12(@types/node@25.6.2)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.9.0))
+      '@usebutr/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@usebutr/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      '@usebutr/wallets':
+        specifier: workspace:*
+        version: link:../../packages/wallets
       react:
         specifier: ^19.2.6
         version: 19.2.6
@@ -285,21 +285,21 @@ importers:
 
   apps/demo-with-solana-kit:
     dependencies:
-      '@butr/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@butr/react':
-        specifier: workspace:*
-        version: link:../../packages/react
-      '@butr/svm':
-        specifier: workspace:*
-        version: link:../../packages/svm
       '@solana/kit':
         specifier: ^2.1.0
         version: 2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@6.0.3)(ws@8.20.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))
       '@tailwindcss/vite':
         specifier: ^4.3.0
         version: 4.3.0(vite@8.0.12(@types/node@25.6.2)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.9.0))
+      '@usebutr/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@usebutr/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      '@usebutr/svm':
+        specifier: workspace:*
+        version: link:../../packages/svm
       '@wallet-standard/app':
         specifier: ^1.1.0
         version: 1.1.0
@@ -337,15 +337,6 @@ importers:
 
   apps/demo-with-solana-wallet-adapter:
     dependencies:
-      '@butr/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@butr/react':
-        specifier: workspace:*
-        version: link:../../packages/react
-      '@butr/svm':
-        specifier: workspace:*
-        version: link:../../packages/svm
       '@solana/wallet-adapter-base':
         specifier: ^0.9.23
         version: 0.9.27(@solana/web3.js@1.98.4(bufferutil@4.1.0)(typescript@6.0.3)(utf-8-validate@6.0.6))
@@ -358,6 +349,15 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.3.0
         version: 4.3.0(vite@8.0.12(@types/node@25.6.2)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.9.0))
+      '@usebutr/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@usebutr/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      '@usebutr/svm':
+        specifier: workspace:*
+        version: link:../../packages/svm
       '@wallet-standard/app':
         specifier: ^1.1.0
         version: 1.1.0
@@ -395,21 +395,21 @@ importers:
 
   apps/demo-with-solana-web3js:
     dependencies:
-      '@butr/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@butr/react':
-        specifier: workspace:*
-        version: link:../../packages/react
-      '@butr/svm':
-        specifier: workspace:*
-        version: link:../../packages/svm
       '@solana/web3.js':
         specifier: ^1.95.0
         version: 1.98.4(bufferutil@4.1.0)(typescript@6.0.3)(utf-8-validate@5.0.10)
       '@tailwindcss/vite':
         specifier: ^4.3.0
         version: 4.3.0(vite@8.0.12(@types/node@25.6.2)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.9.0))
+      '@usebutr/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@usebutr/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      '@usebutr/svm':
+        specifier: workspace:*
+        version: link:../../packages/svm
       '@wallet-standard/app':
         specifier: ^1.1.0
         version: 1.1.0
@@ -447,18 +447,18 @@ importers:
 
   apps/demo-with-viem:
     dependencies:
-      '@butr/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@butr/evm':
-        specifier: workspace:*
-        version: link:../../packages/evm
-      '@butr/react':
-        specifier: workspace:*
-        version: link:../../packages/react
       '@tailwindcss/vite':
         specifier: ^4.3.0
         version: 4.3.0(vite@8.0.12(@types/node@25.6.2)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.9.0))
+      '@usebutr/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@usebutr/evm':
+        specifier: workspace:*
+        version: link:../../packages/evm
+      '@usebutr/react':
+        specifier: workspace:*
+        version: link:../../packages/react
       react:
         specifier: ^19.2.6
         version: 19.2.6
@@ -496,21 +496,21 @@ importers:
 
   apps/demo-with-wagmi:
     dependencies:
-      '@butr/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@butr/evm':
-        specifier: workspace:*
-        version: link:../../packages/evm
-      '@butr/react':
-        specifier: workspace:*
-        version: link:../../packages/react
       '@tailwindcss/vite':
         specifier: ^4.3.0
         version: 4.3.0(vite@8.0.12(@types/node@25.6.2)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.9.0))
       '@tanstack/react-query':
         specifier: ^5.0.0
         version: 5.100.9(react@19.2.6)
+      '@usebutr/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@usebutr/evm':
+        specifier: workspace:*
+        version: link:../../packages/evm
+      '@usebutr/react':
+        specifier: workspace:*
+        version: link:../../packages/react
       '@wagmi/connectors':
         specifier: ^5.0.0
         version: 5.11.2(b50ecf2e5f9685b6cc2a9e96f4b15321)
@@ -664,7 +664,7 @@ importers:
 
   packages/evm:
     dependencies:
-      '@butr/core':
+      '@usebutr/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -683,7 +683,7 @@ importers:
 
   packages/ledger:
     dependencies:
-      '@butr/core':
+      '@usebutr/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -708,13 +708,10 @@ importers:
 
   packages/react:
     dependencies:
-      '@butr/core':
+      '@usebutr/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
-      '@butr/testing':
-        specifier: workspace:*
-        version: link:../testing
       '@repo/config-vitest':
         specifier: workspace:*
         version: link:../config-vitest
@@ -733,6 +730,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.0
         version: 19.2.3(@types/react@19.2.14)
+      '@usebutr/testing':
+        specifier: workspace:*
+        version: link:../testing
       jsdom:
         specifier: ^29.1.1
         version: 29.1.1(@noble/hashes@2.2.0)
@@ -754,7 +754,7 @@ importers:
 
   packages/svm:
     dependencies:
-      '@butr/core':
+      '@usebutr/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -776,7 +776,7 @@ importers:
 
   packages/testing:
     dependencies:
-      '@butr/core':
+      '@usebutr/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -807,10 +807,10 @@ importers:
 
   packages/walletconnect:
     dependencies:
-      '@butr/core':
+      '@usebutr/core':
         specifier: workspace:*
         version: link:../core
-      '@butr/evm':
+      '@usebutr/evm':
         specifier: workspace:*
         version: link:../evm
     devDependencies:
@@ -832,22 +832,19 @@ importers:
 
   packages/wallets:
     dependencies:
-      '@butr/core':
+      '@usebutr/core':
         specifier: workspace:*
         version: link:../core
-      '@butr/evm':
+      '@usebutr/evm':
         specifier: workspace:*
         version: link:../evm
-      '@butr/react':
+      '@usebutr/react':
         specifier: workspace:*
         version: link:../react
-      '@butr/svm':
+      '@usebutr/svm':
         specifier: workspace:*
         version: link:../svm
     devDependencies:
-      '@butr/testing':
-        specifier: workspace:*
-        version: link:../testing
       '@repo/config-vitest':
         specifier: workspace:*
         version: link:../config-vitest
@@ -866,6 +863,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.0
         version: 19.2.3(@types/react@19.2.14)
+      '@usebutr/testing':
+        specifier: workspace:*
+        version: link:../testing
       jsdom:
         specifier: ^29.1.1
         version: 29.1.1(@noble/hashes@2.2.0)

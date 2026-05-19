@@ -3,14 +3,14 @@ title: WalletConnect
 description: WalletConnect v2 for EVM mobile wallets — Reown project id, app metadata, and the QR you render yourself.
 ---
 
-`@butr/walletconnect` is a WalletConnect v2 adapter for EVM **mobile** wallets
+`@usebutr/walletconnect` is a WalletConnect v2 adapter for EVM **mobile** wallets
 (Trust, Rainbow, Argent, Zerion, MetaMask Mobile, …). It is not browser-injected
 — you build the adapter once and register it through `createConnector`.
 
 ## Install
 
 ```npm
-npm install @butr/walletconnect @walletconnect/universal-provider
+npm install @usebutr/walletconnect @walletconnect/universal-provider
 ```
 
 `@walletconnect/universal-provider` is an optional peer dependency; the adapter
@@ -19,7 +19,7 @@ dynamically imports it, so it never bloats your bundle unless used.
 ## Build the adapter
 
 ```ts
-import { createWalletConnectAdapter } from "@butr/walletconnect";
+import { createWalletConnectAdapter } from "@usebutr/walletconnect";
 
 const wc = await createWalletConnectAdapter({
   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
@@ -53,9 +53,9 @@ runtime calls `adapter.connect()` (when the user clicks "Connect"). Build the
 adapter once at module scope, then pass it through the unified provider:
 
 ```tsx
-import { WalletManagerProvider } from "@butr/react";
-import { autoDiscovery } from "@butr/wallets";
-import { createWalletConnectAdapter } from "@butr/walletconnect";
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
+import { createWalletConnectAdapter } from "@usebutr/walletconnect";
 
 const discovery = autoDiscovery();
 const wc = await createWalletConnectAdapter({
@@ -110,5 +110,5 @@ against the relay):
 <Callout type="info">
   **Source:** `packages/walletconnect/src` (`adapter.ts`, `capabilities.ts`,
   `__tests__/adapter.test.ts`) in the [butr
-  repository](https://github.com/pedroapfilho/butr/tree/main/packages/walletconnect).
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/packages/walletconnect).
 </Callout>

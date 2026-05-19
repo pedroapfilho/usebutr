@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from "react";
-import type { Account, ConnectedWallet, WalletAdapter } from "@butr/core";
+import type { Account, ConnectedWallet, WalletAdapter } from "@usebutr/core";
 import {
   useActiveWallet,
   useBalance,
@@ -12,8 +12,8 @@ import {
   useIsHydrated,
   useRequestAccounts,
   useSetActiveConnector,
-} from "@butr/react";
-import { CHAINS_BY_PLATFORM } from "@butr/wallets";
+} from "@usebutr/react";
+import { CHAINS_BY_PLATFORM } from "@usebutr/wallets";
 
 type SignState =
   | { kind: "idle" }
@@ -374,7 +374,7 @@ const App = () => (
     <header className="mb-8">
       <h1 className="text-3xl font-bold tracking-tight">butr · Vite</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Batteries-included install via <code>@butr/wallets</code>. EVM (EIP-6963) and SVM (Wallet
+        Batteries-included install via <code>@usebutr/wallets</code>. EVM (EIP-6963) and SVM (Wallet
         Standard) discovered in one provider; persisted in localStorage.
       </p>
     </header>

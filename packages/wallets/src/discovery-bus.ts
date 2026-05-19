@@ -1,5 +1,5 @@
-import type { WalletAdapter } from "@butr/core";
-import { logWarn } from "@butr/core";
+import type { WalletAdapter } from "@usebutr/core";
+import { logWarn } from "@usebutr/core";
 
 /**
  * A discovery path registers itself by accepting an `emit` callback and

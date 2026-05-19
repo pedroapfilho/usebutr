@@ -4,7 +4,7 @@ import type {
   StoredPoolRecord,
   StoredSelectionRecord,
   WalletPersistence,
-} from "@butr/core";
+} from "@usebutr/core";
 
 type FakePersistenceSeed = {
   activeConnectorId?: string | null;

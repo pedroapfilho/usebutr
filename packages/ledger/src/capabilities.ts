@@ -1,4 +1,4 @@
-import type { WalletCapabilities } from "@butr/core";
+import type { WalletCapabilities } from "@usebutr/core";
 
 /** Hardware-only — no RPC, no events, no broadcast. */
 const LEDGER_CAPABILITIES: WalletCapabilities = {

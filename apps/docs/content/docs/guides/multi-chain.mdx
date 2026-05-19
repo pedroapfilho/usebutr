@@ -10,7 +10,7 @@ together; `useConnectedWallets()` returns both. Mark one the active wallet with
 `useSetActiveConnector()`:
 
 ```tsx
-import { useActiveWallet, useSetActiveConnector } from "@butr/react";
+import { useActiveWallet, useSetActiveConnector } from "@usebutr/react";
 
 const active = useActiveWallet();
 const setActive = useSetActiveConnector();
@@ -30,7 +30,7 @@ these are separate.
 list for the wallet's platform from `CHAINS_BY_PLATFORM`:
 
 ```tsx
-import { CHAINS_BY_PLATFORM } from "@butr/wallets";
+import { CHAINS_BY_PLATFORM } from "@usebutr/wallets";
 
 const ChainPicker = ({ wallet }) => {
   const chains = CHAINS_BY_PLATFORM[wallet.connector.chainPlatform];
@@ -66,7 +66,7 @@ next `accountChanged` event, bridged automatically into
 `wallet.account.chain`.
 
 <Callout type="info">
-  EVM-only manual setups don't bundle `@butr/wallets`. Use `EVM_CHAINS_LIST` from `@butr/evm`
+  EVM-only manual setups don't bundle `@usebutr/wallets`. Use `EVM_CHAINS_LIST` from `@usebutr/evm`
   instead — `demo-next` does exactly this.
 </Callout>
 

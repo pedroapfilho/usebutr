@@ -1,7 +1,7 @@
 import React, { type PropsWithChildren, type ReactElement } from "react";
 import { render, renderHook, type RenderHookOptions } from "@testing-library/react";
-import type { WalletAdapter, WalletManagerConfig, WalletPersistence } from "@butr/core";
-import { createFakePersistence } from "@butr/testing";
+import type { WalletAdapter, WalletManagerConfig, WalletPersistence } from "@usebutr/core";
+import { createFakePersistence } from "@usebutr/testing";
 import { WalletManagerProvider } from "../context";
 
 type ConfigOpts = {

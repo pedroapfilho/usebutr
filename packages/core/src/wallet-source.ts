@@ -2,9 +2,9 @@ import type { WalletAdapter } from "./types";
 
 /**
  * A discovery seam. Implementations call `onAdapter(adapter)` each time
- * they find a wallet and return an unsubscribe handle. `@butr/wallets`
+ * they find a wallet and return an unsubscribe handle. `@usebutr/wallets`
  * composes EVM + SVM into a single `WalletSource`; third parties can
- * implement this type without depending on `@butr/wallets`.
+ * implement this type without depending on `@usebutr/wallets`.
  */
 type WalletSource = {
   subscribe(onAdapter: (adapter: WalletAdapter) => void): () => void;
@@ -15,7 +15,7 @@ type WalletSource = {
  * `discoverEvmAdapters` / `discoverSvmAdapters`) into a `WalletSource`,
  * so an EVM-only app can do
  * `createWalletSource(discoverEvmAdapters)` without importing anything
- * protocol-bearing beyond `@butr/evm`.
+ * protocol-bearing beyond `@usebutr/evm`.
  */
 const createWalletSource = (
   subscribe: (onAdapter: (adapter: WalletAdapter) => void) => () => void,

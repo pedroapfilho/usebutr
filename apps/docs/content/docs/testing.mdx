@@ -1,13 +1,13 @@
 ---
 title: Testing
-description: "@butr/testing — fake adapters and fake persistence so unit tests never touch a real wallet or localStorage."
+description: "@usebutr/testing — fake adapters and fake persistence so unit tests never touch a real wallet or localStorage."
 ---
 
-`@butr/testing` provides deterministic test doubles. Install it as a dev
+`@usebutr/testing` provides deterministic test doubles. Install it as a dev
 dependency:
 
 ```npm
-npm install --save-dev @butr/testing
+npm install --save-dev @usebutr/testing
 ```
 
 ## `createFakeAdapter(options?): WalletAdapter`
@@ -16,7 +16,7 @@ Every method resolves to a deterministic stub. Override individual methods
 after construction to inject failure modes.
 
 ```ts
-import { createFakeAdapter } from "@butr/testing";
+import { createFakeAdapter } from "@usebutr/testing";
 
 const adapter = createFakeAdapter({ id: "metamask" });
 adapter.connect = () => Promise.reject(new Error("user rejected"));
@@ -55,7 +55,7 @@ In-memory `WalletPersistence` mirroring `WalletStorage`'s shape — no
 `Promise.resolve`).
 
 ```ts
-import { createFakePersistence } from "@butr/testing";
+import { createFakePersistence } from "@usebutr/testing";
 
 const persistence = createFakePersistence({
   activeConnectorId: "fake",
@@ -80,5 +80,5 @@ persistence without side effects. `clearAll()` resets everything.
 <Callout type="info">
   **Source:** `packages/testing/src` (`fake-adapter.ts`, `fake-persistence.ts`, and their
   `__tests__`) in the [butr
-  repository](https://github.com/pedroapfilho/butr/tree/main/packages/testing).
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/packages/testing).
 </Callout>

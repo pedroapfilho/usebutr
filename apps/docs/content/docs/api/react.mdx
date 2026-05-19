@@ -1,5 +1,5 @@
 ---
-title: "@butr/react"
+title: "@usebutr/react"
 description: The provider and every hook, grouped by what they do.
 ---
 
@@ -65,14 +65,14 @@ used in custom discovery wiring).
 ### `useDiscoveredWallets()`
 
 ```tsx
-import { useDiscoveredWallets } from "@butr/react";
+import { useDiscoveredWallets } from "@usebutr/react";
 
 const wallets = useDiscoveredWallets();
 // ReadonlyArray<WalletAdapter> — empty when no `discovery` prop was passed
 ```
 
 Live list of adapters announced via the `discovery` source since the provider
-mounted. Sourced from `@butr/react`.
+mounted. Sourced from `@usebutr/react`.
 
 ### `useWalletStore(selector)`
 

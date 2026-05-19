@@ -1,4 +1,4 @@
-// @butr/ledger — Ledger hardware wallet adapter (WebUSB transport).
+// @usebutr/ledger — Ledger hardware wallet adapter (WebUSB transport).
 //
 // Requires two optional peer deps:
 //   - `@ledgerhq/hw-app-eth`
@@ -7,7 +7,7 @@
 // Usage:
 //
 // ```ts
-// import { createLedgerAdapter } from "@butr/ledger";
+// import { createLedgerAdapter } from "@usebutr/ledger";
 //
 // const ledger = await createLedgerAdapter({
 //   chainId: 1,

@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { useStore } from "zustand";
 import { shallow } from "zustand/shallow";
 import { useStoreWithEqualityFn } from "zustand/traditional";
-import type { Account, ChainPlatform, ConnectedWallet, WalletStoreState } from "@butr/core";
-import { walletEqual } from "@butr/core";
+import type { Account, ChainPlatform, ConnectedWallet, WalletStoreState } from "@usebutr/core";
+import { walletEqual } from "@usebutr/core";
 import { useWalletStoreContext } from "./context";
 
 const EMPTY_ACCOUNTS: ReadonlyArray<Account> = [];

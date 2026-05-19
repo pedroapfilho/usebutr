@@ -1,7 +1,7 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import Image from "next/image";
 
-const GITHUB_URL = "https://github.com/pedroapfilho/butr";
+const GITHUB_URL = "https://github.com/pedroapfilho/usebutr";
 
 /**
  * Layout options shared between the docs layout and the home layout.

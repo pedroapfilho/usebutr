@@ -35,7 +35,7 @@ type StorageDriver = {
 Wrap a driver in `WalletStorage` and pass it as `storage`:
 
 ```ts
-import { WalletStorage } from "@butr/core";
+import { WalletStorage } from "@usebutr/core";
 
 const storage = new WalletStorage({
   keyPrefix: "myapp",
@@ -61,8 +61,8 @@ the writes race intentionally.
 </Callout>
 
 ```tsx
-import { WalletManagerProvider } from "@butr/react";
-import { autoDiscovery } from "@butr/wallets";
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 
 const discovery = autoDiscovery();
 

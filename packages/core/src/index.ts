@@ -45,8 +45,8 @@ export {
   WalletStorage,
 } from "./storage";
 
-// Equality helper used by async hooks in @butr/react
+// Equality helper used by async hooks in @usebutr/react
 export { walletEqual } from "./wallet-equal";
 
-// Logger — re-exported so consuming packages can import from @butr/core
+// Logger — re-exported so consuming packages can import from @usebutr/core
 export { logError, logWarn } from "./logger";

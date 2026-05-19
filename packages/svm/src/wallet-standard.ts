@@ -1,4 +1,4 @@
-import type { WalletAdapter } from "@butr/core";
+import type { WalletAdapter } from "@usebutr/core";
 import { buildSvmAdapter, slugify } from "./wallet-standard-adapter";
 import type { WalletStandardAppModule, WalletStandardWallet } from "./wallet-standard-types";
 

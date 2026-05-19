@@ -1,22 +1,22 @@
 ---
 title: Injected EVM
-description: EIP-6963 discovery with an EIP-1193 injected fallback, via @butr/evm.
+description: EIP-6963 discovery with an EIP-1193 injected fallback, via @usebutr/evm.
 ---
 
-`@butr/evm` discovers browser EVM wallets (MetaMask, Rabby, Brave, Coinbase, …)
+`@usebutr/evm` discovers browser EVM wallets (MetaMask, Rabby, Brave, Coinbase, …)
 through [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963) — the standard where
 wallets announce themselves via window events instead of fighting over
 `window.ethereum`.
 
 ## Discovery
 
-`autoDiscovery()` from `@butr/wallets` handles EVM discovery automatically.
+`autoDiscovery()` from `@usebutr/wallets` handles EVM discovery automatically.
 For an EVM-only setup, wire it directly with `createWalletSource`:
 
 ```ts
-import { createWalletSource } from "@butr/core";
-import { discoverEvmAdapters } from "@butr/evm";
-import { WalletManagerProvider } from "@butr/react";
+import { createWalletSource } from "@usebutr/core";
+import { discoverEvmAdapters } from "@usebutr/evm";
+import { WalletManagerProvider } from "@usebutr/react";
 
 const discovery = createWalletSource(discoverEvmAdapters);
 
@@ -33,7 +33,7 @@ fallback for them. When using `autoDiscovery()` the `injected` flag is
 controlled by `DiscoverOptions` and defaults to `true` whenever `evm` is enabled.
 
 ```ts
-import { discoverInjectedAdapter, GENERIC_INJECTED_ICON } from "@butr/evm";
+import { discoverInjectedAdapter, GENERIC_INJECTED_ICON } from "@usebutr/evm";
 ```
 
 ## Capabilities
@@ -48,16 +48,16 @@ assuming.
 ## Chain switching
 
 EVM connectors switch chains for real via `wallet_switchEthereumChain`. Use
-`EVM_CHAINS_LIST` (or `CHAINS_BY_PLATFORM.evm` from `@butr/wallets`) for the
+`EVM_CHAINS_LIST` (or `CHAINS_BY_PLATFORM.evm` from `@usebutr/wallets`) for the
 chain list — see [multi-chain](/docs/guides/multi-chain).
 
 ## Helpers
 
-`@butr/evm` also exports byte/hex utilities used by adapters and handy in app
+`@usebutr/evm` also exports byte/hex utilities used by adapters and handy in app
 code: `bytesToHex`, `hexToBytes`, `chainIdHexToDecimal`,
 `chainIdDecimalToHex`, `formatEther`.
 
 <Callout type="info">
   **Source:** `packages/evm/src`. Used by `apps/demo-next`, `apps/demo-tanstack-start`, and (via
-  `@butr/wallets`) `apps/demo-vite`.
+  `@usebutr/wallets`) `apps/demo-vite`.
 </Callout>

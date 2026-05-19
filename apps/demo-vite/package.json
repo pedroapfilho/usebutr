@@ -12,9 +12,9 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
-    "@butr/core": "workspace:*",
-    "@butr/react": "workspace:*",
-    "@butr/wallets": "workspace:*",
+    "@usebutr/core": "workspace:*",
+    "@usebutr/react": "workspace:*",
+    "@usebutr/wallets": "workspace:*",
     "@tailwindcss/vite": "^4.3.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

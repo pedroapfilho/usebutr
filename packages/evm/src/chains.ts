@@ -1,4 +1,4 @@
-import type { ChainBase } from "@butr/core";
+import type { ChainBase } from "@usebutr/core";
 
 /**
  * Common EVM chain registry keyed by CAIP-2 id. Useful for chain-

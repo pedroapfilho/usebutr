@@ -28,18 +28,18 @@ butr is layered. Each package depends only on the ones below it.
 
 | Package               | What it does                                                                               | Depends on            |
 | --------------------- | ------------------------------------------------------------------------------------------ | --------------------- |
-| `@butr/core`          | Types, the wallet store, persistence, the discovery seam. No React, no protocols.          | —                     |
-| `@butr/react`         | Provider + hooks over the store.                                                           | `@butr/core`          |
-| `@butr/evm`           | EIP-1193 / EIP-6963 / injected discovery and adapters.                                     | `@butr/core`          |
-| `@butr/svm`           | Wallet Standard discovery and adapters for Solana.                                         | `@butr/core`          |
-| `@butr/wallets`       | Batteries-included EVM+SVM discovery source (`autoDiscovery`) + combined chain registries. | core, react, evm, svm |
-| `@butr/walletconnect` | WalletConnect v2 adapter for EVM mobile wallets.                                           | core, evm             |
-| `@butr/ledger`        | Ledger hardware-wallet adapter (WebUSB, signing-only).                                     | `@butr/core`          |
-| `@butr/testing`       | Fake adapter + fake persistence for unit tests.                                            | `@butr/core`          |
+| `@usebutr/core`          | Types, the wallet store, persistence, the discovery seam. No React, no protocols.          | —                     |
+| `@usebutr/react`         | Provider + hooks over the store.                                                           | `@usebutr/core`          |
+| `@usebutr/evm`           | EIP-1193 / EIP-6963 / injected discovery and adapters.                                     | `@usebutr/core`          |
+| `@usebutr/svm`           | Wallet Standard discovery and adapters for Solana.                                         | `@usebutr/core`          |
+| `@usebutr/wallets`       | Batteries-included EVM+SVM discovery source (`autoDiscovery`) + combined chain registries. | core, react, evm, svm |
+| `@usebutr/walletconnect` | WalletConnect v2 adapter for EVM mobile wallets.                                           | core, evm             |
+| `@usebutr/ledger`        | Ledger hardware-wallet adapter (WebUSB, signing-only).                                     | `@usebutr/core`          |
+| `@usebutr/testing`       | Fake adapter + fake persistence for unit tests.                                            | `@usebutr/core`          |
 
-Most apps want `@butr/wallets` (it pulls in `@butr/react`, `@butr/evm`,
-`@butr/svm`, `@butr/core`). Pass `autoDiscovery()` from `@butr/wallets` to
-`WalletManagerProvider` from `@butr/react` for EVM+SVM discovery. Reach for
+Most apps want `@usebutr/wallets` (it pulls in `@usebutr/react`, `@usebutr/evm`,
+`@usebutr/svm`, `@usebutr/core`). Pass `autoDiscovery()` from `@usebutr/wallets` to
+`WalletManagerProvider` from `@usebutr/react` for EVM+SVM discovery. Reach for
 the lower-level packages when you want an EVM-only bundle or a custom discovery
 pipeline.
 
@@ -57,5 +57,5 @@ pipeline.
 
 <Callout type="info">
   All code in these docs is taken from the runnable demo apps and package tests in [the butr
-  repository](https://github.com/pedroapfilho/butr), not invented. Each guide cites its source.
+  repository](https://github.com/pedroapfilho/usebutr), not invented. Each guide cites its source.
 </Callout>

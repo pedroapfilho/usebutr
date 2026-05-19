@@ -17,7 +17,7 @@ import type {
   SolanaSignAndSendTransactionFeature,
   SolanaSignMessageFeature,
   WalletStandardWallet,
-} from "@butr/svm";
+} from "@usebutr/svm";
 
 const walletStd = (await wallet.connector.getSigner()) as WalletStandardWallet;
 ```
@@ -67,6 +67,6 @@ const [output] = await feature.signAndSendTransaction({
 
 <Callout type="info">
   **Source:** `apps/demo-with-solana-web3js/src/app.tsx` in the [butr
-  repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-with-solana-web3js). Targets
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-with-solana-web3js). Targets
   Solana devnet. Run `pnpm dev --filter=demo-with-solana-web3js` → `http://localhost:5177`.
 </Callout>

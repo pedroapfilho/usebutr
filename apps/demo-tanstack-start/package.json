@@ -15,9 +15,9 @@
     "clean": "rm -rf .vinxi .output dist node_modules"
   },
   "dependencies": {
-    "@butr/core": "workspace:*",
-    "@butr/evm": "workspace:*",
-    "@butr/react": "workspace:*",
+    "@usebutr/core": "workspace:*",
+    "@usebutr/evm": "workspace:*",
+    "@usebutr/react": "workspace:*",
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/react-devtools": "latest",
     "@tanstack/react-router": "latest",

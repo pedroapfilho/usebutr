@@ -23,7 +23,7 @@ import {
   createCookieStorageDriver, // cookies — domain/path/SameSite/secure
   createMemoryStorageDriver, // in-memory, no persistence
   WalletStorage,
-} from "@butr/core";
+} from "@usebutr/core";
 
 const storage = new WalletStorage({
   keyPrefix: "myapp",
@@ -45,7 +45,7 @@ exact `demo-expo-web` driver:
 
 ```ts title="async-storage-driver.ts"
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { StorageDriver } from "@butr/core";
+import type { StorageDriver } from "@usebutr/core";
 
 const asyncStorageDriver: StorageDriver = {
   getItem: (key) => AsyncStorage.getItem(key),
@@ -60,9 +60,9 @@ Wire it into `WalletManagerProvider`:
 
 ```tsx title="wallet-provider.tsx"
 import type { ReactNode } from "react";
-import { WalletStorage } from "@butr/core";
-import { WalletManagerProvider } from "@butr/react";
-import { autoDiscovery } from "@butr/wallets";
+import { WalletStorage } from "@usebutr/core";
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 import { asyncStorageDriver } from "./async-storage-driver";
 
 const KEY_PREFIX = "butr-demo";
@@ -92,6 +92,6 @@ const WalletProvider = ({ children }: { children: ReactNode }) => (
 <Callout type="info">
   **Source:** `apps/demo-expo-web/src/async-storage-driver.ts` and
   `apps/demo-expo-web/src/wallet-provider.tsx` in the [butr
-  repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-expo-web). See also
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-expo-web). See also
   [persistence concepts](/docs/concepts/persistence).
 </Callout>

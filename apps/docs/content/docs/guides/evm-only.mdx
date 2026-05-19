@@ -1,36 +1,36 @@
 ---
 title: EVM-only setup
-description: Ship @butr/react + @butr/evm with no @butr/svm or @butr/wallets in the bundle.
+description: Ship @usebutr/react + @usebutr/evm with no @usebutr/svm or @usebutr/wallets in the bundle.
 ---
 
 Pick this path when your app only touches EVM chains — a viem, wagmi, or ethers
-app with no Solana surface. You import `@butr/evm` for discovery instead of
-`autoDiscovery()` from `@butr/wallets`, and the Solana packages never enter your
+app with no Solana surface. You import `@usebutr/evm` for discovery instead of
+`autoDiscovery()` from `@usebutr/wallets`, and the Solana packages never enter your
 bundle. Nothing else about the provider or hooks changes.
 
 ## Install
 
-`@butr/react` gives you the provider and hooks, `@butr/evm` does EIP-6963
-discovery, and `createWalletSource` comes from `@butr/core`. No `@butr/wallets`,
-no `@butr/svm`.
+`@usebutr/react` gives you the provider and hooks, `@usebutr/evm` does EIP-6963
+discovery, and `createWalletSource` comes from `@usebutr/core`. No `@usebutr/wallets`,
+no `@usebutr/svm`.
 
 ```npm
-npm install @butr/react @butr/evm @butr/core zustand
+npm install @usebutr/react @usebutr/evm @usebutr/core zustand
 ```
 
 ## Provider
 
-Build the `WalletSource` with `createWalletSource` from `@butr/core` and
-`discoverEvmAdapters` from `@butr/evm`. Hoist it to module scope so it is created
+Build the `WalletSource` with `createWalletSource` from `@usebutr/core` and
+`discoverEvmAdapters` from `@usebutr/evm`. Hoist it to module scope so it is created
 once, not on every render.
 
 ```tsx title="src/wallet-provider.tsx"
 import type { ReactNode } from "react";
-import { createWalletSource } from "@butr/core";
-import { WalletManagerProvider, useDiscoveredWallets } from "@butr/react";
-import { discoverEvmAdapters } from "@butr/evm";
+import { createWalletSource } from "@usebutr/core";
+import { WalletManagerProvider, useDiscoveredWallets } from "@usebutr/react";
+import { discoverEvmAdapters } from "@usebutr/evm";
 
-// EVM-only: @butr/react + @butr/evm. No @butr/svm / @butr/wallets in the
+// EVM-only: @usebutr/react + @usebutr/evm. No @usebutr/svm / @usebutr/wallets in the
 // bundle — discovery is a WalletSource built from the EVM discoverer.
 const evmDiscovery = createWalletSource(discoverEvmAdapters);
 
@@ -52,36 +52,36 @@ On Next.js the same module needs a `"use client"` directive at the top — see
 
 ## The bundle guarantee
 
-The isolation is not a flag — it is your import graph. `@butr/evm` depends only
-on `@butr/core`; it carries no Wallet Standard or Solana code. `autoDiscovery()`
-lives in `@butr/wallets`, which depends on both `@butr/evm` and `@butr/svm`, so
+The isolation is not a flag — it is your import graph. `@usebutr/evm` depends only
+on `@usebutr/core`; it carries no Wallet Standard or Solana code. `autoDiscovery()`
+lives in `@usebutr/wallets`, which depends on both `@usebutr/evm` and `@usebutr/svm`, so
 importing it would pull Solana in. Here you import `discoverEvmAdapters` from
-`@butr/evm` directly, so `@butr/svm` and `@butr/wallets` are never referenced and
+`@usebutr/evm` directly, so `@usebutr/svm` and `@usebutr/wallets` are never referenced and
 the bundler tree-shakes them out (`"sideEffects": false` is set on every
 package). See [Platforms](/docs/concepts/platforms).
 
 ## Chains
 
-Pull the chain list from `@butr/evm` directly. `CHAINS_BY_PLATFORM` from
-`@butr/wallets` would re-introduce the bundle you just avoided.
+Pull the chain list from `@usebutr/evm` directly. `CHAINS_BY_PLATFORM` from
+`@usebutr/wallets` would re-introduce the bundle you just avoided.
 
 ```tsx
-import { EVM_CHAINS_LIST } from "@butr/evm";
+import { EVM_CHAINS_LIST } from "@usebutr/evm";
 const CHAINS_BY_PLATFORM = { evm: EVM_CHAINS_LIST, svm: [] as const };
 ```
 
 `EVM_CHAINS` (keyed: `ethereum`, `sepolia`, `arbitrum`, `optimism`, `base`,
 `polygon`, `bsc`) and `EVM_CHAINS_LIST` (the same as an array) are both exported
-from `@butr/evm`. butr itself never reads this list — it is for your
+from `@usebutr/evm`. butr itself never reads this list — it is for your
 chain-switcher UI. `Connector.switchChain` accepts any `ChainBase`.
 
 ## Capabilities and caveats
 
-`@butr/evm` discovers wallets via [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963),
+`@usebutr/evm` discovers wallets via [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963),
 the standard where wallets announce themselves through window events instead of
 fighting over `window.ethereum`. Some regional or legacy wallets only expose a
 raw EIP-1193 `window.ethereum` and never announce; `discoverInjectedAdapter`
-(also from `@butr/evm`) is the last-resort fallback for those.
+(also from `@usebutr/evm`) is the last-resort fallback for those.
 
 EVM connectors switch chains for real via `wallet_switchEthereumChain`.
 Capability values are derived from the wallet's EIP-6963 provider info — always
@@ -102,5 +102,5 @@ than assuming a wallet supports an operation.
 <Callout type="info">
   **Source:** `apps/demo-with-viem/src/wallet-provider.tsx`,
   `apps/demo-with-wagmi/src/wallet-provider.tsx`, and `apps/demo-next/src/wallet-provider.tsx` in
-  the [butr repository](https://github.com/pedroapfilho/butr).
+  the [butr repository](https://github.com/pedroapfilho/usebutr).
 </Callout>

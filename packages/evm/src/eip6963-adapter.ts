@@ -1,4 +1,4 @@
-import type { Account, ChainBase, WalletAdapter } from "@butr/core";
+import type { Account, ChainBase, WalletAdapter } from "@usebutr/core";
 import { resolveEip6963Capabilities } from "./capabilities";
 import type { Eip1193Listener, Eip1193Provider, Eip6963ProviderInfo } from "./eip1193";
 

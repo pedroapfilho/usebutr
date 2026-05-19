@@ -5,8 +5,8 @@ import type {
   WalletManagerConfig,
   WalletSource,
   WalletStore,
-} from "@butr/core";
-import { createWalletStore, logError } from "@butr/core";
+} from "@usebutr/core";
+import { createWalletStore, logError } from "@usebutr/core";
 
 const WalletStoreContext: React.Context<WalletStore | null> = createContext<WalletStore | null>(
   null,
@@ -67,7 +67,7 @@ const buildInitialConfig = (
 
 /**
  * The butr provider. Pass `discovery` (a `WalletSource` such as
- * `autoDiscovery()` from `@butr/wallets`) for auto-discovered wallets,
+ * `autoDiscovery()` from `@usebutr/wallets`) for auto-discovered wallets,
  * and/or `createConnector` to register explicit adapters
  * (WalletConnect, Ledger, custom). When both are present an id is
  * resolved from discovered adapters first, then `createConnector`.

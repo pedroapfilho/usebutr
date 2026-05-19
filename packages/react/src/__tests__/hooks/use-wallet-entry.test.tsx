@@ -1,6 +1,6 @@
 import { act } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { createFakeAdapter } from "@butr/testing";
+import { createFakeAdapter } from "@usebutr/testing";
 import { useConnectWallet, useWalletEntry } from "../../hooks-async";
 import { renderHookWithProvider } from "../render-with-provider";
 import { useConnectWallet as useConnectWalletSync } from "../../hooks";

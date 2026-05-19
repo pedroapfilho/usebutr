@@ -1,5 +1,5 @@
 ---
-title: "@butr/wallets"
+title: "@usebutr/wallets"
 description: Batteries-included discovery source — autoDiscovery(), composed EVM + SVM discovery, combined chains.
 ---
 
@@ -12,8 +12,8 @@ injected fallback) and SVM (Wallet Standard) discovery. Pass it directly as the
 `discovery` prop on `WalletManagerProvider`:
 
 ```tsx
-import { WalletManagerProvider } from "@butr/react";
-import { autoDiscovery } from "@butr/wallets";
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 
 // Hoist to module scope so the reference is stable.
 const discovery = autoDiscovery();

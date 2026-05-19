@@ -14,8 +14,8 @@ The library is split across small focused packages so consumers bundle only what
 ## Highlights
 
 - **Multi-chain by default.** EVM (EIP-1193 / EIP-6963) and Solana (Wallet Standard) on equal footing. No "one chain at a time" mode.
-- **Framework-agnostic core.** `@butr/core` is React-free. `@butr/react` is the binding, not the foundation. Use the core directly from any TS runtime.
-- **Modular packages.** Install only the protocol adapters you ship. EVM-only dapp? Skip `@butr/svm` entirely.
+- **Framework-agnostic core.** `@usebutr/core` is React-free. `@usebutr/react` is the binding, not the foundation. Use the core directly from any TS runtime.
+- **Modular packages.** Install only the protocol adapters you ship. EVM-only dapp? Skip `@usebutr/svm` entirely.
 - **No middleware lock-in.** Every adapter is just a `WalletAdapter`. Bring WalletConnect, Ledger, or your own.
 - **Composes with the ecosystem.** Sits beside viem, wagmi, `@solana/web3.js`, `@solana/wallet-adapter-react`, `@solana/kit`. butr owns discovery and connection state; your existing library owns RPC and signing.
 
@@ -25,14 +25,14 @@ The published library is split across eight packages, each with a single respons
 
 | Package               | Purpose                                                                               |
 | --------------------- | ------------------------------------------------------------------------------------- |
-| `@butr/core`          | Types, store, storage, and the `WalletSource` discovery seam. No React, no protocols. |
-| `@butr/react`         | React provider and hooks on top of `@butr/core`.                                      |
-| `@butr/evm`           | EIP-1193 / EIP-6963 / injected wallet discovery and adapters.                         |
-| `@butr/svm`           | Wallet Standard adapter for Solana / SVM.                                             |
-| `@butr/wallets`       | Batteries-included composition: EVM + SVM discovery + `AutoWalletManagerProvider`.    |
-| `@butr/walletconnect` | WalletConnect v2 adapter (composes over `@butr/evm`).                                 |
-| `@butr/ledger`        | Ledger hardware-wallet adapter (EVM).                                                 |
-| `@butr/testing`       | Fake adapters, fake persistence, mock storage for tests.                              |
+| `@usebutr/core`          | Types, store, storage, and the `WalletSource` discovery seam. No React, no protocols. |
+| `@usebutr/react`         | React provider and hooks on top of `@usebutr/core`.                                      |
+| `@usebutr/evm`           | EIP-1193 / EIP-6963 / injected wallet discovery and adapters.                         |
+| `@usebutr/svm`           | Wallet Standard adapter for Solana / SVM.                                             |
+| `@usebutr/wallets`       | Batteries-included composition: EVM + SVM discovery + `AutoWalletManagerProvider`.    |
+| `@usebutr/walletconnect` | WalletConnect v2 adapter (composes over `@usebutr/evm`).                                 |
+| `@usebutr/ledger`        | Ledger hardware-wallet adapter (EVM).                                                 |
+| `@usebutr/testing`       | Fake adapters, fake persistence, mock storage for tests.                              |
 
 Workspace-internal packages (not published):
 
@@ -48,7 +48,7 @@ Two flavors of demo ship in this repo.
 
 ### Framework demos — kitchen-sink references
 
-Each one exercises every public hook in `@butr/react` against discovered wallets. Use them as the canonical example for the framework you're targeting.
+Each one exercises every public hook in `@usebutr/react` against discovered wallets. Use them as the canonical example for the framework you're targeting.
 
 | App                   | Framework                       | Dev URL                 |
 | --------------------- | ------------------------------- | ----------------------- |
@@ -73,7 +73,7 @@ All web demos bind distinct ports so they can run concurrently.
 
 ## Stack
 
-- **Library:** `@butr/*` workspace packages (React 19, zustand).
+- **Library:** `@usebutr/*` workspace packages (React 19, zustand).
 - **Build:** Turborepo + pnpm workspaces; tsdown for package builds (tree-shaking, minification, source maps, watch mode).
 - **Linting / formatting:** oxlint + oxfmt.
 - **Testing:** Vitest for unit tests.

@@ -3,13 +3,13 @@ title: Ledger
 description: Ledger hardware wallet over WebUSB — Chromium-only, signing-only, no RPC or events.
 ---
 
-`@butr/ledger` is a Ledger hardware-wallet adapter using WebUSB. It signs
+`@usebutr/ledger` is a Ledger hardware-wallet adapter using WebUSB. It signs
 messages and transactions; it does **not** broadcast or read chain state.
 
 ## Install
 
 ```npm
-npm install @butr/ledger @ledgerhq/hw-app-eth @ledgerhq/hw-transport-webusb
+npm install @usebutr/ledger @ledgerhq/hw-app-eth @ledgerhq/hw-transport-webusb
 ```
 
 Both Ledger packages are optional peer dependencies.
@@ -17,7 +17,7 @@ Both Ledger packages are optional peer dependencies.
 ## Build the adapter
 
 ```ts
-import { createLedgerAdapter } from "@butr/ledger";
+import { createLedgerAdapter } from "@usebutr/ledger";
 
 const ledger = await createLedgerAdapter({
   chainId: 1, // Ethereum mainnet (EIP-155 number, not CAIP-2)
@@ -36,9 +36,9 @@ Register it through the unified provider exactly like
 [WalletConnect](/docs/connectors/walletconnect):
 
 ```tsx
-import { WalletManagerProvider } from "@butr/react";
-import { autoDiscovery } from "@butr/wallets";
-import { createLedgerAdapter } from "@butr/ledger";
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
+import { createLedgerAdapter } from "@usebutr/ledger";
 
 const discovery = autoDiscovery();
 const ledger = await createLedgerAdapter({ chainId: 1, accountCount: 3 });
@@ -102,5 +102,5 @@ configured `accountCount`).
 
 <Callout type="info">
   **Source:** `packages/ledger/src` (`adapter.ts`, `capabilities.ts`, `__tests__/adapter.test.ts`)
-  in the [butr repository](https://github.com/pedroapfilho/butr/tree/main/packages/ledger).
+  in the [butr repository](https://github.com/pedroapfilho/usebutr/tree/main/packages/ledger).
 </Callout>

@@ -1,4 +1,4 @@
-import type { Account, ChainPlatform, WalletAdapter, WalletCapabilities } from "@butr/core";
+import type { Account, ChainPlatform, WalletAdapter, WalletCapabilities } from "@usebutr/core";
 
 type FakeAdapterOptions = {
   accounts?: Array<Account>;

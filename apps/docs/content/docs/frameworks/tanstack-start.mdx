@@ -9,11 +9,11 @@ TanStack Start is Vite-based SSR. The provider wiring is identical to the
 
 ```tsx title="src/wallet-provider.tsx"
 import type { ReactNode } from "react";
-import { createWalletSource } from "@butr/core";
-import { WalletManagerProvider, useDiscoveredWallets } from "@butr/react";
-import { discoverEvmAdapters } from "@butr/evm";
+import { createWalletSource } from "@usebutr/core";
+import { WalletManagerProvider, useDiscoveredWallets } from "@usebutr/react";
+import { discoverEvmAdapters } from "@usebutr/evm";
 
-// EVM-only: @butr/react + @butr/evm. No @butr/svm / @butr/wallets in the
+// EVM-only: @usebutr/react + @usebutr/evm. No @usebutr/svm / @usebutr/wallets in the
 // bundle — discovery is a WalletSource built from the EVM discoverer.
 const evmDiscovery = createWalletSource(discoverEvmAdapters);
 
@@ -43,6 +43,6 @@ import { WalletProvider } from "../wallet-provider";
 
 <Callout type="info">
   **Source:** `apps/demo-tanstack-start/src/wallet-provider.tsx` in the [butr
-  repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-tanstack-start). Run `pnpm
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-tanstack-start). Run `pnpm
   dev --filter=demo-tanstack-start` → `http://localhost:3001`.
 </Callout>

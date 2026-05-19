@@ -6,7 +6,7 @@ import type {
   StorageDriver,
   WalletAdapter,
   WalletManagerConfig,
-} from "@butr/core";
+} from "@usebutr/core";
 
 const createMockChain = (overrides?: Partial<ChainBase>): ChainBase => ({
   id: "eip155:1",

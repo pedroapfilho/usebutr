@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { logWarn } from "@butr/core";
-import type * as ButrCore from "@butr/core";
+import { logWarn } from "@usebutr/core";
+import type * as ButrCore from "@usebutr/core";
 import { createDiscoveryBus } from "../discovery-bus";
 import type { DiscoveryPath } from "../discovery-bus";
 import { createMockConnector } from "./helpers";
 
-vi.mock("@butr/core", async (importOriginal) => {
+vi.mock("@usebutr/core", async (importOriginal) => {
   const actual = await importOriginal<typeof ButrCore>();
   return { ...actual, logWarn: vi.fn() };
 });

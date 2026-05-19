@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { StorageDriver } from "@butr/core";
+import type { StorageDriver } from "@usebutr/core";
 
 /**
  * AsyncStorage-backed `StorageDriver` for React Native / Expo. The

@@ -1,4 +1,4 @@
-import type { ChainBase } from "@butr/core";
+import type { ChainBase } from "@usebutr/core";
 
 // Solana chain identifiers follow the Wallet Standard convention
 // (`solana:mainnet` / `solana:devnet` / `solana:testnet`) rather than

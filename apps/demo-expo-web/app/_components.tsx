@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Image, Linking, Pressable, Text, View } from "react-native";
-import type { Account, ConnectedWallet, WalletAdapter } from "@butr/core";
+import type { Account, ConnectedWallet, WalletAdapter } from "@usebutr/core";
 import {
   useActiveWallet,
   useBalance,
@@ -13,9 +13,9 @@ import {
   useIsHydrated,
   useRequestAccounts,
   useSetActiveConnector,
-} from "@butr/react";
-import type { UseBalanceResult } from "@butr/react";
-import { CHAINS_BY_PLATFORM } from "@butr/wallets";
+} from "@usebutr/react";
+import type { UseBalanceResult } from "@usebutr/react";
+import { CHAINS_BY_PLATFORM } from "@usebutr/wallets";
 import { styles } from "./_styles";
 
 type SignState =

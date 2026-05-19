@@ -1,5 +1,5 @@
-import type { Account, ChainBase, WalletAdapter } from "@butr/core";
-import { logWarn } from "@butr/core";
+import type { Account, ChainBase, WalletAdapter } from "@usebutr/core";
+import { logWarn } from "@usebutr/core";
 import { LEDGER_CAPABILITIES } from "./capabilities";
 
 /**

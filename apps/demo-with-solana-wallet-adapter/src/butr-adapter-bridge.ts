@@ -10,12 +10,12 @@ import {
   Transaction,
   type VersionedTransaction,
 } from "@solana/web3.js";
-import type { WalletAdapter as ButrWalletAdapter } from "@butr/core";
+import type { WalletAdapter as ButrWalletAdapter } from "@usebutr/core";
 import type {
   SolanaSignAndSendTransactionFeature,
   SolanaSignMessageFeature,
   WalletStandardWallet,
-} from "@butr/svm";
+} from "@usebutr/svm";
 
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const bytesToBase58 = (bytes: Uint8Array): string => {
@@ -50,7 +50,7 @@ const bytesToBase58 = (bytes: Uint8Array): string => {
  */
 class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
   readonly supportedTransactionVersions = new Set<0>([0]);
-  readonly url = "https://github.com/pedroapfilho/butr";
+  readonly url = "https://github.com/pedroapfilho/usebutr";
 
   private _connecting = false;
   private _publicKey: PublicKey | null;

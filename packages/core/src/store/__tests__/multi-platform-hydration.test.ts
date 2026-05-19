@@ -8,7 +8,7 @@
 // creating a fresh one against the same WalletPersistence. SVM is
 // modeled as a "late-registered" adapter — its createConnector
 // returns null at hydration time and resolves later via
-// tryRestoreFromPending, mirroring how @butr/wallets'
+// tryRestoreFromPending, mirroring how @usebutr/wallets'
 // DiscoverySubscriber drives the real auto-discovery path.
 
 import { describe, expect, it, vi } from "vitest";

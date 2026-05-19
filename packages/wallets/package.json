@@ -1,12 +1,12 @@
 {
-  "name": "@butr/wallets",
+  "name": "@usebutr/wallets",
   "version": "0.1.0",
   "description": "Batteries-included EVM + SVM discovery: autoDiscovery() WalletSource + combined chain registries.",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pedroapfilho/butr.git",
+    "url": "git+https://github.com/pedroapfilho/usebutr.git",
     "directory": "packages/wallets"
   },
   "files": [
@@ -33,13 +33,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@butr/core": "workspace:*",
-    "@butr/evm": "workspace:*",
-    "@butr/react": "workspace:*",
-    "@butr/svm": "workspace:*"
+    "@usebutr/core": "workspace:*",
+    "@usebutr/evm": "workspace:*",
+    "@usebutr/react": "workspace:*",
+    "@usebutr/svm": "workspace:*"
   },
   "devDependencies": {
-    "@butr/testing": "workspace:*",
+    "@usebutr/testing": "workspace:*",
     "@repo/config-vitest": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@testing-library/jest-dom": "^6.9.1",

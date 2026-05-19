@@ -1,12 +1,12 @@
 {
-  "name": "@butr/core",
+  "name": "@usebutr/core",
   "version": "0.1.0",
   "description": "Core types, store, storage, and discovery seam for butr. No React, no protocols.",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pedroapfilho/butr.git",
+    "url": "git+https://github.com/pedroapfilho/usebutr.git",
     "directory": "packages/core"
   },
   "files": [

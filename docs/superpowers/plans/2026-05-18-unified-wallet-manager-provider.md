@@ -4,9 +4,9 @@
 
 **Goal:** Merge `AutoWalletManagerProvider` into a single flat-prop `WalletManagerProvider` where discovery is a `WalletSource` value passed in, preserving the strict EVM-only bundle guarantee.
 
-**Architecture:** `@butr/react` stays protocol-free; its `WalletManagerProvider` gains flat props, an internal discovered-adapter map, a `discovery` subscription, and owns `useDiscoveredWallets()`. `@butr/wallets` exports `autoDiscovery()` (a `WalletSource`) and drops its provider. `@butr/core` adds a one-line `createWalletSource` helper.
+**Architecture:** `@usebutr/react` stays protocol-free; its `WalletManagerProvider` gains flat props, an internal discovered-adapter map, a `discovery` subscription, and owns `useDiscoveredWallets()`. `@usebutr/wallets` exports `autoDiscovery()` (a `WalletSource`) and drops its provider. `@usebutr/core` adds a one-line `createWalletSource` helper.
 
-**Tech Stack:** TypeScript, React 19, Zustand, Vitest + @testing-library/react, `@butr/testing` fakes, pnpm + Turborepo, oxlint/oxfmt.
+**Tech Stack:** TypeScript, React 19, Zustand, Vitest + @testing-library/react, `@usebutr/testing` fakes, pnpm + Turborepo, oxlint/oxfmt.
 
 **Working dir:** repo root `/Users/pedroapfilho/conductor/workspaces/butr-monorepo/marseille` (worktree of `butr-monorepo`). Branch: `butr-fumadocs-site`.
 
@@ -14,7 +14,7 @@
 
 ---
 
-## Phase A — `@butr/core`: `createWalletSource`
+## Phase A — `@usebutr/core`: `createWalletSource`
 
 ### Task A1: Add `createWalletSource` helper
 
@@ -47,7 +47,7 @@ describe("createWalletSource", () => {
 
 - [ ] **Step 2: Run test, verify it fails**
 
-Run: `pnpm --filter @butr/core test -- wallet-source`
+Run: `pnpm --filter @usebutr/core test -- wallet-source`
 Expected: FAIL — `createWalletSource` is not exported.
 
 - [ ] **Step 3: Implement**
@@ -59,9 +59,9 @@ import type { WalletAdapter } from "./types";
 
 /**
  * A discovery seam. Implementations call `onAdapter(adapter)` each time
- * they find a wallet and return an unsubscribe handle. `@butr/wallets`
+ * they find a wallet and return an unsubscribe handle. `@usebutr/wallets`
  * composes EVM + SVM into a single `WalletSource`; third parties can
- * implement this type without depending on `@butr/wallets`.
+ * implement this type without depending on `@usebutr/wallets`.
  */
 type WalletSource = {
   subscribe(onAdapter: (adapter: WalletAdapter) => void): () => void;
@@ -72,7 +72,7 @@ type WalletSource = {
  * `discoverEvmAdapters` / `discoverSvmAdapters`) into a `WalletSource`,
  * so an EVM-only app can do
  * `createWalletSource(discoverEvmAdapters)` without importing anything
- * protocol-bearing beyond `@butr/evm`.
+ * protocol-bearing beyond `@usebutr/evm`.
  */
 const createWalletSource = (
   subscribe: (onAdapter: (adapter: WalletAdapter) => void) => () => void,
@@ -99,12 +99,12 @@ export { createWalletSource } from "./wallet-source";
 
 - [ ] **Step 4: Run test, verify it passes**
 
-Run: `pnpm --filter @butr/core test -- wallet-source`
+Run: `pnpm --filter @usebutr/core test -- wallet-source`
 Expected: PASS.
 
 - [ ] **Step 5: Typecheck + lint + commit**
 
-Run: `pnpm turbo run typecheck lint --filter=@butr/core` → expect pass.
+Run: `pnpm turbo run typecheck lint --filter=@usebutr/core` → expect pass.
 
 ```bash
 git add packages/core/src/wallet-source.ts packages/core/src/index.ts packages/core/src/__tests__/wallet-source.test.ts
@@ -113,7 +113,7 @@ git commit -m "feat(core): add createWalletSource helper"
 
 ---
 
-## Phase B — `@butr/react`: unified provider + `useDiscoveredWallets`
+## Phase B — `@usebutr/react`: unified provider + `useDiscoveredWallets`
 
 ### Task B1: Rewrite `WalletManagerProvider` with flat props + discovery
 
@@ -131,8 +131,8 @@ Replace `packages/react/src/__tests__/render-with-provider.tsx` with:
 ```tsx
 import React, { type PropsWithChildren, type ReactElement } from "react";
 import { render, renderHook, type RenderHookOptions } from "@testing-library/react";
-import type { WalletAdapter, WalletManagerConfig, WalletPersistence } from "@butr/core";
-import { createFakePersistence } from "@butr/testing";
+import type { WalletAdapter, WalletManagerConfig, WalletPersistence } from "@usebutr/core";
+import { createFakePersistence } from "@usebutr/testing";
 import { WalletManagerProvider } from "../context";
 
 type ConfigOpts = {
@@ -203,8 +203,8 @@ Replace `packages/react/src/__tests__/context.test.tsx` with:
 import React, { type PropsWithChildren } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { WalletAdapter, WalletSource } from "@butr/core";
-import { createFakeAdapter, createFakePersistence } from "@butr/testing";
+import type { WalletAdapter, WalletSource } from "@usebutr/core";
+import { createFakeAdapter, createFakePersistence } from "@usebutr/testing";
 import { WalletManagerProvider, useDiscoveredWallets, useWalletStoreContext } from "../context";
 import { useConnectWallet, useConnectedWallets } from "../hooks";
 
@@ -300,7 +300,7 @@ describe("useDiscoveredWallets outside provider", () => {
 
 - [ ] **Step 3: Run test, verify it fails**
 
-Run: `pnpm --filter @butr/react test -- context`
+Run: `pnpm --filter @usebutr/react test -- context`
 Expected: FAIL — `useDiscoveredWallets` not exported from `../context`; `WalletManagerProvider` has no `discovery` prop.
 
 - [ ] **Step 4: Implement the unified provider**
@@ -309,8 +309,8 @@ Replace `packages/react/src/context.tsx` with:
 
 ```tsx
 import React, { createContext, use, useEffect, useMemo, useRef, useState } from "react";
-import type { ConnectorMeta, WalletAdapter, WalletManagerConfig, WalletSource } from "@butr/core";
-import { type WalletStore, createWalletStore } from "@butr/core";
+import type { ConnectorMeta, WalletAdapter, WalletManagerConfig, WalletSource } from "@usebutr/core";
+import { type WalletStore, createWalletStore } from "@usebutr/core";
 
 const WalletStoreContext: React.Context<WalletStore | null> = createContext<WalletStore | null>(
   null,
@@ -343,7 +343,7 @@ type WalletManagerProviderProps = {
 
 /**
  * The butr provider. Pass `discovery` (a `WalletSource` such as
- * `autoDiscovery()` from `@butr/wallets`) for auto-discovered wallets,
+ * `autoDiscovery()` from `@usebutr/wallets`) for auto-discovered wallets,
  * and/or `createConnector` to register explicit adapters
  * (WalletConnect, Ledger, custom). When both are present an id is
  * resolved from discovered adapters first, then `createConnector`.
@@ -462,12 +462,12 @@ export {
 
 - [ ] **Step 6: Run the full react test suite**
 
-Run: `pnpm --filter @butr/react test`
+Run: `pnpm --filter @usebutr/react test`
 Expected: PASS — all existing hook tests still green (they go through the updated helper), plus the new `context.test.tsx`.
 
 - [ ] **Step 7: Typecheck + lint**
 
-Run: `pnpm turbo run typecheck lint --filter=@butr/react`
+Run: `pnpm turbo run typecheck lint --filter=@usebutr/react`
 Expected: pass. Fix any oxlint object-key/JSX-prop ordering if flagged.
 
 - [ ] **Step 8: Commit**
@@ -479,7 +479,7 @@ git commit -m "feat(react): unified flat-prop WalletManagerProvider with discove
 
 ---
 
-## Phase C — `@butr/wallets`: `autoDiscovery`, remove provider
+## Phase C — `@usebutr/wallets`: `autoDiscovery`, remove provider
 
 ### Task C1: Add `autoDiscovery`, drop `AutoWalletManagerProvider`
 
@@ -511,14 +511,14 @@ describe("autoDiscovery", () => {
 
 - [ ] **Step 2: Run test, verify it fails**
 
-Run: `pnpm --filter @butr/wallets test -- auto-discovery`
+Run: `pnpm --filter @usebutr/wallets test -- auto-discovery`
 Expected: FAIL — module `../auto-discovery` does not exist.
 
 - [ ] **Step 3: Implement `auto-discovery.ts`**
 
 ```ts
 // packages/wallets/src/auto-discovery.ts
-import type { WalletSource } from "@butr/core";
+import type { WalletSource } from "@usebutr/core";
 import { type DiscoverOptions, discoverWalletAdapters } from "./discover";
 
 /**
@@ -564,12 +564,12 @@ export { autoDiscovery } from "./auto-discovery";
 
 - [ ] **Step 6: Run wallets test suite**
 
-Run: `pnpm --filter @butr/wallets test`
+Run: `pnpm --filter @usebutr/wallets test`
 Expected: PASS. (The old `auto-provider.test.tsx` is gone; remaining tests — discover, chains, wallet-source, discovery-bus — unaffected.)
 
 - [ ] **Step 7: Typecheck + lint**
 
-Run: `pnpm turbo run typecheck lint --filter=@butr/wallets`
+Run: `pnpm turbo run typecheck lint --filter=@usebutr/wallets`
 Expected: pass.
 
 - [ ] **Step 8: Commit**
@@ -584,8 +584,8 @@ git commit -m "feat(wallets): export autoDiscovery WalletSource; remove AutoWall
 ## Phase D — Demo apps (9)
 
 All demo `wallet-provider.tsx` files change to the unified provider. The
-`useDiscoveredWallets` import moves from the local provider module / `@butr/wallets`
-to `@butr/react`.
+`useDiscoveredWallets` import moves from the local provider module / `@usebutr/wallets`
+to `@usebutr/react`.
 
 ### Task D1: Batteries-included demos (`demo-vite`, `demo-expo-web`)
 
@@ -599,8 +599,8 @@ to `@butr/react`.
 
 ```tsx
 import type { ReactNode } from "react";
-import { WalletManagerProvider } from "@butr/react";
-import { autoDiscovery } from "@butr/wallets";
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
   <WalletManagerProvider discovery={autoDiscovery()} storageKeyPrefix="butr-demo">
@@ -616,24 +616,24 @@ export { WalletProvider };
 Change the import line:
 
 ```tsx
-import { CHAINS_BY_PLATFORM, useDiscoveredWallets } from "@butr/wallets";
+import { CHAINS_BY_PLATFORM, useDiscoveredWallets } from "@usebutr/wallets";
 ```
 
 to:
 
 ```tsx
-import { CHAINS_BY_PLATFORM } from "@butr/wallets";
+import { CHAINS_BY_PLATFORM } from "@usebutr/wallets";
 ```
 
-and add `useDiscoveredWallets` to the existing `@butr/react` import block (keep that block's imports alphabetically ordered for oxlint: it currently imports `useActiveWallet … useSetActiveConnector` — insert `useDiscoveredWallets` in alphabetical position).
+and add `useDiscoveredWallets` to the existing `@usebutr/react` import block (keep that block's imports alphabetically ordered for oxlint: it currently imports `useActiveWallet … useSetActiveConnector` — insert `useDiscoveredWallets` in alphabetical position).
 
 - [ ] **Step 3: `apps/demo-expo-web/src/wallet-provider.tsx`**
 
 ```tsx
 import type { ReactNode } from "react";
-import { WalletStorage } from "@butr/core";
-import { WalletManagerProvider } from "@butr/react";
-import { autoDiscovery } from "@butr/wallets";
+import { WalletStorage } from "@usebutr/core";
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 import { asyncStorageDriver } from "./async-storage-driver";
 
 const KEY_PREFIX = "butr-demo";
@@ -672,7 +672,7 @@ git commit -m "refactor(demo-vite,demo-expo-web): use unified WalletManagerProvi
 ### Task D2: Manual EVM demos (`demo-next`, `demo-tanstack-start`, `demo-with-viem`, `demo-with-wagmi`)
 
 These drop the entire `DiscoverySubscriber` + custom-context boilerplate. They now
-expose `useDiscoveredWallets` by re-exporting from `@butr/react` so consuming
+expose `useDiscoveredWallets` by re-exporting from `@usebutr/react` so consuming
 `app.tsx`/`page.tsx` imports stay local-path stable.
 
 **Files:** each app's `src/wallet-provider.tsx` (and `demo-next` is `"use client"`).
@@ -683,11 +683,11 @@ expose `useDiscoveredWallets` by re-exporting from `@butr/react` so consuming
 "use client";
 
 import type { ReactNode } from "react";
-import { createWalletSource } from "@butr/core";
-import { WalletManagerProvider, useDiscoveredWallets } from "@butr/react";
-import { discoverEvmAdapters } from "@butr/evm";
+import { createWalletSource } from "@usebutr/core";
+import { WalletManagerProvider, useDiscoveredWallets } from "@usebutr/react";
+import { discoverEvmAdapters } from "@usebutr/evm";
 
-// EVM-only: @butr/react + @butr/evm. No @butr/svm / @butr/wallets in the
+// EVM-only: @usebutr/react + @usebutr/evm. No @usebutr/svm / @usebutr/wallets in the
 // bundle — discovery is a WalletSource built from the EVM discoverer.
 const evmDiscovery = createWalletSource(discoverEvmAdapters);
 
@@ -734,11 +734,11 @@ git commit -m "refactor(evm demos): drop DiscoverySubscriber boilerplate; use cr
 
 ```tsx
 import type { ReactNode } from "react";
-import { createWalletSource } from "@butr/core";
-import { WalletManagerProvider, useDiscoveredWallets } from "@butr/react";
-import { discoverSvmAdapters } from "@butr/svm";
+import { createWalletSource } from "@usebutr/core";
+import { WalletManagerProvider, useDiscoveredWallets } from "@usebutr/react";
+import { discoverSvmAdapters } from "@usebutr/svm";
 
-// SVM-only: @butr/react + @butr/svm.
+// SVM-only: @usebutr/react + @usebutr/svm.
 const svmDiscovery = createWalletSource(discoverSvmAdapters);
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
@@ -786,8 +786,8 @@ rewritten demos. Keep the existing "Source:" citations.
 - [ ] **Step 1:** In each file, replace any `AutoWalletManagerProvider` usage with the unified pattern. Canonical batteries-included snippet to use everywhere:
 
 ```tsx
-import { WalletManagerProvider } from "@butr/react";
-import { autoDiscovery } from "@butr/wallets";
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 
 <WalletManagerProvider discovery={autoDiscovery()} storageKeyPrefix="app">
   {children}
@@ -796,7 +796,7 @@ import { autoDiscovery } from "@butr/wallets";
 
 - [ ] **Step 2:** In `concepts/hydration.mdx`, replace the "manual discovery setup you trigger `tryRestoreFromPending` yourself" paragraph with: the provider now does this internally whenever you pass `discovery`; you only call `tryRestoreFromPending` if you implement a fully custom `WalletSource`. In `concepts/connectors-and-wallets.mdx`, update the `createConnector` seam section to note discovery+createConnector compose (discovered id resolved first).
 
-- [ ] **Step 3:** In `getting-started/installation.mdx`, keep package install tabs as-is; ensure prose says `@butr/wallets` provides `autoDiscovery` (not a provider). In `index.mdx` package table, change the `@butr/wallets` row description to "batteries-included EVM+SVM discovery source (`autoDiscovery`)".
+- [ ] **Step 3:** In `getting-started/installation.mdx`, keep package install tabs as-is; ensure prose says `@usebutr/wallets` provides `autoDiscovery` (not a provider). In `index.mdx` package table, change the `@usebutr/wallets` row description to "batteries-included EVM+SVM discovery source (`autoDiscovery`)".
 
 - [ ] **Step 4:** `cd apps/docs && pnpm build` → expect success. Commit:
 
@@ -817,11 +817,11 @@ git commit -m "docs: unified provider in concepts/getting-started"
 - `apps/docs/content/docs/frameworks/tanstack-start.mdx`
 - `apps/docs/content/docs/frameworks/expo.mdx`
 
-- [ ] **Step 1: Rewrite `guides/provider-setup.mdx`** around one component. New structure: "Auto" = `discovery={autoDiscovery()}`; "EVM-only" = `discovery={createWalletSource(discoverEvmAdapters)}` (no `@butr/wallets`); "Manual / custom" = `createConnector` only; "Composed" = `discovery` + `createConnector`. Use the exact demo snippets from Phase D.
+- [ ] **Step 1: Rewrite `guides/provider-setup.mdx`** around one component. New structure: "Auto" = `discovery={autoDiscovery()}`; "EVM-only" = `discovery={createWalletSource(discoverEvmAdapters)}` (no `@usebutr/wallets`); "Manual / custom" = `createConnector` only; "Composed" = `discovery` + `createConnector`. Use the exact demo snippets from Phase D.
 
 - [ ] **Step 2:** `frameworks/vite.mdx` → demo-vite snippet (Task D1 Step 1). `frameworks/nextjs.mdx` → demo-next snippet (D2 Step 1, keep the `"use client"` + RSC explanation; remove the entire DiscoverySubscriber code block). `frameworks/tanstack-start.mdx` → D2 Step 2 snippet. `frameworks/expo.mdx` → demo-expo snippet (D1 Step 3).
 
-- [ ] **Step 3:** `guides/connect-disconnect.mdx` + `guides/multi-chain.mdx`: fix any `import { useDiscoveredWallets } from "@butr/wallets"` → `@butr/react`; the parenthetical about "manual EVM-only setup, useDiscoveredWallets comes from your own provider module" is still true (re-exported) — keep but simplify.
+- [ ] **Step 3:** `guides/connect-disconnect.mdx` + `guides/multi-chain.mdx`: fix any `import { useDiscoveredWallets } from "@usebutr/wallets"` → `@usebutr/react`; the parenthetical about "manual EVM-only setup, useDiscoveredWallets comes from your own provider module" is still true (re-exported) — keep but simplify.
 
 - [ ] **Step 4:** `cd apps/docs && pnpm build` → success. Commit:
 
@@ -876,8 +876,8 @@ git commit -m "docs: unified provider in connectors, integrations, API reference
 
 - [ ] **Step 1:** `pnpm install` (lockfile unaffected, sanity) then `pnpm build` → all packages + apps build.
 - [ ] **Step 2:** `pnpm test` → all package test tasks pass (core, react, wallets especially).
-- [ ] **Step 3:** `pnpm turbo run typecheck lint --filter=@butr/core --filter=@butr/react --filter=@butr/wallets --filter='demo-*'` → pass. (`@butr/core#lint` and `@repo/wallet-extensions#typecheck` are known pre-existing failures unrelated to this change — confirm they are the only failures and unchanged.)
-- [ ] **Step 4: EVM-only bundle guarantee.** Build demo-next: `pnpm --filter demo-next build`. Then `rg -l "@wallet-standard|@butr/svm|solana:signMessage" apps/demo-next/.next/static 2>/dev/null` → expect **no matches** (Solana code absent from an EVM-only app's client bundle).
+- [ ] **Step 3:** `pnpm turbo run typecheck lint --filter=@usebutr/core --filter=@usebutr/react --filter=@usebutr/wallets --filter='demo-*'` → pass. (`@usebutr/core#lint` and `@repo/wallet-extensions#typecheck` are known pre-existing failures unrelated to this change — confirm they are the only failures and unchanged.)
+- [ ] **Step 4: EVM-only bundle guarantee.** Build demo-next: `pnpm --filter demo-next build`. Then `rg -l "@wallet-standard|@usebutr/svm|solana:signMessage" apps/demo-next/.next/static 2>/dev/null` → expect **no matches** (Solana code absent from an EVM-only app's client bundle).
 - [ ] **Step 5: Docs.** `pnpm --filter docs build` → success. `rg -n "AutoWalletManagerProvider" apps/docs/content` → no matches. Start `pnpm --filter docs start`, curl `/docs/guides/provider-setup` and `/docs/frameworks/nextjs` → HTTP 200.
 - [ ] **Step 6: Spot-check accuracy.** Diff a doc snippet against its demo: `apps/docs/content/docs/frameworks/vite.mdx` snippet must equal `apps/demo-vite/src/wallet-provider.tsx`.
 - [ ] **Step 7: Final commit (if any verification fixups)**
@@ -891,7 +891,7 @@ git commit -m "chore: verification fixups for unified provider"
 
 ## Self-Review
 
-**Spec coverage:** core `createWalletSource` (A1) ✓; flat-prop provider + compose rule + `useDiscoveredWallets` move (B1) ✓; `autoDiscovery` + remove `AutoWalletManagerProvider` (C1) ✓; all 9 demos (D1–D3) ✓; all affected docs incl. `api/core` `createWalletSource` (E1–E3) ✓; EVM-only bundle verification (F1 Step 4) ✓; tests via `@butr/testing` fakes + `WalletSource` fake (B1) ✓.
+**Spec coverage:** core `createWalletSource` (A1) ✓; flat-prop provider + compose rule + `useDiscoveredWallets` move (B1) ✓; `autoDiscovery` + remove `AutoWalletManagerProvider` (C1) ✓; all 9 demos (D1–D3) ✓; all affected docs incl. `api/core` `createWalletSource` (E1–E3) ✓; EVM-only bundle verification (F1 Step 4) ✓; tests via `@usebutr/testing` fakes + `WalletSource` fake (B1) ✓.
 
 **Placeholder scan:** no TBD/TODO; every code step shows full file or exact find/replace. D2 Step 3/D3 Step 1 say "read first, preserve existing `storageKeyPrefix`" — concrete instruction, not a placeholder.
 

@@ -1,5 +1,5 @@
-import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@butr/core";
-import { logWarn } from "@butr/core";
+import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
+import { logWarn } from "@usebutr/core";
 import { resolveWalletStandardCapabilities } from "./capabilities";
 import type {
   SolanaSignAndSendTransactionFeature,

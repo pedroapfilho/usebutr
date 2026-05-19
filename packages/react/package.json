@@ -1,12 +1,12 @@
 {
-  "name": "@butr/react",
+  "name": "@usebutr/react",
   "version": "0.1.0",
-  "description": "React provider and hooks for butr. Depends on @butr/core, react, zustand.",
+  "description": "React provider and hooks for butr. Depends on @usebutr/core, react, zustand.",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pedroapfilho/butr.git",
+    "url": "git+https://github.com/pedroapfilho/usebutr.git",
     "directory": "packages/react"
   },
   "files": [
@@ -33,10 +33,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@butr/core": "workspace:*"
+    "@usebutr/core": "workspace:*"
   },
   "devDependencies": {
-    "@butr/testing": "workspace:*",
+    "@usebutr/testing": "workspace:*",
     "@repo/config-vitest": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@testing-library/jest-dom": "^6.9.1",

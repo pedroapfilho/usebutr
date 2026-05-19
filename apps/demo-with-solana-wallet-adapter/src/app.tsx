@@ -6,8 +6,8 @@ import {
   useConnection,
   useWallet,
 } from "@solana/wallet-adapter-react";
-import type { WalletStandardWallet } from "@butr/svm";
-import { useActiveWallet, useConnectWallet, useDisconnectWallet, useIsHydrated } from "@butr/react";
+import type { WalletStandardWallet } from "@usebutr/svm";
+import { useActiveWallet, useConnectWallet, useDisconnectWallet, useIsHydrated } from "@usebutr/react";
 import { useDiscoveredWallets } from "./wallet-provider";
 import { ButrAdapterBridge } from "./butr-adapter-bridge";
 

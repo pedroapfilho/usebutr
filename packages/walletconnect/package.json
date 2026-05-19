@@ -1,12 +1,12 @@
 {
-  "name": "@butr/walletconnect",
+  "name": "@usebutr/walletconnect",
   "version": "0.1.0",
   "description": "WalletConnect v2 adapter for butr.",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pedroapfilho/butr.git",
+    "url": "git+https://github.com/pedroapfilho/usebutr.git",
     "directory": "packages/walletconnect"
   },
   "files": [
@@ -33,8 +33,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@butr/core": "workspace:*",
-    "@butr/evm": "workspace:*"
+    "@usebutr/core": "workspace:*",
+    "@usebutr/evm": "workspace:*"
   },
   "devDependencies": {
     "@repo/config-vitest": "workspace:*",

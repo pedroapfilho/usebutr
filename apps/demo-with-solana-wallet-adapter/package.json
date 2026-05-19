@@ -12,9 +12,9 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
-    "@butr/core": "workspace:*",
-    "@butr/react": "workspace:*",
-    "@butr/svm": "workspace:*",
+    "@usebutr/core": "workspace:*",
+    "@usebutr/react": "workspace:*",
+    "@usebutr/svm": "workspace:*",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/wallet-adapter-react": "^0.15.35",
     "@solana/web3.js": "^1.95.0",

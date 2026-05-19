@@ -11,7 +11,7 @@ import {
   parseEther,
 } from "viem";
 import { sepolia } from "viem/chains";
-import { useActiveWallet, useConnectWallet, useDisconnectWallet, useIsHydrated } from "@butr/react";
+import { useActiveWallet, useConnectWallet, useDisconnectWallet, useIsHydrated } from "@usebutr/react";
 import { useDiscoveredWallets } from "./wallet-provider";
 
 const BURN_ADDRESS: Address = "0x000000000000000000000000000000000000dEaD";

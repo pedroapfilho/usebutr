@@ -2,14 +2,14 @@
 
 ## Context
 
-Today butr ships two providers: `WalletManagerProvider` (in `@butr/react`,
+Today butr ships two providers: `WalletManagerProvider` (in `@usebutr/react`,
 protocol-free, manual `config.createConnector` seam) and
-`AutoWalletManagerProvider` (in `@butr/wallets`, composes EVM + SVM discovery).
+`AutoWalletManagerProvider` (in `@usebutr/wallets`, composes EVM + SVM discovery).
 Users find two components for "the same thing" confusing, and the manual one
 forces ~30 lines of `DiscoverySubscriber` boilerplate in every EVM-only app.
 
-The split exists for a real reason: `@butr/react` must not import
-`@butr/evm`/`@butr/svm`, so an EVM-only app never bundles Solana / Wallet
+The split exists for a real reason: `@usebutr/react` must not import
+`@usebutr/evm`/`@usebutr/svm`, so an EVM-only app never bundles Solana / Wallet
 Standard. Any merge must preserve that strict bundle guarantee.
 
 Goal: a single `WalletManagerProvider` with flat props, where **discovery is a
@@ -24,21 +24,21 @@ alongside the unmerged docs PR (#12); update all docs in the same pass.
 ## Approach
 
 Discovery-as-value, one component (chosen over: re-exporting the same name
-pre-wired from `@butr/wallets`, and a `mode` prop — both keep an import-path or
+pre-wired from `@usebutr/wallets`, and a `mode` prop — both keep an import-path or
 prop switch that's less clean and risk the bundle guarantee).
 
 ## Library changes
 
-### `@butr/core`
+### `@usebutr/core`
 
 - Add `createWalletSource(subscribe)` — a one-line, protocol-free helper that
   wraps a `(onAdapter) => () => void` function into a `WalletSource`. Lets an
   EVM-only app write `createWalletSource(discoverEvmAdapters)` without importing
-  anything protocol-bearing beyond `@butr/evm` itself.
+  anything protocol-bearing beyond `@usebutr/evm` itself.
 - `WalletManagerConfig` stays exported from core (the store consumes it) but is
   no longer the provider's public prop surface.
 
-### `@butr/react`
+### `@usebutr/react`
 
 - `WalletManagerProvider` gains flat props and absorbs discovery:
 
@@ -72,15 +72,15 @@ prop switch that's less clean and risk the bundle guarantee).
   `discovery.subscribe(onAdapter)`, and per announced adapter: dedupes into the
   Map, appends to a discovered-list state, and calls
   `store.getState().tryRestoreFromPending(adapter.id)` (the hydration glue).
-- `useDiscoveredWallets()` **moves to `@butr/react`**, reading the provider's
+- `useDiscoveredWallets()` **moves to `@usebutr/react`**, reading the provider's
   discovered-list context. Returns `ReadonlyArray<WalletAdapter>`. When no
   `discovery` is passed it returns `[]`.
 - Store creation, single-hydration `useEffect`, `WalletStoreContext`,
   `useWalletStoreContext` unchanged.
 
-### `@butr/wallets`
+### `@usebutr/wallets`
 
-- Remove `AutoWalletManagerProvider` and the `@butr/react`-re-export of
+- Remove `AutoWalletManagerProvider` and the `@usebutr/react`-re-export of
   `useDiscoveredWallets`.
 - Add `autoDiscovery(options?: DiscoverOptions): WalletSource` — thin wrapper
   over the existing `createDiscoveryWalletSource()` / `discoverWalletAdapters`,
@@ -92,14 +92,14 @@ prop switch that's less clean and risk the bundle guarantee).
 
 ```tsx
 // batteries-included (EVM + SVM)
-import { WalletManagerProvider } from "@butr/react";
-import { autoDiscovery } from "@butr/wallets";
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 <WalletManagerProvider discovery={autoDiscovery()} storageKeyPrefix="app">
 
-// EVM-only — no @butr/svm / @butr/wallets in the bundle
-import { WalletManagerProvider } from "@butr/react";
-import { createWalletSource } from "@butr/core";
-import { discoverEvmAdapters } from "@butr/evm";
+// EVM-only — no @usebutr/svm / @usebutr/wallets in the bundle
+import { WalletManagerProvider } from "@usebutr/react";
+import { createWalletSource } from "@usebutr/core";
+import { discoverEvmAdapters } from "@usebutr/evm";
 <WalletManagerProvider discovery={createWalletSource(discoverEvmAdapters)}>
 
 // composed: auto-discover injected + explicit WalletConnect
@@ -120,7 +120,7 @@ import { discoverEvmAdapters } from "@butr/evm";
   `WalletStorage`). Manual EVM (`demo-next`, `demo-tanstack-start`,
   `demo-with-viem`, `demo-with-wagmi`) → drop `DiscoverySubscriber` + custom
   context; use `createWalletSource(discoverEvmAdapters)` and the package's
-  `useDiscoveredWallets` from `@butr/react`. Solana demos
+  `useDiscoveredWallets` from `@usebutr/react`. Solana demos
   (`demo-with-solana-*`) → `createWalletSource(discoverSvmAdapters)`.
 - **Docs:** `concepts/connectors-and-wallets`, `concepts/hydration`,
   `guides/provider-setup`, `frameworks/{vite,nextjs,tanstack-start,expo}`,
@@ -129,16 +129,16 @@ import { discoverEvmAdapters } from "@butr/evm";
   `api/wallets`, `api/core` (add `createWalletSource`), `index`. Code samples
   re-derived from the updated demos; source citations kept.
 - **Tests:** `packages/react` (provider/`useDiscoveredWallets`),
-  `packages/wallets` (`autoDiscovery`, removed provider). Use `@butr/testing`
+  `packages/wallets` (`autoDiscovery`, removed provider). Use `@usebutr/testing`
   fakes; add a `WalletSource` fake if needed.
 
 ## Verification
 
 1. `pnpm install && pnpm build` (full Turborepo) green.
 2. `pnpm lint`, `pnpm typecheck`, `pnpm test` green for touched packages
-   (`@butr/core`, `@butr/react`, `@butr/wallets`, all demos).
+   (`@usebutr/core`, `@usebutr/react`, `@usebutr/wallets`, all demos).
 3. EVM-only bundle check: build `demo-next` (or `demo-with-viem`) and confirm no
-   `@butr/svm` / Wallet Standard code in the client bundle (grep the build
+   `@usebutr/svm` / Wallet Standard code in the client bundle (grep the build
    output / inspect chunk for `@wallet-standard`).
 4. `apps/docs` builds; smoke-test `/docs/guides/provider-setup` and a frameworks
    page; doc snippets match the updated demo source.

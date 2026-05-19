@@ -49,7 +49,7 @@ pnpm test                               # vitest unit tests
 
 | Package                   | Purpose                                                                                                                           |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `butr`                    | The library — multi-chain wallet management primitives for React.                                                                 |
+| `@usebutr/*`              | The library (butr) — multi-chain wallet management primitives for React. Published as `@usebutr/core`, `@usebutr/react`, `@usebutr/evm`, `@usebutr/svm`, `@usebutr/wallets`, `@usebutr/walletconnect`, `@usebutr/ledger`, `@usebutr/testing`. |
 | `@repo/typescript-config` | Shared tsconfig bases: `base.json`, `library.json`, `nextjs.json`, `react-library.json`, `server.json`, `vite.json`, `expo.json`. |
 | `@repo/config-vitest`     | Shared Vitest config. Exports `react.ts` and `node.ts`.                                                                           |
 
@@ -64,5 +64,5 @@ pnpm test                               # vitest unit tests
 ## Conventions
 
 - Path aliases: `@/*` maps to `src/*` (and `app/*` for TanStack Start) in apps.
-- Demo apps depend on `butr` via `"butr": "workspace:*"` and on `@repo/typescript-config` via the same.
+- Demo apps depend on the library via `@usebutr/*` workspace packages (e.g. `"@usebutr/core": "workspace:*"`) and on `@repo/typescript-config` via the same.
 - Each web demo binds a distinct localhost port so all four can run concurrently. `demo-expo-web` targets the web bundle via `expo start --web`; native targets (iOS/Android) remain wired through Metro/Expo Go on their own transport.

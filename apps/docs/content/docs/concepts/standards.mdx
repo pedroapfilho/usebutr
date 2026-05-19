@@ -14,11 +14,11 @@ Standard](https://github.com/wallet-standard/wallet-standard); EVM goes through
 
 ## Discovery is spec-only
 
-- **Solana** — `@butr/svm` lazily imports `@wallet-standard/app` and uses
+- **Solana** — `@usebutr/svm` lazily imports `@wallet-standard/app` and uses
   `getWallets()`: `get()` for wallets already present, `on('register')` for
   ones that load later, and `on('unregister')` to drop a wallet whose
   extension is disabled or removed mid-session.
-- **EVM** — `@butr/evm` adds the `eip6963:announceProvider` listener *before*
+- **EVM** — `@usebutr/evm` adds the `eip6963:announceProvider` listener *before*
   dispatching `eip6963:requestProvider`, so wallets that announced early
   aren't missed. Providers are de-duplicated by `info.rdns`.
 - **Legacy fallback** — a raw `window.ethereum` is adopted only after a 150 ms

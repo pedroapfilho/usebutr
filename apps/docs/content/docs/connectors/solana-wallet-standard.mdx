@@ -1,20 +1,20 @@
 ---
 title: Solana Wallet Standard
-description: Wallet Standard discovery for Solana wallets, via @butr/svm.
+description: Wallet Standard discovery for Solana wallets, via @usebutr/svm.
 ---
 
-`@butr/svm` discovers Solana wallets (Phantom, Solflare, Backpack, Magic Eden,
+`@usebutr/svm` discovers Solana wallets (Phantom, Solflare, Backpack, Magic Eden,
 …) through the [Wallet Standard](https://github.com/wallet-standard/wallet-standard).
 
 ## Discovery
 
-`autoDiscovery()` from `@butr/wallets` handles SVM discovery automatically.
+`autoDiscovery()` from `@usebutr/wallets` handles SVM discovery automatically.
 For an SVM-only setup, wire it directly with `createWalletSource`:
 
 ```ts
-import { createWalletSource } from "@butr/core";
-import { discoverSvmAdapters } from "@butr/svm";
-import { WalletManagerProvider } from "@butr/react";
+import { createWalletSource } from "@usebutr/core";
+import { discoverSvmAdapters } from "@usebutr/svm";
+import { WalletManagerProvider } from "@usebutr/react";
 
 const discovery = createWalletSource(discoverSvmAdapters);
 
@@ -24,7 +24,7 @@ const discovery = createWalletSource(discoverSvmAdapters);
 ```
 
 <Callout type="info">
-  `@butr/svm` lazily imports `@wallet-standard/app` (an optional peer dependency). That asynchronous
+  `@usebutr/svm` lazily imports `@wallet-standard/app` (an optional peer dependency). That asynchronous
   warmup is one reason restored SVM wallets can land in `pendingIds` for a moment — see
   [hydration](/docs/concepts/hydration).
 </Callout>
@@ -69,5 +69,5 @@ authors.
 
 <Callout type="info">
   **Source:** `packages/svm/src`. Used by all `apps/demo-with-solana-*` demos and (via
-  `@butr/wallets`) `apps/demo-vite`.
+  `@usebutr/wallets`) `apps/demo-vite`.
 </Callout>

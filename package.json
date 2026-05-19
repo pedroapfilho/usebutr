@@ -1,10 +1,10 @@
 {
-  "name": "butr-monorepo",
+  "name": "usebutr-monorepo",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "turbo run start",
-    "dev": "turbo run dev --concurrency 13",
+    "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
@@ -21,14 +21,14 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "fallow": "^2.69.0",
+    "fallow": "^2.75.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.4",
+    "lint-staged": "^17.0.5",
     "oxfmt": "^0.49.0",
-    "oxlint": "^1.64.0",
+    "oxlint": "^1.65.0",
     "oxlint-config-awesomeness": "^3.0.2",
     "tsdown": "^0.22.0",
-    "turbo": "^2.9.12"
+    "turbo": "^2.9.14"
   },
   "lint-staged": {
     "!(*.d).{ts,tsx,mts,cts,js,jsx,mjs,cjs}": [
@@ -41,5 +41,5 @@
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@10.33.0"
+  "packageManager": "pnpm@11.1.3"
 }

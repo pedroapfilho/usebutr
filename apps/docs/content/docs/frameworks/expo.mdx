@@ -10,7 +10,7 @@ reference.
 
 ```ts title="src/async-storage-driver.ts"
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { StorageDriver } from "@butr/core";
+import type { StorageDriver } from "@usebutr/core";
 
 const asyncStorageDriver: StorageDriver = {
   getItem: (key) => AsyncStorage.getItem(key),
@@ -23,9 +23,9 @@ export { asyncStorageDriver };
 
 ```tsx title="src/wallet-provider.tsx"
 import type { ReactNode } from "react";
-import { WalletStorage } from "@butr/core";
-import { WalletManagerProvider } from "@butr/react";
-import { autoDiscovery } from "@butr/wallets";
+import { WalletStorage } from "@usebutr/core";
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 import { asyncStorageDriver } from "./async-storage-driver";
 
 const KEY_PREFIX = "butr-demo";
@@ -56,7 +56,7 @@ export { WalletProvider };
 
 <Callout type="info">
   **Source:** `apps/demo-expo-web/src/wallet-provider.tsx` in the [butr
-  repository](https://github.com/pedroapfilho/butr/tree/main/apps/demo-expo-web). Run `pnpm dev
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-expo-web). Run `pnpm dev
   --filter=demo-expo-web` → `http://localhost:8081`. See [custom
   storage](/docs/guides/custom-storage) for the session-storage caveat.
 </Callout>

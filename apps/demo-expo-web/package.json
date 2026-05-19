@@ -15,9 +15,9 @@
     "clean": "rm -rf .expo node_modules dist"
   },
   "dependencies": {
-    "@butr/core": "workspace:*",
-    "@butr/react": "workspace:*",
-    "@butr/wallets": "workspace:*",
+    "@usebutr/core": "workspace:*",
+    "@usebutr/react": "workspace:*",
+    "@usebutr/wallets": "workspace:*",
     "@expo/metro-runtime": "^55.0.11",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "expo": "^55.0.23",

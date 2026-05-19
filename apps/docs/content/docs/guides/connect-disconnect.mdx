@@ -9,7 +9,7 @@ description: Discover wallets, connect by id, read status and errors, and discon
 ones already in the pool before rendering a picker:
 
 ```tsx
-import { useConnectWallet, useConnectedWallets, useDiscoveredWallets } from "@butr/react";
+import { useConnectWallet, useConnectedWallets, useDiscoveredWallets } from "@usebutr/react";
 
 const connect = useConnectWallet();
 const discovered = useDiscoveredWallets();
@@ -40,7 +40,7 @@ The reference apps group by `name` and render one button per
 ## Track status and errors
 
 ```tsx
-import { useConnectionStatus, useConnectionError } from "@butr/react";
+import { useConnectionStatus, useConnectionError } from "@usebutr/react";
 
 const status = useConnectionStatus(); // "idle" | "connecting" | "success" | "error"
 const error = useConnectionError(); // ConnectionError | null
@@ -62,7 +62,7 @@ mid-flight, so you can spin only that button.
 `useDisconnectWallet()` takes the connector id:
 
 ```tsx
-import { useDisconnectWallet } from "@butr/react";
+import { useDisconnectWallet } from "@usebutr/react";
 
 const disconnect = useDisconnectWallet();
 <button onClick={() => disconnect(wallet.connector.id)}>Disconnect</button>;
@@ -76,6 +76,6 @@ which suppresses auto-reconnect for the rest of the session — see
 
 <Callout type="info">
   **Source:** `apps/demo-vite/src/app.tsx` and `apps/demo-next/src/app/page.tsx` in the [butr
-  repository](https://github.com/pedroapfilho/butr/tree/main/apps). Run `pnpm dev
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps). Run `pnpm dev
   --filter=demo-vite` (`http://localhost:5173`).
 </Callout>

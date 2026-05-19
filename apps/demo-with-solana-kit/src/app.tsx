@@ -38,8 +38,8 @@ import type {
   SolanaSignAndSendTransactionFeature,
   SolanaSignMessageFeature,
   WalletStandardWallet,
-} from "@butr/svm";
-import { useActiveWallet, useConnectWallet, useDisconnectWallet, useIsHydrated } from "@butr/react";
+} from "@usebutr/svm";
+import { useActiveWallet, useConnectWallet, useDisconnectWallet, useIsHydrated } from "@usebutr/react";
 import { useDiscoveredWallets } from "./wallet-provider";
 
 const DEVNET = "https://api.devnet.solana.com";

@@ -9,7 +9,7 @@ export const metadata = {
 };
 
 const RootLayout = ({ children }: { children: ReactNode }) => (
-  <html lang="en">
+  <html lang="en" style={{ colorScheme: "light dark" }}>
     <body>
       <WalletProvider>{children}</WalletProvider>
     </body>

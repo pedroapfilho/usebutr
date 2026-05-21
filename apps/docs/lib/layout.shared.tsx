@@ -1,35 +1,22 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
-import Image from "next/image";
 
 const GITHUB_URL = "https://github.com/pedroapfilho/usebutr";
 
 /**
  * Layout options shared between the docs layout and the home layout.
  * The nav title renders the butr brand mark, swapping the light/dark
- * SVG variant with the active theme.
+ * SVG variant with the active theme via a single <picture> element.
+ * This saves an HTTP request compared to the previous two-<Image> approach.
  */
 export const baseOptions = (): BaseLayoutProps => ({
   githubUrl: GITHUB_URL,
   nav: {
     title: (
-      <>
-        <Image
-          alt="butr"
-          className="h-5 w-auto dark:hidden"
-          height={20}
-          priority
-          src="/butr-logo-light.svg"
-          width={80}
-        />
-        <Image
-          alt="butr"
-          className="hidden h-5 w-auto dark:block"
-          height={20}
-          priority
-          src="/butr-logo-dark.svg"
-          width={80}
-        />
-      </>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcSet="/butr-logo-dark.svg" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img alt="butr" className="h-5 w-auto" height={20} src="/butr-logo-light.svg" width={80} />
+      </picture>
     ),
     transparentMode: "top",
   },

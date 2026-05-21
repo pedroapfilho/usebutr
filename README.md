@@ -111,8 +111,8 @@ Ten published packages, each with a single responsibility.
 | `@usebutr/sui`           | Wallet Standard adapter for Sui.                                                                      | `pnpm add @usebutr/sui`           |
 | `@usebutr/bitcoin`       | Wallet Standard adapter for Bitcoin + injected fallback (sats-connect / Unisat / OKX / `window.btc`). | `pnpm add @usebutr/bitcoin`       |
 | `@usebutr/wallets`       | Batteries-included composition: EVM + SVM + Sui + Bitcoin discovery + `autoDiscovery()`.              | `pnpm add @usebutr/wallets`       |
-| `@usebutr/walletconnect` | WalletConnect v2 adapter (composes over `@usebutr/evm`).                                              | `pnpm add @usebutr/walletconnect` |
-| `@usebutr/ledger`        | Ledger hardware-wallet adapter (EVM, WebUSB).                                                         | `pnpm add @usebutr/ledger`        |
+| `@usebutr/walletconnect` | WalletConnect v2 adapter — EVM, SVM, Sui, Bitcoin namespaces, single or multi-namespace.              | `pnpm add @usebutr/walletconnect` |
+| `@usebutr/ledger`        | Ledger hardware-wallet adapter — EVM, SVM, Sui, Bitcoin over WebUSB.                                  | `pnpm add @usebutr/ledger`        |
 | `@usebutr/testing`       | Fake adapters, fake persistence, mock storage for tests.                                              | `pnpm add -D @usebutr/testing`    |
 
 > Workspace-internal packages — `@repo/typescript-config`, `@repo/config-vitest`, `@repo/wallet-extensions` — back the monorepo's tooling and tests and are not published.
@@ -152,7 +152,7 @@ graph TD
 ## Recipes
 
 <details>
-<summary><b>Multi-chain (batteries-included)</b> — one provider, EVM + SVM discovered together</summary>
+<summary><b>Multi-chain (batteries-included)</b> — one provider, EVM + SVM + Sui + Bitcoin discovered together</summary>
 
 ```tsx
 // apps/demo-vite/src/wallet-provider.tsx
@@ -168,7 +168,7 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
 );
 ```
 
-`useConnectedWallets()` returns every active wallet, EVM and SVM. Render them side by side.
+`useConnectedWallets()` returns every active wallet across all four platforms. Render them side by side.
 
 </details>
 
@@ -272,6 +272,71 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
 ```
 
 Covers Phantom (Bitcoin), Magic Eden, Leather, modern OKX (Wallet Standard) plus Xverse (sats-connect), Unisat, OKX legacy, and `window.btc` (injected fallback).
+
+</details>
+
+<details>
+<summary><b>WalletConnect (multi-platform)</b> — one QR scan, adapters for EVM + SVM + Sui + Bitcoin</summary>
+
+```tsx
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
+import { createWalletConnectAdapters } from "@usebutr/walletconnect";
+
+const discovery = autoDiscovery();
+const wcs = await createWalletConnectAdapters({
+  projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
+  metadata: { name: "My dapp", url: "https://my-dapp.example" },
+  namespaces: {
+    evm: ["eip155:1"],
+    svm: ["solana:mainnet"],
+    sui: ["sui:mainnet"],
+    bitcoin: ["bip122:000000000019d6689c085ae165831e93"],
+  },
+  onPairingUri: (uri) => setQrUri(uri),
+});
+const extra = new Map(wcs.map((a) => [a.id, a] as const));
+
+<WalletManagerProvider
+  discovery={discovery}
+  connectors={wcs.map((a) => ({ id: a.id, name: a.name, chainPlatform: a.chainPlatform }))}
+  createConnector={(id) => extra.get(id) ?? null}
+>
+  {children}
+</WalletManagerProvider>;
+```
+
+One paired session, one adapter per namespace — each suffixed (`walletconnect-evm`, `walletconnect-svm`, …) so they coexist in the pool. Omit a key to skip a platform.
+
+</details>
+
+<details>
+<summary><b>Ledger (multi-platform)</b> — hardware-wallet adapters for EVM / SVM / Sui / Bitcoin</summary>
+
+```tsx
+import { createLedgerAdapter } from "@usebutr/ledger";
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
+
+const [evm, svm, sui, btc] = await Promise.all([
+  createLedgerAdapter({ platform: "evm", chainId: 1, accountCount: 3 }),
+  createLedgerAdapter({ platform: "svm", cluster: "mainnet", accountCount: 3 }),
+  createLedgerAdapter({ platform: "sui", cluster: "mainnet", accountCount: 3 }),
+  createLedgerAdapter({ platform: "bitcoin", addressFormat: "bech32", accountCount: 3 }),
+]);
+const all = [evm, svm, sui, btc];
+const extra = new Map(all.map((a) => [a.id, a] as const));
+
+<WalletManagerProvider
+  discovery={autoDiscovery()}
+  connectors={all.map((a) => ({ id: a.id, name: a.name, chainPlatform: a.chainPlatform }))}
+  createConnector={(id) => extra.get(id) ?? null}
+>
+  {children}
+</WalletManagerProvider>;
+```
+
+Each per-platform factory is also exported directly (`createEvmLedgerAdapter`, `createSvmLedgerAdapter`, `createSuiLedgerAdapter`, `createBitcoinLedgerAdapter`). Ledger signs but doesn't broadcast — wrap `getSigner()` with viem / `@solana/kit` / `@mysten/sui` / `bitcoinjs-lib` and your own RPC for submission.
 
 </details>
 
@@ -388,7 +453,7 @@ The most-used hooks from `@usebutr/react`. Full list and reference at [`docs.use
 | `useDisconnectWallet()`   | `(connectorId) => void` — drop a single connection.                                      |
 | `useActiveWallet()`       | The currently active `ConnectedWallet`, or `null`.                                       |
 | `useConnectedWallets()`   | All active `ConnectedWallet`s across platforms.                                          |
-| `useSelectedWallet()`     | The wallet selected for the active platform (EVM or SVM).                                |
+| `useSelectedWallet()`     | The wallet selected for the active platform (EVM / SVM / Sui / Bitcoin).                 |
 | `usePool()`               | The raw connection pool — useful when you need to iterate per-platform.                  |
 | `useAccounts()`           | Accounts on the active connector.                                                        |
 | `useBalance(connectorId)` | Async-state balance (`{ status, data, error }`) for one connector.                       |

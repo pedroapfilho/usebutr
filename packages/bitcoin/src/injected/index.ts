@@ -1,10 +1,10 @@
 import type { WalletAdapter } from "@usebutr/core";
 
-import type { SatsConnectProvider } from "./injected-sats-connect";
-import { buildSatsConnectAdapter } from "./injected-sats-connect";
-import { GENERIC_BITCOIN_ICON } from "./injected-shared";
-import type { UnisatProvider } from "./injected-unisat";
-import { buildUnisatAdapter } from "./injected-unisat";
+import { GENERIC_BITCOIN_ICON } from "./icon";
+import type { SatsConnectProvider } from "./sats-connect";
+import { buildSatsConnectAdapter } from "./sats-connect";
+import type { UnisatProvider } from "./unisat";
+import { buildUnisatAdapter } from "./unisat";
 
 const DEFAULT_SETTLE_MS = 150;
 

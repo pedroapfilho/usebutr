@@ -1,13 +1,9 @@
 import type { ChainBase, WalletAdapter, WalletCapabilities } from "@usebutr/core";
+import { buildAccount } from "@usebutr/wallet-standard-shared";
 
-import { BITCOIN_CHAINS } from "./chains";
-import {
-  base64ToBytes,
-  buildInjectedAccount,
-  bytesToBase64,
-  GENERIC_BITCOIN_ICON,
-  utf8Decode,
-} from "./injected-shared";
+import { BITCOIN_CHAINS } from "../chains";
+
+import { GENERIC_BITCOIN_ICON } from "./icon";
 
 /** sats-connect (Xverse) shape — a JSON-RPC-ish `request(method, params)`. */
 type SatsConnectProvider = {
@@ -28,6 +24,25 @@ const CAPS_SATS_CONNECT: WalletCapabilities = {
   subscribe: false,
   switchAccount: false,
   switchChain: false,
+};
+
+// Encoding helpers — small enough to live next to their caller rather
+// than in a cross-cutting "shared" file.
+const base64ToBytes = (b64: string): Uint8Array => {
+  const binary = atob(b64);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    out[i] = binary.codePointAt(i) ?? 0;
+  }
+  return out;
+};
+
+const bytesToBase64 = (bytes: Uint8Array): string => {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCodePoint(byte);
+  }
+  return btoa(binary);
 };
 
 /**
@@ -86,16 +101,16 @@ const buildSatsConnectAdapter = (
     async getAccount() {
       const first = cachedAccounts[0];
       if (first) {
-        return buildInjectedAccount(first, chain);
+        return buildAccount(first, chain);
       }
       const accounts = await loadAccounts();
       const firstFresh = accounts[0];
-      return firstFresh ? buildInjectedAccount(firstFresh, chain) : null;
+      return firstFresh ? buildAccount(firstFresh, chain) : null;
     },
 
     async getAccounts() {
       const accounts = cachedAccounts.length > 0 ? cachedAccounts : await loadAccounts();
-      return accounts.map((a) => buildInjectedAccount(a, chain));
+      return accounts.map((a) => buildAccount(a, chain));
     },
 
     getBalance() {
@@ -153,7 +168,7 @@ const buildSatsConnectAdapter = (
       }
       const result = await callRequest<{ messageHash?: string; signature: string }>("signMessage", {
         address,
-        message: utf8Decode(msg),
+        message: new TextDecoder().decode(msg),
       });
       return { signature: base64ToBytes(result.signature), signedMessage: msg };
     },

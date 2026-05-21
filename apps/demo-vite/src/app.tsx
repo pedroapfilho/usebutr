@@ -283,7 +283,7 @@ const WalletBrandRow = ({
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-3">
           {brand.icon ? (
-            <img alt="" className="h-6 w-6 rounded" height={24} src={brand.icon} width={24} />
+            <img alt="" className="size-6 rounded" height={24} src={brand.icon} width={24} />
           ) : null}
           <span className="font-medium">{brand.name}</span>
         </span>
@@ -431,7 +431,7 @@ const App = () => (
     </a>
     <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900" id="main">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">butr · Vite</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">butr · Vite</h1>
         <p className="mt-1 text-sm text-neutral-500">
           Batteries-included install via <code>@usebutr/wallets</code>. EVM (EIP-6963) and SVM
           (Wallet Standard) discovered in one provider; persisted in localStorage.

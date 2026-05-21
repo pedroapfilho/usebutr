@@ -256,7 +256,7 @@ const Content = () => {
                   {wallet.icon ? (
                     <img
                       alt=""
-                      className="h-6 w-6 rounded"
+                      className="size-6 rounded"
                       height={24}
                       src={wallet.icon}
                       width={24}
@@ -285,7 +285,7 @@ const App = () => (
     </a>
     <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900" id="main">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">butr + wagmi</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">butr + wagmi</h1>
         <p className="mt-1 text-sm text-neutral-500">
           butr discovers and manages the wallet connection (EIP-6963 + multi-platform pool). wagmi
           (via <code>@wagmi/core</code>) handles chain reads, signing, and tx submission against the

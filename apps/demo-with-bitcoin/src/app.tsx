@@ -175,9 +175,7 @@ const Content = () => {
                   onClick={() => void connect(wallet.id)}
                   type="button"
                 >
-                  {wallet.icon ? (
-                    <img alt="" className="h-6 w-6 rounded" src={wallet.icon} />
-                  ) : null}
+                  {wallet.icon ? <img alt="" className="size-6 rounded" src={wallet.icon} /> : null}
                   <span className="font-medium">{wallet.name}</span>
                 </button>
               </li>
@@ -194,7 +192,7 @@ const Content = () => {
 const App = () => (
   <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900">
     <header className="mb-8">
-      <h1 className="text-3xl font-bold tracking-tight">butr + Bitcoin</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">butr + Bitcoin</h1>
       <p className="mt-1 text-sm text-neutral-500">
         Bitcoin wallets through their two routes: <strong>Wallet Standard</strong> (Phantom, Magic
         Eden, Leather, OKX) plus an injected fallback covering <strong>sats-connect</strong>{" "}

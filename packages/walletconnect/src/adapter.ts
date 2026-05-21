@@ -2,6 +2,7 @@ import type { Account, ChainPlatform, WalletAdapter } from "@usebutr/core";
 
 import type { UniversalProviderConstructor, UniversalProviderLike } from "./loader";
 import { loadUniversalProvider } from "./loader";
+import { bitcoinNamespace } from "./namespaces/bitcoin";
 import { evmNamespace } from "./namespaces/evm";
 import { suiNamespace } from "./namespaces/sui";
 import { solanaNamespace } from "./namespaces/svm";
@@ -143,12 +144,11 @@ const createWalletConnectAdapter = async (
  * single paired session. Each returned adapter has its own id (with a
  * platform suffix) so butr's pool can hold them simultaneously.
  *
- * **What's implemented today.** EVM, SVM (Solana), and Sui namespace
- * builders ship with the package. Passing `bitcoin` chains today
- * throws — the namespace builder for Bitcoin is a tracked follow-up.
- * The factory is shaped this way so adding a platform = adding one
- * file under `src/namespaces/` and one entry to {@link KNOWN_NAMESPACES},
- * with no API change elsewhere.
+ * **What's implemented today.** EVM, SVM (Solana), Sui, and Bitcoin
+ * (bip122) namespace builders all ship with the package. The factory
+ * is shaped this way so adding a platform = adding one file under
+ * `src/namespaces/` and one entry to {@link KNOWN_NAMESPACES}, with no
+ * API change elsewhere.
  *
  * **Per-namespace adapter ids.** When more than one namespace is
  * requested, each adapter's id is suffixed with the platform
@@ -170,10 +170,11 @@ type WalletConnectMultiOptions = Omit<WalletConnectOptions, "chains"> & {
 
 /**
  * Registry of known per-namespace builders. Adding a new namespace =
- * import its builder + add the entry. Today EVM, SVM, and Sui are
- * implemented; the Bitcoin builder is a tracked follow-up.
+ * import its builder + add the entry. Today EVM, SVM, Sui, and Bitcoin
+ * (bip122) all ship.
  */
 const KNOWN_NAMESPACES: Readonly<Partial<Record<ChainPlatform, WalletConnectNamespaceBuilder>>> = {
+  bitcoin: bitcoinNamespace,
   evm: evmNamespace,
   sui: suiNamespace,
   svm: solanaNamespace,
@@ -198,9 +199,7 @@ const createWalletConnectAdapters = async (
     throw new Error(
       `[butr/walletconnect] no namespace builder registered for: ${unsupported
         .map(([p]) => p)
-        .join(
-          ", ",
-        )}. Today "evm", "svm", and "sui" ship; the Bitcoin builder is a tracked follow-up.`,
+        .join(", ")}. Today "evm", "svm", "sui", and "bitcoin" ship.`,
     );
   }
 
@@ -239,6 +238,7 @@ export type {
 export {
   DEFAULT_ICON as WALLETCONNECT_DEFAULT_ICON,
   KNOWN_NAMESPACES,
+  bitcoinNamespace,
   createWalletConnectAdapter,
   createWalletConnectAdapters,
   evmNamespace,

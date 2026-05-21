@@ -1,3 +1,4 @@
+import type { ChainPlatform } from "@usebutr/core";
 import { describe, expect, it, vi } from "vitest";
 
 import type { UniversalProviderConstructor, UniversalProviderLike } from "../adapter";
@@ -54,13 +55,31 @@ describe("createWalletConnectAdapters", () => {
   });
 
   it("rejects an unimplemented namespace with a clear message", async () => {
+    // EVM, SVM, Sui, and Bitcoin (bip122) all ship today, so the
+    // ChainPlatform union has no truly-unsupported member. Simulate
+    // a forward-compat "future platform" by casting a synthetic key
+    // through the typed surface; the runtime registry lookup still
+    // catches it. Replace this cast when a future namespace lands
+    // unimplemented before its builder.
+    const forwardPlatform = "cosmos" as ChainPlatform;
     await expect(
       createWalletConnectAdapters({
-        namespaces: { bitcoin: ["bip122:000000000019d6689c085ae165831e93"] },
+        namespaces: { [forwardPlatform]: ["cosmos:cosmoshub-4"] },
         projectId: "test",
         universalProvider: fakeUniversalProvider(createFakeProvider()),
       }),
     ).rejects.toThrow(/no namespace builder registered/v);
+  });
+
+  it("returns one Bitcoin adapter with the base id when only Bitcoin is requested", async () => {
+    const adapters = await createWalletConnectAdapters({
+      namespaces: { bitcoin: ["bip122:000000000019d6689c085ae165831e93"] },
+      projectId: "test",
+      universalProvider: fakeUniversalProvider(createFakeProvider()),
+    });
+    expect(adapters).toHaveLength(1);
+    expect(adapters[0]?.id).toBe("walletconnect");
+    expect(adapters[0]?.chainPlatform).toBe("bitcoin");
   });
 
   it("returns one Sui adapter with the base id when only Sui is requested", async () => {

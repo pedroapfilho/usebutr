@@ -20,14 +20,14 @@
 // ```ts
 // import { createWalletConnectAdapters } from "@usebutr/walletconnect";
 //
-// // Today: `evm`, `svm`, and `sui` are implemented. The Bitcoin builder
-// // is a tracked follow-up; passing that namespace throws.
+// // Today: `evm`, `svm`, `sui`, and `bitcoin` are all implemented.
 // const wcs = await createWalletConnectAdapters({
 //   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
 //   namespaces: {
 //     evm: ["eip155:1", "eip155:137"],
 //     svm: ["solana:mainnet"],
 //     sui: ["sui:mainnet"],
+//     bitcoin: ["bip122:000000000019d6689c085ae165831e93"],
 //   },
 // });
 // ```
@@ -44,6 +44,7 @@ export type {
 export {
   KNOWN_NAMESPACES,
   WALLETCONNECT_DEFAULT_ICON,
+  bitcoinNamespace,
   createWalletConnectAdapter,
   createWalletConnectAdapters,
   evmNamespace,
@@ -52,5 +53,6 @@ export {
 } from "./adapter";
 
 export { WALLETCONNECT_CAPABILITIES } from "./capabilities";
+export { WALLETCONNECT_BITCOIN_CAPABILITIES } from "./namespaces/bitcoin";
 export { WALLETCONNECT_SUI_CAPABILITIES } from "./namespaces/sui";
 export { WALLETCONNECT_SVM_CAPABILITIES } from "./namespaces/svm";

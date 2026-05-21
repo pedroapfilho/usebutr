@@ -34,6 +34,20 @@ const isValidAccount = (value: unknown): boolean => {
   return true;
 };
 
+/**
+ * Structural validator for a serialized pool entry.
+ *
+ * Used in two directions:
+ *  - On read (`getPool`): malformed entries from storage are warned
+ *    and dropped — legacy / cross-tab corruption shouldn't crash the
+ *    consumer.
+ *  - On write (`setPool`): the runtime's reducer state is the source
+ *    of truth, and a malformed write would indicate a programming
+ *    error inside butr. Throw rather than silently corrupt storage.
+ *
+ * Same validator either way — keeping the two paths symmetric means
+ * "what's storable" is a single fact.
+ */
 const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry => {
   if (!value || typeof value !== "object") {
     return false;
@@ -124,12 +138,22 @@ class WalletStorage implements WalletPersistence {
     try {
       const serializable: StoredPoolRecord = {};
       for (const [connectorId, wallet] of pool) {
-        serializable[connectorId] = {
+        const entry: StoredPoolEntry = {
           account: wallet.account,
           accounts: wallet.accounts,
           chainPlatform: wallet.connector.chainPlatform,
           connectorId,
         };
+        // The runtime's reducer state is the source of truth — a
+        // malformed entry here means a programming error inside butr,
+        // not data drift. Throw loudly so the bug surfaces at the
+        // write site rather than silently corrupting storage and
+        // re-emerging as a "wallet didn't restore" puzzle on the next
+        // page load.
+        if (!isValidPoolEntry(connectorId, entry)) {
+          throw new Error(`[butr] refusing to persist invalid pool entry for ${connectorId}`);
+        }
+        serializable[connectorId] = entry;
       }
       await this.persistent.setItem(this.poolKey, JSON.stringify(serializable));
     } catch (error) {

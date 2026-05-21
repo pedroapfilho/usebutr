@@ -161,6 +161,27 @@ describe("WalletStorage", () => {
       const stored = JSON.parse((await persistent.getItem("test-pool")) as string);
       expect(stored).toEqual({});
     });
+
+    it("refuses to persist a structurally invalid entry (write-side validation)", async () => {
+      const { persistent, storage } = createStorage();
+      const account = createMockAccount();
+      const connector = createMockConnector({ chainPlatform: "evm", id: "metamask" });
+      // Force an invalid entry by mutating the connector's chainPlatform
+      // out of band — simulates a programming bug inside butr's reducer
+      // that produces a corrupted ConnectedWallet.
+      const brokenConnector = {
+        ...connector,
+        chainPlatform: "cosmos" as unknown as "evm",
+      };
+      const pool = new Map<string, ConnectedWallet>([
+        ["metamask", { account, accounts: [account], connector: brokenConnector }],
+      ]);
+
+      await storage.setPool(pool);
+
+      // Validator catches the invalid platform; nothing is persisted.
+      expect(await persistent.getItem("test-pool")).toBeNull();
+    });
   });
 
   describe("removePoolEntry", () => {

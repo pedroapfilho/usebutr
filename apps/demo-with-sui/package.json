@@ -17,6 +17,7 @@
     "@usebutr/core": "workspace:*",
     "@usebutr/react": "workspace:*",
     "@usebutr/sui": "workspace:*",
+    "@usebutr/wallet-standard-shared": "workspace:*",
     "@wallet-standard/app": "^1.1.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

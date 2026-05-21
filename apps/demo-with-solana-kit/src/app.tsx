@@ -40,11 +40,8 @@ import {
   useDisconnectWallet,
   useIsHydrated,
 } from "@usebutr/react";
-import type {
-  SolanaSignAndSendTransactionFeature,
-  SolanaSignMessageFeature,
-  WalletStandardWallet,
-} from "@usebutr/svm";
+import type { SolanaSignAndSendTransactionFeature, SolanaSignMessageFeature } from "@usebutr/svm";
+import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
 import { useDiscoveredWallets } from "./wallet-provider";
 

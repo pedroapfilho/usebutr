@@ -6,7 +6,7 @@ import {
   useDisconnectWallet,
   useIsHydrated,
 } from "@usebutr/react";
-import type { WalletStandardWallet } from "@usebutr/sui";
+import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 import { useEffect, useMemo, useState } from "react";
 
 import { useDiscoveredWallets } from "./wallet-provider";

@@ -11,11 +11,8 @@ import {
   type VersionedTransaction,
 } from "@solana/web3.js";
 import type { WalletAdapter as ButrWalletAdapter } from "@usebutr/core";
-import type {
-  SolanaSignAndSendTransactionFeature,
-  SolanaSignMessageFeature,
-  WalletStandardWallet,
-} from "@usebutr/svm";
+import type { SolanaSignAndSendTransactionFeature, SolanaSignMessageFeature } from "@usebutr/svm";
+import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const bytesToBase58 = (bytes: Uint8Array): string => {

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Account, ConnectedWallet, WalletAdapter } from "@usebutr/core";
+import { buildChainsByPlatform } from "@usebutr/core";
 import { EVM_CHAINS_LIST } from "@usebutr/evm";
 import {
   useActiveWallet,
@@ -19,14 +20,10 @@ import { type ReactNode, useState } from "react";
 
 import { useDiscoveredWallets } from "../wallet-provider";
 
-// EVM-only demo: chain picker pulls from @usebutr/evm directly. Other
-// platforms get empty lists so the index type covers every ChainPlatform.
-const CHAINS_BY_PLATFORM = {
-  bitcoin: [] as const,
-  evm: EVM_CHAINS_LIST,
-  sui: [] as const,
-  svm: [] as const,
-};
+// EVM-only demo: only @usebutr/evm's chain table enters the bundle.
+// `buildChainsByPlatform` fills the other platforms with empty lists so
+// the indexed access by chainPlatform stays type-safe.
+const CHAINS_BY_PLATFORM = buildChainsByPlatform({ evm: EVM_CHAINS_LIST });
 
 type SignState =
   | { kind: "idle" }

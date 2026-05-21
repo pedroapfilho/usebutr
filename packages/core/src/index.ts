@@ -4,6 +4,7 @@ export type {
   Balance,
   ChainBase,
   ChainPlatform,
+  ChainsByPlatform,
   ConnectedWallet,
   ConnectionError,
   ConnectionErrorKind,
@@ -18,7 +19,7 @@ export type {
   WalletCapabilities,
   WalletManagerConfig,
 } from "./types";
-export { mapConnectionError } from "./types";
+export { buildChainsByPlatform, mapConnectionError } from "./types";
 
 // Discovery seam
 export type { WalletSource } from "./wallet-source";

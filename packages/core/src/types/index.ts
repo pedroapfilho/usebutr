@@ -1,4 +1,6 @@
 export type { ChainBase } from "./chain";
+export type { ChainsByPlatform } from "./chains-by-platform";
+export { buildChainsByPlatform } from "./chains-by-platform";
 export type { PlatformDiscoverer } from "./discoverer";
 export type { ConnectionError, ConnectionErrorKind } from "./errors";
 export { mapConnectionError } from "./errors";

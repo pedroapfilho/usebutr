@@ -29,3 +29,6 @@ export { SVM_CHAINS, SVM_CHAINS_LIST } from "./chains";
 
 export type { WalletStandardCapabilityInput } from "./capabilities";
 export { resolveWalletStandardCapabilities } from "./capabilities";
+
+// PlatformDiscoverer descriptor (Wallet Standard, no fallback)
+export { svmDiscoverer } from "./discoverer";

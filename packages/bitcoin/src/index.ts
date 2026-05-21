@@ -34,3 +34,6 @@ export { resolveBitcoinCapabilities } from "./capabilities";
 
 export type { InjectedBitcoinDiscoveryOptions } from "./injected";
 export { GENERIC_BITCOIN_ICON, discoverInjectedBitcoinAdapter } from "./injected";
+
+// PlatformDiscoverer descriptor (Wallet Standard primary + injected fallback)
+export { bitcoinDiscoverer } from "./discoverer";

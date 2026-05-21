@@ -1,4 +1,5 @@
 export type { ChainBase } from "./chain";
+export type { PlatformDiscoverer } from "./discoverer";
 export type { ConnectionError, ConnectionErrorKind } from "./errors";
 export { mapConnectionError } from "./errors";
 

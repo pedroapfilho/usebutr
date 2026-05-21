@@ -3,11 +3,34 @@ import type { WalletExtension } from "./types";
 /**
  * Registry of wallet browser extensions used by butr's automated tests.
  *
+ * **Scope.** This list is the set of extensions butr's Playwright /
+ * Chrome-extension test infrastructure can install via the Web Store
+ * preferences file. Three classes of wallet are intentionally NOT
+ * here:
+ *
+ *  - **Built-in browser wallets** (Brave Wallet, Opera Crypto Wallet).
+ *    Ship as native browser features; no Chrome Web Store extension
+ *    exists to load. Tested by running the host browser, not by
+ *    installing an extension.
+ *  - **Mobile-only wallets** (Trust Wallet mobile, Rainbow mobile,
+ *    Zerion mobile). Reach the dapp through WalletConnect rather than
+ *    as injected browser extensions. Covered by `@usebutr/walletconnect`,
+ *    not by this registry.
+ *  - **Discontinued / regional builds** (Slope, old Binance Chain
+ *    Wallet, Bitkeep). Not actively maintained or unverifiable.
+ *
+ * **Runtime discovery is independent.** This registry is only consulted
+ * by the test installer. The runtime discovery layer (EIP-6963,
+ * Wallet Standard, the injected fallback) picks up *any* compliant
+ * wallet without consulting this file — a wallet doesn't need to be
+ * listed here to work in production.
+ *
  * Chrome Web Store IDs are mostly stable but can change when wallets
- * relaunch under a new listing. Before relying on these in CI, open the
- * `webStoreUrl` for each entry, copy the trailing 32-character identifier
- * from the URL path, and confirm it matches `chromeWebStoreId`. Entries
- * tagged with `TODO_VERIFY` need a manual lookup before first use.
+ * relaunch under a new listing. Before relying on these in CI, open
+ * the `webStoreUrl` for each entry, copy the trailing 32-character
+ * identifier from the URL path, and confirm it matches
+ * `chromeWebStoreId`. Entries tagged with `TODO_VERIFY` need a manual
+ * lookup before first use.
  */
 
 const Backpack: WalletExtension = {
@@ -18,59 +41,16 @@ const Backpack: WalletExtension = {
   webStoreUrl: "https://chromewebstore.google.com/detail/backpack/aflkmfhebedbjioipglgcbcmnbpgliof",
 };
 
-const SuiWallet: WalletExtension = {
-  chromeWebStoreId: "opcgpfmipidbgpenhmajoajpbobppdil",
-  name: "Sui Wallet",
-  platforms: ["sui"],
-  slug: "sui-wallet",
-  webStoreUrl:
-    "https://chromewebstore.google.com/detail/sui-wallet/opcgpfmipidbgpenhmajoajpbobppdil",
-};
-
-const Suiet: WalletExtension = {
-  chromeWebStoreId: "khpkpbbcccdmmclmpigdgddabeilkdpd",
-  name: "Suiet",
-  platforms: ["sui"],
-  slug: "suiet",
-  webStoreUrl: "https://chromewebstore.google.com/detail/suiet/khpkpbbcccdmmclmpigdgddabeilkdpd",
-};
-
-const Xverse: WalletExtension = {
-  chromeWebStoreId: "idnnbdplmphpflfnlkomgpfbpcgelopg",
-  name: "Xverse Wallet",
-  platforms: ["bitcoin"],
-  slug: "xverse",
-  webStoreUrl:
-    "https://chromewebstore.google.com/detail/xverse-wallet/idnnbdplmphpflfnlkomgpfbpcgelopg",
-};
-
-const Unisat: WalletExtension = {
-  chromeWebStoreId: "ppbibelpcjmhbdihakflkdcoccbgbkpo",
-  name: "Unisat",
-  platforms: ["bitcoin"],
-  slug: "unisat",
-  webStoreUrl:
-    "https://chromewebstore.google.com/detail/unisat-wallet/ppbibelpcjmhbdihakflkdcoccbgbkpo",
-};
-
-const Leather: WalletExtension = {
-  chromeWebStoreId: "ldinpeekobnhjjdofggfgjlcehhmanlj",
-  name: "Leather",
-  platforms: ["bitcoin"],
-  slug: "leather",
-  webStoreUrl: "https://chromewebstore.google.com/detail/leather/ldinpeekobnhjjdofggfgjlcehhmanlj",
-};
-
 const BinanceWallet: WalletExtension = {
-  // TODO_VERIFY: confirm this ID by opening the Web Store listing and
-  // copying the trailing path segment. Binance has shipped multiple
-  // browser-extension wallets over time (Binance Chain Wallet → Binance
-  // Wallet) and the canonical listing has migrated.
+  // Verified 2026-05-21: listing exists at this ID on chromewebstore.google.com.
+  // Binance has shipped multiple browser-extension wallets over time (Binance
+  // Chain Wallet → Binance Wallet); this is the current canonical listing.
   chromeWebStoreId: "fhbohimaelbohpjbbldcngcnapndodjp",
   name: "Binance Wallet",
   platforms: ["evm"],
   slug: "binance-wallet",
-  webStoreUrl: "https://chromewebstore.google.com/search/binance%20wallet",
+  webStoreUrl:
+    "https://chromewebstore.google.com/detail/binance-wallet/fhbohimaelbohpjbbldcngcnapndodjp",
 };
 
 const CoinbaseWallet: WalletExtension = {
@@ -82,15 +62,25 @@ const CoinbaseWallet: WalletExtension = {
     "https://chromewebstore.google.com/detail/coinbase-wallet-extension/hnfanknocfeofbddgcijnmhnfnkdnaad",
 };
 
-const JupiterWallet: WalletExtension = {
-  // TODO_VERIFY: Jupiter ships several products (JUP token, Jupiter
-  // Mobile, Jupiter Studio). Confirm which Chrome extension the team
-  // wants tested and fill in the canonical ID + Web Store URL.
-  chromeWebStoreId: "",
-  name: "Jupiter Wallet",
-  platforms: ["svm"],
-  slug: "jupiter-wallet",
-  webStoreUrl: "https://chromewebstore.google.com/search/jupiter%20wallet",
+const Leather: WalletExtension = {
+  chromeWebStoreId: "ldinpeekobnhjjdofggfgjlcehhmanlj",
+  name: "Leather",
+  platforms: ["bitcoin"],
+  slug: "leather",
+  webStoreUrl: "https://chromewebstore.google.com/detail/leather/ldinpeekobnhjjdofggfgjlcehhmanlj",
+};
+
+const MagicEdenWallet: WalletExtension = {
+  // Verified 2026-05-21: "Magic Eden Wallet" by Barcom Trading, Inc.
+  // Advertises SVM (NFT-focused) and Bitcoin (Ordinals + BRC-20) via
+  // Wallet Standard. Cross-chain swaps SVM <> BTC are an in-wallet
+  // feature; butr discovers each chain as a separate WalletAdapter.
+  chromeWebStoreId: "mkpegjkblkkefacfnmkajcjmabijhclg",
+  name: "Magic Eden Wallet",
+  platforms: ["svm", "bitcoin"],
+  slug: "magic-eden-wallet",
+  webStoreUrl:
+    "https://chromewebstore.google.com/detail/magic-eden-wallet/mkpegjkblkkefacfnmkajcjmabijhclg",
 };
 
 const MetaMask: WalletExtension = {
@@ -136,6 +126,35 @@ const Solflare: WalletExtension = {
     "https://chromewebstore.google.com/detail/solflare-wallet/bhhhlbepdkbapadjdnnojkbgioiodbic",
 };
 
+const SuiWallet: WalletExtension = {
+  chromeWebStoreId: "opcgpfmipidbgpenhmajoajpbobppdil",
+  name: "Sui Wallet",
+  platforms: ["sui"],
+  slug: "sui-wallet",
+  webStoreUrl:
+    "https://chromewebstore.google.com/detail/sui-wallet/opcgpfmipidbgpenhmajoajpbobppdil",
+};
+
+const Suiet: WalletExtension = {
+  chromeWebStoreId: "khpkpbbcccdmmclmpigdgddabeilkdpd",
+  name: "Suiet",
+  platforms: ["sui"],
+  slug: "suiet",
+  webStoreUrl: "https://chromewebstore.google.com/detail/suiet/khpkpbbcccdmmclmpigdgddabeilkdpd",
+};
+
+const Surf: WalletExtension = {
+  // Verified 2026-05-21: "Surf Wallet" by surflabs.wallet. Sui-only;
+  // advertises MPC encryption, multi-sig, streaming payments. Mentioned
+  // by name in apps/demo-with-sui/src/app.tsx's empty-state copy.
+  chromeWebStoreId: "emeeapjkbcbpbpgaagfchmcgglmebnen",
+  name: "Surf Wallet",
+  platforms: ["sui"],
+  slug: "surf",
+  webStoreUrl:
+    "https://chromewebstore.google.com/detail/surf-the-leading-sui-wall/emeeapjkbcbpbpgaagfchmcgglmebnen",
+};
+
 const TrustWallet: WalletExtension = {
   chromeWebStoreId: "egjidjbpglichdcondbcbdnbeeppgdph",
   name: "Trust Wallet",
@@ -145,14 +164,32 @@ const TrustWallet: WalletExtension = {
     "https://chromewebstore.google.com/detail/trust-wallet/egjidjbpglichdcondbcbdnbeeppgdph",
 };
 
+const Unisat: WalletExtension = {
+  chromeWebStoreId: "ppbibelpcjmhbdihakflkdcoccbgbkpo",
+  name: "Unisat",
+  platforms: ["bitcoin"],
+  slug: "unisat",
+  webStoreUrl:
+    "https://chromewebstore.google.com/detail/unisat-wallet/ppbibelpcjmhbdihakflkdcoccbgbkpo",
+};
+
+const Xverse: WalletExtension = {
+  chromeWebStoreId: "idnnbdplmphpflfnlkomgpfbpcgelopg",
+  name: "Xverse Wallet",
+  platforms: ["bitcoin"],
+  slug: "xverse",
+  webStoreUrl:
+    "https://chromewebstore.google.com/detail/xverse-wallet/idnnbdplmphpflfnlkomgpfbpcgelopg",
+};
+
 /** Every wallet butr supports installing into a test browser, in
  *  alphabetical order. */
 const ALL_WALLETS: ReadonlyArray<WalletExtension> = [
   Backpack,
   BinanceWallet,
   CoinbaseWallet,
-  JupiterWallet,
   Leather,
+  MagicEdenWallet,
   MetaMask,
   OkxWallet,
   Phantom,
@@ -160,6 +197,7 @@ const ALL_WALLETS: ReadonlyArray<WalletExtension> = [
   Solflare,
   Suiet,
   SuiWallet,
+  Surf,
   TrustWallet,
   Unisat,
   Xverse,
@@ -197,8 +235,8 @@ export {
   CoinbaseWallet,
   EVM_WALLETS,
   findWallet,
-  JupiterWallet,
   Leather,
+  MagicEdenWallet,
   MetaMask,
   OkxWallet,
   Phantom,
@@ -207,6 +245,7 @@ export {
   Suiet,
   SUI_WALLETS,
   SuiWallet,
+  Surf,
   SVM_WALLETS,
   TrustWallet,
   Unisat,

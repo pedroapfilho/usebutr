@@ -3,18 +3,13 @@ import type { Account, ChainBase } from "@usebutr/core";
 import type { WalletStandardWallet, WalletStandardWalletAccount } from "./types";
 
 /**
- * Convert a wallet name into a stable kebab-case adapter id, optionally
- * scoped by a platform prefix so adapters from different platforms
- * (Phantom SVM, Phantom Sui, Phantom BTC) coexist in the pool.
- *
- * The prefix discipline matters: every Wallet Standard adapter shares
- * the same `getWallets()` bus, so distinct prefixes are the only thing
- * keeping multi-chain wallets from colliding. Pass `""` to opt out —
- * SVM does this for backwards compatibility with stored pool entries
- * persisted before the prefix discipline existed.
+ * Convert a wallet name into a stable kebab-case adapter id, scoped by
+ * a platform prefix so adapters from different platforms (Phantom SVM,
+ * Phantom Sui, Phantom BTC) coexist in the pool without colliding on
+ * the shared `getWallets()` bus.
  *
  * @example
- * slugify("",    "Phantom")    // "wallet-standard:phantom"  (SVM legacy)
+ * slugify("svm", "Phantom")    // "wallet-standard:svm-phantom"
  * slugify("sui", "Sui Wallet") // "wallet-standard:sui-sui-wallet"
  * slugify("btc", "Phantom")    // "wallet-standard:btc-phantom"
  */
@@ -23,7 +18,7 @@ const slugify = (platformPrefix: string, name: string): string => {
     .trim()
     .toLowerCase()
     .replaceAll(/[^a-z0-9]+/gv, "-");
-  return platformPrefix ? `wallet-standard:${platformPrefix}-${slug}` : `wallet-standard:${slug}`;
+  return `wallet-standard:${platformPrefix}-${slug}`;
 };
 
 /**

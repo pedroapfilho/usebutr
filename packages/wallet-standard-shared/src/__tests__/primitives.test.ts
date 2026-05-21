@@ -34,16 +34,12 @@ const chain: ChainBase = {
 };
 
 describe("slugify", () => {
-  it("with empty prefix produces wallet-standard:<slug>", () => {
-    expect(slugify("", "Phantom")).toBe("wallet-standard:phantom");
-    expect(slugify("", "Solflare Wallet")).toBe("wallet-standard:solflare-wallet");
-    expect(slugify("", "  OKX!  Wallet  ")).toBe("wallet-standard:okx-wallet");
-  });
-
-  it("with platform prefix produces wallet-standard:<prefix>-<slug>", () => {
+  it("produces wallet-standard:<prefix>-<slug>", () => {
+    expect(slugify("svm", "Phantom")).toBe("wallet-standard:svm-phantom");
+    expect(slugify("svm", "Solflare Wallet")).toBe("wallet-standard:svm-solflare-wallet");
+    expect(slugify("svm", "  OKX!  Wallet  ")).toBe("wallet-standard:svm-okx-wallet");
     expect(slugify("sui", "Sui Wallet")).toBe("wallet-standard:sui-sui-wallet");
     expect(slugify("btc", "Phantom")).toBe("wallet-standard:btc-phantom");
-    expect(slugify("svm", "Phantom")).toBe("wallet-standard:svm-phantom");
   });
 });
 

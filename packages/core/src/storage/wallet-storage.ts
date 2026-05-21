@@ -65,12 +65,7 @@ const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry
   if (!isValidAccount(entry.account)) {
     return false;
   }
-  // `accounts` is optional during read for backward compatibility; if
-  // present, every entry must be a valid Account.
-  if (
-    entry.accounts !== undefined &&
-    (!Array.isArray(entry.accounts) || !entry.accounts.every(isValidAccount))
-  ) {
+  if (!Array.isArray(entry.accounts) || !entry.accounts.every(isValidAccount)) {
     return false;
   }
   return true;
@@ -116,12 +111,7 @@ class WalletStorage implements WalletPersistence {
       const result: StoredPoolRecord = {};
       for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
         if (isValidPoolEntry(key, value)) {
-          // Default `accounts` to `[account]` for legacy entries that
-          // predate the multi-account field.
-          result[key] = {
-            ...value,
-            accounts: value.accounts ?? [value.account],
-          };
+          result[key] = value;
         } else {
           logWarn(`[butr] dropping invalid pool entry for ${key}`);
         }

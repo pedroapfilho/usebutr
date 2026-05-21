@@ -675,7 +675,7 @@ describe("createWalletStore", () => {
         createConnector: vi.fn().mockReturnValue(connector),
       });
 
-      const wallets = new Map([["metamask", { account, connector }]]);
+      const wallets = new Map([["metamask", { account, accounts: [account], connector }]]);
       await storage.setPool(wallets);
       await storage.setSelection(new Map([["evm", "metamask"]]));
       await storage.setActiveConnectorId("metamask");
@@ -705,7 +705,10 @@ describe("createWalletStore", () => {
       const { storage, store } = createTestStore({
         createConnector: vi.fn().mockReturnValue(connector),
       });
-      await storage.setPool(new Map([["broken", { account: createMockAccount(), connector }]]));
+      const brokenAccount = createMockAccount();
+      await storage.setPool(
+        new Map([["broken", { account: brokenAccount, accounts: [brokenAccount], connector }]]),
+      );
       const removeSpy = vi.spyOn(storage, "removePoolEntry");
 
       await hydrateStore(store);
@@ -733,7 +736,10 @@ describe("createWalletStore", () => {
       const { storage, store } = createTestStore({
         createConnector: vi.fn().mockReturnValue(connector),
       });
-      await storage.setPool(new Map([["metamask", { account: createMockAccount(), connector }]]));
+      const metaAccount = createMockAccount();
+      await storage.setPool(
+        new Map([["metamask", { account: metaAccount, accounts: [metaAccount], connector }]]),
+      );
       await storage.setActiveConnectorId("ghost");
 
       await hydrateStore(store);
@@ -750,7 +756,9 @@ describe("createWalletStore", () => {
       const { storage, store } = createTestStore({
         createConnector: vi.fn().mockReturnValue(connector),
       });
-      await storage.setPool(new Map([["metamask", { account: storedAccount, connector }]]));
+      await storage.setPool(
+        new Map([["metamask", { account: storedAccount, accounts: [storedAccount], connector }]]),
+      );
 
       await hydrateStore(store);
       expect(store.getState().pool.get("metamask")?.account.walletAddress).toBe("0xSTORED");

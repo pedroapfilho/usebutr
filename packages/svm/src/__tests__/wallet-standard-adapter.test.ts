@@ -42,10 +42,10 @@ const withFeatures = (
 });
 
 describe("slugify", () => {
-  it("lowercases, collapses non-alphanumeric, prefixes with wallet-standard:", () => {
-    expect(slugify("Phantom")).toBe("wallet-standard:phantom");
-    expect(slugify("Solflare Wallet")).toBe("wallet-standard:solflare-wallet");
-    expect(slugify("  OKX!  Wallet  ")).toBe("wallet-standard:okx-wallet");
+  it("lowercases, collapses non-alphanumeric, prefixes with wallet-standard:svm-", () => {
+    expect(slugify("Phantom")).toBe("wallet-standard:svm-phantom");
+    expect(slugify("Solflare Wallet")).toBe("wallet-standard:svm-solflare-wallet");
+    expect(slugify("  OKX!  Wallet  ")).toBe("wallet-standard:svm-okx-wallet");
   });
 });
 
@@ -68,7 +68,7 @@ describe("buildSvmAdapter", () => {
       "standard:connect": connectFeature,
     });
     const adapter = buildSvmAdapter(wallet);
-    expect(adapter?.id).toBe("wallet-standard:phantom");
+    expect(adapter?.id).toBe("wallet-standard:svm-phantom");
     expect(adapter?.name).toBe("Phantom");
     expect(adapter?.chainPlatform).toBe("svm");
   });

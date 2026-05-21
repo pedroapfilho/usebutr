@@ -57,7 +57,7 @@ describe("discoverSvmAdapters", () => {
     for (const listener of listeners) {
       listener(fakeWallet);
     }
-    expect(seen).toContain("wallet-standard:testsolanawallet");
+    expect(seen).toContain("wallet-standard:svm-testsolanawallet");
     unsubscribe();
   });
 

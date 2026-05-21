@@ -3,7 +3,7 @@ import type { WalletPersistence } from "../storage/persistence";
 import type { ChainBase } from "./chain";
 import type { ConnectionError } from "./errors";
 
-type ChainPlatform = "evm" | "svm";
+type ChainPlatform = "evm" | "svm" | "sui" | "bitcoin";
 
 type Account = {
   chain: ChainBase;

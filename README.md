@@ -7,15 +7,15 @@
   <br />
 </div>
 
-butr is a multi-chain wallet management library for React. It discovers EVM and Solana wallets in the browser, manages their connections across the lifetime of an app, and exposes them through composable hooks — so a single component can talk to a MetaMask account and a Phantom account in the same render pass.
+butr is a multi-chain wallet management library for React. It discovers EVM, Solana, Sui, and Bitcoin wallets in the browser, manages their connections across the lifetime of an app, and exposes them through composable hooks — so a single component can talk to a MetaMask account, a Phantom Solana account, a Sui Wallet account, and an Xverse Bitcoin account in the same render pass.
 
 The library is split across small focused packages so consumers bundle only what they need. The monorepo also ships eleven demo apps that exercise butr across the major React frameworks and integration patterns.
 
 **At a glance**
 
-- **What it is.** A discovery + connection-state layer for browser wallets, EVM and SVM.
+- **What it is.** A discovery + connection-state layer for browser wallets across EVM, SVM, Sui, and Bitcoin.
 - **What it gives you.** A typed React store + hooks; one provider; persisted connections; multi-wallet, multi-chain in a single render pass.
-- **Who it's for.** Apps that need both EVM and Solana, or any app that wants standards-first discovery (EIP-6963 + Wallet Standard) without coupling to a chain library or connect-modal UI.
+- **Who it's for.** Apps that need more than one chain side by side (EVM + Solana + Sui + Bitcoin) and any app that wants standards-first discovery (EIP-6963 + Wallet Standard) without coupling to a chain library or connect-modal UI.
 - **Docs.** Full reference and guides at [`docs.usebutr.com`](https://docs.usebutr.com).
 
 ## Quickstart
@@ -24,7 +24,7 @@ The library is split across small focused packages so consumers bundle only what
 pnpm add @usebutr/react @usebutr/wallets
 ```
 
-Mount the provider once. `autoDiscovery()` returns a discovery source that finds every EIP-6963 EVM wallet **and** every Wallet Standard SVM wallet in the page.
+Mount the provider once. `autoDiscovery()` returns a discovery source that finds every EIP-6963 EVM wallet, every Wallet Standard SVM / Sui / Bitcoin wallet, plus injected legacy fallbacks for EVM (`window.ethereum`) and Bitcoin (`window.unisat`, `window.XverseProviders`, `window.btc`).
 
 ```tsx
 // src/wallet-provider.tsx
@@ -82,7 +82,7 @@ That's the entire surface area for a basic dapp: a provider and a few hooks. Sig
 
 ## Highlights
 
-- **Multi-chain by default.** EVM (EIP-1193 / EIP-6963) and Solana (Wallet Standard) on equal footing. No "one chain at a time" mode.
+- **Multi-chain by default.** EVM (EIP-1193 / EIP-6963), Solana (Wallet Standard), Sui (Wallet Standard), and Bitcoin (Wallet Standard + injected fallback for sats-connect / Unisat / OKX) on equal footing. No "one chain at a time" mode.
 - **Framework-agnostic core.** `@usebutr/core` is React-free. `@usebutr/react` is the binding, not the foundation. Use the core directly from any TS runtime.
 - **Modular packages.** Install only the protocol adapters you ship. EVM-only dapp? Skip `@usebutr/svm` entirely.
 - **No middleware lock-in.** Every adapter is just a `WalletAdapter`. Bring WalletConnect, Ledger, or your own.
@@ -100,18 +100,20 @@ butr deliberately does **not** ship an RPC client, a connect-modal UI, key custo
 
 ## Packages
 
-Eight published packages, each with a single responsibility.
+Ten published packages, each with a single responsibility.
 
-| Package                  | Purpose                                                                               | Install                           |
-| ------------------------ | ------------------------------------------------------------------------------------- | --------------------------------- |
-| `@usebutr/core`          | Types, store, storage, and the `WalletSource` discovery seam. No React, no protocols. | `pnpm add @usebutr/core`          |
-| `@usebutr/react`         | React provider and hooks on top of `@usebutr/core`.                                   | `pnpm add @usebutr/react`         |
-| `@usebutr/evm`           | EIP-1193 / EIP-6963 / injected wallet discovery and adapters.                         | `pnpm add @usebutr/evm`           |
-| `@usebutr/svm`           | Wallet Standard adapter for Solana / SVM.                                             | `pnpm add @usebutr/svm`           |
-| `@usebutr/wallets`       | Batteries-included composition: EVM + SVM discovery + `autoDiscovery()`.              | `pnpm add @usebutr/wallets`       |
-| `@usebutr/walletconnect` | WalletConnect v2 adapter (composes over `@usebutr/evm`).                              | `pnpm add @usebutr/walletconnect` |
-| `@usebutr/ledger`        | Ledger hardware-wallet adapter (EVM, WebUSB).                                         | `pnpm add @usebutr/ledger`        |
-| `@usebutr/testing`       | Fake adapters, fake persistence, mock storage for tests.                              | `pnpm add -D @usebutr/testing`    |
+| Package                  | Purpose                                                                                               | Install                           |
+| ------------------------ | ----------------------------------------------------------------------------------------------------- | --------------------------------- |
+| `@usebutr/core`          | Types, store, storage, and the `WalletSource` discovery seam. No React, no protocols.                 | `pnpm add @usebutr/core`          |
+| `@usebutr/react`         | React provider and hooks on top of `@usebutr/core`.                                                   | `pnpm add @usebutr/react`         |
+| `@usebutr/evm`           | EIP-1193 / EIP-6963 / injected wallet discovery and adapters.                                         | `pnpm add @usebutr/evm`           |
+| `@usebutr/svm`           | Wallet Standard adapter for Solana / SVM.                                                             | `pnpm add @usebutr/svm`           |
+| `@usebutr/sui`           | Wallet Standard adapter for Sui.                                                                      | `pnpm add @usebutr/sui`           |
+| `@usebutr/bitcoin`       | Wallet Standard adapter for Bitcoin + injected fallback (sats-connect / Unisat / OKX / `window.btc`). | `pnpm add @usebutr/bitcoin`       |
+| `@usebutr/wallets`       | Batteries-included composition: EVM + SVM + Sui + Bitcoin discovery + `autoDiscovery()`.              | `pnpm add @usebutr/wallets`       |
+| `@usebutr/walletconnect` | WalletConnect v2 adapter (composes over `@usebutr/evm`).                                              | `pnpm add @usebutr/walletconnect` |
+| `@usebutr/ledger`        | Ledger hardware-wallet adapter (EVM, WebUSB).                                                         | `pnpm add @usebutr/ledger`        |
+| `@usebutr/testing`       | Fake adapters, fake persistence, mock storage for tests.                                              | `pnpm add -D @usebutr/testing`    |
 
 > Workspace-internal packages — `@repo/typescript-config`, `@repo/config-vitest`, `@repo/wallet-extensions` — back the monorepo's tooling and tests and are not published.
 
@@ -123,6 +125,8 @@ graph TD
   react[<b>@usebutr/react</b><br/>provider + hooks]
   evm[<b>@usebutr/evm</b><br/>EIP-6963 / EIP-1193]
   svm[<b>@usebutr/svm</b><br/>Wallet Standard]
+  sui[<b>@usebutr/sui</b><br/>Wallet Standard]
+  btc[<b>@usebutr/bitcoin</b><br/>Wallet Standard + injected]
   wallets[<b>@usebutr/wallets</b><br/>autoDiscovery]
   wc[<b>@usebutr/walletconnect</b>]
   ledger[<b>@usebutr/ledger</b>]
@@ -131,15 +135,19 @@ graph TD
   core --> react
   core --> evm
   core --> svm
+  core --> sui
+  core --> btc
   core --> testing
   evm --> wc
   evm --> ledger
   react --> wallets
   evm --> wallets
   svm --> wallets
+  sui --> wallets
+  btc --> wallets
 ```
 
-`@usebutr/core` owns the types and the store. Every adapter implements the same `WalletAdapter` shape. `@usebutr/wallets` is a convenience layer that composes EVM + SVM discovery; pick the lower-level packages directly if you want to ship only one platform.
+`@usebutr/core` owns the types and the store. Every adapter implements the same `WalletAdapter` shape. `@usebutr/wallets` is a convenience layer that composes EVM + SVM + Sui + Bitcoin discovery; pick the lower-level packages directly if you want to ship only one platform.
 
 ## Recipes
 
@@ -205,6 +213,65 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
   </WalletManagerProvider>
 );
 ```
+
+</details>
+
+<details>
+<summary><b>Sui-only</b> — Wallet Standard, no EVM/SVM/Bitcoin code shipped</summary>
+
+```tsx
+// apps/demo-with-sui/src/wallet-provider.tsx
+import { createWalletSource } from "@usebutr/core";
+import { WalletManagerProvider } from "@usebutr/react";
+import { discoverSuiAdapters } from "@usebutr/sui";
+
+const suiDiscovery = createWalletSource(discoverSuiAdapters);
+
+export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
+  <WalletManagerProvider discovery={suiDiscovery} storageKeyPrefix="my-sui-app">
+    {children}
+  </WalletManagerProvider>
+);
+```
+
+</details>
+
+<details>
+<summary><b>Bitcoin-only</b> — Wallet Standard + injected fallback for legacy Bitcoin wallets</summary>
+
+```tsx
+// apps/demo-with-bitcoin/src/wallet-provider.tsx
+import { discoverBitcoinAdapters, discoverInjectedBitcoinAdapter } from "@usebutr/bitcoin";
+import type { WalletSource } from "@usebutr/core";
+import { WalletManagerProvider } from "@usebutr/react";
+
+const bitcoinDiscovery: WalletSource = {
+  subscribe: (onAdapter) => {
+    const seen = new Set<string>();
+    const emit = (a) => {
+      if (seen.has(a.id)) return;
+      seen.add(a.id);
+      onAdapter(a);
+    };
+    const offStandard = discoverBitcoinAdapters(emit);
+    const offInjected = discoverInjectedBitcoinAdapter(emit, {
+      hasAnyWalletStandardAdapter: () => seen.size > 0,
+    });
+    return () => {
+      offStandard();
+      offInjected();
+    };
+  },
+};
+
+export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
+  <WalletManagerProvider discovery={bitcoinDiscovery} storageKeyPrefix="my-btc-app">
+    {children}
+  </WalletManagerProvider>
+);
+```
+
+Covers Phantom (Bitcoin), Magic Eden, Leather, modern OKX (Wallet Standard) plus Xverse (sats-connect), Unisat, OKX legacy, and `window.btc` (injected fallback).
 
 </details>
 
@@ -313,21 +380,21 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
 
 The most-used hooks from `@usebutr/react`. Full list and reference at [`docs.usebutr.com`](https://docs.usebutr.com).
 
-| Hook                      | Returns                                                                  |
-| ------------------------- | ------------------------------------------------------------------------ |
-| `useIsHydrated()`         | `boolean` — `true` once persisted connections have been rehydrated.      |
-| `useDiscoveredWallets()`  | `WalletAdapter[]` — every wallet the active sources have surfaced.       |
-| `useConnectWallet()`      | `(adapterId) => Promise<void>` — start a connection flow.                |
-| `useDisconnectWallet()`   | `(connectorId) => void` — drop a single connection.                      |
-| `useActiveWallet()`       | The currently active `ConnectedWallet`, or `null`.                       |
-| `useConnectedWallets()`   | All active `ConnectedWallet`s across platforms.                          |
-| `useSelectedWallet()`     | The wallet selected for the active platform (EVM or SVM).                |
-| `usePool()`               | The raw connection pool — useful when you need to iterate per-platform.  |
-| `useAccounts()`           | Accounts on the active connector.                                        |
-| `useBalance(connectorId)` | Async-state balance (`{ status, data, error }`) for one connector.       |
-| `useSigner()`             | Async-state signer (EIP-1193 provider for EVM, Wallet Standard for SVM). |
-| `useRequestAccounts()`    | `(connectorId) => Promise<…>` — prompt for additional accounts.          |
-| `useSetActiveConnector()` | `(connectorId) => void` — promote a connection to active.                |
+| Hook                      | Returns                                                                                  |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| `useIsHydrated()`         | `boolean` — `true` once persisted connections have been rehydrated.                      |
+| `useDiscoveredWallets()`  | `WalletAdapter[]` — every wallet the active sources have surfaced.                       |
+| `useConnectWallet()`      | `(adapterId) => Promise<void>` — start a connection flow.                                |
+| `useDisconnectWallet()`   | `(connectorId) => void` — drop a single connection.                                      |
+| `useActiveWallet()`       | The currently active `ConnectedWallet`, or `null`.                                       |
+| `useConnectedWallets()`   | All active `ConnectedWallet`s across platforms.                                          |
+| `useSelectedWallet()`     | The wallet selected for the active platform (EVM or SVM).                                |
+| `usePool()`               | The raw connection pool — useful when you need to iterate per-platform.                  |
+| `useAccounts()`           | Accounts on the active connector.                                                        |
+| `useBalance(connectorId)` | Async-state balance (`{ status, data, error }`) for one connector.                       |
+| `useSigner()`             | Async-state signer (EIP-1193 provider for EVM, Wallet Standard for SVM / Sui / Bitcoin). |
+| `useRequestAccounts()`    | `(connectorId) => Promise<…>` — prompt for additional accounts.                          |
+| `useSetActiveConnector()` | `(connectorId) => void` — promote a connection to active.                                |
 
 ## Demos
 

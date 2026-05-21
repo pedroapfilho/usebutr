@@ -18,6 +18,49 @@ const Backpack: WalletExtension = {
   webStoreUrl: "https://chromewebstore.google.com/detail/backpack/aflkmfhebedbjioipglgcbcmnbpgliof",
 };
 
+const SuiWallet: WalletExtension = {
+  chromeWebStoreId: "opcgpfmipidbgpenhmajoajpbobppdil",
+  name: "Sui Wallet",
+  platforms: ["sui"],
+  slug: "sui-wallet",
+  webStoreUrl:
+    "https://chromewebstore.google.com/detail/sui-wallet/opcgpfmipidbgpenhmajoajpbobppdil",
+};
+
+const Suiet: WalletExtension = {
+  chromeWebStoreId: "khpkpbbcccdmmclmpigdgddabeilkdpd",
+  name: "Suiet",
+  platforms: ["sui"],
+  slug: "suiet",
+  webStoreUrl: "https://chromewebstore.google.com/detail/suiet/khpkpbbcccdmmclmpigdgddabeilkdpd",
+};
+
+const Xverse: WalletExtension = {
+  chromeWebStoreId: "idnnbdplmphpflfnlkomgpfbpcgelopg",
+  name: "Xverse Wallet",
+  platforms: ["bitcoin"],
+  slug: "xverse",
+  webStoreUrl:
+    "https://chromewebstore.google.com/detail/xverse-wallet/idnnbdplmphpflfnlkomgpfbpcgelopg",
+};
+
+const Unisat: WalletExtension = {
+  chromeWebStoreId: "ppbibelpcjmhbdihakflkdcoccbgbkpo",
+  name: "Unisat",
+  platforms: ["bitcoin"],
+  slug: "unisat",
+  webStoreUrl:
+    "https://chromewebstore.google.com/detail/unisat-wallet/ppbibelpcjmhbdihakflkdcoccbgbkpo",
+};
+
+const Leather: WalletExtension = {
+  chromeWebStoreId: "ldinpeekobnhjjdofggfgjlcehhmanlj",
+  name: "Leather",
+  platforms: ["bitcoin"],
+  slug: "leather",
+  webStoreUrl: "https://chromewebstore.google.com/detail/leather/ldinpeekobnhjjdofggfgjlcehhmanlj",
+};
+
 const BinanceWallet: WalletExtension = {
   // TODO_VERIFY: confirm this ID by opening the Web Store listing and
   // copying the trailing path segment. Binance has shipped multiple
@@ -61,7 +104,7 @@ const MetaMask: WalletExtension = {
 const OkxWallet: WalletExtension = {
   chromeWebStoreId: "mcohilncbfahbmgdjkbpemcciiolgcge",
   name: "OKX Wallet",
-  platforms: ["evm", "svm"],
+  platforms: ["evm", "svm", "sui", "bitcoin"],
   slug: "okx-wallet",
   webStoreUrl:
     "https://chromewebstore.google.com/detail/okx-wallet/mcohilncbfahbmgdjkbpemcciiolgcge",
@@ -70,7 +113,7 @@ const OkxWallet: WalletExtension = {
 const Phantom: WalletExtension = {
   chromeWebStoreId: "bfnaelmomeimhlpmgjnjophhpkkoljpa",
   name: "Phantom",
-  platforms: ["evm", "svm"],
+  platforms: ["evm", "svm", "sui", "bitcoin"],
   slug: "phantom",
   webStoreUrl: "https://chromewebstore.google.com/detail/phantom/bfnaelmomeimhlpmgjnjophhpkkoljpa",
 };
@@ -109,22 +152,37 @@ const ALL_WALLETS: ReadonlyArray<WalletExtension> = [
   BinanceWallet,
   CoinbaseWallet,
   JupiterWallet,
+  Leather,
   MetaMask,
   OkxWallet,
   Phantom,
   Rabby,
   Solflare,
+  Suiet,
+  SuiWallet,
   TrustWallet,
+  Unisat,
+  Xverse,
 ];
 
-/** Wallets whose primary surface is EVM (some also serve SVM). */
+/** Wallets whose primary surface is EVM (some also serve other chains). */
 const EVM_WALLETS: ReadonlyArray<WalletExtension> = ALL_WALLETS.filter((w) =>
   w.platforms.includes("evm"),
 );
 
-/** Wallets whose primary surface is SVM (some also serve EVM). */
+/** Wallets whose primary surface is SVM (some also serve other chains). */
 const SVM_WALLETS: ReadonlyArray<WalletExtension> = ALL_WALLETS.filter((w) =>
   w.platforms.includes("svm"),
+);
+
+/** Wallets whose primary surface is Sui (some also serve other chains). */
+const SUI_WALLETS: ReadonlyArray<WalletExtension> = ALL_WALLETS.filter((w) =>
+  w.platforms.includes("sui"),
+);
+
+/** Wallets whose primary surface is Bitcoin (some also serve other chains). */
+const BITCOIN_WALLETS: ReadonlyArray<WalletExtension> = ALL_WALLETS.filter((w) =>
+  w.platforms.includes("bitcoin"),
 );
 
 /** Look up a wallet by its kebab-case slug. */
@@ -135,15 +193,22 @@ export {
   ALL_WALLETS,
   Backpack,
   BinanceWallet,
+  BITCOIN_WALLETS,
   CoinbaseWallet,
   EVM_WALLETS,
   findWallet,
   JupiterWallet,
+  Leather,
   MetaMask,
   OkxWallet,
   Phantom,
   Rabby,
   Solflare,
+  Suiet,
+  SUI_WALLETS,
+  SuiWallet,
   SVM_WALLETS,
   TrustWallet,
+  Unisat,
+  Xverse,
 };

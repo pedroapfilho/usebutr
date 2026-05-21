@@ -10,7 +10,7 @@ import type {
   WalletPersistence,
 } from "./persistence";
 
-const VALID_CHAIN_PLATFORMS = new Set<ChainPlatform>(["evm", "svm"]);
+const VALID_CHAIN_PLATFORMS = new Set<ChainPlatform>(["evm", "svm", "sui", "bitcoin"]);
 
 type StorageConfig = {
   keyPrefix: string;

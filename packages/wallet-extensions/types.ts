@@ -1,4 +1,4 @@
-type ChainPlatform = "evm" | "svm";
+type ChainPlatform = "evm" | "svm" | "sui" | "bitcoin";
 
 /**
  * A wallet browser extension that automated tests may need to install.

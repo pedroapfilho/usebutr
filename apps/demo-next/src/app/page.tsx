@@ -19,9 +19,14 @@ import { type ReactNode, useState } from "react";
 
 import { useDiscoveredWallets } from "../wallet-provider";
 
-// EVM-only demo: chain picker pulls from @usebutr/evm directly, no SVM
-// chains are bundled.
-const CHAINS_BY_PLATFORM = { evm: EVM_CHAINS_LIST, svm: [] as const };
+// EVM-only demo: chain picker pulls from @usebutr/evm directly. Other
+// platforms get empty lists so the index type covers every ChainPlatform.
+const CHAINS_BY_PLATFORM = {
+  bitcoin: [] as const,
+  evm: EVM_CHAINS_LIST,
+  sui: [] as const,
+  svm: [] as const,
+};
 
 type SignState =
   | { kind: "idle" }

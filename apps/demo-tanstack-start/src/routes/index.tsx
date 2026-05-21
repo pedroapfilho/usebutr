@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { Account, ConnectedWallet, WalletAdapter } from "@usebutr/core";
+import { buildChainsByPlatform } from "@usebutr/core";
 import { EVM_CHAINS_LIST } from "@usebutr/evm";
 import {
   useActiveWallet,
@@ -18,12 +19,8 @@ import { type ReactNode, useState } from "react";
 
 import { useDiscoveredWallets } from "../wallet-provider";
 
-const CHAINS_BY_PLATFORM = {
-  bitcoin: [] as const,
-  evm: EVM_CHAINS_LIST,
-  sui: [] as const,
-  svm: [] as const,
-};
+// EVM-only — only @usebutr/evm's chain table enters the bundle.
+const CHAINS_BY_PLATFORM = buildChainsByPlatform({ evm: EVM_CHAINS_LIST });
 
 type SignState =
   | { kind: "idle" }

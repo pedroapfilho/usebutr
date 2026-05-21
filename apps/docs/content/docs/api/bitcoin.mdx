@@ -1,0 +1,69 @@
+---
+title: "@usebutr/bitcoin"
+description: Wallet Standard discovery plus injected fallbacks, the adapter builder, capabilities, and Bitcoin chains.
+---
+
+## Discovery
+
+### `discoverBitcoinAdapters(onAdapter): () => void`
+
+Subscribe to Wallet Standard registrations for Bitcoin wallets (Phantom,
+Magic Eden, Leather, OKX, …). Returns an unsubscribe function. Lazily
+imports `@wallet-standard/app` (optional peer dependency).
+
+### `discoverInjectedBitcoinAdapter(onAdapter, options): () => void`
+
+Fallback for wallets that inject `window.unisat` (Unisat, OKX legacy, generic
+`window.btc`) or expose `sats-connect` (Xverse). Use when no Wallet Standard
+wallet announces — `autoDiscovery()` composes both routes for you.
+
+### `bitcoinDiscoverer: PlatformDiscoverer`
+
+Descriptor used by `@usebutr/wallets`'s `autoDiscovery()` to compose Bitcoin
+discovery (Wallet Standard primary, injected fallback) into a multi-platform
+source.
+
+## Adapter builder
+
+### `buildBitcoinAdapter(wallet: WalletStandardWallet): WalletAdapter`
+
+Wrap a Wallet Standard wallet into a butr `WalletAdapter` with
+`chainPlatform: "bitcoin"`.
+
+### `slugify(name: string): string`
+
+Stable id derivation from a wallet name (adapter authoring).
+
+## Capabilities
+
+### `resolveBitcoinCapabilities(wallet): WalletCapabilities`
+
+Derive `WalletCapabilities` from advertised Bitcoin Wallet Standard features
+(`bitcoin:signMessage`, `bitcoin:signPsbt`, `bitcoin:sendTransfer`, events, …).
+
+Type: `BitcoinCapabilityInput`.
+
+## Chains
+
+- `BITCOIN_CHAINS` — record keyed by chain id (CAIP-2 `bip122:<genesis hash>`).
+- `BITCOIN_CHAINS_LIST` — array (mainnet / testnet / regtest).
+
+## Constants
+
+- `GENERIC_BITCOIN_ICON: string` — fallback SVG data URI for injected
+  wallets that don't supply their own icon.
+
+## Types
+
+`WalletStandardWallet`, `WalletStandardWalletAccount`, `WalletStandardAppModule`,
+`WalletsApp`, `StandardConnectFeature`, `StandardDisconnectFeature`,
+`StandardEventsFeature`, `StandardEventsListener`, `BitcoinSignMessageFeature`,
+`BitcoinSignMessageInput`, `BitcoinSignMessageOutput`, `BitcoinSignPsbtFeature`,
+`BitcoinSignPsbtInput`, `BitcoinSignPsbtOutput`, `BitcoinSendTransferFeature`,
+`BitcoinSendTransferInput`, `BitcoinSendTransferOutput`,
+`InjectedBitcoinDiscoveryOptions`.
+
+These feature types are what you cast `getSigner()` to when signing/sending —
+see the [Bitcoin Wallet Standard connector](/connectors/bitcoin-wallet-standard).
+
+**Source:** `packages/bitcoin/src/index.ts`.

@@ -1,0 +1,100 @@
+---
+title: Bitcoin Wallet Standard
+description: Wallet Standard discovery for Bitcoin wallets plus injected fallbacks (Unisat, sats-connect), via @usebutr/bitcoin.
+---
+
+`@usebutr/bitcoin` discovers Bitcoin wallets two ways:
+
+- **Wallet Standard** — Phantom, Magic Eden, Leather, OKX (modern), …
+- **Injected fallback** — `window.unisat` (Unisat, OKX legacy, generic
+  `window.btc`) and `sats-connect` (Xverse).
+
+The fallback is opt-in via `discoverInjectedBitcoinAdapter` and runs when no
+Wallet Standard wallet announces.
+
+## Discovery
+
+`autoDiscovery()` from `@usebutr/wallets` handles Bitcoin discovery (both
+routes) automatically. For a Bitcoin-only setup, compose the two sources:
+
+```ts
+import { createWalletSource } from "@usebutr/core";
+import {
+  discoverBitcoinAdapters,
+  discoverInjectedBitcoinAdapter,
+} from "@usebutr/bitcoin";
+import { WalletManagerProvider } from "@usebutr/react";
+
+const discovery = createWalletSource((onAdapter) => {
+  const offStandard = discoverBitcoinAdapters(onAdapter);
+  const offInjected = discoverInjectedBitcoinAdapter(onAdapter, {});
+  return () => {
+    offStandard();
+    offInjected();
+  };
+});
+
+<WalletManagerProvider discovery={discovery}>
+  {children}
+</WalletManagerProvider>
+```
+
+<Callout type="info">
+  `@usebutr/bitcoin` lazily imports `@wallet-standard/app` (an optional peer dependency). Restored
+  Bitcoin wallets can land in `pendingIds` for a moment during that warmup — see
+  [hydration](/concepts/hydration).
+</Callout>
+
+## Capabilities
+
+Resolved from the wallet's advertised features via `resolveBitcoinCapabilities`:
+
+- `signMessage` — true only if `bitcoin:signMessage` is advertised. Note this
+  is a Bitcoin Signed Message (BIP-322-ish), not interchangeable with EVM
+  signatures.
+- `signTransaction` — true via `bitcoin:signPsbt`. PSBT in, signed PSBT out;
+  the consumer finalises and broadcasts.
+- `sendTransaction` — true via `bitcoin:sendTransfer` (one-shot send) or
+  `bitcoin:signPsbt` with `broadcast: true` (depending on what the wallet
+  advertises).
+- `subscribe` — true via the Standard `change` event.
+- `switchChain` — limited: switching mainnet ↔ testnet typically means
+  re-connecting in the wallet UI.
+
+Always branch on [capabilities](/concepts/capabilities).
+
+## Working with the signer
+
+`getSigner()` on a Bitcoin adapter returns the `WalletStandardWallet`. You
+call features directly (or bridge into `bitcoinjs-lib`):
+
+```ts
+const walletStd = (await wallet.connector.getSigner()) as WalletStandardWallet;
+const feature = walletStd.features["bitcoin:signPsbt"];
+const account = walletStd.accounts[0];
+const [{ psbt: signedPsbt }] = await feature.signPsbt({
+  account,
+  psbt: unsignedPsbt, // base64
+});
+```
+
+See the [demo-with-bitcoin](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-with-bitcoin)
+app for the full build-and-broadcast flow with `bitcoinjs-lib`.
+
+## Chains
+
+`BITCOIN_CHAINS_LIST` / `BITCOIN_CHAINS` ship mainnet, testnet, and regtest
+(keyed by CAIP-2 — `bip122:<genesis block hash>`). `slugify`,
+`resolveBitcoinCapabilities`, and `GENERIC_BITCOIN_ICON` are exported for
+adapter authors.
+
+<Callout type="warn">
+  **Address formats vary by wallet.** Phantom advertises native SegWit (bech32) only; Xverse and
+  Unisat expose multiple address formats (payment vs ordinal). Read `account.walletAddress` and
+  detect the format from its prefix.
+</Callout>
+
+<Callout type="info">
+  **Source:** `packages/bitcoin/src` (`wallet-standard.ts`, `injected/`, `capabilities.ts`). Used by
+  `apps/demo-with-bitcoin` and (via `@usebutr/wallets`) `apps/demo-vite`.
+</Callout>

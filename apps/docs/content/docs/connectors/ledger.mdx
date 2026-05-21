@@ -1,36 +1,96 @@
 ---
 title: Ledger
-description: Ledger hardware wallet over WebUSB — Chromium-only, signing-only, no RPC or events.
+description: Ledger hardware wallets over WebUSB — EVM, Solana, Sui, and Bitcoin. Chromium-only, signing-only, no RPC or events.
 ---
 
-`@usebutr/ledger` is a Ledger hardware-wallet adapter using WebUSB. It signs
+`@usebutr/ledger` is a Ledger hardware-wallet adapter using WebUSB. It ships
+per-platform factories for EVM, SVM (Solana), Sui, and Bitcoin. It signs
 messages and transactions; it does **not** broadcast or read chain state.
 
 ## Install
 
 ```npm
-npm install @usebutr/ledger @ledgerhq/hw-app-eth @ledgerhq/hw-transport-webusb
+npm install @usebutr/ledger @ledgerhq/hw-transport-webusb
 ```
 
-Both Ledger packages are optional peer dependencies.
+Then add the Ledger app modules you need — each is an optional peer dep loaded
+on demand:
+
+```npm
+npm install @ledgerhq/hw-app-eth      # EVM
+npm install @ledgerhq/hw-app-solana   # SVM
+npm install @ledgerhq/hw-app-sui      # Sui
+npm install @ledgerhq/hw-app-btc      # Bitcoin
+```
+
+You only pay for the apps you actually use.
 
 ## Build the adapter
+
+The unified factory dispatches on `options.platform`. The discriminant is
+required for SVM/Sui/Bitcoin; EVM is the default for back-compat.
+
+### EVM (default)
 
 ```ts
 import { createLedgerAdapter } from "@usebutr/ledger";
 
 const ledger = await createLedgerAdapter({
-  chainId: 1, // Ethereum mainnet (EIP-155 number, not CAIP-2)
-  accountCount: 3, // expose 3 derivation paths
+  chainId: 1, // EIP-155 number, not CAIP-2
+  accountCount: 3,
 });
 ```
 
-| Option                 | Type     | Default                                         | Notes                                                                                                          |
-| ---------------------- | -------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `chainId`              | `number` | `1`                                             | EIP-155 chain number. Ledger has no internal "current chain"; `switchChain` just updates this locally.         |
-| `accountCount`         | `number` | `1`                                             | How many derivation paths to enumerate via `getAccounts()`. Each walk hits the device (~1–2s) — keep it small. |
-| `derivationPathPrefix` | `string` | `44'/60'/0'/0`                                  | Standard Ethereum path; `getAccounts(n)` appends the index.                                                    |
-| `id` / `name` / `icon` | `string` | `"ledger"` / `"Ledger"` / `LEDGER_DEFAULT_ICON` |                                                                                                                |
+### Solana
+
+```ts
+const ledger = await createLedgerAdapter({
+  platform: "svm",
+  cluster: "mainnet", // "mainnet" | "testnet" | "devnet"
+  accountCount: 3,
+});
+```
+
+### Sui
+
+```ts
+const ledger = await createLedgerAdapter({
+  platform: "sui",
+  cluster: "mainnet",
+  accountCount: 3,
+});
+```
+
+### Bitcoin
+
+```ts
+const ledger = await createLedgerAdapter({
+  platform: "bitcoin",
+  addressFormat: "bech32", // "legacy" | "p2sh" | "bech32" | "bech32m"
+  accountCount: 3,
+});
+```
+
+You can also import each per-platform factory directly:
+`createEvmLedgerAdapter`, `createSvmLedgerAdapter`, `createSuiLedgerAdapter`,
+`createBitcoinLedgerAdapter`.
+
+### Common options
+
+| Option                 | Default                                           | Notes                                                                                       |
+| ---------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `accountCount`         | `1`                                               | How many paths to enumerate via `getAccounts()`. Each hits the device (~1–2s) — keep small. |
+| `derivationPathPrefix` | per-platform (see below)                          | `getAccounts(n)` appends the index.                                                         |
+| `id` / `name` / `icon` | `"ledger"` / `"Ledger"` / `LEDGER_*_DEFAULT_ICON` | Per-platform icon constants are exported.                                                   |
+
+### Per-platform defaults
+
+| Platform | `chainId` / `cluster` | Derivation prefix | Notes                                                  |
+| -------- | --------------------- | ----------------- | ------------------------------------------------------ |
+| EVM      | `chainId: 1`          | `44'/60'/0'/0`    | Local state — Ledger has no on-device "current chain". |
+| SVM      | `cluster: "mainnet"`  | `44'/501'/0'`     | Each account appends `/<n>'` (hardened).               |
+| Sui      | `cluster: "mainnet"`  | `44'/784'/0'/0'`  | Each account appends `/<n>'` (canonical 5-segment).    |
+| Bitcoin  | mainnet `bip122:000…` | `84'/0'/0'/0`     | BIP-84 native SegWit. Each account appends `/<n>`.     |
 
 Register it through the unified provider exactly like
 [WalletConnect](/connectors/walletconnect):
@@ -41,12 +101,12 @@ import { autoDiscovery } from "@usebutr/wallets";
 import { createLedgerAdapter } from "@usebutr/ledger";
 
 const discovery = autoDiscovery();
-const ledger = await createLedgerAdapter({ chainId: 1, accountCount: 3 });
+const ledger = await createLedgerAdapter({ platform: "sui", accountCount: 3 });
 const extra = new Map([[ledger.id, ledger]]);
 
 <WalletManagerProvider
   discovery={discovery}
-  connectors={[{ id: ledger.id, name: ledger.name, chainPlatform: "evm" }]}
+  connectors={[{ id: ledger.id, name: ledger.name, chainPlatform: ledger.chainPlatform }]}
   createConnector={(id) => extra.get(id) ?? null}
 >
   {children}
@@ -54,24 +114,25 @@ const extra = new Map([[ledger.id, ledger]]);
 ```
 
 On `connect()` the browser shows the WebUSB permission prompt and the user
-unlocks the device.
+unlocks the device on the platform's Ledger app (Ethereum, Solana, Sui, or
+Bitcoin).
 
 ## Capabilities
 
-`LEDGER_CAPABILITIES` is hardware-only:
+`LEDGER_CAPABILITIES` is hardware-only and identical across EVM, SVM, and
+Bitcoin. Sui diverges in one spot (no `signMessage`):
 
-```ts
-{
-  getBalance: false, // no RPC
-  getTransactionReceipt: false,
-  requestAccounts: false,
-  sendTransaction: false, // signs, doesn't broadcast
-  signMessage: true,
-  subscribe: false, // no events
-  switchAccount: false,
-  switchChain: true, // local chainId only
-}
-```
+|                         | EVM | SVM | Sui | Bitcoin | Why                                                                                 |
+| ----------------------- | :-: | :-: | :-: | :-----: | ----------------------------------------------------------------------------------- |
+| `signMessage`           |  ✓  |  ✓  |     |    ✓    | `@ledgerhq/hw-app-sui` doesn't expose `signPersonalMessage` at the current version. |
+| `signTransaction`       |  ✓  |  ✓  |  ✓  |    ✓    | Bitcoin uses Bitcoin app v2.1+'s `signPsbt` (PSBT in, signed PSBT out).             |
+| `sendTransaction`       |     |     |     |         | Ledger signs but doesn't broadcast. Wrap `getSigner()` with your own RPC.           |
+| `subscribe`             |     |     |     |         | No events — devices don't push.                                                     |
+| `switchChain`           |  ✓  |  ✓  |  ✓  |    ✓    | Local state only — nothing is written to the device.                                |
+| `switchAccount`         |     |     |     |         | Use `accountCount` to enumerate; pass `account` per call.                           |
+| `requestAccounts`       |     |     |     |         | Walking to more paths is sequential and slow.                                       |
+| `getBalance`            |     |     |     |         | No RPC.                                                                             |
+| `getTransactionReceipt` |     |     |     |         | Same.                                                                               |
 
 ## Caveats
 
@@ -82,8 +143,19 @@ unlocks the device.
 
 <Callout type="warn">
   **Signing only.** `sendTx`, `sendTxToChain`, `getBalance`, and `getTransactionReceipt` reject with
-  descriptive errors. To submit a transaction, wrap `getSigner()` with viem/ethers and your own RPC,
-  then broadcast there.
+  descriptive errors. To submit a transaction, wrap `getSigner()` with viem / @solana/kit /
+  @mysten/sui / bitcoinjs-lib and your own RPC, then broadcast there.
+</Callout>
+
+<Callout type="warn">
+  **Sui has no `signMessage`** at the current `@ledgerhq/hw-app-sui` version. The capability flag
+  reflects this — gate the UI accordingly.
+</Callout>
+
+<Callout type="warn">
+  **Bitcoin PSBTs need full BIP-32 derivation paths.** The adapter doesn't backfill missing
+  `PSBT_IN_BIP32_DERIVATION` entries — your PSBT builder must populate them, or the device will
+  reject the request.
 </Callout>
 
 - **No persistence** — the device must be reconnected on reload (no session
@@ -91,16 +163,13 @@ unlocks the device.
 - **No events** — `subscribe()` is a no-op.
 - **Multiple accounts via paths** — there's no `switchAccount`; expose more
   addresses with `accountCount` and pass a specific `account` to
-  `signMessage`. Walking to a non-active path is sequential and slow.
+  `signMessage` / `signTransaction`. Walking to a non-active path hits the
+  device sequentially.
 - **Manual chain** — call `switchChain()` to update the adapter's local
-  chainId; it isn't written to the device.
-
-Error messages you may surface: _"sendTx not supported — Ledger signs but
-doesn't broadcast"_, _"getBalance not supported — Ledger has no RPC"_,
-_"received non-EVM chain"_, _"address not found on this device"_ (outside the
-configured `accountCount`).
+  state; it isn't written to the device.
 
 <Callout type="info">
-  **Source:** `packages/ledger/src` (`adapter.ts`, `capabilities.ts`, `__tests__/adapter.test.ts`)
-  in the [butr repository](https://github.com/pedroapfilho/usebutr/tree/main/packages/ledger).
+  **Source:** `packages/ledger/src` (`adapter.ts`, `capabilities.ts`,
+  `apps/{evm,svm,sui,bitcoin}.ts`) in the [butr
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/packages/ledger).
 </Callout>

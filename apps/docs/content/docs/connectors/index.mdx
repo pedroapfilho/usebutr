@@ -6,18 +6,23 @@ description: Every connector plugs in through the same createConnector seam — 
 A connector is a `WalletAdapter`. They reach butr two ways, both through
 `WalletManagerProvider`:
 
-- **Discovered** — browser wallets announce themselves. `@usebutr/evm` listens for
-  EIP-6963; `@usebutr/svm` listens for the Wallet Standard. `@usebutr/wallets`
-  composes both via `autoDiscovery()`. You don't register these by hand.
+- **Discovered** — browser wallets announce themselves. `@usebutr/evm` listens
+  for EIP-6963; `@usebutr/svm`, `@usebutr/sui`, and `@usebutr/bitcoin` listen
+  for the Wallet Standard (`@usebutr/bitcoin` also tries injected fallbacks
+  like `window.unisat` and `sats-connect`). `@usebutr/wallets` composes all of
+  them via `autoDiscovery()`. You don't register these by hand.
 - **Registered explicitly** — WalletConnect and Ledger aren't browser-injected.
-  You build the adapter once and return it from `createConnector`.
+  You build the adapter once and return it from `createConnector`. Both now
+  ship per-platform builders for EVM, SVM, Sui, and Bitcoin.
 
-| Connector                                                    | Package                  | Platform | Discovery                    | Notes                                    |
-| ------------------------------------------------------------ | ------------------------ | -------- | ---------------------------- | ---------------------------------------- |
-| [Injected EVM](/connectors/injected-evm)                     | `@usebutr/evm`           | evm      | EIP-6963 + injected fallback | MetaMask, Rabby, Brave, …                |
-| [Solana Wallet Standard](/connectors/solana-wallet-standard) | `@usebutr/svm`           | svm      | Wallet Standard              | Phantom, Solflare, Backpack, …           |
-| [WalletConnect](/connectors/walletconnect)                   | `@usebutr/walletconnect` | evm      | explicit                     | Mobile wallets; needs a Reown project id |
-| [Ledger](/connectors/ledger)                                 | `@usebutr/ledger`        | evm      | explicit                     | WebUSB, Chromium-only, signing-only      |
+| Connector                                                      | Package                  | Platforms                   | Discovery                           | Notes                                           |
+| -------------------------------------------------------------- | ------------------------ | --------------------------- | ----------------------------------- | ----------------------------------------------- |
+| [Injected EVM](/connectors/injected-evm)                       | `@usebutr/evm`           | `evm`                       | EIP-6963 + injected fallback        | MetaMask, Rabby, Brave, …                       |
+| [Solana Wallet Standard](/connectors/solana-wallet-standard)   | `@usebutr/svm`           | `svm`                       | Wallet Standard                     | Phantom, Solflare, Backpack, …                  |
+| [Sui Wallet Standard](/connectors/sui-wallet-standard)         | `@usebutr/sui`           | `sui`                       | Wallet Standard                     | Slush, Phantom Sui, Suiet, Surf, …              |
+| [Bitcoin Wallet Standard](/connectors/bitcoin-wallet-standard) | `@usebutr/bitcoin`       | `bitcoin`                   | Wallet Standard + injected fallback | Phantom, Magic Eden, Leather, Unisat, Xverse, … |
+| [WalletConnect](/connectors/walletconnect)                     | `@usebutr/walletconnect` | `evm` `svm` `sui` `bitcoin` | explicit                            | Mobile wallets; needs a Reown project id        |
+| [Ledger](/connectors/ledger)                                   | `@usebutr/ledger`        | `evm` `svm` `sui` `bitcoin` | explicit                            | WebUSB, Chromium-only, signing-only             |
 
 Registering an explicit connector follows the same shape every time. Build the
 adapter at module scope (it's async), then wire it through the unified provider:

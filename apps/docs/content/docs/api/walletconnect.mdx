@@ -1,12 +1,18 @@
 ---
 title: "@usebutr/walletconnect"
-description: createWalletConnectAdapter, options, and constants.
+description: createWalletConnectAdapter(s), namespace builders, per-platform capabilities.
 ---
 
-WalletConnect v2 transport for EVM mobile wallets. Requires the optional peer
-dependency `@walletconnect/universal-provider` (dynamically imported).
+WalletConnect v2 transport for EVM, SVM, Sui, and Bitcoin mobile wallets.
+Requires the optional peer dependency `@walletconnect/universal-provider`
+(dynamically imported).
 
-## `createWalletConnectAdapter(options): Promise<WalletAdapter>`
+## Factories
+
+### `createWalletConnectAdapter(options): Promise<WalletAdapter>`
+
+Single-platform factory — always advertises the `eip155` namespace. Preserved
+for back-compat with the original EVM-only API.
 
 ```ts
 const wc = await createWalletConnectAdapter({
@@ -16,7 +22,27 @@ const wc = await createWalletConnectAdapter({
 });
 ```
 
-### `WalletConnectOptions`
+### `createWalletConnectAdapters(options): Promise<Array<WalletAdapter>>`
+
+Multi-namespace factory — one pairing, one adapter per requested namespace.
+
+```ts
+const wcs = await createWalletConnectAdapters({
+  projectId,
+  namespaces: {
+    evm: ["eip155:1"],
+    svm: ["solana:mainnet"],
+    sui: ["sui:mainnet"],
+    bitcoin: ["bip122:000000000019d6689c085ae165831e93"],
+  },
+  onPairingUri: (uri) => setQrUri(uri),
+});
+```
+
+Each adapter's id is suffixed with the platform (`walletconnect-evm`,
+`walletconnect-svm`, …) when more than one namespace is requested.
+
+### `WalletConnectOptions` (single)
 
 | Field          | Type                    | Default                      |
 | -------------- | ----------------------- | ---------------------------- |
@@ -28,20 +54,52 @@ const wc = await createWalletConnectAdapter({
 | `name`         | `string`                | `"WalletConnect"`            |
 | `icon`         | `string`                | `WALLETCONNECT_DEFAULT_ICON` |
 
+### `WalletConnectMultiOptions`
+
+Same as `WalletConnectOptions` minus `chains`, plus:
+
+| Field        | Type                                                    | Notes                                                                                       |
+| ------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `namespaces` | `Partial<Record<ChainPlatform, ReadonlyArray<string>>>` | Per-platform CAIP-2 chain map. Omit a key to skip the namespace; empty array uses defaults. |
+
 `WalletConnectMetadata = { name?; url?; description?; icons? }`.
+
+## Namespace builders
+
+```ts
+import {
+  KNOWN_NAMESPACES,
+  bitcoinNamespace,
+  evmNamespace,
+  solanaNamespace,
+  suiNamespace,
+} from "@usebutr/walletconnect";
+```
+
+`KNOWN_NAMESPACES: Readonly<Partial<Record<ChainPlatform, WalletConnectNamespaceBuilder>>>` is
+the dispatch table `createWalletConnectAdapters` walks. Today: `evm`, `svm`,
+`sui`, `bitcoin` all ship.
+
+`WalletConnectNamespaceBuilder` exposes `caipNamespace`, `methods`, `events`,
+`defaultChains`, and `buildAdapter(...)`. Compose your own factory by importing
+the builders directly.
 
 ## Constants
 
 - `WALLETCONNECT_DEFAULT_ICON: string` — default SVG data URI.
-- `WALLETCONNECT_CAPABILITIES: WalletCapabilities` — fixed flags
-  (`requestAccounts` / `switchAccount` are `false`).
+- `WALLETCONNECT_CAPABILITIES: WalletCapabilities` — EVM (used by the
+  single-platform factory).
+- `WALLETCONNECT_SVM_CAPABILITIES: WalletCapabilities` — Solana.
+- `WALLETCONNECT_SUI_CAPABILITIES: WalletCapabilities` — Sui.
+- `WALLETCONNECT_BITCOIN_CAPABILITIES: WalletCapabilities` — Bitcoin.
 
 ## Types
 
-`WalletConnectOptions`, `WalletConnectMetadata`, `UniversalProviderLike`,
+`WalletConnectOptions`, `WalletConnectMultiOptions`, `WalletConnectMetadata`,
+`WalletConnectNamespaceBuilder`, `UniversalProviderLike`,
 `UniversalProviderConstructor`, and a re-exported `Account`.
 
 See the [WalletConnect connector guide](/connectors/walletconnect) for the
-full setup, QR rendering, and caveats.
+full setup, QR rendering, per-platform capabilities, and caveats.
 
 **Source:** `packages/walletconnect/src/index.ts`.

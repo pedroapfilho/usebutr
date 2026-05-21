@@ -1,4 +1,15 @@
 {
   "title": "API reference",
-  "pages": ["index", "core", "react", "evm", "svm", "wallets", "walletconnect", "ledger"]
+  "pages": [
+    "index",
+    "core",
+    "react",
+    "evm",
+    "svm",
+    "sui",
+    "bitcoin",
+    "wallets",
+    "walletconnect",
+    "ledger"
+  ]
 }

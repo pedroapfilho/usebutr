@@ -1,0 +1,58 @@
+---
+title: "@usebutr/sui"
+description: Wallet Standard discovery, the adapter builder, capabilities, and Sui chains.
+---
+
+## Discovery
+
+### `discoverSuiAdapters(onAdapter): () => void`
+
+Subscribe to Wallet Standard registrations for Sui wallets (Slush, Phantom
+Sui, Suiet, Surf, …). Returns an unsubscribe function. Lazily imports
+`@wallet-standard/app` (optional peer dependency).
+
+### `suiDiscoverer: PlatformDiscoverer`
+
+Descriptor used by `@usebutr/wallets`'s `autoDiscovery()` to compose Sui
+discovery into a multi-platform source. Wallet Standard only — no fallback.
+
+## Adapter builder
+
+### `buildSuiAdapter(wallet: WalletStandardWallet): WalletAdapter`
+
+Wrap a Wallet Standard wallet into a butr `WalletAdapter` with
+`chainPlatform: "sui"`.
+
+### `slugify(name: string): string`
+
+Stable id derivation from a wallet name (adapter authoring).
+
+## Capabilities
+
+### `resolveSuiCapabilities(wallet): WalletCapabilities`
+
+Derive `WalletCapabilities` from advertised Sui Wallet Standard features
+(`sui:signPersonalMessage`, `sui:signTransaction`,
+`sui:signAndExecuteTransaction`, events, …).
+
+Type: `WalletStandardCapabilityInput`.
+
+## Chains
+
+- `SUI_CHAINS` — record keyed by chain id.
+- `SUI_CHAINS_LIST` — array (mainnet / testnet / devnet).
+
+## Types
+
+`WalletStandardWallet`, `WalletStandardWalletAccount`, `WalletStandardAppModule`,
+`WalletsApp`, `StandardConnectFeature`, `StandardDisconnectFeature`,
+`StandardEventsFeature`, `StandardEventsListener`, `SuiSignPersonalMessageFeature`,
+`SuiSignPersonalMessageInput`, `SuiSignPersonalMessageOutput`,
+`SuiSignTransactionFeature`, `SuiSignTransactionInput`, `SuiSignTransactionOutput`,
+`SuiSignAndExecuteTransactionFeature`, `SuiSignAndExecuteTransactionInput`,
+`SuiSignAndExecuteTransactionOutput`.
+
+These feature types are what you cast `getSigner()` to when signing/sending —
+see the [Sui Wallet Standard connector](/connectors/sui-wallet-standard).
+
+**Source:** `packages/sui/src/index.ts`.

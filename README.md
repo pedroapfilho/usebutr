@@ -121,16 +121,16 @@ Ten published packages, each with a single responsibility.
 
 ```mermaid
 graph TD
-  core[<b>@usebutr/core</b><br/>types · store · storage · WalletSource]
-  react[<b>@usebutr/react</b><br/>provider + hooks]
-  evm[<b>@usebutr/evm</b><br/>EIP-6963 / EIP-1193]
-  svm[<b>@usebutr/svm</b><br/>Wallet Standard]
-  sui[<b>@usebutr/sui</b><br/>Wallet Standard]
-  btc[<b>@usebutr/bitcoin</b><br/>Wallet Standard + injected]
-  wallets[<b>@usebutr/wallets</b><br/>autoDiscovery]
-  wc[<b>@usebutr/walletconnect</b>]
-  ledger[<b>@usebutr/ledger</b>]
-  testing[<b>@usebutr/testing</b>]
+  core["**@usebutr/core**<br>types · store · storage · WalletSource"]
+  react["**@usebutr/react**<br>provider + hooks"]
+  evm["**@usebutr/evm**<br>EIP-6963 / EIP-1193"]
+  svm["**@usebutr/svm**<br>Wallet Standard"]
+  sui["**@usebutr/sui**<br>Wallet Standard"]
+  btc["**@usebutr/bitcoin**<br>Wallet Standard + injected"]
+  wallets["**@usebutr/wallets**<br>autoDiscovery"]
+  wc["**@usebutr/walletconnect**"]
+  ledger["**@usebutr/ledger**"]
+  testing["**@usebutr/testing**"]
 
   core --> react
   core --> evm

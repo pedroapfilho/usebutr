@@ -1,32 +1,31 @@
 import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
 import { logWarn } from "@usebutr/core";
+import {
+  buildAccount,
+  getFeature,
+  pickAccountByAddress,
+  pickFirstAddress,
+  slugify as kitSlugify,
+} from "@usebutr/wallet-standard-shared";
+import type {
+  StandardConnectFeature,
+  StandardDisconnectFeature,
+  StandardEventsFeature,
+  WalletStandardWallet,
+} from "@usebutr/wallet-standard-shared";
 
 import { resolveBitcoinCapabilities } from "./capabilities";
 import type {
   BitcoinSendTransferFeature,
   BitcoinSignMessageFeature,
   BitcoinSignPsbtFeature,
-  StandardConnectFeature,
-  StandardDisconnectFeature,
-  StandardEventsFeature,
-  WalletStandardWallet,
-  WalletStandardWalletAccount,
 } from "./wallet-standard-types";
 
 const BITCOIN_PREFIX = "bip122:";
 const BITCOIN_DECIMALS = 8;
 const BITCOIN_MAINNET_ID = "bip122:000000000019d6689c085ae165831e93";
 
-const slugify = (name: string): string =>
-  `wallet-standard:btc-${name
-    .trim()
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/gv, "-")}`;
-
-const getFeature = <T>(wallet: WalletStandardWallet, name: string): T | undefined => {
-  const feature = wallet.features[name];
-  return feature ? (feature as T) : undefined;
-};
+const slugify = (name: string): string => kitSlugify("btc", name);
 
 const pickBitcoinChain = (wallet: WalletStandardWallet): string | null => {
   const mainnet = wallet.chains.find((c) => c === BITCOIN_MAINNET_ID);
@@ -44,22 +43,8 @@ const buildBitcoinChain = (chainId: string, walletName: string): ChainBase => ({
   reference: chainId.slice(BITCOIN_PREFIX.length),
 });
 
-const buildBitcoinAccount = (address: string, chain: ChainBase): Account => ({
-  chain,
-  id: `${chain.id}:${address}`,
-  walletAddress: address,
-});
-
-const pickFirstAddress = (accounts: ReadonlyArray<WalletStandardWalletAccount>): string | null => {
-  const first = accounts[0];
-  return first ? first.address : null;
-};
-
-const pickAccountByAddress = (
-  accounts: ReadonlyArray<WalletStandardWalletAccount>,
-  address: string,
-): WalletStandardWalletAccount | undefined =>
-  accounts.find((a) => a.address === address) ?? accounts[0];
+const buildBitcoinAccount = (address: string, chain: ChainBase): Account =>
+  buildAccount(address, chain);
 
 /**
  * Adapt a Bitcoin Wallet Standard `Wallet` into a butr `WalletAdapter`.
@@ -89,10 +74,10 @@ const pickAccountByAddress = (
  */
 const buildBitcoinAdapter = (
   wallet: WalletStandardWallet,
-  /** Optional. Called with the adapter id and a function that pushes a
-   *  synthetic `disconnected` event to all current subscribers. The
-   *  discovery layer invokes it on Wallet Standard `unregister`. */
-  registerDisconnector?: (id: string, emit: () => void) => void,
+  /** Optional. Called with a function that pushes a synthetic
+   *  `disconnected` event to all current subscribers. The discovery
+   *  layer invokes it on Wallet Standard `unregister`. */
+  registerDisconnector?: (emit: () => void) => void,
 ): WalletAdapter | null => {
   const bitcoinChainId = pickBitcoinChain(wallet);
   if (!bitcoinChainId) {
@@ -128,8 +113,7 @@ const buildBitcoinAdapter = (
     }
   };
 
-  const adapterId = slugify(wallet.name);
-  registerDisconnector?.(adapterId, () => {
+  registerDisconnector?.(() => {
     for (const listener of listeners) {
       listener({ type: "disconnected" });
     }
@@ -195,7 +179,7 @@ const buildBitcoinAdapter = (
     },
 
     icon: wallet.icon,
-    id: adapterId,
+    id: slugify(wallet.name),
     name: wallet.name,
 
     async requestAccounts() {

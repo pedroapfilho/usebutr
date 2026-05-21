@@ -1,10 +1,7 @@
+// Shared Wallet Standard protocol types — re-exported from
+// @usebutr/wallet-standard-shared for backwards compatibility with
+// consumers that import them from @usebutr/svm.
 export type {
-  SolanaSignAndSendTransactionFeature,
-  SolanaSignAndSendTransactionInput,
-  SolanaSignAndSendTransactionOutput,
-  SolanaSignMessageFeature,
-  SolanaSignMessageInput,
-  SolanaSignMessageOutput,
   StandardConnectFeature,
   StandardDisconnectFeature,
   StandardEventsFeature,
@@ -13,7 +10,18 @@ export type {
   WalletStandardWallet,
   WalletStandardWalletAccount,
   WalletsApp,
+} from "@usebutr/wallet-standard-shared";
+
+// Solana-specific feature shapes.
+export type {
+  SolanaSignAndSendTransactionFeature,
+  SolanaSignAndSendTransactionInput,
+  SolanaSignAndSendTransactionOutput,
+  SolanaSignMessageFeature,
+  SolanaSignMessageInput,
+  SolanaSignMessageOutput,
 } from "./wallet-standard-types";
+
 export { buildSvmAdapter, slugify } from "./wallet-standard-adapter";
 export { discoverSvmAdapters } from "./wallet-standard";
 

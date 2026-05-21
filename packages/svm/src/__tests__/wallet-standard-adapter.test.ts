@@ -651,7 +651,7 @@ describe("buildSvmAdapter edge cases", () => {
     let emit: (() => void) | null = null;
     const adapter = buildSvmAdapter(
       withFeatures(buildWallet(), { "standard:connect": connectFeature }),
-      (_id, fn) => {
+      (fn) => {
         emit = fn;
       },
     );

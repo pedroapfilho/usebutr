@@ -18,6 +18,8 @@
     "@solana/client",
     "@solana/react-hooks",
     "@tanstack/react-query",
+    "@usebutr/bitcoin",
+    "@usebutr/sui",
     "@usebutr/svm",
     "@usebutr/testing",
     "@usebutr/wallets",

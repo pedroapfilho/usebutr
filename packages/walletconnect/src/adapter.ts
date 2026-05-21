@@ -16,15 +16,6 @@ type WalletConnectMetadata = {
 };
 
 type WalletConnectOptions = {
-  /**
-   * CAIP-2 chain ids the dapp wants to support. Default: Ethereum
-   * mainnet only (`eip155:1`). Pass more to let the user pick a chain
-   * in their wallet at pairing time.
-   *
-   * Single-platform (EVM-only). For multi-platform pairings, use
-   * `createWalletConnectAdapters` with the `namespaces` option.
-   */
-  chains?: ReadonlyArray<string>;
   /** Override the wallet's display icon shown in butr's pickers. */
   icon?: string;
   /**
@@ -41,6 +32,14 @@ type WalletConnectOptions = {
   metadata?: WalletConnectMetadata;
   /** Override the wallet's display name. Default `"WalletConnect"`. */
   name?: string;
+  /**
+   * Per-namespace chain requests. Each key is a `ChainPlatform`; each
+   * value is the CAIP-2 chains to advertise for that namespace.
+   *
+   * Omit a key to skip that namespace entirely. Pass an empty array
+   * to use the namespace builder's `defaultChains`.
+   */
+  namespaces: Partial<Record<ChainPlatform, ReadonlyArray<string>>>;
   /**
    * Called with the WalletConnect pairing URI whenever the provider
    * needs the user to scan a QR code (or open a mobile deep link).
@@ -94,80 +93,40 @@ const initProvider = async (options: WalletConnectOptions): Promise<UniversalPro
 };
 
 /**
- * Build a single WalletConnect v2 adapter wired to the EVM namespace.
- * The returned adapter is fully-formed but UN-paired — the actual QR
- * pairing happens when butr's runtime calls `adapter.connect()`
- * (typically when the user clicks "Connect" in your UI).
+ * WalletConnect v2 factory. Accepts a per-platform `chains` map and
+ * returns one adapter per requested namespace from a single paired
+ * session. Each returned adapter has its own id (with a platform suffix
+ * when more than one namespace is requested) so butr's pool can hold
+ * them simultaneously.
  *
- * **Single-platform.** This factory always returns one EVM-namespace
- * adapter, preserving the original API. For multi-platform pairings
- * (one QR scan, multiple chains), use {@link createWalletConnectAdapters}.
+ * EVM, SVM (Solana), Sui, and Bitcoin (bip122) namespace builders all
+ * ship with the package. The factory is shaped this way so adding a
+ * platform = adding one file under `src/namespaces/` and one entry to
+ * {@link KNOWN_NAMESPACES}, with no API change elsewhere.
  *
- * @example
+ * @example Single namespace
  * ```ts
- * const wc = await createWalletConnectAdapter({
+ * const [wc] = await createWalletConnectAdapters({
  *   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
- *   metadata: { name: "My dapp", url: "https://my-dapp.example" },
- *   chains: ["eip155:1", "eip155:137"],
+ *   namespaces: { evm: ["eip155:1"] },
  *   onPairingUri: (uri) => setQrUri(uri),
  * });
- *
- * const config: WalletManagerConfig = {
- *   connectors: [{ id: wc.id, name: wc.name, chainPlatform: "evm" }],
- *   createConnector: (id) => (id === wc.id ? wc : null),
- * };
  * ```
  *
- * The adapter survives across reloads — call this once at app boot,
- * cache the returned adapter, and re-register it on each mount. butr's
- * hydration layer will reconnect through the same session if it's
- * still live on WalletConnect's relay.
+ * @example Multi-namespace
+ * ```ts
+ * const wcs = await createWalletConnectAdapters({
+ *   projectId,
+ *   namespaces: {
+ *     evm: ["eip155:1"],
+ *     svm: ["solana:mainnet"],
+ *     sui: ["sui:mainnet"],
+ *     bitcoin: ["bip122:000000000019d6689c085ae165831e93"],
+ *   },
+ *   onPairingUri: (uri) => setQrUri(uri),
+ * });
+ * ```
  */
-const createWalletConnectAdapter = async (
-  options: WalletConnectOptions,
-): Promise<WalletAdapter> => {
-  const provider = await initProvider(options);
-  const chains =
-    options.chains && options.chains.length > 0 ? options.chains : evmNamespace.defaultChains;
-  return evmNamespace.buildAdapter({
-    chains,
-    icon: options.icon ?? DEFAULT_ICON,
-    id: options.id ?? "walletconnect",
-    name: options.name ?? "WalletConnect",
-    provider,
-  });
-};
-
-/**
- * Multi-namespace WalletConnect factory. Accepts a per-platform
- * `chains` map and returns one adapter per requested namespace from a
- * single paired session. Each returned adapter has its own id (with a
- * platform suffix) so butr's pool can hold them simultaneously.
- *
- * **What's implemented today.** EVM, SVM (Solana), Sui, and Bitcoin
- * (bip122) namespace builders all ship with the package. The factory
- * is shaped this way so adding a platform = adding one file under
- * `src/namespaces/` and one entry to {@link KNOWN_NAMESPACES}, with no
- * API change elsewhere.
- *
- * **Per-namespace adapter ids.** When more than one namespace is
- * requested, each adapter's id is suffixed with the platform
- * (`walletconnect-evm`, `walletconnect-svm`, …) so they coexist in
- * butr's pool. With a single namespace, the id stays the base
- * `options.id ?? "walletconnect"` for back-compat with
- * {@link createWalletConnectAdapter}.
- */
-type WalletConnectMultiOptions = Omit<WalletConnectOptions, "chains"> & {
-  /**
-   * Per-namespace chain requests. Each key is a `ChainPlatform`; each
-   * value is the CAIP-2 chains to advertise for that namespace.
-   *
-   * Omit a key to skip that namespace entirely. Pass an empty array
-   * to use the namespace builder's `defaultChains`.
-   */
-  namespaces: Partial<Record<ChainPlatform, ReadonlyArray<string>>>;
-};
-
 /**
  * Registry of known per-namespace builders. Adding a new namespace =
  * import its builder + add the entry. Today EVM, SVM, Sui, and Bitcoin
@@ -181,7 +140,7 @@ const KNOWN_NAMESPACES: Readonly<Partial<Record<ChainPlatform, WalletConnectName
 };
 
 const createWalletConnectAdapters = async (
-  options: WalletConnectMultiOptions,
+  options: WalletConnectOptions,
 ): Promise<Array<WalletAdapter>> => {
   const requested = Object.entries(options.namespaces).filter(([, v]) => v !== undefined) as Array<
     [ChainPlatform, ReadonlyArray<string>]
@@ -231,7 +190,6 @@ export type {
   UniversalProviderConstructor,
   UniversalProviderLike,
   WalletConnectMetadata,
-  WalletConnectMultiOptions,
   WalletConnectNamespaceBuilder,
   WalletConnectOptions,
 };
@@ -239,7 +197,6 @@ export {
   DEFAULT_ICON as WALLETCONNECT_DEFAULT_ICON,
   KNOWN_NAMESPACES,
   bitcoinNamespace,
-  createWalletConnectAdapter,
   createWalletConnectAdapters,
   evmNamespace,
   solanaNamespace,

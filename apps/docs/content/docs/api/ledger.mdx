@@ -16,14 +16,14 @@ Each app module is loaded dynamically; you only pay for the ones you actually us
 
 ## Factories
 
-### `createLedgerAdapter(options?): Promise<WalletAdapter>`
+### `createLedgerAdapter(options): Promise<WalletAdapter>`
 
 Unified factory. Dispatches to the per-platform factory based on
-`options.platform`. Defaults to EVM for back-compat.
+`options.platform`. The discriminant is always required.
 
 ```ts
-// EVM (default — platform optional)
-await createLedgerAdapter({ chainId: 1, accountCount: 3 });
+// EVM
+await createLedgerAdapter({ platform: "evm", chainId: 1, accountCount: 3 });
 
 // SVM
 await createLedgerAdapter({ platform: "svm", cluster: "mainnet" });
@@ -53,7 +53,7 @@ The dispatch's `default` branch is a true `never` exhaustiveness check — every
 
 | Field                  | Type                | Default               |
 | ---------------------- | ------------------- | --------------------- |
-| `platform`             | `"evm"` (optional)  | `"evm"`               |
+| `platform`             | `"evm"` (required)  | —                     |
 | `chainId`              | `number`            | `1`                   |
 | `accountCount`         | `number`            | `1`                   |
 | `derivationPathPrefix` | `string`            | `"44'/60'/0'/0"`      |

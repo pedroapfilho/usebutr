@@ -30,15 +30,19 @@ adapter at module scope (it's async), then wire it through the unified provider:
 ```tsx
 import { WalletManagerProvider } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
-import { createWalletConnectAdapter } from "@usebutr/walletconnect";
+import { createWalletConnectAdapters } from "@usebutr/walletconnect";
 
 const discovery = autoDiscovery();
-const wc = await createWalletConnectAdapter({ projectId, onPairingUri });
+const [wc] = await createWalletConnectAdapters({
+  projectId,
+  namespaces: { evm: ["eip155:1"] },
+  onPairingUri,
+});
 const extra = new Map([[wc.id, wc]]);
 
 <WalletManagerProvider
   discovery={discovery}
-  connectors={[{ id: wc.id, name: wc.name, chainPlatform: "evm" }]}
+  connectors={[{ id: wc.id, name: wc.name, chainPlatform: wc.chainPlatform }]}
   createConnector={(id) => extra.get(id) ?? null}
 >
   {children}

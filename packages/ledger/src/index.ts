@@ -7,12 +7,13 @@
 //   - `@ledgerhq/hw-app-sui` for Sui
 //   - `@ledgerhq/hw-app-btc` for Bitcoin
 //
-// Usage (EVM — default, back-compat):
+// Usage (EVM):
 //
 // ```ts
 // import { createLedgerAdapter } from "@usebutr/ledger";
 //
 // const ledger = await createLedgerAdapter({
+//   platform: "evm",
 //   chainId: 1,
 //   accountCount: 3,
 // });

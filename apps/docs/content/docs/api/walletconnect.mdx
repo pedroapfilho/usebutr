@@ -7,24 +7,12 @@ WalletConnect v2 transport for EVM, SVM, Sui, and Bitcoin mobile wallets.
 Requires the optional peer dependency `@walletconnect/universal-provider`
 (dynamically imported).
 
-## Factories
-
-### `createWalletConnectAdapter(options): Promise<WalletAdapter>`
-
-Single-platform factory — always advertises the `eip155` namespace. Preserved
-for back-compat with the original EVM-only API.
-
-```ts
-const wc = await createWalletConnectAdapter({
-  projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
-  metadata: { name: "My dapp", url: "https://my-dapp.example" },
-  onPairingUri: (uri) => setQrUri(uri),
-});
-```
+## Factory
 
 ### `createWalletConnectAdapters(options): Promise<Array<WalletAdapter>>`
 
-Multi-namespace factory — one pairing, one adapter per requested namespace.
+Single factory for all namespaces. Returns one adapter per requested
+namespace; all share the same paired session.
 
 ```ts
 const wcs = await createWalletConnectAdapters({
@@ -39,28 +27,21 @@ const wcs = await createWalletConnectAdapters({
 });
 ```
 
-Each adapter's id is suffixed with the platform (`walletconnect-evm`,
-`walletconnect-svm`, …) when more than one namespace is requested.
+When more than one namespace is requested, each adapter's id is suffixed
+with the platform (`walletconnect-evm`, `walletconnect-svm`, …). With a
+single namespace, the id stays the base `options.id ?? "walletconnect"`.
 
-### `WalletConnectOptions` (single)
+### `WalletConnectOptions`
 
-| Field          | Type                    | Default                      |
-| -------------- | ----------------------- | ---------------------------- |
-| `projectId`    | `string` (required)     | —                            |
-| `metadata`     | `WalletConnectMetadata` | —                            |
-| `chains`       | `ReadonlyArray<string>` | `["eip155:1"]`               |
-| `onPairingUri` | `(uri: string) => void` | —                            |
-| `id`           | `string`                | `"walletconnect"`            |
-| `name`         | `string`                | `"WalletConnect"`            |
-| `icon`         | `string`                | `WALLETCONNECT_DEFAULT_ICON` |
-
-### `WalletConnectMultiOptions`
-
-Same as `WalletConnectOptions` minus `chains`, plus:
-
-| Field        | Type                                                    | Notes                                                                                       |
-| ------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `namespaces` | `Partial<Record<ChainPlatform, ReadonlyArray<string>>>` | Per-platform CAIP-2 chain map. Omit a key to skip the namespace; empty array uses defaults. |
+| Field          | Type                                                    | Default                      |
+| -------------- | ------------------------------------------------------- | ---------------------------- |
+| `projectId`    | `string` (required)                                     | —                            |
+| `namespaces`   | `Partial<Record<ChainPlatform, ReadonlyArray<string>>>` | —                            |
+| `metadata`     | `WalletConnectMetadata`                                 | —                            |
+| `onPairingUri` | `(uri: string) => void`                                 | —                            |
+| `id`           | `string`                                                | `"walletconnect"`            |
+| `name`         | `string`                                                | `"WalletConnect"`            |
+| `icon`         | `string`                                                | `WALLETCONNECT_DEFAULT_ICON` |
 
 `WalletConnectMetadata = { name?; url?; description?; icons? }`.
 
@@ -95,7 +76,7 @@ the builders directly.
 
 ## Types
 
-`WalletConnectOptions`, `WalletConnectMultiOptions`, `WalletConnectMetadata`,
+`WalletConnectOptions`, `WalletConnectMetadata`,
 `WalletConnectNamespaceBuilder`, `UniversalProviderLike`,
 `UniversalProviderConstructor`, and a re-exported `Account`.
 

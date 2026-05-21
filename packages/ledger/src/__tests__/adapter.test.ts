@@ -56,6 +56,7 @@ describe("createLedgerAdapter", () => {
     const { factory } = buildFakeTransport();
     const adapter = await createLedgerAdapter({
       eth: buildFakeEthCtor(),
+      platform: "evm",
       transport: factory,
     });
 
@@ -73,6 +74,7 @@ describe("createLedgerAdapter", () => {
     const { factory } = buildFakeTransport();
     const adapter = await createLedgerAdapter({
       eth: buildFakeEthCtor(),
+      platform: "evm",
       transport: factory,
     });
 
@@ -86,6 +88,7 @@ describe("createLedgerAdapter", () => {
     const fake = buildFakeTransport();
     const adapter = await createLedgerAdapter({
       eth: buildFakeEthCtor(),
+      platform: "evm",
       transport: fake.factory,
     });
 
@@ -105,6 +108,7 @@ describe("createLedgerAdapter", () => {
     const adapter = await createLedgerAdapter({
       accountCount: 3,
       eth: buildFakeEthCtor(),
+      platform: "evm",
       transport: factory,
     });
 
@@ -117,6 +121,7 @@ describe("createLedgerAdapter", () => {
     const { factory } = buildFakeTransport();
     const adapter = await createLedgerAdapter({
       eth: buildFakeEthCtor(),
+      platform: "evm",
       transport: factory,
     });
 
@@ -136,6 +141,7 @@ describe("createLedgerAdapter", () => {
     const { factory } = buildFakeTransport();
     const adapter = await createLedgerAdapter({
       eth: buildFakeEthCtor(),
+      platform: "evm",
       transport: factory,
     });
 
@@ -153,6 +159,7 @@ describe("createLedgerAdapter", () => {
     const { factory } = buildFakeTransport();
     const adapter = await createLedgerAdapter({
       eth: buildFakeEthCtor(),
+      platform: "evm",
       transport: factory,
     });
 
@@ -171,6 +178,7 @@ describe("createLedgerAdapter", () => {
     const adapter = await createLedgerAdapter({
       accountCount: 3,
       eth: buildFakeEthCtor(),
+      platform: "evm",
       transport: factory,
     });
 
@@ -188,6 +196,7 @@ describe("createLedgerAdapter", () => {
     const adapter = await createLedgerAdapter({
       accountCount: 2,
       eth: buildFakeEthCtor(),
+      platform: "evm",
       transport: factory,
     });
 
@@ -205,6 +214,7 @@ describe("createLedgerAdapter", () => {
     const { factory } = buildFakeTransport();
     const adapter = await createLedgerAdapter({
       eth: buildFakeEthCtor(),
+      platform: "evm",
       transport: factory,
     });
 

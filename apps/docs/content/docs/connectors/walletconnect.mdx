@@ -23,30 +23,6 @@ dynamically imports it, so it never bloats your bundle unless used.
 
 ## Build the adapter
 
-### Single platform (EVM, back-compat)
-
-```ts
-import { createWalletConnectAdapter } from "@usebutr/walletconnect";
-
-const wc = await createWalletConnectAdapter({
-  projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
-  metadata: {
-    name: "My dapp",
-    url: "https://my-dapp.example",
-    description: "…",
-    icons: ["https://my-dapp.example/icon.png"],
-  },
-  chains: ["eip155:1", "eip155:137"],
-  onPairingUri: (uri) => setQrUri(uri),
-});
-```
-
-`createWalletConnectAdapter(options)` always advertises the `eip155` namespace
-and returns a single `Promise<WalletAdapter>`. The original API is preserved
-for existing EVM-only callers.
-
-### Multi-platform (one pairing, many namespaces)
-
 ```ts
 import { createWalletConnectAdapters } from "@usebutr/walletconnect";
 
@@ -64,26 +40,26 @@ const wcs = await createWalletConnectAdapters({
 ```
 
 `createWalletConnectAdapters(options)` returns `Promise<Array<WalletAdapter>>`
-— one per requested namespace, all sharing the same paired session. Each
-adapter's id is suffixed with the platform (`walletconnect-evm`,
-`walletconnect-svm`, `walletconnect-sui`, `walletconnect-bitcoin`) so they
-coexist in butr's pool.
+— one per requested namespace, all sharing the same paired session. When more
+than one namespace is requested, each adapter's id is suffixed with the
+platform (`walletconnect-evm`, `walletconnect-svm`, …) so they coexist in
+butr's pool. With a single namespace, the id stays the base
+`options.id ?? "walletconnect"`.
 
 Pass an empty array for a platform to use the namespace builder's default
 chains. Omit a key entirely to skip that platform.
 
 ### Options
 
-| Option         | Single | Multi | Type                                                    | Notes                                                                                                |
-| -------------- | :----: | :---: | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `projectId`    |   ✓    |   ✓   | `string` (required)                                     | From [Reown Cloud](https://cloud.reown.com).                                                         |
-| `metadata`     |   ✓    |   ✓   | `{ name?; url?; description?; icons? }`                 | Shown in the mobile wallet during pairing. **Some wallets refuse to pair without `name` and `url`.** |
-| `chains`       |   ✓    |       | `ReadonlyArray<string>`                                 | EVM CAIP-2 ids. Default: `["eip155:1"]`.                                                             |
-| `namespaces`   |        |   ✓   | `Partial<Record<ChainPlatform, ReadonlyArray<string>>>` | Per-platform CAIP-2 chain map. Omit a key to skip the namespace; empty array uses defaults.          |
-| `onPairingUri` |   ✓    |   ✓   | `(uri: string) => void`                                 | Fires when a QR / deep link must be shown.                                                           |
-| `id`           |   ✓    |   ✓   | `string`                                                | Adapter id base. Default `"walletconnect"`. Multi suffixes with `-<platform>`.                       |
-| `name`         |   ✓    |   ✓   | `string`                                                | Display name. Default `"WalletConnect"`.                                                             |
-| `icon`         |   ✓    |   ✓   | `string`                                                | Override icon (`WALLETCONNECT_DEFAULT_ICON` is the fallback).                                        |
+| Option         | Type                                                    | Notes                                                                                                |
+| -------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `projectId`    | `string` (required)                                     | From [Reown Cloud](https://cloud.reown.com).                                                         |
+| `namespaces`   | `Partial<Record<ChainPlatform, ReadonlyArray<string>>>` | Per-platform CAIP-2 chain map. Omit a key to skip the namespace; empty array uses defaults.          |
+| `metadata`     | `{ name?; url?; description?; icons? }`                 | Shown in the mobile wallet during pairing. **Some wallets refuse to pair without `name` and `url`.** |
+| `onPairingUri` | `(uri: string) => void`                                 | Fires when a QR / deep link must be shown.                                                           |
+| `id`           | `string`                                                | Adapter id base. Default `"walletconnect"`. Suffixed with `-<platform>` when multi-namespace.        |
+| `name`         | `string`                                                | Display name. Default `"WalletConnect"`.                                                             |
+| `icon`         | `string`                                                | Override icon (`WALLETCONNECT_DEFAULT_ICON` is the fallback).                                        |
 
 ## Register it
 

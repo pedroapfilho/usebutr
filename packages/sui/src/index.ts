@@ -34,3 +34,6 @@ export { resolveSuiCapabilities } from "./capabilities";
 
 // PlatformDiscoverer descriptor (Wallet Standard, no fallback)
 export { suiDiscoverer } from "./discoverer";
+
+// Augment @usebutr/core's SignerForPlatform registry. Side-effect import.
+import "./signer-augmentation";

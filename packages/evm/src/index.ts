@@ -34,3 +34,8 @@ export { EIP6963_RDNS_WITH_REQUEST_ACCOUNTS, resolveEip6963Capabilities } from "
 
 // PlatformDiscoverer descriptor (EIP-6963 primary + window.ethereum fallback)
 export { evmDiscoverer } from "./discoverer";
+
+// Augment @usebutr/core's SignerForPlatform registry with the EVM entry.
+// Side-effect import — required for the module-augmentation block to
+// run when consumers import anything from this package.
+import "./signer-augmentation";

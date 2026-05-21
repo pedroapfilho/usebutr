@@ -1,13 +1,13 @@
 {
-  "name": "@usebutr/svm",
+  "name": "@usebutr/wallet-standard-shared",
   "version": "0.1.0",
-  "description": "Wallet Standard adapter for butr (Solana / SVM).",
+  "description": "Shared Wallet Standard discovery primitives used by @usebutr/svm, @usebutr/sui, @usebutr/bitcoin.",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/pedroapfilho/usebutr.git",
-    "directory": "packages/svm"
+    "directory": "packages/wallet-standard-shared"
   },
   "files": [
     "dist"
@@ -33,8 +33,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@usebutr/core": "workspace:*",
-    "@usebutr/wallet-standard-shared": "workspace:*"
+    "@usebutr/core": "workspace:*"
   },
   "devDependencies": {
     "@repo/config-vitest": "workspace:*",

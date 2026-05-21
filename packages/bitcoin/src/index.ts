@@ -1,3 +1,17 @@
+// Shared Wallet Standard protocol types — re-exported for backwards
+// compatibility with consumers that import them from @usebutr/bitcoin.
+export type {
+  StandardConnectFeature,
+  StandardDisconnectFeature,
+  StandardEventsFeature,
+  StandardEventsListener,
+  WalletStandardAppModule,
+  WalletStandardWallet,
+  WalletStandardWalletAccount,
+  WalletsApp,
+} from "@usebutr/wallet-standard-shared";
+
+// Bitcoin-specific feature shapes.
 export type {
   BitcoinSendTransferFeature,
   BitcoinSendTransferInput,
@@ -8,14 +22,6 @@ export type {
   BitcoinSignPsbtFeature,
   BitcoinSignPsbtInput,
   BitcoinSignPsbtOutput,
-  StandardConnectFeature,
-  StandardDisconnectFeature,
-  StandardEventsFeature,
-  StandardEventsListener,
-  WalletStandardAppModule,
-  WalletStandardWallet,
-  WalletStandardWalletAccount,
-  WalletsApp,
 } from "./wallet-standard-types";
 
 export { buildBitcoinAdapter, slugify } from "./wallet-standard-adapter";

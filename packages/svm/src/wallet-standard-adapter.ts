@@ -1,5 +1,18 @@
 import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
 import { logWarn } from "@usebutr/core";
+import {
+  buildAccount,
+  getFeature,
+  pickAccountByAddress,
+  pickFirstAddress,
+  slugify as kitSlugify,
+} from "@usebutr/wallet-standard-shared";
+import type {
+  StandardConnectFeature,
+  StandardDisconnectFeature,
+  StandardEventsFeature,
+  WalletStandardWallet,
+} from "@usebutr/wallet-standard-shared";
 
 import { resolveWalletStandardCapabilities } from "./capabilities";
 import type {
@@ -7,11 +20,6 @@ import type {
   SolanaSignInFeature,
   SolanaSignMessageFeature,
   SolanaSignTransactionFeature,
-  StandardConnectFeature,
-  StandardDisconnectFeature,
-  StandardEventsFeature,
-  WalletStandardWallet,
-  WalletStandardWalletAccount,
 } from "./wallet-standard-types";
 
 const SOLANA_PREFIX = "solana:";
@@ -29,16 +37,11 @@ const bytesToBase64 = (bytes: Uint8Array): string => {
   return btoa(binary);
 };
 
-const slugify = (name: string): string =>
-  `wallet-standard:${name
-    .trim()
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/gv, "-")}`;
-
-const getFeature = <T>(wallet: WalletStandardWallet, name: string): T | undefined => {
-  const feature = wallet.features[name];
-  return feature ? (feature as T) : undefined;
-};
+/** Backwards-compatible: SVM predates the platform-prefix discipline,
+ *  so its adapter ids are `wallet-standard:<slug>` rather than
+ *  `wallet-standard:svm-<slug>`. Pool entries persisted before this
+ *  refactor must continue to restore, so we pass `""` to the kit. */
+const slugify = (name: string): string => kitSlugify("", name);
 
 const pickSolanaChain = (wallet: WalletStandardWallet): string | null => {
   // Prefer mainnet-beta, then the first solana chain advertised.
@@ -58,22 +61,8 @@ const buildSolanaChain = (chainId: string, walletName: string): ChainBase => ({
   reference: chainId.slice(SOLANA_PREFIX.length),
 });
 
-const buildSolanaAccount = (address: string, chain: ChainBase): Account => ({
-  chain,
-  id: `${chain.id}:${address}`,
-  walletAddress: address,
-});
-
-const pickFirstAddress = (accounts: ReadonlyArray<WalletStandardWalletAccount>): string | null => {
-  const first = accounts[0];
-  return first ? first.address : null;
-};
-
-const pickAccountByAddress = (
-  accounts: ReadonlyArray<WalletStandardWalletAccount>,
-  address: string,
-): WalletStandardWalletAccount | undefined =>
-  accounts.find((a) => a.address === address) ?? accounts[0];
+const buildSolanaAccount = (address: string, chain: ChainBase): Account =>
+  buildAccount(address, chain);
 
 /**
  * Adapt a Solana Wallet Standard `Wallet` object into a butr
@@ -117,11 +106,11 @@ const pickAccountByAddress = (
  */
 const buildSvmAdapter = (
   wallet: WalletStandardWallet,
-  /** Optional. Called with the adapter id and a function that pushes a
-   *  synthetic `disconnected` event to all current subscribers. The
-   *  discovery layer invokes it on Wallet Standard `unregister` so a
-   *  connected pool entry tears down when its extension is removed. */
-  registerDisconnector?: (id: string, emit: () => void) => void,
+  /** Optional. Called with a function that pushes a synthetic
+   *  `disconnected` event to all current subscribers. The discovery
+   *  layer invokes it on Wallet Standard `unregister` so a connected
+   *  pool entry tears down when its extension is removed. */
+  registerDisconnector?: (emit: () => void) => void,
 ): WalletAdapter | null => {
   const solanaChainId = pickSolanaChain(wallet);
   if (!solanaChainId) {
@@ -168,11 +157,7 @@ const buildSvmAdapter = (
     }
   };
 
-  const adapterId = slugify(wallet.name);
-  // Wallet Standard fires `unregister` when an extension is disabled or
-  // removed mid-session. There's no wallet-side `change` for that, so
-  // the discovery layer drives this to flush stale pool entries.
-  registerDisconnector?.(adapterId, () => {
+  registerDisconnector?.(() => {
     for (const listener of listeners) {
       listener({ type: "disconnected" });
     }
@@ -245,7 +230,7 @@ const buildSvmAdapter = (
     },
 
     icon: wallet.icon,
-    id: adapterId,
+    id: slugify(wallet.name),
     name: wallet.name,
 
     async requestAccounts() {

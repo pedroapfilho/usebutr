@@ -1,11 +1,9 @@
 /**
- * Minimal type surface for Bitcoin Wallet Standard. Declared inline so
- * butr stays self-contained at the type level — the actual
- * `@wallet-standard/app` package is dynamic-imported at runtime, and
- * apps that don't enable Bitcoin auto-discovery never resolve it.
+ * Bitcoin-specific Wallet Standard feature shapes. Shared protocol
+ * types (`WalletStandardWallet`, `standard:*` features) come from
+ * `@usebutr/wallet-standard-shared`.
  *
  * Spec references:
- *  - https://github.com/wallet-standard/wallet-standard (core)
  *  - https://github.com/orangecat-network/wallet-standard-bitcoin
  *  - https://github.com/MagicEden/wallet-standard (Bitcoin features)
  *
@@ -14,53 +12,7 @@
  * `@wallet-standard/app` bus that SVM and Sui consume.
  */
 
-type WalletStandardWalletAccount = {
-  address: string;
-  chains: ReadonlyArray<string>;
-  features: ReadonlyArray<string>;
-  publicKey?: Uint8Array;
-};
-
-type WalletStandardWallet = {
-  accounts: ReadonlyArray<WalletStandardWalletAccount>;
-  chains: ReadonlyArray<string>;
-  features: Readonly<Record<string, unknown>>;
-  icon: string;
-  name: string;
-  version: string;
-};
-
-type WalletsApp = {
-  get(): ReadonlyArray<WalletStandardWallet>;
-  on(
-    event: "register" | "unregister",
-    listener: (...wallets: ReadonlyArray<WalletStandardWallet>) => void,
-  ): () => void;
-};
-
-type WalletStandardAppModule = {
-  getWallets(): WalletsApp;
-};
-
-type StandardConnectFeature = {
-  connect(input?: { silent?: boolean }): Promise<{
-    accounts: ReadonlyArray<WalletStandardWalletAccount>;
-  }>;
-};
-
-type StandardDisconnectFeature = {
-  disconnect(): Promise<void>;
-};
-
-type StandardEventsListener = (changes: {
-  accounts?: ReadonlyArray<WalletStandardWalletAccount>;
-  chains?: ReadonlyArray<string>;
-  features?: ReadonlyArray<string>;
-}) => void;
-
-type StandardEventsFeature = {
-  on(event: "change", listener: StandardEventsListener): () => void;
-};
+import type { WalletStandardWalletAccount } from "@usebutr/wallet-standard-shared";
 
 type BitcoinSignMessageInput = {
   account: WalletStandardWalletAccount;
@@ -123,12 +75,4 @@ export type {
   BitcoinSignPsbtFeature,
   BitcoinSignPsbtInput,
   BitcoinSignPsbtOutput,
-  StandardConnectFeature,
-  StandardDisconnectFeature,
-  StandardEventsFeature,
-  StandardEventsListener,
-  WalletsApp,
-  WalletStandardAppModule,
-  WalletStandardWallet,
-  WalletStandardWalletAccount,
 };

@@ -1,7 +1,7 @@
 import type { WalletAdapter } from "@usebutr/core";
+import { discoverWalletStandard } from "@usebutr/wallet-standard-shared";
 
-import { buildSvmAdapter, slugify } from "./wallet-standard-adapter";
-import type { WalletStandardAppModule, WalletStandardWallet } from "./wallet-standard-types";
+import { buildSvmAdapter } from "./wallet-standard-adapter";
 
 /**
  * Subscribe to Solana Wallet Standard announcements.
@@ -17,88 +17,15 @@ import type { WalletStandardAppModule, WalletStandardWallet } from "./wallet-sta
  *     npm install @wallet-standard/app
  *
  * The function returns a synchronous unsubscribe that's safe to call
- * before the dynamic import has resolved (it sets a cancellation flag
- * and tears down any subscription that registered in the meantime).
+ * before the dynamic import has resolved.
  *
- * Adapter generation is delegated to `buildSvmAdapter`, which gates
- * features on what each wallet advertises. See that file for the
- * limitations (`getBalance` needs an RPC, etc.).
+ * Implementation: the discovery loop (dynamic import, dedupe, register
+ * / unregister bridge) lives in `@usebutr/wallet-standard-shared`. This
+ * file's only job is to hand the kit a per-wallet builder.
  */
-const discoverSvmAdapters = (onAdapter: (adapter: WalletAdapter) => void): (() => void) => {
-  let cancelled = false;
-  let internalUnsub: (() => void) | null = null;
-
-  void (async () => {
-    let mod: WalletStandardAppModule;
-    try {
-      // Dynamic import: only resolved when SVM discovery is exercised.
-      // The cast narrows the loose ambient declaration (see
-      // `wallet-standard-types.ts`) into the precise minimal surface
-      // butr's adapter relies on. The ambient declaration means
-      // TypeScript always resolves the module name at compile time,
-      // regardless of whether the optional peer dep is installed —
-      // no `@ts-expect-error`/`@ts-ignore` needed. At runtime, the
-      // import either succeeds (peer dep installed) or throws (peer
-      // dep absent), and the catch below handles the latter.
-      mod = (await import("@wallet-standard/app")) as unknown as WalletStandardAppModule;
-    } catch {
-      // @wallet-standard/app not installed. SVM discovery is disabled;
-      // EVM discovery still works. Consumers can wire SVM wallets
-      // manually via WalletManagerConfig.createConnector if they
-      // skipped the optional peer dep on purpose.
-      return;
-    }
-    if (cancelled) {
-      return;
-    }
-
-    const seen = new Set<string>();
-    // id → emitter that pushes a synthetic `disconnected` to that
-    // adapter's subscribers. Populated by buildSvmAdapter; drained on
-    // Wallet Standard `unregister`.
-    const disconnectors = new Map<string, () => void>();
-    const tryAdd = (wallet: WalletStandardWallet) => {
-      const adapter = buildSvmAdapter(wallet, (id, emit) => {
-        disconnectors.set(id, emit);
-      });
-      if (!adapter || seen.has(adapter.id)) {
-        return;
-      }
-      seen.add(adapter.id);
-      onAdapter(adapter);
-    };
-
-    const app = mod.getWallets();
-    for (const wallet of app.get()) {
-      tryAdd(wallet);
-    }
-
-    const offRegister = app.on("register", (...wallets) => {
-      for (const wallet of wallets) {
-        tryAdd(wallet);
-      }
-    });
-    // Extension disabled/removed mid-session: tear down any connected
-    // pool entry for it instead of leaving a stale adapter.
-    const offUnregister = app.on("unregister", (...wallets) => {
-      for (const wallet of wallets) {
-        const id = slugify(wallet.name);
-        disconnectors.get(id)?.();
-        disconnectors.delete(id);
-        seen.delete(id);
-      }
-    });
-    internalUnsub = () => {
-      offRegister();
-      offUnregister();
-    };
-  })();
-
-  return () => {
-    cancelled = true;
-    internalUnsub?.();
-    internalUnsub = null;
-  };
-};
+const discoverSvmAdapters = (onAdapter: (adapter: WalletAdapter) => void): (() => void) =>
+  discoverWalletStandard(onAdapter, (wallet, registerDisconnector) =>
+    buildSvmAdapter(wallet, registerDisconnector),
+  );
 
 export { discoverSvmAdapters };

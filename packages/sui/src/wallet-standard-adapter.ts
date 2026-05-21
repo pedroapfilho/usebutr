@@ -1,26 +1,32 @@
 import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
 import { logWarn } from "@usebutr/core";
-
-import { resolveSuiCapabilities } from "./capabilities";
+import {
+  buildAccount,
+  getFeature,
+  pickAccountByAddress,
+  pickFirstAddress,
+  slugify as kitSlugify,
+} from "@usebutr/wallet-standard-shared";
 import type {
   StandardConnectFeature,
   StandardDisconnectFeature,
   StandardEventsFeature,
+  WalletStandardWallet,
+} from "@usebutr/wallet-standard-shared";
+
+import { resolveSuiCapabilities } from "./capabilities";
+import type {
   SuiSignAndExecuteTransactionFeature,
   SuiSignPersonalMessageFeature,
   SuiSignTransactionFeature,
-  WalletStandardWallet,
-  WalletStandardWalletAccount,
 } from "./wallet-standard-types";
 
 const SUI_PREFIX = "sui:";
 const SUI_DECIMALS = 9;
 
-/** Cross-platform base64 → Uint8Array. Mirrors the SVM package's
- *  `bytesToBase64`-style helper but going the other way: Sui's Wallet
- *  Standard features return base64 strings (`bytes`, `signature`),
- *  while butr's `Wallet.signMessage` contract is Uint8Array. `atob`
- *  is available wherever butr runs. */
+/** Cross-platform base64 → Uint8Array. Sui's Wallet Standard features
+ *  return base64 strings (`bytes`, `signature`), while butr's
+ *  `Wallet.signMessage` contract is Uint8Array. */
 const base64ToBytes = (b64: string): Uint8Array => {
   const binary = atob(b64);
   const out = new Uint8Array(binary.length);
@@ -30,16 +36,7 @@ const base64ToBytes = (b64: string): Uint8Array => {
   return out;
 };
 
-const slugify = (name: string): string =>
-  `wallet-standard:sui-${name
-    .trim()
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/gv, "-")}`;
-
-const getFeature = <T>(wallet: WalletStandardWallet, name: string): T | undefined => {
-  const feature = wallet.features[name];
-  return feature ? (feature as T) : undefined;
-};
+const slugify = (name: string): string => kitSlugify("sui", name);
 
 const pickSuiChain = (wallet: WalletStandardWallet): string | null => {
   const mainnet = wallet.chains.find((c) => c === "sui:mainnet");
@@ -58,22 +55,8 @@ const buildSuiChain = (chainId: string, walletName: string): ChainBase => ({
   reference: chainId.slice(SUI_PREFIX.length),
 });
 
-const buildSuiAccount = (address: string, chain: ChainBase): Account => ({
-  chain,
-  id: `${chain.id}:${address}`,
-  walletAddress: address,
-});
-
-const pickFirstAddress = (accounts: ReadonlyArray<WalletStandardWalletAccount>): string | null => {
-  const first = accounts[0];
-  return first ? first.address : null;
-};
-
-const pickAccountByAddress = (
-  accounts: ReadonlyArray<WalletStandardWalletAccount>,
-  address: string,
-): WalletStandardWalletAccount | undefined =>
-  accounts.find((a) => a.address === address) ?? accounts[0];
+const buildSuiAccount = (address: string, chain: ChainBase): Account =>
+  buildAccount(address, chain);
 
 /** Coerce butr's `unknown` tx into the shape `sui:signAndExecuteTransaction`
  *  expects (an object with `toJSON()` returning a Promise<string>). When
@@ -112,10 +95,10 @@ const coerceSuiTransaction = (tx: unknown): { toJSON(): Promise<string> } | stri
  */
 const buildSuiAdapter = (
   wallet: WalletStandardWallet,
-  /** Optional. Called with the adapter id and a function that pushes a
-   *  synthetic `disconnected` event to all current subscribers. The
-   *  discovery layer invokes it on Wallet Standard `unregister`. */
-  registerDisconnector?: (id: string, emit: () => void) => void,
+  /** Optional. Called with a function that pushes a synthetic
+   *  `disconnected` event to all current subscribers. The discovery
+   *  layer invokes it on Wallet Standard `unregister`. */
+  registerDisconnector?: (emit: () => void) => void,
 ): WalletAdapter | null => {
   const suiChainId = pickSuiChain(wallet);
   if (!suiChainId) {
@@ -154,8 +137,7 @@ const buildSuiAdapter = (
     }
   };
 
-  const adapterId = slugify(wallet.name);
-  registerDisconnector?.(adapterId, () => {
+  registerDisconnector?.(() => {
     for (const listener of listeners) {
       listener({ type: "disconnected" });
     }
@@ -210,8 +192,6 @@ const buildSuiAdapter = (
     },
 
     getSigner() {
-      // Consumers cast to the @mysten/sui wallet wrapper or their own
-      // signing layer.
       return Promise.resolve(wallet);
     },
 
@@ -220,14 +200,10 @@ const buildSuiAdapter = (
     },
 
     icon: wallet.icon,
-    id: adapterId,
+    id: slugify(wallet.name),
     name: wallet.name,
 
     async requestAccounts() {
-      // Same constraint as SVM — Wallet Standard has no
-      // EIP-2255 equivalent. Re-running `standard:connect` is the
-      // closest portable thing; butr refreshes the pool entry's
-      // accounts afterwards.
       await connect.connect();
     },
 
@@ -251,11 +227,6 @@ const buildSuiAdapter = (
     },
 
     sendTxToChain(tx, _targetChainId, account, cb) {
-      // Sui's signAndExecuteTransaction accepts the target chain
-      // per-call (the wallet broadcasts to its configured RPC for that
-      // chain). butr's reducer only tracks one current chain per
-      // adapter — consumers wanting multi-cluster route at a higher
-      // level.
       cb?.();
       return this.sendTx(tx, account);
     },
@@ -295,10 +266,6 @@ const buildSuiAdapter = (
               chain: currentChainId,
               transaction,
             });
-            // Sui sign-only returns the signed transaction bytes as a
-            // base64 string. We hand bytes back to match butr's
-            // `signTransaction` contract; consumers broadcast via their
-            // own SuiClient.
             return base64ToBytes(output.bytes);
           },
         }

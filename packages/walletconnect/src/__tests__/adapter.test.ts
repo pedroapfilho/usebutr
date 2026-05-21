@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { UniversalProviderConstructor, UniversalProviderLike } from "../adapter";
-import { createWalletConnectAdapter } from "../adapter";
+import { createWalletConnectAdapters } from "../adapter";
+
+const EVM_ONLY = { evm: ["eip155:1"] } as const;
 
 type ConnectArgs = Parameters<UniversalProviderLike["connect"]>[0];
 
@@ -73,14 +75,18 @@ const stubUniversalProvider = (instance: UniversalProviderLike): UniversalProvid
   init: vi.fn().mockResolvedValue(instance),
 });
 
-describe("createWalletConnectAdapter", () => {
-  it("builds a WalletAdapter with sensible defaults", async () => {
+describe("createWalletConnectAdapters (single-namespace)", () => {
+  it("builds an EVM WalletAdapter with sensible defaults", async () => {
     const provider = createFakeProvider();
-    const adapter = await createWalletConnectAdapter({
+    const [adapter] = await createWalletConnectAdapters({
+      namespaces: EVM_ONLY,
       projectId: "test",
       universalProvider: stubUniversalProvider(provider),
     });
 
+    if (!adapter) {
+      throw new Error("expected one adapter");
+    }
     expect(adapter.id).toBe("walletconnect");
     expect(adapter.name).toBe("WalletConnect");
     expect(adapter.chainPlatform).toBe("evm");
@@ -92,7 +98,8 @@ describe("createWalletConnectAdapter", () => {
   it("forwards display_uri events to onPairingUri", async () => {
     const provider = createFakeProvider();
     const onPairingUri = vi.fn();
-    await createWalletConnectAdapter({
+    await createWalletConnectAdapters({
+      namespaces: EVM_ONLY,
       onPairingUri,
       projectId: "test",
       universalProvider: stubUniversalProvider(provider),
@@ -106,7 +113,8 @@ describe("createWalletConnectAdapter", () => {
   it("ignores non-string display_uri payloads", async () => {
     const provider = createFakeProvider();
     const onPairingUri = vi.fn();
-    await createWalletConnectAdapter({
+    await createWalletConnectAdapters({
+      namespaces: EVM_ONLY,
       onPairingUri,
       projectId: "test",
       universalProvider: stubUniversalProvider(provider),
@@ -120,12 +128,15 @@ describe("createWalletConnectAdapter", () => {
 
   it("connect() triggers WalletConnect's namespace handshake with the configured chains", async () => {
     const provider = createFakeProvider();
-    const adapter = await createWalletConnectAdapter({
-      chains: ["eip155:1", "eip155:137"],
+    const [adapter] = await createWalletConnectAdapters({
+      namespaces: { evm: ["eip155:1", "eip155:137"] },
       projectId: "test",
       universalProvider: stubUniversalProvider(provider),
     });
 
+    if (!adapter) {
+      throw new Error("expected one adapter");
+    }
     await adapter.connect();
 
     expect(provider.connectCalls).toHaveLength(1);
@@ -137,11 +148,15 @@ describe("createWalletConnectAdapter", () => {
 
   it("connect() short-circuits when a live session already exists", async () => {
     const provider = createFakeProvider();
-    const adapter = await createWalletConnectAdapter({
+    const [adapter] = await createWalletConnectAdapters({
+      namespaces: EVM_ONLY,
       projectId: "test",
       universalProvider: stubUniversalProvider(provider),
     });
 
+    if (!adapter) {
+      throw new Error("expected one adapter");
+    }
     // First connect establishes the session.
     await adapter.connect();
     expect(provider.connectCalls).toHaveLength(1);
@@ -153,11 +168,15 @@ describe("createWalletConnectAdapter", () => {
 
   it("disconnect() calls provider.disconnect() only when a session exists", async () => {
     const provider = createFakeProvider();
-    const adapter = await createWalletConnectAdapter({
+    const [adapter] = await createWalletConnectAdapters({
+      namespaces: EVM_ONLY,
       projectId: "test",
       universalProvider: stubUniversalProvider(provider),
     });
 
+    if (!adapter) {
+      throw new Error("expected one adapter");
+    }
     // No session yet — disconnect is a no-op.
     await adapter.disconnect?.();
     expect(provider.disconnectCalls).toBe(0);
@@ -170,14 +189,18 @@ describe("createWalletConnectAdapter", () => {
 
   it("honours custom id/name/icon", async () => {
     const provider = createFakeProvider();
-    const adapter = await createWalletConnectAdapter({
+    const [adapter] = await createWalletConnectAdapters({
       icon: "data:image/svg+xml;base64,Zm9v",
       id: "walletconnect:custom",
       name: "My Custom WC",
+      namespaces: EVM_ONLY,
       projectId: "test",
       universalProvider: stubUniversalProvider(provider),
     });
 
+    if (!adapter) {
+      throw new Error("expected one adapter");
+    }
     expect(adapter.id).toBe("walletconnect:custom");
     expect(adapter.name).toBe("My Custom WC");
     expect(adapter.icon).toBe("data:image/svg+xml;base64,Zm9v");

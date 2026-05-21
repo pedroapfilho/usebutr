@@ -28,14 +28,15 @@ You only pay for the apps you actually use.
 ## Build the adapter
 
 The unified factory dispatches on `options.platform`. The discriminant is
-required for SVM/Sui/Bitcoin; EVM is the default for back-compat.
+required — every caller passes it explicitly.
 
-### EVM (default)
+### EVM
 
 ```ts
 import { createLedgerAdapter } from "@usebutr/ledger";
 
 const ledger = await createLedgerAdapter({
+  platform: "evm",
   chainId: 1, // EIP-155 number, not CAIP-2
   accountCount: 3,
 });

@@ -1,26 +1,11 @@
-// @usebutr/walletconnect — WalletConnect v2 transport for EVM mobile
-// wallets (Trust, Rainbow, Argent, Zerion, MetaMask Mobile, etc.).
+// @usebutr/walletconnect — WalletConnect v2 transport for EVM, SVM,
+// Sui, and Bitcoin mobile wallets.
 //
 // Requires the optional peer dep `@walletconnect/universal-provider`.
-//
-// Single-platform usage (back-compat):
-//
-// ```ts
-// import { createWalletConnectAdapter } from "@usebutr/walletconnect";
-//
-// const wc = await createWalletConnectAdapter({
-//   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
-//   metadata: { name: "My dapp", url: "https://my-dapp.example" },
-//   onPairingUri: (uri) => setQrUri(uri),
-// });
-// ```
-//
-// Multi-platform usage (namespace-aware):
 //
 // ```ts
 // import { createWalletConnectAdapters } from "@usebutr/walletconnect";
 //
-// // Today: `evm`, `svm`, `sui`, and `bitcoin` are all implemented.
 // const wcs = await createWalletConnectAdapters({
 //   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
 //   namespaces: {
@@ -37,7 +22,6 @@ export type {
   UniversalProviderConstructor,
   UniversalProviderLike,
   WalletConnectMetadata,
-  WalletConnectMultiOptions,
   WalletConnectNamespaceBuilder,
   WalletConnectOptions,
 } from "./adapter";
@@ -45,7 +29,6 @@ export {
   KNOWN_NAMESPACES,
   WALLETCONNECT_DEFAULT_ICON,
   bitcoinNamespace,
-  createWalletConnectAdapter,
   createWalletConnectAdapters,
   evmNamespace,
   solanaNamespace,

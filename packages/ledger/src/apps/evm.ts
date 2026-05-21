@@ -82,9 +82,8 @@ type EvmLedgerOptions = {
   id?: string;
   /** Override the wallet name. Default `"Ledger"`. */
   name?: string;
-  /** Discriminant for the main `createLedgerAdapter` dispatch. Default
-   *  `"evm"` so existing callers without a `platform` field keep working. */
-  platform?: "evm";
+  /** Discriminant for the main `createLedgerAdapter` dispatch. */
+  platform: "evm";
   /**
    * DI override for the WebUSB transport factory (tests). When
    * omitted, the factory dynamic-imports `@ledgerhq/hw-transport-webusb`.
@@ -121,10 +120,9 @@ const SUBSCRIBE_NOT_AVAILABLE =
  * their Ledger.
  *
  * Direct callers can use this; most consumers go through
- * `createLedgerAdapter` in `adapter.ts`, which dispatches by platform
- * (defaults to EVM so existing code keeps working).
+ * `createLedgerAdapter` in `adapter.ts`, which dispatches by platform.
  */
-const createEvmLedgerAdapter = (options: EvmLedgerOptions = {}): Promise<WalletAdapter> => {
+const createEvmLedgerAdapter = (options: EvmLedgerOptions): Promise<WalletAdapter> => {
   const id = options.id ?? "ledger";
   const name = options.name ?? "Ledger";
   const icon = options.icon ?? DEFAULT_ICON;

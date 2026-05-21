@@ -26,31 +26,25 @@ import type { TransportFactory, TransportLike } from "./transport";
  * opaque DI bag.
  *
  * All four supported platforms ship today: EVM, SVM, Sui, Bitcoin.
+ * Every caller passes `platform` explicitly; the discriminant is the
+ * only safe way to route the heterogeneous option types past TypeScript.
+ *
  * Adding a new platform is three touches:
  *   1. Create `src/apps/<platform>.ts` with a `createXxxLedgerAdapter`
  *      and its own `XxxLedgerOptions` type.
  *   2. Extend this union with `| XxxLedgerOptions`.
  *   3. Add a `case` in the dispatch below.
- *
- * **Back-compat.** The EVM variant's `platform` field is optional, so
- * existing callers writing `createLedgerAdapter({ chainId: 1 })` keep
- * working — the dispatch defaults to EVM. The SVM, Sui, and Bitcoin
- * variants require `platform: "svm"` / `platform: "sui"` /
- * `platform: "bitcoin"` explicitly, since the option types share field
- * names (`accountCount`, `derivationPathPrefix`, …) and the discriminant
- * is the only safe way to route an EVM-looking options bag past
- * TypeScript.
  */
 type LedgerOptions = EvmLedgerOptions | SvmLedgerOptions | SuiLedgerOptions | BitcoinLedgerOptions;
 
 /**
  * Unified Ledger adapter factory. Dispatches to the per-platform
- * factory based on `options.platform`. Defaults to EVM for back-compat.
+ * factory based on `options.platform`.
  *
  * @example
  * ```ts
- * // EVM (default — same shape as before this refactor)
- * const ledger = await createLedgerAdapter({ chainId: 1, accountCount: 3 });
+ * // EVM
+ * const ledger = await createLedgerAdapter({ platform: "evm", chainId: 1 });
  *
  * // Solana
  * const ledger = await createLedgerAdapter({ platform: "svm", cluster: "mainnet" });
@@ -80,8 +74,8 @@ type LedgerOptions = EvmLedgerOptions | SvmLedgerOptions | SuiLedgerOptions | Bi
  * with viem / ethers / @solana/kit / @mysten/sui / bitcoinjs-lib and
  * your own RPC client to complete the send.
  */
-const createLedgerAdapter = (options: LedgerOptions = {}): Promise<WalletAdapter> => {
-  const platform: ChainPlatform = options.platform ?? "evm";
+const createLedgerAdapter = (options: LedgerOptions): Promise<WalletAdapter> => {
+  const platform: ChainPlatform = options.platform;
 
   switch (platform) {
     case "evm": {

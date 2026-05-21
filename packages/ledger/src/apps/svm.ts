@@ -389,10 +389,4 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
 };
 
 export type { SolanaAppConstructor, SolanaAppLike, SolanaCluster, SvmLedgerOptions };
-export {
-  DEFAULT_CLUSTER,
-  DEFAULT_DERIVATION_PATH_PREFIX,
-  DEFAULT_ICON as LEDGER_SVM_DEFAULT_ICON,
-  createSvmLedgerAdapter,
-  loadSolana,
-};
+export { DEFAULT_ICON as LEDGER_SVM_DEFAULT_ICON, createSvmLedgerAdapter };

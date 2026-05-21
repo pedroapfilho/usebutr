@@ -17,7 +17,7 @@ import type {
   SolanaCluster,
   SvmLedgerOptions,
 } from "./apps/svm";
-import { createSvmLedgerAdapter } from "./apps/svm";
+import { createSvmLedgerAdapter, LEDGER_SVM_DEFAULT_ICON } from "./apps/svm";
 import type { TransportFactory, TransportLike } from "./transport";
 
 /**
@@ -133,6 +133,7 @@ export {
   LEDGER_BITCOIN_DEFAULT_ICON,
   LEDGER_DEFAULT_ICON,
   LEDGER_SUI_DEFAULT_ICON,
+  LEDGER_SVM_DEFAULT_ICON,
   createBitcoinLedgerAdapter,
   createEvmLedgerAdapter,
   createLedgerAdapter,

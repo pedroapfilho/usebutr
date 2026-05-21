@@ -373,10 +373,4 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
 };
 
 export type { SuiAppConstructor, SuiAppLike, SuiCluster, SuiLedgerOptions };
-export {
-  DEFAULT_CLUSTER,
-  DEFAULT_DERIVATION_PATH_PREFIX,
-  DEFAULT_ICON as LEDGER_SUI_DEFAULT_ICON,
-  createSuiLedgerAdapter,
-  loadSui,
-};
+export { DEFAULT_ICON as LEDGER_SUI_DEFAULT_ICON, createSuiLedgerAdapter };

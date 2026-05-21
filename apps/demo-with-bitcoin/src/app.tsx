@@ -4,9 +4,18 @@ import {
   useDisconnectWallet,
   useIsHydrated,
 } from "@usebutr/react";
+import { networks } from "bitcoinjs-lib";
 import { useMemo, useState } from "react";
 
 import { useDiscoveredWallets } from "./wallet-provider";
+
+// Map CAIP-2 chain references to their bitcoinjs-lib network config so
+// we can derive the expected address prefix from the connected chain.
+const NETWORK_BY_CHAIN_REF: Record<string, typeof networks.bitcoin> = {
+  "000000000019d6689c085ae165831e93": networks.bitcoin,
+  "000000000933ea01ad0ee984209779ba": networks.testnet,
+  "0f9188f13cb7b2c71f2a335e3a4fc328": networks.regtest,
+};
 
 const formatError = (e: unknown): string => {
   if (e instanceof Error) {
@@ -45,6 +54,13 @@ const Connected = ({
 
   const addr = useMemo(() => wallet.account.walletAddress, [wallet.account.walletAddress]);
   const chainId = useMemo(() => wallet.account.chain.id, [wallet.account.chain.id]);
+
+  // Derive the expected native-SegWit address prefix (bech32) from the
+  // connected chain using bitcoinjs-lib's network definitions.
+  const bech32Prefix = useMemo(() => {
+    const ref = chainId.split(":")[1] ?? "";
+    return NETWORK_BY_CHAIN_REF[ref]?.bech32 ?? "unknown";
+  }, [chainId]);
 
   const handleSign = async () => {
     setErrorMsg(null);
@@ -101,6 +117,9 @@ const Connected = ({
       </div>
       <Row label="Chain">
         <code className="font-mono text-xs break-all">{chainId}</code>
+      </Row>
+      <Row label="Addr format">
+        native SegWit prefix: <code className="font-mono text-xs">{bech32Prefix}1…</code>
       </Row>
       <Row label="Capabilities">
         <span className="font-mono text-xs">

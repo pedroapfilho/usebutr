@@ -13,6 +13,8 @@ export type {
   ConnectorMeta,
   HydrationOutcome,
   PlatformDiscoverer,
+  SignerForPlatform,
+  SignerOf,
   Wallet,
   WalletAdapter,
   WalletAvailability,

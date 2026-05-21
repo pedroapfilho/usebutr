@@ -14,7 +14,11 @@ type State = {
   selection: Map<ChainPlatform, string>;
 };
 
-type Event =
+/**
+ * Lifecycle events: hydration, full reset, and the explicit
+ * user-disconnected flag the runtime sets to suppress eager reconnect.
+ */
+type LifecycleEvent =
   | {
       activeConnectorId: string | null;
       isUserDisconnected: boolean;
@@ -22,11 +26,28 @@ type Event =
       selection: Map<ChainPlatform, string>;
       type: "HYDRATED";
     }
-  | { type: "USER_DISCONNECTED_SET"; value: boolean }
+  | { type: "RESET" }
+  | { type: "USER_DISCONNECTED_SET"; value: boolean };
+
+/**
+ * Connection status events: the transitions of the in-flight connect
+ * attempt — start, success/failure, status/error reset. None of these
+ * mutate the pool directly; `CONNECT_SUCCEEDED` is the bridge to
+ * `PoolMutationEvent`.
+ */
+type ConnectionStatusEvent =
   | { connectorId: string; type: "CONNECT_STARTED" }
   | { connectorId: string; entry: ConnectedWallet; type: "CONNECT_SUCCEEDED" }
   | { error: ConnectionError; type: "CONNECT_FAILED" }
-  | { connectorId: string; type: "DISCONNECTED" }
+  | { error: ConnectionError | null; type: "ERROR_SET" }
+  | { type: "STATUS_RESET" };
+
+/**
+ * Pool-mutation events: changes to the set of connected wallets and
+ * their per-wallet account lists. `DISCONNECTED` removes an entry;
+ * the refresh events update an existing one in-place.
+ */
+type PoolMutationEvent =
   | {
       /** When set, becomes the new active account. Used by paths that
        *  know which account should be active (wallet event, manual
@@ -37,12 +58,23 @@ type Event =
       connectorId: string;
       type: "ACCOUNTS_REFRESHED";
     }
-  | { connectorId: string; type: "WALLET_REFRESHED" }
-  | { connectorId: string | null; type: "ACTIVE_CHANGED" }
+  | { connectorId: string; type: "DISCONNECTED" }
+  | { connectorId: string; type: "WALLET_REFRESHED" };
+
+/**
+ * Selection events: which connector is active, and which connector
+ * serves each chain platform. Pure pointer updates — no pool mutation.
+ */
+type SelectionEvent =
   | { chainPlatform: ChainPlatform; connectorId: string | null; type: "SELECTION_CHANGED" }
-  | { type: "STATUS_RESET" }
-  | { error: ConnectionError | null; type: "ERROR_SET" }
-  | { type: "RESET" };
+  | { connectorId: string | null; type: "ACTIVE_CHANGED" };
+
+/**
+ * The single event type the reducer dispatches on. Grouped above by
+ * concern so a reader sees the map before the cases — adding an event
+ * means picking the group it belongs to.
+ */
+type Event = ConnectionStatusEvent | LifecycleEvent | PoolMutationEvent | SelectionEvent;
 
 const initialState: State = {
   activeConnectorId: null,
@@ -301,5 +333,13 @@ const reducer = (state: State, event: Event): State => {
   }
 };
 
-export type { ConnectionStatus, Event, State };
+export type {
+  ConnectionStatus,
+  ConnectionStatusEvent,
+  Event,
+  LifecycleEvent,
+  PoolMutationEvent,
+  SelectionEvent,
+  State,
+};
 export { initialState, reducer };

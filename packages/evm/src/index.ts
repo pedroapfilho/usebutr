@@ -31,3 +31,6 @@ export { EVM_CHAINS, EVM_CHAINS_LIST } from "./chains";
 // Capabilities
 export type { Eip6963CapabilityInput } from "./capabilities";
 export { EIP6963_RDNS_WITH_REQUEST_ACCOUNTS, resolveEip6963Capabilities } from "./capabilities";
+
+// PlatformDiscoverer descriptor (EIP-6963 primary + window.ethereum fallback)
+export { evmDiscoverer } from "./discoverer";

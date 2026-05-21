@@ -31,3 +31,6 @@ export { SUI_CHAINS, SUI_CHAINS_LIST } from "./chains";
 
 export type { WalletStandardCapabilityInput } from "./capabilities";
 export { resolveSuiCapabilities } from "./capabilities";
+
+// PlatformDiscoverer descriptor (Wallet Standard, no fallback)
+export { suiDiscoverer } from "./discoverer";

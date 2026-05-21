@@ -11,6 +11,7 @@ export type {
   ConnectorEvent,
   ConnectorMeta,
   HydrationOutcome,
+  PlatformDiscoverer,
   Wallet,
   WalletAdapter,
   WalletAvailability,

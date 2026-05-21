@@ -41,6 +41,9 @@ coverage/
 .idea/
 *.swp
 
+# Claude Code agent state (per-machine worktree config, skills, etc.)
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db

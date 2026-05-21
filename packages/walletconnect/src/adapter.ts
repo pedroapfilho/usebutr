@@ -3,6 +3,7 @@ import type { Account, ChainPlatform, WalletAdapter } from "@usebutr/core";
 import type { UniversalProviderConstructor, UniversalProviderLike } from "./loader";
 import { loadUniversalProvider } from "./loader";
 import { evmNamespace } from "./namespaces/evm";
+import { suiNamespace } from "./namespaces/sui";
 import { solanaNamespace } from "./namespaces/svm";
 import type { WalletConnectNamespaceBuilder } from "./namespaces/types";
 
@@ -142,10 +143,9 @@ const createWalletConnectAdapter = async (
  * single paired session. Each returned adapter has its own id (with a
  * platform suffix) so butr's pool can hold them simultaneously.
  *
- * **What's implemented today.** EVM and SVM (Solana) namespace
- * builders ship with the package. Passing `sui` / `bitcoin` chains
- * today throws — the namespace builder for those is a tracked
- * follow-up.
+ * **What's implemented today.** EVM, SVM (Solana), and Sui namespace
+ * builders ship with the package. Passing `bitcoin` chains today
+ * throws — the namespace builder for Bitcoin is a tracked follow-up.
  * The factory is shaped this way so adding a platform = adding one
  * file under `src/namespaces/` and one entry to {@link KNOWN_NAMESPACES},
  * with no API change elsewhere.
@@ -170,11 +170,12 @@ type WalletConnectMultiOptions = Omit<WalletConnectOptions, "chains"> & {
 
 /**
  * Registry of known per-namespace builders. Adding a new namespace =
- * import its builder + add the entry. Today EVM + SVM are implemented;
- * Sui and Bitcoin builders are tracked follow-ups.
+ * import its builder + add the entry. Today EVM, SVM, and Sui are
+ * implemented; the Bitcoin builder is a tracked follow-up.
  */
 const KNOWN_NAMESPACES: Readonly<Partial<Record<ChainPlatform, WalletConnectNamespaceBuilder>>> = {
   evm: evmNamespace,
+  sui: suiNamespace,
   svm: solanaNamespace,
 };
 
@@ -197,7 +198,9 @@ const createWalletConnectAdapters = async (
     throw new Error(
       `[butr/walletconnect] no namespace builder registered for: ${unsupported
         .map(([p]) => p)
-        .join(", ")}. Today "evm" and "svm" ship; Sui and Bitcoin builders are tracked follow-ups.`,
+        .join(
+          ", ",
+        )}. Today "evm", "svm", and "sui" ship; the Bitcoin builder is a tracked follow-up.`,
     );
   }
 
@@ -240,4 +243,5 @@ export {
   createWalletConnectAdapters,
   evmNamespace,
   solanaNamespace,
+  suiNamespace,
 };

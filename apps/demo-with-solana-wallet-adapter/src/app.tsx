@@ -11,7 +11,7 @@ import {
   useDisconnectWallet,
   useIsHydrated,
 } from "@usebutr/react";
-import type { WalletStandardWallet } from "@usebutr/svm";
+import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 import { useEffect, useMemo, useState } from "react";
 
 import { ButrAdapterBridge } from "./butr-adapter-bridge";

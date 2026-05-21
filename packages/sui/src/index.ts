@@ -1,16 +1,3 @@
-// Shared Wallet Standard protocol types — re-exported for backwards
-// compatibility with consumers that import them from @usebutr/sui.
-export type {
-  StandardConnectFeature,
-  StandardDisconnectFeature,
-  StandardEventsFeature,
-  StandardEventsListener,
-  WalletStandardAppModule,
-  WalletStandardWallet,
-  WalletStandardWalletAccount,
-  WalletsApp,
-} from "@usebutr/wallet-standard-shared";
-
 // Sui-specific feature shapes.
 export type {
   SuiSignAndExecuteTransactionFeature,

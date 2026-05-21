@@ -36,12 +36,17 @@ Type: `WalletStandardCapabilityInput`.
 
 ## Types
 
-`WalletStandardWallet`, `WalletStandardWalletAccount`, `WalletStandardAppModule`,
-`WalletsApp`, `StandardConnectFeature`, `StandardDisconnectFeature`,
-`StandardEventsFeature`, `StandardEventsListener`, `SolanaSignMessageFeature`,
+Solana-specific feature shapes: `SolanaSignMessageFeature`,
 `SolanaSignMessageInput`, `SolanaSignMessageOutput`,
 `SolanaSignAndSendTransactionFeature`, `SolanaSignAndSendTransactionInput`,
 `SolanaSignAndSendTransactionOutput`.
+
+The shared Wallet Standard protocol types (`WalletStandardWallet`,
+`WalletStandardWalletAccount`, `WalletStandardAppModule`, `WalletsApp`,
+`StandardConnectFeature`, `StandardDisconnectFeature`,
+`StandardEventsFeature`, `StandardEventsListener`) live in
+[`@usebutr/wallet-standard-shared`](/api/index) — import them from
+there directly when casting `getSigner()`.
 
 These feature types are what you cast `getSigner()` to when signing/sending —
 see the [Solana integrations](/integrations/solana-web3js).

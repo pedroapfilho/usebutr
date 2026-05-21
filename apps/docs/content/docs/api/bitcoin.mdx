@@ -55,13 +55,18 @@ Type: `BitcoinCapabilityInput`.
 
 ## Types
 
-`WalletStandardWallet`, `WalletStandardWalletAccount`, `WalletStandardAppModule`,
-`WalletsApp`, `StandardConnectFeature`, `StandardDisconnectFeature`,
-`StandardEventsFeature`, `StandardEventsListener`, `BitcoinSignMessageFeature`,
+Bitcoin-specific feature shapes: `BitcoinSignMessageFeature`,
 `BitcoinSignMessageInput`, `BitcoinSignMessageOutput`, `BitcoinSignPsbtFeature`,
 `BitcoinSignPsbtInput`, `BitcoinSignPsbtOutput`, `BitcoinSendTransferFeature`,
 `BitcoinSendTransferInput`, `BitcoinSendTransferOutput`,
 `InjectedBitcoinDiscoveryOptions`.
+
+The shared Wallet Standard protocol types (`WalletStandardWallet`,
+`WalletStandardWalletAccount`, `WalletStandardAppModule`, `WalletsApp`,
+`StandardConnectFeature`, `StandardDisconnectFeature`,
+`StandardEventsFeature`, `StandardEventsListener`) live in
+[`@usebutr/wallet-standard-shared`](/api/index) — import them from
+there directly when casting `getSigner()`.
 
 These feature types are what you cast `getSigner()` to when signing/sending —
 see the [Bitcoin Wallet Standard connector](/connectors/bitcoin-wallet-standard).

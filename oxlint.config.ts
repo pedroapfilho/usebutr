@@ -101,5 +101,15 @@ export default defineConfig({
         "no-underscore-dangle": "off",
       },
     },
+    // Demo apps are intentionally standalone — each demo is a self-contained
+    // reference users read top-to-bottom. We accept the duplication and the
+    // resulting file length over extracting a shared scaffold. (Recorded in
+    // docs/adr/0001-demos-stay-standalone.md.)
+    {
+      files: ["apps/demo-*/src/**/*.tsx", "apps/demo-*/src/**/*.ts"],
+      rules: {
+        "max-lines": "off",
+      },
+    },
   ],
 });

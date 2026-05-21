@@ -2,6 +2,25 @@
 @import "fumadocs-ui/css/shadcn.css";
 @import "fumadocs-ui/css/preset.css";
 
+/* CSS-only view transitions between docs pages */
+@view-transition {
+  navigation: auto;
+}
+
+/* Scroll-driven reading progress indicator */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes reading-progress {
+    from {
+      width: 0%;
+    }
+  }
+
+  .reading-progress-bar {
+    animation: reading-progress linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+
 @source "../node_modules/fumadocs-ui/dist/**/*.js";
 
 /*

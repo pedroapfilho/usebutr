@@ -6,6 +6,7 @@ import {
   useConnectedWallets,
   useConnectionError,
   useConnectionStatus,
+  useConnectingConnectorId,
   useDiscoveredWallets,
   useDisconnectWallet,
   useIsHydrated,
@@ -14,6 +15,8 @@ import {
 } from "@usebutr/react";
 import { CHAINS_BY_PLATFORM } from "@usebutr/wallets";
 import { type ReactNode, useState } from "react";
+
+import { WalletConnectDialog } from "./wallet-connect-dialog";
 
 type SignState =
   | { kind: "idle" }
@@ -66,6 +69,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
         <span className="flex shrink-0 items-center gap-2">
           {signIndicator}
           <button
+            aria-label={state.kind === "signing" ? "Signing…" : "Sign"}
             className="rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs hover:bg-neutral-50 disabled:opacity-50"
             disabled={state.kind === "signing"}
             onClick={() => {
@@ -96,26 +100,33 @@ const AccountPicker = ({ wallet }: { wallet: ConnectedWallet }) => (
 
 const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
   const chains = CHAINS_BY_PLATFORM[wallet.connector.chainPlatform];
+  const selectId = `chain-picker-${wallet.connector.id}`;
   return (
-    <select
-      className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs"
-      onChange={(e) => {
-        const target = chains.find((c) => c.id === e.target.value);
-        if (target) {
-          void wallet.connector.switchChain(target);
-        }
-      }}
-      value={wallet.account.chain.id}
-    >
-      {chains.some((c) => c.id === wallet.account.chain.id) ? null : (
-        <option value={wallet.account.chain.id}>{wallet.account.chain.name} (current)</option>
-      )}
-      {chains.map((chain) => (
-        <option key={chain.id} value={chain.id}>
-          {chain.name}
-        </option>
-      ))}
-    </select>
+    <div>
+      <label className="sr-only" htmlFor={selectId}>
+        Chain
+      </label>
+      <select
+        className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs"
+        id={selectId}
+        onChange={(e) => {
+          const target = chains.find((c) => c.id === e.target.value);
+          if (target) {
+            void wallet.connector.switchChain(target);
+          }
+        }}
+        value={wallet.account.chain.id}
+      >
+        {chains.some((c) => c.id === wallet.account.chain.id) ? null : (
+          <option value={wallet.account.chain.id}>{wallet.account.chain.name} (current)</option>
+        )}
+        {chains.map((chain) => (
+          <option key={chain.id} value={chain.id}>
+            {chain.name}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 };
 
@@ -229,7 +240,12 @@ const ConnectedList = ({ wallets }: { wallets: ReadonlyArray<ConnectedWallet> })
 const StatusBar = ({ status }: { status: string }) => (
   <div className="flex items-center gap-2 text-sm text-neutral-600">
     <span className="font-medium">Status:</span>
-    <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-xs">{status}</span>
+    <output
+      aria-live="polite"
+      className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-xs"
+    >
+      {status}
+    </output>
   </div>
 );
 
@@ -260,28 +276,39 @@ const WalletBrandRow = ({
 }: {
   brand: WalletBrand;
   connect: (id: string) => void;
-}) => (
-  <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3">
-    <div className="flex items-center justify-between gap-3">
-      <span className="flex items-center gap-3">
-        {brand.icon ? <img alt="" className="h-6 w-6 rounded" src={brand.icon} /> : null}
-        <span className="font-medium">{brand.name}</span>
-      </span>
-      <span className="flex gap-2">
-        {brand.adapters.map((adapter) => (
-          <button
-            className="rounded-md border border-neutral-300 px-2 py-1 font-mono text-xs uppercase hover:bg-neutral-50"
-            key={adapter.id}
-            onClick={() => connect(adapter.id)}
-            type="button"
-          >
-            {adapter.chainPlatform}
-          </button>
-        ))}
-      </span>
+}) => {
+  const connectingId = useConnectingConnectorId();
+  return (
+    <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex items-center gap-3">
+          {brand.icon ? (
+            <img alt="" className="h-6 w-6 rounded" height={24} src={brand.icon} width={24} />
+          ) : null}
+          <span className="font-medium">{brand.name}</span>
+        </span>
+        <span className="flex gap-2">
+          {brand.adapters.map((adapter) => {
+            const isConnecting = connectingId === adapter.id;
+            return (
+              <button
+                aria-busy={isConnecting}
+                aria-label={`${brand.name} — ${adapter.chainPlatform}`}
+                className="min-h-[44px] rounded-md border border-neutral-300 px-2 py-1 font-mono text-xs uppercase hover:bg-neutral-50 disabled:opacity-50"
+                disabled={isConnecting}
+                key={adapter.id}
+                onClick={() => connect(adapter.id)}
+                type="button"
+              >
+                {adapter.chainPlatform}
+              </button>
+            );
+          })}
+        </span>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const WalletPicker = ({
   available,
@@ -348,6 +375,7 @@ const Content = () => {
   const error = useConnectionError();
   const connected = useConnectedWallets();
   const discovered = useDiscoveredWallets();
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   if (!isHydrated) {
     return <p className="text-sm text-neutral-500">Loading…</p>;
@@ -360,8 +388,32 @@ const Content = () => {
       <StatusBar status={status} />
       {connected.length > 0 ? <ConnectedList wallets={connected} /> : null}
       <WalletPicker available={available} hasConnected={connected.length > 0} />
+      {/* Dialog-based connect UX — recommended pattern for modal wallet pickers */}
+      {available.length > 0 ? (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-neutral-500">
+            Dialog pattern (recommended for modal UX)
+          </h2>
+          <button
+            className="rounded-md border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-50"
+            onClick={() => setDialogOpen(true)}
+            type="button"
+          >
+            Connect via dialog
+          </button>
+          <WalletConnectDialog
+            available={available}
+            onClose={() => setDialogOpen(false)}
+            open={dialogOpen}
+          />
+        </section>
+      ) : null}
       {error ? (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <p
+          aria-live="assertive"
+          className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+          role="alert"
+        >
           {error.kind} — {error.message}
         </p>
       ) : null}
@@ -370,16 +422,24 @@ const Content = () => {
 };
 
 const App = () => (
-  <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900">
-    <header className="mb-8">
-      <h1 className="text-3xl font-bold tracking-tight">butr · Vite</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        Batteries-included install via <code>@usebutr/wallets</code>. EVM (EIP-6963) and SVM (Wallet
-        Standard) discovered in one provider; persisted in localStorage.
-      </p>
-    </header>
-    <Content />
-  </main>
+  <>
+    <a
+      className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:shadow"
+      href="#main"
+    >
+      Skip to content
+    </a>
+    <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900" id="main">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">butr · Vite</h1>
+        <p className="mt-1 text-sm text-neutral-500">
+          Batteries-included install via <code>@usebutr/wallets</code>. EVM (EIP-6963) and SVM
+          (Wallet Standard) discovered in one provider; persisted in localStorage.
+        </p>
+      </header>
+      <Content />
+    </main>
+  </>
 );
 
 export { App };

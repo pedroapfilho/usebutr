@@ -233,7 +233,13 @@ const Content = () => {
                   type="button"
                 >
                   {wallet.icon ? (
-                    <img alt="" className="h-6 w-6 rounded" src={wallet.icon} />
+                    <img
+                      alt=""
+                      className="h-6 w-6 rounded"
+                      height={24}
+                      src={wallet.icon}
+                      width={24}
+                    />
                   ) : null}
                   <span className="font-medium">{wallet.name}</span>
                 </button>
@@ -249,17 +255,25 @@ const Content = () => {
 };
 
 const App = () => (
-  <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900">
-    <header className="mb-8">
-      <h1 className="text-3xl font-bold tracking-tight">butr + viem</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        butr handles wallet discovery and connection state. viem wraps the EIP-1193 provider
-        returned by <code>wallet.connector.getSigner()</code> with <code>createWalletClient</code>{" "}
-        for chain reads, signing, and tx submission.
-      </p>
-    </header>
-    <Content />
-  </main>
+  <>
+    <a
+      className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:shadow"
+      href="#main"
+    >
+      Skip to content
+    </a>
+    <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900" id="main">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">butr + viem</h1>
+        <p className="mt-1 text-sm text-neutral-500">
+          butr handles wallet discovery and connection state. viem wraps the EIP-1193 provider
+          returned by <code>wallet.connector.getSigner()</code> with <code>createWalletClient</code>{" "}
+          for chain reads, signing, and tx submission.
+        </p>
+      </header>
+      <Content />
+    </main>
+  </>
 );
 
 export { App };

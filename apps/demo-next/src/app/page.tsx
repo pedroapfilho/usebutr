@@ -165,7 +165,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
           {wallet.connector.icon ? (
             <Image
               alt=""
-              className="h-8 w-8 rounded"
+              className="size-8 rounded"
               height={32}
               src={wallet.connector.icon}
               width={32}
@@ -307,7 +307,7 @@ const WalletBrandRow = ({
             return (
               <button
                 aria-busy={isConnecting}
-                aria-label={`${brand.name} — ${adapter.chainPlatform}`}
+                aria-label={`${brand.name}, ${adapter.chainPlatform}`}
                 className="min-h-[44px] rounded-md border border-neutral-300 px-2 py-1 font-mono text-xs uppercase hover:bg-neutral-50 disabled:opacity-50"
                 disabled={isConnecting}
                 key={adapter.id}
@@ -407,7 +407,7 @@ const Content = () => {
           className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
           role="alert"
         >
-          {error.kind} — {error.message}
+          {error.kind}: {error.message}
         </p>
       ) : null}
     </div>

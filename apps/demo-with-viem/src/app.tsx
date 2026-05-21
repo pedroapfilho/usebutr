@@ -67,6 +67,9 @@ const Connected = ({
     let cancelled = false;
     void (async () => {
       try {
+        if (cancelled) {
+          return;
+        }
         const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
         if (cancelled) {
           return;

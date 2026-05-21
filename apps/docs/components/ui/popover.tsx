@@ -1,31 +1,73 @@
 "use client";
-import * as PopoverPrimitive from "@radix-ui/react-popover";
 import * as React from "react";
 
 import { cn } from "../../lib/cn";
 
-export const Popover = PopoverPrimitive.Root;
+type PopoverContextValue = {
+  popoverId: string;
+};
 
-export const PopoverTrigger = PopoverPrimitive.Trigger;
+const PopoverContext = React.createContext<PopoverContextValue | null>(null);
 
-export function PopoverContent({
-  align = "center",
-  className,
-  sideOffset = 4,
-  ...props
-}: React.ComponentPropsWithRef<typeof PopoverPrimitive.Content>) {
-  return (
-    <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Content
-        align={align}
+export const Popover = ({ children }: { children: React.ReactNode }) => {
+  const rawId = React.useId();
+  // useId returns ":r0:" style strings — strip colons for a valid HTML id
+  const popoverId = `fd-popover-${rawId.replaceAll(":", "")}`;
+  return <PopoverContext value={{ popoverId }}>{children}</PopoverContext>;
+};
+
+type PopoverTriggerProps = React.ComponentPropsWithRef<"button">;
+
+export const PopoverTrigger = React.forwardRef<HTMLButtonElement, PopoverTriggerProps>(
+  ({ children, className, ...props }, ref) => {
+    const ctx = React.use(PopoverContext);
+    if (!ctx) {
+      throw new Error("PopoverTrigger must be used inside Popover");
+    }
+    return (
+      <button
+        ref={ref}
+        type="button"
+        {...props}
+        className={cn("[anchor-name:--fd-popover-anchor]", className)}
+        popoverTarget={ctx.popoverId}
+      >
+        {children}
+      </button>
+    );
+  },
+);
+PopoverTrigger.displayName = "PopoverTrigger";
+
+type PopoverContentProps = React.ComponentPropsWithRef<"div">;
+
+export const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
+  ({ children, className, ...props }, ref) => {
+    const ctx = React.use(PopoverContext);
+    if (!ctx) {
+      throw new Error("PopoverContent must be used inside Popover");
+    }
+    return (
+      <div
+        ref={ref}
+        {...props}
         className={cn(
-          "bg-fd-popover/60 text-fd-popover-foreground data-[state=closed]:animate-fd-popover-out data-[state=open]:animate-fd-popover-in z-50 max-h-(--radix-popover-content-available-height) max-w-[98vw] min-w-[240px] origin-(--radix-popover-content-transform-origin) overflow-y-auto rounded-xl border p-2 text-sm shadow-lg backdrop-blur-lg focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:outline-none",
+          // reset native popover UA margin; hide when not open
+          "m-0 [&:not(:popover-open)]:hidden",
+          // visual styles
+          "bg-fd-popover/60 text-fd-popover-foreground z-50 max-w-[98vw] min-w-[240px] overflow-y-auto rounded-xl border p-2 text-sm shadow-lg backdrop-blur-lg",
+          // CSS Anchor Positioning: place below the trigger
+          "mt-1 [position-anchor:--fd-popover-anchor] [position-area:block-end_span-inline] [position-try-fallbacks:flip-block]",
           className,
         )}
-        side="bottom"
-        sideOffset={sideOffset}
-        {...props}
-      />
-    </PopoverPrimitive.Portal>
-  );
-}
+        id={ctx.popoverId}
+        // popover is a valid HTML attribute in React 19+
+        // eslint-disable-next-line react/no-unknown-property
+        popover="auto"
+      >
+        {children}
+      </div>
+    );
+  },
+);
+PopoverContent.displayName = "PopoverContent";

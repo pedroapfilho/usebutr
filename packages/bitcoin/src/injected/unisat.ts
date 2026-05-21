@@ -1,14 +1,9 @@
 import type { ChainBase, ConnectorEvent, WalletAdapter, WalletCapabilities } from "@usebutr/core";
+import { buildAccount } from "@usebutr/wallet-standard-shared";
 
-import { BITCOIN_CHAINS } from "./chains";
-import {
-  base64ToBytes,
-  buildInjectedAccount,
-  bytesToHex,
-  GENERIC_BITCOIN_ICON,
-  hexToBytes,
-  utf8Decode,
-} from "./injected-shared";
+import { BITCOIN_CHAINS } from "../chains";
+
+import { GENERIC_BITCOIN_ICON } from "./icon";
 
 /** UniSat-style provider: a single object on `window.unisat` with the
  *  same four methods every UniSat-derivative wallet exposes (UniSat
@@ -42,6 +37,34 @@ const CAPS_UNISAT: WalletCapabilities = {
   subscribe: true,
   switchAccount: false,
   switchChain: false,
+};
+
+// Encoding helpers — small enough to live next to their caller rather
+// than in a cross-cutting "shared" file.
+const bytesToHex = (bytes: Uint8Array): string => {
+  let hex = "";
+  for (const byte of bytes) {
+    hex += byte.toString(16).padStart(2, "0");
+  }
+  return hex;
+};
+
+const hexToBytes = (hex: string): Uint8Array => {
+  const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
+  const out = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < out.length; i += 1) {
+    out[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+  }
+  return out;
+};
+
+const base64ToBytes = (b64: string): Uint8Array => {
+  const binary = atob(b64);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    out[i] = binary.codePointAt(i) ?? 0;
+  }
+  return out;
 };
 
 /**
@@ -105,7 +128,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
         return null;
       }
       await refreshChain();
-      return buildInjectedAccount(first, chain);
+      return buildAccount(first, chain);
     },
 
     async getAccounts() {
@@ -114,7 +137,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
         return [];
       }
       await refreshChain();
-      return accounts.map((a) => buildInjectedAccount(a, chain));
+      return accounts.map((a) => buildAccount(a, chain));
     },
 
     getBalance() {
@@ -158,9 +181,9 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
         );
       }
       const { amount, recipient } = tx as { amount: bigint; recipient: string };
-      // UniSat's sendBitcoin takes a JS number for the amount in
-      // satoshis. Values above 2^53 are not representable; that's
-      // 90+ million BTC, which would never appear in practice.
+      // UniSat's sendBitcoin takes a JS number for satoshis. Values
+      // above 2^53 aren't representable; that's 90+ million BTC, which
+      // would never appear in practice.
       const sats = Number(amount);
       return provider.sendBitcoin(recipient, sats);
     },
@@ -176,7 +199,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
       // bytes the wallet signed (pass-through of the input). UniSat
       // doesn't expose a "pre-image" so the input itself is the signed
       // message from butr's perspective.
-      const text = utf8Decode(msg);
+      const text = new TextDecoder().decode(msg);
       const signatureB64 = await provider.signMessage(text);
       return { signature: base64ToBytes(signatureB64), signedMessage: msg };
     },
@@ -199,7 +222,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
           listener({ type: "disconnected" });
           return;
         }
-        const built = accounts.map((a) => buildInjectedAccount(a, chain));
+        const built = accounts.map((a) => buildAccount(a, chain));
         const first = built[0];
         if (!first) {
           return;

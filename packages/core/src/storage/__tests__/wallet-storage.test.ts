@@ -54,7 +54,7 @@ describe("WalletStorage", () => {
       expect(await storage.getPool()).toEqual(data);
     });
 
-    it("backfills missing `accounts` from legacy entries", async () => {
+    it("drops entries missing the `accounts` field", async () => {
       const persistent = createMockStorageDriver();
       const account = {
         chain: {
@@ -66,19 +66,20 @@ describe("WalletStorage", () => {
         id: "acc-1",
         walletAddress: "0x123",
       };
-      // Legacy entry written before multi-account support: no `accounts` field.
-      const legacy = {
+      // Entry without `accounts` is invalid by the current schema and
+      // gets warned + dropped on read.
+      const invalid = {
         metamask: {
           account,
           chainPlatform: "evm",
           connectorId: "metamask",
         },
       };
-      await persistent.setItem("test-pool", JSON.stringify(legacy));
+      await persistent.setItem("test-pool", JSON.stringify(invalid));
       const { storage } = createStorage({ persistent });
 
       const result = await storage.getPool();
-      expect(result.metamask?.accounts).toEqual([account]);
+      expect(result.metamask).toBeUndefined();
     });
 
     it("drops entries whose connectorId does not match the key", async () => {
@@ -144,7 +145,9 @@ describe("WalletStorage", () => {
       const { persistent, storage } = createStorage();
       const account = createMockAccount();
       const connector = createMockConnector({ chainPlatform: "evm", id: "metamask" });
-      const pool = new Map<string, ConnectedWallet>([["metamask", { account, connector }]]);
+      const pool = new Map<string, ConnectedWallet>([
+        ["metamask", { account, accounts: [account], connector }],
+      ]);
 
       await storage.setPool(pool);
 
@@ -187,32 +190,36 @@ describe("WalletStorage", () => {
   describe("removePoolEntry", () => {
     it("removes a single connectorId from the pool", async () => {
       const persistent = createMockStorageDriver();
+      const evmAccount = {
+        chain: {
+          id: "eip155:1",
+          name: "Ethereum",
+          namespace: "eip155",
+          reference: "1",
+        },
+        id: "acc-1",
+        walletAddress: "0x123",
+      };
+      const svmAccount = {
+        chain: {
+          id: "solana:mainnet",
+          name: "Solana",
+          namespace: "solana",
+          reference: "mainnet",
+        },
+        id: "acc-2",
+        walletAddress: "So1ana",
+      };
       const data = {
         metamask: {
-          account: {
-            chain: {
-              id: "eip155:1",
-              name: "Ethereum",
-              namespace: "eip155",
-              reference: "1",
-            },
-            id: "acc-1",
-            walletAddress: "0x123",
-          },
+          account: evmAccount,
+          accounts: [evmAccount],
           chainPlatform: "evm",
           connectorId: "metamask",
         },
         phantom: {
-          account: {
-            chain: {
-              id: "solana:mainnet",
-              name: "Solana",
-              namespace: "solana",
-              reference: "mainnet",
-            },
-            id: "acc-2",
-            walletAddress: "So1ana",
-          },
+          account: svmAccount,
+          accounts: [svmAccount],
           chainPlatform: "svm",
           connectorId: "phantom",
         },
@@ -346,7 +353,9 @@ describe("WalletStorage", () => {
 
       const account = createMockAccount();
       const connector = createMockConnector({ id: "metamask" });
-      const pool = new Map<string, ConnectedWallet>([["metamask", { account, connector }]]);
+      const pool = new Map<string, ConnectedWallet>([
+        ["metamask", { account, accounts: [account], connector }],
+      ]);
       await storage.setPool(pool);
       await storage.setSelection(new Map([["evm", "metamask"]]));
       await storage.setActiveConnectorId("metamask");

@@ -37,11 +37,7 @@ const bytesToBase64 = (bytes: Uint8Array): string => {
   return btoa(binary);
 };
 
-/** Backwards-compatible: SVM predates the platform-prefix discipline,
- *  so its adapter ids are `wallet-standard:<slug>` rather than
- *  `wallet-standard:svm-<slug>`. Pool entries persisted before this
- *  refactor must continue to restore, so we pass `""` to the kit. */
-const slugify = (name: string): string => kitSlugify("", name);
+const slugify = (name: string): string => kitSlugify("svm", name);
 
 const pickSolanaChain = (wallet: WalletStandardWallet): string | null => {
   // Prefer mainnet-beta, then the first solana chain advertised.

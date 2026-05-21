@@ -1,4 +1,12 @@
 {
   "title": "Connectors",
-  "pages": ["index", "injected-evm", "solana-wallet-standard", "walletconnect", "ledger"]
+  "pages": [
+    "index",
+    "injected-evm",
+    "solana-wallet-standard",
+    "sui-wallet-standard",
+    "bitcoin-wallet-standard",
+    "walletconnect",
+    "ledger"
+  ]
 }

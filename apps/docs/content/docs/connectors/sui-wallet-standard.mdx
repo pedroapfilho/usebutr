@@ -1,0 +1,74 @@
+---
+title: Sui Wallet Standard
+description: Wallet Standard discovery for Sui wallets, via @usebutr/sui.
+---
+
+`@usebutr/sui` discovers Sui wallets (Slush, Phantom Sui, Suiet, Surf, …)
+through the [Wallet Standard](https://github.com/wallet-standard/wallet-standard).
+
+## Discovery
+
+`autoDiscovery()` from `@usebutr/wallets` handles Sui discovery automatically.
+For a Sui-only setup, wire it directly with `createWalletSource`:
+
+```ts
+import { createWalletSource } from "@usebutr/core";
+import { discoverSuiAdapters } from "@usebutr/sui";
+import { WalletManagerProvider } from "@usebutr/react";
+
+const discovery = createWalletSource(discoverSuiAdapters);
+
+<WalletManagerProvider discovery={discovery}>
+  {children}
+</WalletManagerProvider>
+```
+
+<Callout type="info">
+  `@usebutr/sui` lazily imports `@wallet-standard/app` (an optional peer dependency). Restored Sui
+  wallets can land in `pendingIds` for a moment during that warmup — see
+  [hydration](/concepts/hydration).
+</Callout>
+
+## Capabilities
+
+Resolved from the wallet's advertised Wallet Standard features via
+`resolveSuiCapabilities`:
+
+- `signMessage` — true only if the wallet advertises `sui:signPersonalMessage`.
+- `signTransaction` — true via `sui:signTransaction` (BCS-encoded transaction
+  block bytes).
+- `sendTransaction` — true via `sui:signAndExecuteTransaction`.
+- `subscribe` — true via the Standard `change` event.
+- `switchChain` — local state + per-call `chain` input when more than one
+  chain is advertised.
+
+Always branch on [capabilities](/concepts/capabilities).
+
+## Working with the signer
+
+`getSigner()` on a Sui adapter returns the `WalletStandardWallet`. You call its
+features directly (or bridge into `@mysten/sui`):
+
+```ts
+const walletStd = (await wallet.connector.getSigner()) as WalletStandardWallet;
+const feature = walletStd.features["sui:signTransaction"];
+const account = walletStd.accounts[0];
+const { signature, bytes } = await feature.signTransaction({
+  account,
+  transaction: txBytes, // BCS-serialised
+  chain: "sui:mainnet",
+});
+```
+
+See the [demo-with-sui](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-with-sui)
+app for the full build-and-execute flow with `@mysten/sui`.
+
+## Chains
+
+`SUI_CHAINS_LIST` / `SUI_CHAINS` ship Sui mainnet, testnet, and devnet.
+`slugify` and `resolveSuiCapabilities` are exported for adapter authors.
+
+<Callout type="info">
+  **Source:** `packages/sui/src`. Used by `apps/demo-with-sui` and (via `@usebutr/wallets`)
+  `apps/demo-vite`.
+</Callout>

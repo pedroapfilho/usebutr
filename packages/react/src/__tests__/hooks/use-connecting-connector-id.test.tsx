@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { useConnectingConnectorId } from "../../hooks";
+import { useConnectingConnectorId } from "../../hooks/selectors";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useConnectingConnectorId", () => {

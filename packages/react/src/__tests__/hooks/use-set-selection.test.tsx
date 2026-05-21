@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { useSetSelection } from "../../hooks";
+import { useSetSelection } from "../../hooks/actions";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useSetSelection", () => {

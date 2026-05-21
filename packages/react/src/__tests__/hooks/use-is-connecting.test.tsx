@@ -1,7 +1,7 @@
 import { act } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { useIsConnecting, useWalletStore } from "../../hooks";
+import { useIsConnecting, useWalletStore } from "../../hooks/selectors";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useIsConnecting", () => {

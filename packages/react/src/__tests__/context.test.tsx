@@ -5,7 +5,8 @@ import React, { type PropsWithChildren } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { WalletManagerProvider, useDiscoveredWallets, useWalletStoreContext } from "../context";
-import { useConnectWallet, useConnectedWallets, useWalletStore } from "../hooks";
+import { useConnectWallet } from "../hooks/actions";
+import { useConnectedWallets, useWalletStore } from "../hooks/selectors";
 
 const sourceOf = (...adapters: Array<WalletAdapter>): WalletSource => ({
   subscribe: (onAdapter) => {

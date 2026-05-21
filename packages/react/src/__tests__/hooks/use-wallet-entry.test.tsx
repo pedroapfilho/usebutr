@@ -2,8 +2,8 @@ import { act } from "@testing-library/react";
 import { createFakeAdapter } from "@usebutr/testing";
 import { describe, expect, it } from "vitest";
 
-import { useConnectWallet as useConnectWalletSync } from "../../hooks";
-import { useConnectWallet, useWalletEntry } from "../../hooks-async";
+import { useConnectWallet } from "../../hooks/actions";
+import { useWalletEntry } from "../../hooks/selectors";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useWalletEntry", () => {
@@ -25,7 +25,7 @@ describe("useWalletEntry", () => {
     };
     const adapter = createFakeAdapter({ accounts: [account], chainPlatform: "evm", id: "fake" });
     const { result } = renderHookWithProvider(
-      () => ({ connect: useConnectWalletSync(), entry: useWalletEntry(undefined) }),
+      () => ({ connect: useConnectWallet(), entry: useWalletEntry(undefined) }),
       { adapters: [adapter] },
     );
     await act(async () => {
@@ -38,6 +38,3 @@ describe("useWalletEntry", () => {
     expect(result.current.entry?.connector.id).toBe(adapter.id);
   });
 });
-
-// Suppress unused-import warning while keeping the imports above honest.
-void useConnectWallet;

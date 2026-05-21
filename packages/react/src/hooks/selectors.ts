@@ -5,7 +5,23 @@ import { useStore } from "zustand";
 import { shallow } from "zustand/shallow";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 
-import { useWalletStoreContext } from "./context";
+import { useWalletStoreContext } from "../context";
+
+/**
+ * Selector hooks — pure reactive reads of the wallet store. Each
+ * subscribes via `useSyncExternalStore` (through Zustand's `useStore`)
+ * and returns the value directly; no `AsyncState` wrapper, no
+ * mutation side effects.
+ *
+ * Three sub-groups in this file:
+ *  - **Connection-state** scalars (status, error, flags)
+ *  - **Pool / selection / accounts** (reactive structures)
+ *  - **Stable accessors** (return functions safe for callbacks)
+ *
+ * The classification is "what's returned" rather than "is it async."
+ * For dispatchers, see `./actions.ts`. For async resources
+ * (`useSigner`, `useBalance`), see `./async-resources.ts`.
+ */
 
 const EMPTY_ACCOUNTS: ReadonlyArray<Account> = [];
 
@@ -30,7 +46,7 @@ const accountsEqual = (a: ReadonlyArray<Account>, b: ReadonlyArray<Account>) => 
 };
 
 // ============================================================================
-// CONNECTION STATE HOOKS
+// Connection state
 // ============================================================================
 
 /** Connection status: "idle" | "connecting" | "success" | "error". */
@@ -84,7 +100,7 @@ const useIsUserDisconnected = () => {
 };
 
 // ============================================================================
-// POOL / SELECTION / ACTIVE
+// Pool / selection / accounts
 // ============================================================================
 
 /** Full pool of connected wallets, keyed by `connectorId`. Re-renders on any pool change. */
@@ -157,8 +173,30 @@ const useAccounts = (connectorId?: string | null): ReadonlyArray<Account> => {
   );
 };
 
+/**
+ * Subscribe to the pool entry for a `connectorId`. Defaults to the
+ * active wallet when omitted. Re-renders only when the resolved
+ * wallet's identity (connectorId / address / chainId) changes.
+ *
+ * This used to live alongside the async hooks because `useSigner` /
+ * `useBalance` consume it internally; it belongs with the other
+ * selectors since its return shape is `ConnectedWallet | undefined`
+ * with no async wrapper.
+ */
+const useWalletEntry = (connectorId: string | null | undefined): ConnectedWallet | undefined => {
+  const store = useWalletStoreContext();
+  return useStoreWithEqualityFn(
+    store,
+    (state) => {
+      const id = connectorId ?? state.activeConnectorId;
+      return id ? state.pool.get(id) : undefined;
+    },
+    walletEqual,
+  );
+};
+
 // ============================================================================
-// STABLE ACCESSORS (return functions; safe to use in callbacks)
+// Stable accessors (return functions; safe to use in callbacks)
 // ============================================================================
 
 /** Stable accessor: `(connectorId) => ConnectedWallet | undefined`. */
@@ -184,73 +222,7 @@ const useGetConnectorInstance = () => {
 };
 
 // ============================================================================
-// MUTATION HOOKS
-// ============================================================================
-
-const useConnectWallet = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.connectWallet);
-};
-
-const useDisconnectWallet = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.disconnectWallet);
-};
-
-const useSetActiveConnector = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.setActiveConnector);
-};
-
-const useSetSelection = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.setSelection);
-};
-
-const useResetWallet = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.reset);
-};
-
-const useUpdateWalletAccount = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.updateWalletAccount);
-};
-
-const useRefreshWallet = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.refreshWallet);
-};
-
-/**
- * Open the wallet's account-selection UI (if the connector supports it),
- * then re-read `getAccounts()` and update the pool entry's `accounts`
- * array. EVM wallets call `wallet_requestPermissions` under the hood;
- * Wallet Standard wallets that don't expose a picker just refresh.
- *
- * Consumers should hide the trigger when
- * `wallet.connector.requestAccounts` is undefined — the action still
- * resolves cleanly, but no picker will open.
- */
-const useRequestAccounts = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.requestAccounts);
-};
-
-/** Clear `connectionError` + reset `connectionStatus` to idle. Useful when
- *  surfacing an error in UI and giving the user a "dismiss" affordance. */
-const useResetConnectionStatus = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.resetConnectionStatus);
-};
-
-const useSetConnectionError = () => {
-  const store = useWalletStoreContext();
-  return useStore(store, (state) => state.setConnectionError);
-};
-
-// ============================================================================
-// DIRECT STORE ACCESS
+// Direct store access (escape hatch)
 // ============================================================================
 
 /**
@@ -278,8 +250,6 @@ export {
   useConnectingConnectorId,
   useConnectionError,
   useConnectionStatus,
-  useConnectWallet,
-  useDisconnectWallet,
   useGetConnectorInstance,
   useGetSelectedWallet,
   useGetWallet,
@@ -288,16 +258,9 @@ export {
   useIsPlatformConnected,
   useIsUserDisconnected,
   usePool,
-  useRefreshWallet,
-  useRequestAccounts,
-  useResetConnectionStatus,
-  useResetWallet,
   useSelectedWallet,
   useSelection,
-  useSetActiveConnector,
-  useSetConnectionError,
-  useSetSelection,
-  useUpdateWalletAccount,
   useWalletConnected,
+  useWalletEntry,
   useWalletStore,
 };

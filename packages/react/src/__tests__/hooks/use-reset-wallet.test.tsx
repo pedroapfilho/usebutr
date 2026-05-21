@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { useResetWallet } from "../../hooks";
+import { useResetWallet } from "../../hooks/actions";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useResetWallet", () => {

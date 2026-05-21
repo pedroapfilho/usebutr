@@ -1,7 +1,7 @@
 import { act } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { useIsHydrated } from "../../hooks";
+import { useIsHydrated } from "../../hooks/selectors";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useIsHydrated", () => {

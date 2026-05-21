@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { usePool } from "../../hooks";
+import { usePool } from "../../hooks/selectors";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("usePool", () => {

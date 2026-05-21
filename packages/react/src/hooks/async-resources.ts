@@ -1,9 +1,19 @@
 import type { Balance } from "@usebutr/core";
-import { walletEqual } from "@usebutr/core";
 import { useCallback, useEffect, useMemo, useReducer } from "react";
-import { useStoreWithEqualityFn } from "zustand/traditional";
 
-import { useWalletStoreContext } from "./context";
+import { useWalletEntry } from "./selectors";
+
+/**
+ * Async-resource hooks — return `AsyncState<T>` and run lifecycle
+ * effects under the hood. Each composes `useAsyncResource` (defined
+ * below) with a selector from `./selectors.ts` (`useWalletEntry`) plus
+ * a stable closure that calls the connector.
+ *
+ * Adding a new async hook is ~5 lines: import `useAsyncResource`,
+ * memoise the request closure on the wallet identity, return the
+ * state. The cancellation discipline lives once, in
+ * `useAsyncResource`.
+ */
 
 type AsyncState<T> =
   | { data: null; error: null; status: "idle" }
@@ -92,20 +102,6 @@ const useAsyncResource = <T>(fn: (() => Promise<T>) | null): AsyncState<T> => {
   return state;
 };
 
-/** Subscribe to the pool entry for a connectorId. Re-renders only when the
- *  resolved wallet's identity (connectorId / address / chainId) changes. */
-const useWalletEntry = (connectorId: string | null | undefined) => {
-  const store = useWalletStoreContext();
-  return useStoreWithEqualityFn(
-    store,
-    (state) => {
-      const id = connectorId ?? state.activeConnectorId;
-      return id ? state.pool.get(id) : undefined;
-    },
-    walletEqual,
-  );
-};
-
 /**
  * Cached signer for a connector. Invalidates when `connectorId`, account
  * address, or chain id changes — so a chain switch or account switch in the
@@ -154,4 +150,4 @@ const useBalance = (connectorId?: string | null, mint?: string): UseBalanceResul
 };
 
 export type { AsyncState, UseBalanceResult };
-export { useBalance, useSigner, useWalletEntry };
+export { useBalance, useSigner };

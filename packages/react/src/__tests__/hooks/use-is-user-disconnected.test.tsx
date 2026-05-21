@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { useIsUserDisconnected } from "../../hooks";
+import { useIsUserDisconnected } from "../../hooks/selectors";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useIsUserDisconnected", () => {

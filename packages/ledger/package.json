@@ -1,7 +1,7 @@
 {
   "name": "@usebutr/ledger",
   "version": "0.1.0",
-  "description": "Ledger hardware-wallet adapter for butr (EVM + SVM).",
+  "description": "Ledger hardware-wallet adapter for butr (EVM + SVM + Sui).",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
@@ -41,6 +41,7 @@
   "devDependencies": {
     "@ledgerhq/hw-app-eth": "^7.8.2",
     "@ledgerhq/hw-app-solana": "^7.10.2",
+    "@ledgerhq/hw-app-sui": "^1.11.0",
     "@ledgerhq/hw-transport-webusb": "^6.34.2",
     "@repo/config-vitest": "workspace:*",
     "@repo/typescript-config": "workspace:*",
@@ -50,6 +51,7 @@
   "peerDependencies": {
     "@ledgerhq/hw-app-eth": ">=6.0.0 <8.0.0",
     "@ledgerhq/hw-app-solana": ">=7.0.0 <8.0.0",
+    "@ledgerhq/hw-app-sui": ">=1.0.0 <2.0.0",
     "@ledgerhq/hw-transport-webusb": ">=6.0.0"
   }
 }

@@ -2,6 +2,8 @@ import type { ChainPlatform, WalletAdapter } from "@usebutr/core";
 
 import type { EthAppConstructor, EthAppLike, EvmLedgerOptions } from "./apps/evm";
 import { createEvmLedgerAdapter, LEDGER_DEFAULT_ICON } from "./apps/evm";
+import type { SuiAppConstructor, SuiAppLike, SuiCluster, SuiLedgerOptions } from "./apps/sui";
+import { createSuiLedgerAdapter, LEDGER_SUI_DEFAULT_ICON } from "./apps/sui";
 import type {
   SolanaAppConstructor,
   SolanaAppLike,
@@ -16,7 +18,7 @@ import type { TransportFactory, TransportLike } from "./transport";
  * factory. Each variant is **fully typed for its platform** — no
  * opaque DI bag.
  *
- * Adding a new platform (Sui / Bitcoin still pending) is three touches:
+ * Adding a new platform (Bitcoin still pending) is three touches:
  *   1. Create `src/apps/<platform>.ts` with a `createXxxLedgerAdapter`
  *      and its own `XxxLedgerOptions` type.
  *   2. Extend this union with `| XxxLedgerOptions`.
@@ -24,12 +26,13 @@ import type { TransportFactory, TransportLike } from "./transport";
  *
  * **Back-compat.** The EVM variant's `platform` field is optional, so
  * existing callers writing `createLedgerAdapter({ chainId: 1 })` keep
- * working — the dispatch defaults to EVM. The SVM variant requires
- * `platform: "svm"` explicitly, since the option types share field names
- * (`accountCount`, `derivationPathPrefix`, …) and the discriminant is
- * the only safe way to route an EVM-looking options bag past TypeScript.
+ * working — the dispatch defaults to EVM. The SVM and Sui variants
+ * require `platform: "svm"` / `platform: "sui"` explicitly, since the
+ * option types share field names (`accountCount`,
+ * `derivationPathPrefix`, …) and the discriminant is the only safe way
+ * to route an EVM-looking options bag past TypeScript.
  */
-type LedgerOptions = EvmLedgerOptions | SvmLedgerOptions;
+type LedgerOptions = EvmLedgerOptions | SvmLedgerOptions | SuiLedgerOptions;
 // Future:
 // type LedgerOptions = EvmLedgerOptions | SvmLedgerOptions | SuiLedgerOptions | BitcoinLedgerOptions;
 
@@ -44,6 +47,9 @@ type LedgerOptions = EvmLedgerOptions | SvmLedgerOptions;
  *
  * // Solana
  * const ledger = await createLedgerAdapter({ platform: "svm", cluster: "mainnet" });
+ *
+ * // Sui
+ * const ledger = await createLedgerAdapter({ platform: "sui", cluster: "mainnet" });
  * ```
  *
  * **Why the dispatch lives here.** Each platform's factory has its own
@@ -58,8 +64,8 @@ type LedgerOptions = EvmLedgerOptions | SvmLedgerOptions;
  * **Signing only.** Ledger signs but doesn't broadcast. `sendTx` /
  * `sendTxToChain` / `getBalance` / `getTransactionReceipt` throw;
  * capability flags are `false`. Wrap the signer (via `getSigner()`)
- * with viem / ethers / @solana/kit and your own RPC client to
- * complete the send.
+ * with viem / ethers / @solana/kit / @mysten/sui and your own RPC
+ * client to complete the send.
  */
 const createLedgerAdapter = (options: LedgerOptions = {}): Promise<WalletAdapter> => {
   const platform: ChainPlatform = options.platform ?? "evm";
@@ -71,15 +77,17 @@ const createLedgerAdapter = (options: LedgerOptions = {}): Promise<WalletAdapter
     case "svm": {
       return createSvmLedgerAdapter(options as SvmLedgerOptions);
     }
+    case "sui": {
+      return createSuiLedgerAdapter(options as SuiLedgerOptions);
+    }
     // Future cases:
-    // case "sui":      return createSuiLedgerAdapter(options);
     // case "bitcoin":  return createBitcoinLedgerAdapter(options);
     default: {
-      // Exhaustiveness check — Sui / Bitcoin builders are tracked
-      // follow-ups. Once they land this becomes `const _: never = platform`.
+      // Exhaustiveness check — Bitcoin builder is a tracked follow-up.
+      // Once it lands this becomes `const _: never = platform`.
       return Promise.reject(
         new Error(
-          `[butr/ledger] no Ledger app builder for platform "${platform}". EVM + SVM ship today; Sui / Bitcoin builders are tracked follow-ups.`,
+          `[butr/ledger] no Ledger app builder for platform "${platform}". EVM + SVM + Sui ship today; Bitcoin builder is a tracked follow-up.`,
         ),
       );
     }
@@ -94,8 +102,19 @@ export type {
   SolanaAppConstructor,
   SolanaAppLike,
   SolanaCluster,
+  SuiAppConstructor,
+  SuiAppLike,
+  SuiCluster,
+  SuiLedgerOptions,
   SvmLedgerOptions,
   TransportFactory,
   TransportLike,
 };
-export { LEDGER_DEFAULT_ICON, createEvmLedgerAdapter, createLedgerAdapter, createSvmLedgerAdapter };
+export {
+  LEDGER_DEFAULT_ICON,
+  LEDGER_SUI_DEFAULT_ICON,
+  createEvmLedgerAdapter,
+  createLedgerAdapter,
+  createSuiLedgerAdapter,
+  createSvmLedgerAdapter,
+};

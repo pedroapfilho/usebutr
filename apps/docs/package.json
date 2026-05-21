@@ -12,7 +12,6 @@
     "clean": "rm -rf .next .source node_modules"
   },
   "dependencies": {
-    "@radix-ui/react-popover": "^1.1.15",
     "@tailwindcss/postcss": "^4.3.0",
     "class-variance-authority": "^0.7.1",
     "fumadocs-core": "^16.8.11",

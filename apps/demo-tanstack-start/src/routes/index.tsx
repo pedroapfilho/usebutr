@@ -159,7 +159,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {wallet.connector.icon ? (
-            <img alt="" className="h-8 w-8 rounded" src={wallet.connector.icon} />
+            <img alt="" className="size-8 rounded" src={wallet.connector.icon} />
           ) : null}
           <div>
             <div className="flex items-center gap-2">
@@ -397,7 +397,7 @@ const Content = () => {
           className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
           role="alert"
         >
-          {error.kind} — {error.message}
+          {error.kind}: {error.message}
         </p>
       ) : null}
     </div>

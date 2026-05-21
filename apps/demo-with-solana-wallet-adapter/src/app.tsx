@@ -203,6 +203,9 @@ const BridgeAndExplore = ({ wallet }: { wallet: ReturnType<typeof useActiveWalle
     let cancelled = false;
     void (async () => {
       try {
+        if (cancelled) {
+          return;
+        }
         const ws = (await wallet.connector.getSigner()) as WalletStandardWallet;
         if (cancelled) {
           return;

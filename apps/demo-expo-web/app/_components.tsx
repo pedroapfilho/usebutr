@@ -14,8 +14,9 @@ import {
 } from "@usebutr/react";
 import type { UseBalanceResult } from "@usebutr/react";
 import { CHAINS_BY_PLATFORM } from "@usebutr/wallets";
+import { Image } from "expo-image";
 import { useState } from "react";
-import { Image, Linking, Pressable, Text, View } from "react-native";
+import { Linking, Pressable, Text, View } from "react-native";
 
 import { styles } from "./_styles";
 
@@ -331,7 +332,7 @@ const Content = () => {
       {connectionError ? (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>
-            {connectionError.kind} — {connectionError.message}
+            {connectionError.kind}: {connectionError.message}
           </Text>
         </View>
       ) : null}

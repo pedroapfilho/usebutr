@@ -116,11 +116,15 @@ type WalletCapabilities = {
  * connect / disconnect / hydrate flow. This is the contract `butr`
  * cares about; everything else on `WalletAdapter` is consumer-facing.
  */
-type Connector = {
+type Connector<P extends ChainPlatform = ChainPlatform> = {
   /** Runtime capability flags — see `WalletCapabilities`. Read these
    *  to gate UI affordances rather than probing for method existence. */
   capabilities: WalletCapabilities;
-  chainPlatform: ChainPlatform;
+  /** Discriminant: which chain platform this adapter speaks. Generic
+   *  parameter `P` narrows this to a specific platform when consumers
+   *  use one of the per-platform adapter types (`EvmAdapter`,
+   *  `SvmAdapter`, etc). */
+  chainPlatform: P;
   /** Begin a connection request. Resolves when the wallet is connected,
    *  rejects on user cancellation or other error.
    *
@@ -169,18 +173,18 @@ type Connector = {
 };
 
 /**
- * Capability interface — what consumers call on a connected wallet
- * (signing, sending, balance lookups). `butr` never invokes these
- * itself; they exist solely to give consumers a typed surface to talk
- * to a connected wallet through.
+ * Methods every connected wallet supports regardless of chain. The
+ * per-platform `Wallet` types extend this with their platform-specific
+ * methods (`signIn` for SVM, `signTransaction` for sign-only paths).
  */
-type Wallet = {
+type WalletBase = {
   /** Read a token balance. `mint` is optional; the connector decides
    *  what "no mint" means for its chain (native ETH on EVM, native SOL
    *  on Solana, etc.). */
   getBalance(mint?: string): Promise<Balance>;
   /** Returns a chain-specific signer. Consumers cast to the concrete
-   *  type (e.g. WalletClient on viem, AnchorProvider on Solana). */
+   *  type via the `SignerForPlatform` registry (or directly to the
+   *  library shape they wrap — `WalletClient` on viem, etc.). */
   getSigner(): Promise<unknown>;
   /** Look up the status of a previously-submitted transaction. */
   getTransactionReceipt(tx: string): Promise<{
@@ -204,19 +208,6 @@ type Wallet = {
     cb?: () => void,
   ): Promise<string>;
   /**
-   * Optional. Sign In With Solana (SIWS, `solana:signIn`). Authenticates
-   * the user and returns the connected account plus the signed
-   * statement so the consumer can verify it server-side. `input` is the
-   * SIWS message fields (domain, statement, nonce, …) — pass `{}` or
-   * omit for wallet defaults. Present only when `capabilities.signIn`
-   * is true.
-   */
-  signIn?(input?: Record<string, unknown>): Promise<{
-    account: Account;
-    signature: Uint8Array;
-    signedMessage: Uint8Array;
-  }>;
-  /**
    * Sign a message and return both the signature and the bytes the wallet
    * actually signed. Solana Wallet Standard wallets may prefix or re-encode
    * the message internally; verifiers must check the signature against
@@ -231,15 +222,6 @@ type Wallet = {
     msg: Uint8Array,
     account?: Account,
   ): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
-  /**
-   * Optional. Sign a transaction WITHOUT broadcasting it, returning the
-   * signed transaction bytes. For Solana Wallet Standard wallets that
-   * advertise `solana:signTransaction` but not
-   * `solana:signAndSendTransaction` (sign-only wallets). butr ships no
-   * RPC, so the consumer broadcasts the returned bytes with their own
-   * client. Present only when `capabilities.signTransaction` is true.
-   */
-  signTransaction?(tx: unknown, account?: Account): Promise<Uint8Array>;
   /** Switch to a different account on the same wallet (some wallets
    *  expose multiple accounts simultaneously). */
   switchAccount?(address: string): Promise<void>;
@@ -248,13 +230,88 @@ type Wallet = {
 };
 
 /**
- * Full interface every connector implementation must fulfill.
- * Equivalent to `Connector & Wallet`. The split is documentary —
- * it makes the orchestration / capability seam explicit:
- *  - `Connector` is what butr calls.
- *  - `Wallet` is what your app code calls on a connected wallet.
+ * EVM wallet surface. No `signIn` (Sign-In-With-Ethereum is an app-level
+ * concern in this library, not a protocol method). No `signTransaction`
+ * — EVM wallets sign-and-send via `eth_sendTransaction`; sign-only EVM
+ * flows aren't exposed through this surface.
  */
-type WalletAdapter = Connector & Wallet;
+type EvmWallet = WalletBase;
+
+/**
+ * Solana wallet surface. Adds:
+ *  - `signIn` — Sign-In-With-Solana (`solana:signIn`). Optional;
+ *    `capabilities.signIn` gates availability at runtime.
+ *  - `signTransaction` — sign-only path for wallets that advertise
+ *    `solana:signTransaction` but not `solana:signAndSendTransaction`.
+ *    Optional; `capabilities.signTransaction` gates availability.
+ */
+type SvmWallet = WalletBase & {
+  /** Sign In With Solana (SIWS, `solana:signIn`). Authenticates the user
+   *  and returns the connected account plus the signed statement so the
+   *  consumer can verify server-side. `input` is the SIWS message fields
+   *  (domain, statement, nonce, …) — pass `{}` or omit for wallet
+   *  defaults. */
+  signIn?(input?: Record<string, unknown>): Promise<{
+    account: Account;
+    signature: Uint8Array;
+    signedMessage: Uint8Array;
+  }>;
+  /** Sign a Solana transaction WITHOUT broadcasting it. butr ships no
+   *  RPC, so the consumer broadcasts the returned bytes via
+   *  `@solana/kit` / `@solana/web3.js` / etc. */
+  signTransaction?(tx: unknown, account?: Account): Promise<Uint8Array>;
+};
+
+/**
+ * Sui wallet surface. Adds optional `signTransaction` for the
+ * `sui:signTransaction` (sign-only) feature; broadcast is on the
+ * consumer via `@mysten/sui`'s SuiClient.
+ */
+type SuiWallet = WalletBase & {
+  signTransaction?(tx: unknown, account?: Account): Promise<Uint8Array>;
+};
+
+/**
+ * Bitcoin wallet surface. `signTransaction` here is `bitcoin:signPsbt`
+ * (sign-only PSBT path). Consumers pass `psbt.toBuffer()` bytes; the
+ * wallet returns the signed PSBT bytes for the consumer to finalise /
+ * broadcast through their own Esplora / Electrum client.
+ */
+type BitcoinWallet = WalletBase & {
+  signTransaction?(tx: unknown, account?: Account): Promise<Uint8Array>;
+};
+
+/** Per-platform full adapter shapes — `Connector` + the platform's
+ *  `Wallet` surface. These are the discriminated-union variants of
+ *  `WalletAdapter`. */
+type EvmAdapter = Connector<"evm"> & EvmWallet;
+type SvmAdapter = Connector<"svm"> & SvmWallet;
+type SuiAdapter = Connector<"sui"> & SuiWallet;
+type BitcoinAdapter = Connector<"bitcoin"> & BitcoinWallet;
+
+/**
+ * Full adapter interface — discriminated union by `chainPlatform`.
+ *
+ * Narrow on `wallet.connector.chainPlatform === "svm"` (etc.) to gain
+ * access to platform-specific methods like `signIn` (SVM) or
+ * `signTransaction` (SVM / Sui / Bitcoin). Calling those methods on a
+ * non-narrowed `WalletAdapter` is a TypeScript error — that's the
+ * point. The discriminant carries the type-level fact "this method
+ * doesn't exist on EVM" so consumers can't accidentally branch on
+ * `capabilities.signIn` and call a method that EVM adapters don't
+ * implement.
+ *
+ * Runtime gating via `capabilities` still matters for the methods that
+ * are OPTIONAL within a platform (a Solana wallet might or might not
+ * advertise `solana:signTransaction`). Capabilities narrow "wallet
+ * supports this feature"; the discriminated union narrows "this
+ * platform has this concept at all".
+ */
+type WalletAdapter = EvmAdapter | SvmAdapter | SuiAdapter | BitcoinAdapter;
+
+/** Deprecated. Use one of the per-platform `*Wallet` types or
+ *  `WalletBase`. Retained as an alias so existing names resolve. */
+type Wallet = WalletBase;
 
 type ConnectedWallet = {
   /** Currently-active account on this wallet. */
@@ -358,15 +415,24 @@ type WalletManagerConfig = {
 export type {
   Account,
   Balance,
+  BitcoinAdapter,
+  BitcoinWallet,
   ChainPlatform,
   ConnectedWallet,
   Connector,
   ConnectorEvent,
   ConnectorMeta,
-  WalletAdapter,
-  Wallet,
+  EvmAdapter,
+  EvmWallet,
   HydrationOutcome,
+  SuiAdapter,
+  SuiWallet,
+  SvmAdapter,
+  SvmWallet,
+  Wallet,
+  WalletAdapter,
   WalletAvailability,
+  WalletBase,
   WalletCapabilities,
   WalletManagerConfig,
 };

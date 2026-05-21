@@ -18,7 +18,12 @@ import { type ReactNode, useState } from "react";
 
 import { useDiscoveredWallets } from "../wallet-provider";
 
-const CHAINS_BY_PLATFORM = { evm: EVM_CHAINS_LIST, svm: [] as const };
+const CHAINS_BY_PLATFORM = {
+  bitcoin: [] as const,
+  evm: EVM_CHAINS_LIST,
+  sui: [] as const,
+  svm: [] as const,
+};
 
 type SignState =
   | { kind: "idle" }

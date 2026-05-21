@@ -1,0 +1,34 @@
+{
+  "name": "demo-with-bitcoin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "start": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint src",
+    "clean": "rm -rf dist node_modules"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "@usebutr/bitcoin": "workspace:*",
+    "@usebutr/core": "workspace:*",
+    "@usebutr/react": "workspace:*",
+    "@wallet-standard/app": "^1.1.0",
+    "bitcoinjs-lib": "^6.1.7",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "tailwindcss": "^4.3.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.12"
+  }
+}

@@ -1,13 +1,13 @@
 {
-  "name": "@usebutr/wallets",
+  "name": "@usebutr/sui",
   "version": "0.1.0",
-  "description": "Batteries-included EVM + SVM + Sui + Bitcoin discovery: autoDiscovery() WalletSource + combined chain registries.",
+  "description": "Wallet Standard adapter for butr (Sui).",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/pedroapfilho/usebutr.git",
-    "directory": "packages/wallets"
+    "directory": "packages/sui"
   },
   "files": [
     "dist"
@@ -33,27 +33,21 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@usebutr/bitcoin": "workspace:*",
-    "@usebutr/core": "workspace:*",
-    "@usebutr/evm": "workspace:*",
-    "@usebutr/react": "workspace:*",
-    "@usebutr/sui": "workspace:*",
-    "@usebutr/svm": "workspace:*"
+    "@usebutr/core": "workspace:*"
   },
   "devDependencies": {
     "@repo/config-vitest": "workspace:*",
     "@repo/typescript-config": "workspace:*",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "jsdom": "^29.1.1",
+    "@wallet-standard/app": "^1.1.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.6",
-    "zustand": "^5.0.0"
+    "vitest": "^4.1.6"
   },
   "peerDependencies": {
-    "react": ">=18.0.0",
-    "zustand": ">=4.0.0"
+    "@wallet-standard/app": "^1.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@wallet-standard/app": {
+      "optional": true
+    }
   }
 }

@@ -35,7 +35,7 @@ pnpm test                               # vitest unit tests
 | `demo-tanstack-start` | TanStack Start (Vite SSR)       | `http://localhost:3001` |
 | `demo-expo-web`       | Expo (React Native, web target) | `http://localhost:8081` |
 
-**Integration demos** (one library each, EVM Sepolia or SVM Devnet):
+**Integration demos** (one library each, on the chain's testnet):
 
 | App                               | Library                      | Dev URL                 |
 | --------------------------------- | ---------------------------- | ----------------------- |
@@ -44,14 +44,16 @@ pnpm test                               # vitest unit tests
 | `demo-with-solana-web3js`         | @solana/web3.js              | `http://localhost:5177` |
 | `demo-with-solana-wallet-adapter` | @solana/wallet-adapter-react | `http://localhost:5178` |
 | `demo-with-solana-kit`            | @solana/kit                  | `http://localhost:5179` |
+| `demo-with-sui`                   | @mysten/sui                  | `http://localhost:5180` |
+| `demo-with-bitcoin`               | bitcoinjs-lib                | `http://localhost:5181` |
 
 ### Packages
 
-| Package                   | Purpose                                                                                                                                                                                                                                       |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@usebutr/*`              | The library (butr) — multi-chain wallet management primitives for React. Published as `@usebutr/core`, `@usebutr/react`, `@usebutr/evm`, `@usebutr/svm`, `@usebutr/wallets`, `@usebutr/walletconnect`, `@usebutr/ledger`, `@usebutr/testing`. |
-| `@repo/typescript-config` | Shared tsconfig bases: `base.json`, `library.json`, `nextjs.json`, `react-library.json`, `server.json`, `vite.json`, `expo.json`.                                                                                                             |
-| `@repo/config-vitest`     | Shared Vitest config. Exports `react.ts` and `node.ts`.                                                                                                                                                                                       |
+| Package                   | Purpose                                                                                                                                                                                                                                                                           |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@usebutr/*`              | The library (butr) — multi-chain wallet management primitives for React. Published as `@usebutr/core`, `@usebutr/react`, `@usebutr/evm`, `@usebutr/svm`, `@usebutr/sui`, `@usebutr/bitcoin`, `@usebutr/wallets`, `@usebutr/walletconnect`, `@usebutr/ledger`, `@usebutr/testing`. |
+| `@repo/typescript-config` | Shared tsconfig bases: `base.json`, `library.json`, `nextjs.json`, `react-library.json`, `server.json`, `vite.json`, `expo.json`.                                                                                                                                                 |
+| `@repo/config-vitest`     | Shared Vitest config. Exports `react.ts` and `node.ts`.                                                                                                                                                                                                                           |
 
 ## Tooling
 

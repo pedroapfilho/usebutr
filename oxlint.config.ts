@@ -42,6 +42,8 @@ export default defineConfig({
         "apps/demo-with-solana-wallet-adapter/src/**/*.tsx",
         "apps/demo-with-gill/src/**/*.tsx",
         "apps/demo-with-solana-framework-kit/src/**/*.tsx",
+        "apps/demo-with-sui/src/**/*.tsx",
+        "apps/demo-with-bitcoin/src/**/*.tsx",
       ],
       rules: {
         "no-img-element": "off",

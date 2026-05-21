@@ -2,6 +2,7 @@
   "title": "Core concepts",
   "pages": [
     "index",
+    "architecture",
     "connectors-and-wallets",
     "platforms",
     "pool-selection-active",

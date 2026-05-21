@@ -301,10 +301,4 @@ const createEvmLedgerAdapter = (options: EvmLedgerOptions = {}): Promise<WalletA
 };
 
 export type { EthAppConstructor, EthAppLike, EvmLedgerOptions };
-export {
-  DEFAULT_CHAIN_ID,
-  DEFAULT_DERIVATION_PATH_PREFIX,
-  DEFAULT_ICON as LEDGER_DEFAULT_ICON,
-  createEvmLedgerAdapter,
-  loadEth,
-};
+export { DEFAULT_ICON as LEDGER_DEFAULT_ICON, createEvmLedgerAdapter };

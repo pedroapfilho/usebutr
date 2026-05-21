@@ -484,11 +484,4 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
 };
 
 export type { BitcoinAddressFormat, BitcoinLedgerOptions, BtcAppConstructor, BtcAppLike };
-export {
-  DEFAULT_ADDRESS_FORMAT,
-  DEFAULT_CHAIN_ID,
-  DEFAULT_DERIVATION_PATH_PREFIX,
-  DEFAULT_ICON as LEDGER_BITCOIN_DEFAULT_ICON,
-  createBitcoinLedgerAdapter,
-  loadBtc,
-};
+export { DEFAULT_ICON as LEDGER_BITCOIN_DEFAULT_ICON, createBitcoinLedgerAdapter };

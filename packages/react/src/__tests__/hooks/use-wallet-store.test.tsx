@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { useWalletStore } from "../../hooks";
+import { useWalletStore } from "../../hooks/selectors";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useWalletStore", () => {

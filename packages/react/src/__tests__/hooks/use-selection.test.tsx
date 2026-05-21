@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { useSelection } from "../../hooks";
+import { useSelection } from "../../hooks/selectors";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useSelection", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { useConnectionStatus } from "../../hooks";
+import { useConnectionStatus } from "../../hooks/selectors";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useConnectionStatus", () => {

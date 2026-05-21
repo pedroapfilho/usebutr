@@ -2,8 +2,8 @@ import { act, waitFor } from "@testing-library/react";
 import { createFakeAdapter } from "@usebutr/testing";
 import { describe, expect, it, vi } from "vitest";
 
-import { useConnectWallet } from "../../hooks";
-import { useBalance } from "../../hooks-async";
+import { useConnectWallet } from "../../hooks/actions";
+import { useBalance } from "../../hooks/async-resources";
 import { renderHookWithProvider } from "../render-with-provider";
 
 const buildAdapter = () => {

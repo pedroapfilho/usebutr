@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { useSetActiveConnector } from "../../hooks";
+import { useSetActiveConnector } from "../../hooks/actions";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useSetActiveConnector", () => {

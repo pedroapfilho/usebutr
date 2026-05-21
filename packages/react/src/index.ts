@@ -7,7 +7,7 @@ export {
   useWalletStoreContext,
 } from "./context";
 
-// Sync hooks
+// Selectors — reactive reads of the wallet store.
 export {
   useAccounts,
   useActiveConnectorId,
@@ -16,8 +16,6 @@ export {
   useConnectingConnectorId,
   useConnectionError,
   useConnectionStatus,
-  useConnectWallet,
-  useDisconnectWallet,
   useGetConnectorInstance,
   useGetSelectedWallet,
   useGetWallet,
@@ -26,20 +24,27 @@ export {
   useIsPlatformConnected,
   useIsUserDisconnected,
   usePool,
+  useSelectedWallet,
+  useSelection,
+  useWalletConnected,
+  useWalletEntry,
+  useWalletStore,
+} from "./hooks/selectors";
+
+// Actions — dispatchers / mutations.
+export {
+  useConnectWallet,
+  useDisconnectWallet,
   useRefreshWallet,
   useRequestAccounts,
   useResetConnectionStatus,
   useResetWallet,
-  useSelectedWallet,
-  useSelection,
   useSetActiveConnector,
   useSetConnectionError,
   useSetSelection,
   useUpdateWalletAccount,
-  useWalletConnected,
-  useWalletStore,
-} from "./hooks";
+} from "./hooks/actions";
 
-// Async hooks
-export type { AsyncState, UseBalanceResult } from "./hooks-async";
-export { useBalance, useSigner, useWalletEntry } from "./hooks-async";
+// Async resources — hooks returning AsyncState<T>.
+export type { AsyncState, UseBalanceResult } from "./hooks/async-resources";
+export { useBalance, useSigner } from "./hooks/async-resources";

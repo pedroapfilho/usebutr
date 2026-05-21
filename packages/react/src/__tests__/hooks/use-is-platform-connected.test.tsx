@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { useIsPlatformConnected } from "../../hooks";
+import { useIsPlatformConnected } from "../../hooks/selectors";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useIsPlatformConnected", () => {

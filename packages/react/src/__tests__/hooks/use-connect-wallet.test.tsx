@@ -2,7 +2,8 @@ import { act } from "@testing-library/react";
 import { createFakeAdapter } from "@usebutr/testing";
 import { describe, expect, it } from "vitest";
 
-import { useConnectWallet, usePool } from "../../hooks";
+import { useConnectWallet } from "../../hooks/actions";
+import { usePool } from "../../hooks/selectors";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useConnectWallet", () => {

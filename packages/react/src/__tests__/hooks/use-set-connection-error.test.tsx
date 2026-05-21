@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { useSetConnectionError } from "../../hooks";
+import { useSetConnectionError } from "../../hooks/actions";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useSetConnectionError", () => {

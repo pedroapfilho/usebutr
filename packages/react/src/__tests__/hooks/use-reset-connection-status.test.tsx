@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { useResetConnectionStatus } from "../../hooks";
+import { useResetConnectionStatus } from "../../hooks/actions";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useResetConnectionStatus", () => {

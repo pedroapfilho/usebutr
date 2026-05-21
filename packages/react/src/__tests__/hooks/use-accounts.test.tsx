@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { useAccounts } from "../../hooks";
+import { useAccounts } from "../../hooks/selectors";
 import { renderHookWithProvider } from "../render-with-provider";
 
 describe("useAccounts", () => {

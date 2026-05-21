@@ -56,11 +56,22 @@ describe("createWalletConnectAdapters", () => {
   it("rejects an unimplemented namespace with a clear message", async () => {
     await expect(
       createWalletConnectAdapters({
-        namespaces: { sui: ["sui:mainnet"] },
+        namespaces: { bitcoin: ["bip122:000000000019d6689c085ae165831e93"] },
         projectId: "test",
         universalProvider: fakeUniversalProvider(createFakeProvider()),
       }),
     ).rejects.toThrow(/no namespace builder registered/v);
+  });
+
+  it("returns one Sui adapter with the base id when only Sui is requested", async () => {
+    const adapters = await createWalletConnectAdapters({
+      namespaces: { sui: ["sui:mainnet"] },
+      projectId: "test",
+      universalProvider: fakeUniversalProvider(createFakeProvider()),
+    });
+    expect(adapters).toHaveLength(1);
+    expect(adapters[0]?.id).toBe("walletconnect");
+    expect(adapters[0]?.chainPlatform).toBe("sui");
   });
 
   it("returns one SVM adapter with the base id when only SVM is requested", async () => {

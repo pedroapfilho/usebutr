@@ -76,7 +76,13 @@ const Connected = ({
   const handleSignPsbt = async () => {
     setErrorMsg(null);
     try {
-      if (!wallet.connector.signTransaction) {
+      // Narrow on chainPlatform so TypeScript knows `signTransaction`
+      // can exist on this connector. `WalletAdapter`'s EVM variant
+      // doesn't have signTransaction at all; the discriminant teaches
+      // TS that. The runtime feature-presence check (`signTransaction`
+      // being optional even on Bitcoin / Sui / SVM) still applies.
+      const connector = wallet.connector;
+      if (connector.chainPlatform !== "bitcoin" || !connector.signTransaction) {
         throw new Error(
           "This wallet does not advertise PSBT signing (bitcoin:signPsbt). Try Phantom, Magic Eden, or Leather.",
         );
@@ -92,7 +98,7 @@ const Connected = ({
       for (let i = 0; i < psbt.length; i += 1) {
         psbt[i] = Number.parseInt(psbtHex.slice(i * 2, i * 2 + 2), 16);
       }
-      const signed = await wallet.connector.signTransaction(psbt);
+      const signed = await connector.signTransaction(psbt);
       setSignedPsbt(bytesToHex(signed));
     } catch (error) {
       setErrorMsg(formatError(error));

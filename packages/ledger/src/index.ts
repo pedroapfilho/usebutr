@@ -5,7 +5,7 @@
 //   - `@ledgerhq/hw-app-eth` for EVM
 //   - `@ledgerhq/hw-app-solana` for SVM
 //   - `@ledgerhq/hw-app-sui` for Sui
-//   - (future) `@ledgerhq/hw-app-btc` for Bitcoin
+//   - `@ledgerhq/hw-app-btc` for Bitcoin
 //
 // Usage (EVM — default, back-compat):
 //
@@ -42,21 +42,39 @@
 // });
 // ```
 //
+// Usage (Bitcoin):
+//
+// ```ts
+// import { createLedgerAdapter } from "@usebutr/ledger";
+//
+// const ledger = await createLedgerAdapter({
+//   platform: "bitcoin",
+//   addressFormat: "bech32",
+//   accountCount: 3,
+// });
+// ```
+//
 // Direct per-platform factories (also exported):
 //
 // ```ts
 // import {
+//   createBitcoinLedgerAdapter,
 //   createEvmLedgerAdapter,
-//   createSvmLedgerAdapter,
 //   createSuiLedgerAdapter,
+//   createSvmLedgerAdapter,
 // } from "@usebutr/ledger";
 //
 // const evm = await createEvmLedgerAdapter({ chainId: 1 });
 // const svm = await createSvmLedgerAdapter({ platform: "svm" });
 // const sui = await createSuiLedgerAdapter({ platform: "sui" });
+// const btc = await createBitcoinLedgerAdapter({ platform: "bitcoin" });
 // ```
 
 export type {
+  BitcoinAddressFormat,
+  BitcoinLedgerOptions,
+  BtcAppConstructor,
+  BtcAppLike,
   EthAppConstructor,
   EthAppLike,
   EvmLedgerOptions,
@@ -73,8 +91,10 @@ export type {
   TransportLike,
 } from "./adapter";
 export {
+  LEDGER_BITCOIN_DEFAULT_ICON,
   LEDGER_DEFAULT_ICON,
   LEDGER_SUI_DEFAULT_ICON,
+  createBitcoinLedgerAdapter,
   createEvmLedgerAdapter,
   createLedgerAdapter,
   createSuiLedgerAdapter,

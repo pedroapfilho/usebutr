@@ -10,6 +10,9 @@ allowBuilds:
   sharp: true
   utf-8-validate: true
 
+minimumReleaseAgeExclude:
+  - "@ledgerhq/hw-app-btc@11.0.0"
+
 onlyBuiltDependencies:
   - "@parcel/watcher"
   - "@prisma/client"

@@ -917,6 +917,9 @@ importers:
       '@ledgerhq/hw-app-eth':
         specifier: ^7.8.2
         version: 7.8.2(react@19.0.0)
+      '@ledgerhq/hw-app-solana':
+        specifier: ^7.10.2
+        version: 7.10.2
       '@ledgerhq/hw-transport-webusb':
         specifier: ^6.34.2
         version: 6.34.2
@@ -2711,6 +2714,9 @@ packages:
 
   '@ledgerhq/hw-app-eth@7.8.2':
     resolution: {integrity: sha512-vc3RNnniOyUOz1x3PnAhaZXCj/jffi1mbPL0XP8L3cmn4OV4dy+1rTvCn+Jl6wx5oyJXuOXuadq2yBhQVbQCPA==}
+
+  '@ledgerhq/hw-app-solana@7.10.2':
+    resolution: {integrity: sha512-VSFKz81t+92D3OReLcY305dVJvQiKnSi3fiuCOKEXcp1aASgh4uTsUyQ/qgFqyJKIoWepOLshVzYd42/ukv1gQ==}
 
   '@ledgerhq/hw-transport-mocker@6.34.2':
     resolution: {integrity: sha512-qnSLdYlgWk1YzjsyIz199aTm7KexOEcSZLBhBHVVJpuM6zWLUaM1HPbYx5R5aR5hJzhAVSrXVDzXpEriNrBa6w==}
@@ -6112,6 +6118,9 @@ packages:
   bip174@2.1.1:
     resolution: {integrity: sha512-mdFV5+/v0XyNYXjBS6CQPLo9ekCx4gtKZFnJm5PMto7Fs9hTTDpkkzOB7/FtluRI6JbUUAu+snTYfJRgHLZbZQ==}
     engines: {node: '>=8.0.0'}
+
+  bip32-path@0.4.2:
+    resolution: {integrity: sha512-ZBMCELjJfcNMkz5bDuJ1WrYvjlhEF5k6mQ8vUr4N7MbVRsXei7ZOg8VhhwMfNiW68NWmLkgkc6WvTickrLGprQ==}
 
   birpc@4.0.0:
     resolution: {integrity: sha512-LShSxJP0KTmd101b6DRyGBj57LZxSDYWKitQNW/mi8GRMvZb078Uf9+pveax1DrVL89vm7mWe+TovdI/UDOuPw==}
@@ -12678,6 +12687,12 @@ snapshots:
       - react
       - react-redux
 
+  '@ledgerhq/hw-app-solana@7.10.2':
+    dependencies:
+      '@ledgerhq/errors': 6.34.1
+      '@ledgerhq/hw-transport': 6.35.2
+      bip32-path: 0.4.2
+
   '@ledgerhq/hw-transport-mocker@6.34.2':
     dependencies:
       '@ledgerhq/hw-transport': 6.35.2
@@ -17487,6 +17502,8 @@ snapshots:
   binary-extensions@2.3.0: {}
 
   bip174@2.1.1: {}
+
+  bip32-path@0.4.2: {}
 
   birpc@4.0.0: {}
 

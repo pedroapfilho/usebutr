@@ -297,7 +297,7 @@ const WalletBrandRow = ({
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-3">
           {brand.icon ? (
-            <Image alt="" className="h-6 w-6 rounded" height={24} src={brand.icon} width={24} />
+            <Image alt="" className="size-6 rounded" height={24} src={brand.icon} width={24} />
           ) : null}
           <span className="font-medium">{brand.name}</span>
         </span>
@@ -424,7 +424,7 @@ const Page = () => (
     </a>
     <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900" id="main">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">butr · Next.js</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">butr · Next.js</h1>
         <p className="mt-1 text-sm text-neutral-500">
           EVM-only manual wiring with <code>@usebutr/react</code> + <code>@usebutr/evm</code>.
           Discovery via EIP-6963; no SVM in the bundle.

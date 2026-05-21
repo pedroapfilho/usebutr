@@ -1,45 +1,9 @@
-import type { Account, WalletAdapter } from "@usebutr/core";
-import { logWarn } from "@usebutr/core";
-import type { Eip1193Provider, Eip6963ProviderInfo } from "@usebutr/evm";
-import { buildEvmAdapter } from "@usebutr/evm";
+import type { Account, ChainPlatform, WalletAdapter } from "@usebutr/core";
 
-import { WALLETCONNECT_CAPABILITIES } from "./capabilities";
-
-/**
- * Minimal type surface for `@walletconnect/universal-provider`. We
- * declare what we use rather than imposing the full peer dep types
- * on butr's own type-check pipeline (the peer dep is optional). Real
- * provider instances satisfy this shape.
- */
-type UniversalProviderLike = Eip1193Provider & {
-  connect(opts: {
-    namespaces: Record<
-      string,
-      {
-        chains: ReadonlyArray<string>;
-        events: ReadonlyArray<string>;
-        methods: ReadonlyArray<string>;
-        rpcMap?: Record<string, string>;
-      }
-    >;
-  }): Promise<unknown>;
-  disconnect(): Promise<void>;
-  session: unknown;
-};
-
-type UniversalProviderInitOptions = {
-  metadata?: {
-    description?: string;
-    icons?: ReadonlyArray<string>;
-    name?: string;
-    url?: string;
-  };
-  projectId: string;
-};
-
-type UniversalProviderConstructor = {
-  init(options: UniversalProviderInitOptions): Promise<UniversalProviderLike>;
-};
+import type { UniversalProviderConstructor, UniversalProviderLike } from "./loader";
+import { loadUniversalProvider } from "./loader";
+import { evmNamespace } from "./namespaces/evm";
+import type { WalletConnectNamespaceBuilder } from "./namespaces/types";
 
 type WalletConnectMetadata = {
   description?: string;
@@ -53,6 +17,9 @@ type WalletConnectOptions = {
    * CAIP-2 chain ids the dapp wants to support. Default: Ethereum
    * mainnet only (`eip155:1`). Pass more to let the user pick a chain
    * in their wallet at pairing time.
+   *
+   * Single-platform (EVM-only). For multi-platform pairings, use
+   * `createWalletConnectAdapters` with the `namespaces` option.
    */
   chains?: ReadonlyArray<string>;
   /** Override the wallet's display icon shown in butr's pickers. */
@@ -93,42 +60,45 @@ type WalletConnectOptions = {
   universalProvider?: UniversalProviderConstructor;
 };
 
-const DEFAULT_CHAINS: ReadonlyArray<string> = ["eip155:1"];
-
-const DEFAULT_METHODS: ReadonlyArray<string> = [
-  "eth_sendTransaction",
-  "eth_accounts",
-  "eth_chainId",
-  "eth_getBalance",
-  "eth_getTransactionReceipt",
-  "personal_sign",
-  "wallet_switchEthereumChain",
-];
-
-const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged", "disconnect"];
-
 const DEFAULT_ICON =
   "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzNiOTlmYyI+PHBhdGggZD0iTTQuOTEzIDcuNTE5YzMuOTI0LTMuODQyIDEwLjI1Mi0zLjg0MiAxNC4xNzYgMGwuNDcyLjQ2MmEuNDgzLjQ4MyAwIDAgMSAwIC42OWwtMS42MTUgMS41ODFhLjI1NC4yNTQgMCAwIDEtLjM1NCAwbC0uNjUtLjYzN2MtMi43MzgtMi42OC03LjE3Ny0yLjY4LTkuOTE1IDBsLS42OTYuNjgyYS4yNTQuMjU0IDAgMCAxLS4zNTQgMEw0LjM2MyA4LjcxNmEuNDgzLjQ4MyAwIDAgMSAwLS42OXptMTcuNTA0IDMuMjY1IDEuNDM3IDEuNDA2YS40ODMuNDgzIDAgMCAxIDAgLjY5bC02LjQ4MiA2LjM0OWEuNTA4LjUwOCAwIDAgMS0uNzA4IDBsLTQuNjAyLTQuNTA1YS4xMjcuMTI3IDAgMCAwLS4xNzcgMGwtNC42MDIgNC41MDVhLjUwOC41MDggMCAwIDEtLjcwOCAwTC4wOTMgMTIuODhhLjQ4My40ODMgMCAwIDEgMC0uNjlsMS40MzctMS40MDZhLjUwOC41MDggMCAwIDEgLjcwOCAwbDQuNjAyIDQuNTA1Yy4wNDkuMDQ4LjEyOC4wNDguMTc3IDBsNC42MDItNC41MDVhLjUwOC41MDggMCAwIDEgLjcwOCAwbDQuNjAyIDQuNTA1Yy4wNDkuMDQ4LjEyOC4wNDguMTc3IDBsNC42MDItNC41MDVhLjUwOC41MDggMCAwIDEgLjcwOCAweiIvPjwvc3ZnPg==";
 
-const loadUniversalProvider = async (): Promise<UniversalProviderConstructor> => {
-  // Dynamic import keeps `@walletconnect/universal-provider` an
-  // *optional* peer dep — consumers who don't import `butr/walletconnect`
-  // never pay the bundle cost, and the package install works without
-  // the dep present.
-  const mod = (await import("@walletconnect/universal-provider")) as unknown as {
-    default?: UniversalProviderConstructor;
-    UniversalProvider: UniversalProviderConstructor;
-  };
-  // Two possible export shapes across versions
-  return mod.UniversalProvider ?? (mod.default as UniversalProviderConstructor);
+const initProvider = async (options: WalletConnectOptions): Promise<UniversalProviderLike> => {
+  const UniversalProvider = options.universalProvider ?? (await loadUniversalProvider());
+  const provider = await UniversalProvider.init({
+    metadata: options.metadata
+      ? {
+          description: options.metadata.description,
+          icons: options.metadata.icons ? [...options.metadata.icons] : undefined,
+          name: options.metadata.name,
+          url: options.metadata.url,
+        }
+      : undefined,
+    projectId: options.projectId,
+  });
+
+  // Forward pairing URIs to the consumer so they can render a QR code
+  // or deep-link the user's mobile wallet.
+  if (options.onPairingUri) {
+    provider.on("display_uri", ((uri: unknown) => {
+      if (typeof uri === "string") {
+        options.onPairingUri?.(uri);
+      }
+    }) as never);
+  }
+
+  return provider;
 };
 
 /**
- * Build a WalletConnect v2 adapter usable with butr's
- * `WalletManagerConfig.createConnector`. The returned adapter is
- * fully-formed but UN-paired — the actual QR pairing happens when
- * butr's runtime calls `adapter.connect()` (typically when the user
- * clicks "Connect" in your UI).
+ * Build a single WalletConnect v2 adapter wired to the EVM namespace.
+ * The returned adapter is fully-formed but UN-paired — the actual QR
+ * pairing happens when butr's runtime calls `adapter.connect()`
+ * (typically when the user clicks "Connect" in your UI).
+ *
+ * **Single-platform.** This factory always returns one EVM-namespace
+ * adapter, preserving the original API. For multi-platform pairings
+ * (one QR scan, multiple chains), use {@link createWalletConnectAdapters}.
  *
  * @example
  * ```ts
@@ -153,103 +123,116 @@ const loadUniversalProvider = async (): Promise<UniversalProviderConstructor> =>
 const createWalletConnectAdapter = async (
   options: WalletConnectOptions,
 ): Promise<WalletAdapter> => {
-  const UniversalProvider = options.universalProvider ?? (await loadUniversalProvider());
-  const provider = await UniversalProvider.init({
-    metadata: options.metadata
-      ? {
-          description: options.metadata.description,
-          icons: options.metadata.icons ? [...options.metadata.icons] : undefined,
-          name: options.metadata.name,
-          url: options.metadata.url,
-        }
-      : undefined,
-    projectId: options.projectId,
+  const provider = await initProvider(options);
+  const chains =
+    options.chains && options.chains.length > 0 ? options.chains : evmNamespace.defaultChains;
+  return evmNamespace.buildAdapter({
+    chains,
+    icon: options.icon ?? DEFAULT_ICON,
+    id: options.id ?? "walletconnect",
+    name: options.name ?? "WalletConnect",
+    provider,
   });
+};
 
-  // Forward pairing URIs to the consumer so they can render a QR code
-  // or deep-link the user's mobile wallet.
-  if (options.onPairingUri) {
-    provider.on("display_uri", ((uri: unknown) => {
-      if (typeof uri === "string") {
-        options.onPairingUri?.(uri);
-      }
-    }) as never);
+/**
+ * Multi-namespace WalletConnect factory. Accepts a per-platform
+ * `chains` map and returns one adapter per requested namespace from a
+ * single paired session. Each returned adapter has its own id (with a
+ * platform suffix) so butr's pool can hold them simultaneously.
+ *
+ * **What's implemented today.** Only the EVM namespace builder ships
+ * with the package. Passing `svm` / `sui` / `bitcoin` chains today
+ * throws — the namespace builder for those is a tracked follow-up.
+ * The factory is shaped this way so adding a platform = adding one
+ * file under `src/namespaces/` and one entry to {@link KNOWN_NAMESPACES},
+ * with no API change elsewhere.
+ *
+ * **Per-namespace adapter ids.** When more than one namespace is
+ * requested, each adapter's id is suffixed with the platform
+ * (`walletconnect-evm`, `walletconnect-svm`, …) so they coexist in
+ * butr's pool. With a single namespace, the id stays the base
+ * `options.id ?? "walletconnect"` for back-compat with
+ * {@link createWalletConnectAdapter}.
+ */
+type WalletConnectMultiOptions = Omit<WalletConnectOptions, "chains"> & {
+  /**
+   * Per-namespace chain requests. Each key is a `ChainPlatform`; each
+   * value is the CAIP-2 chains to advertise for that namespace.
+   *
+   * Omit a key to skip that namespace entirely. Pass an empty array
+   * to use the namespace builder's `defaultChains`.
+   */
+  namespaces: Partial<Record<ChainPlatform, ReadonlyArray<string>>>;
+};
+
+/**
+ * Registry of known per-namespace builders. Adding a new namespace =
+ * import its builder + add the entry. Today only EVM is implemented.
+ */
+const KNOWN_NAMESPACES: Readonly<Partial<Record<ChainPlatform, WalletConnectNamespaceBuilder>>> = {
+  evm: evmNamespace,
+};
+
+const createWalletConnectAdapters = async (
+  options: WalletConnectMultiOptions,
+): Promise<Array<WalletAdapter>> => {
+  const requested = Object.entries(options.namespaces).filter(([, v]) => v !== undefined) as Array<
+    [ChainPlatform, ReadonlyArray<string>]
+  >;
+  if (requested.length === 0) {
+    throw new Error(
+      "[butr/walletconnect] createWalletConnectAdapters needs at least one namespace",
+    );
+  }
+  // Validate every requested namespace has a registered builder before
+  // we open a WC session — fail loudly upfront rather than after the
+  // user has scanned the QR.
+  const unsupported = requested.filter(([platform]) => !KNOWN_NAMESPACES[platform]);
+  if (unsupported.length > 0) {
+    throw new Error(
+      `[butr/walletconnect] no namespace builder registered for: ${unsupported
+        .map(([p]) => p)
+        .join(", ")}. Today only "evm" ships; SVM / Sui / Bitcoin builders are tracked follow-ups.`,
+    );
   }
 
-  const chains = options.chains && options.chains.length > 0 ? options.chains : DEFAULT_CHAINS;
-  const id = options.id ?? "walletconnect";
-  const name = options.name ?? "WalletConnect";
+  const provider = await initProvider(options);
+  const baseId = options.id ?? "walletconnect";
+  const baseName = options.name ?? "WalletConnect";
   const icon = options.icon ?? DEFAULT_ICON;
+  const multiNamespace = requested.length > 1;
 
-  const info: Eip6963ProviderInfo = {
-    icon,
-    name,
-    rdns: id,
-    uuid: id,
-  };
-
-  // buildEvmAdapter wires every EIP-1193 method against the provider —
-  // request, on/removeListener, accountsChanged/chainChanged
-  // subscription, sendTx, signMessage, etc. We only override `connect`
-  // (which needs the WC namespace handshake) and `disconnect` (which
-  // needs to kill the session).
-  const base = buildEvmAdapter(info, provider as Eip1193Provider);
-
-  const adapter: WalletAdapter = {
-    ...base,
-    capabilities: WALLETCONNECT_CAPABILITIES,
-    async connect(opts) {
-      // If a previous session is still live (e.g., across reloads),
-      // skip the pairing handshake — the provider already has the
-      // session topic and can route requests through the relay.
-      if (provider.session) {
-        return;
-      }
-      if (opts?.silent) {
-        // No live session to resume. Refuse instead of popping the
-        // pairing QR modal on page load — hydration drops the entry.
-        throw new Error("No WalletConnect session for silent reconnect");
-      }
-      await provider.connect({
-        namespaces: {
-          eip155: {
-            chains: [...chains],
-            events: [...DEFAULT_EVENTS],
-            methods: [...DEFAULT_METHODS],
-          },
-        },
-      });
-    },
-    async disconnect() {
-      if (!provider.session) {
-        return;
-      }
-      try {
-        await provider.disconnect();
-      } catch (error) {
-        // The relay may already have dropped the session (mobile
-        // wallet was uninstalled, etc.). Don't propagate — butr's
-        // reducer marks the wallet disconnected on its side regardless.
-        logWarn("[butr/walletconnect] disconnect threw:", error);
-      }
-    },
-
-    id,
-
-    name,
-  };
-
-  return adapter;
+  return requested.map(([platform, chains]) => {
+    const builder = KNOWN_NAMESPACES[platform];
+    if (!builder) {
+      throw new Error(`Unreachable: builder missing for ${platform}`);
+    }
+    return builder.buildAdapter({
+      chains: chains.length > 0 ? chains : builder.defaultChains,
+      icon,
+      // Suffix the id when more than one namespace is in play so each
+      // adapter has a unique pool key.
+      id: multiNamespace ? `${baseId}-${platform}` : baseId,
+      name: multiNamespace ? `${baseName} (${platform.toUpperCase()})` : baseName,
+      provider,
+    });
+  });
 };
 
 export type {
+  Account,
   UniversalProviderConstructor,
   UniversalProviderLike,
   WalletConnectMetadata,
+  WalletConnectMultiOptions,
+  WalletConnectNamespaceBuilder,
   WalletConnectOptions,
 };
-export { DEFAULT_ICON as WALLETCONNECT_DEFAULT_ICON, createWalletConnectAdapter };
-
-// Account type re-exported for adapter authors who want to construct
-// accounts manually (e.g. for SVM via WalletConnect — future work).
-export type { Account };
+export {
+  DEFAULT_ICON as WALLETCONNECT_DEFAULT_ICON,
+  KNOWN_NAMESPACES,
+  createWalletConnectAdapter,
+  createWalletConnectAdapters,
+  evmNamespace,
+};

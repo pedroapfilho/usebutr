@@ -1,0 +1,76 @@
+---
+title: bitcoinjs-lib
+description: Derive address formats from network constants, sign messages, and round-trip PSBTs through the wallet.
+---
+
+`bitcoinjs-lib` is the long-standing Bitcoin transaction toolkit. It is a
+**builder, not an RPC client** — it ships network constants and PSBT
+construction, but no node connection. butr discovers and manages the wallet and
+exposes signing; `bitcoinjs-lib` supplies the network definitions and
+transaction encoding; a separate Esplora/Electrum client (not shown) would
+supply UTXOs and broadcast.
+
+## Derive the address format from the chain
+
+`bitcoinjs-lib`'s `networks` export carries the bech32 prefix per network. Map
+the connected chain's CAIP-2 reference to a network to know which address
+format the wallet should produce:
+
+```ts
+import { networks } from "bitcoinjs-lib";
+
+const NETWORK_BY_CHAIN_REF: Record<string, typeof networks.bitcoin> = {
+  "000000000019d6689c085ae165831e93": networks.bitcoin, // mainnet
+  "000000000933ea01ad0ee984209779ba": networks.testnet,
+  "0f9188f13cb7b2c71f2a335e3a4fc328": networks.regtest,
+};
+
+const ref = wallet.account.chain.id.split(":")[1] ?? "";
+const bech32Prefix = NETWORK_BY_CHAIN_REF[ref]?.bech32 ?? "unknown"; // "bc" | "tb" | "bcrt"
+```
+
+## Sign a message
+
+`signMessage` is wired on every Bitcoin adapter — call it on the connector:
+
+```ts
+const message = new TextEncoder().encode("Hello from butr + bitcoinjs-lib");
+const { signature } = await wallet.connector.signMessage(message);
+// `signature` is a Uint8Array — render as hex for display.
+```
+
+## Sign a PSBT
+
+PSBT signing is optional — not every Bitcoin wallet advertises it. Narrow on
+`chainPlatform` so TypeScript exposes `signTransaction`, then feature-detect at
+runtime before calling it:
+
+```ts
+const connector = wallet.connector;
+if (connector.chainPlatform !== "bitcoin" || !connector.signTransaction) {
+  throw new Error("This wallet does not advertise PSBT signing (bitcoin:signPsbt).");
+}
+
+// PSBT bytes — built with bitcoinjs-lib's Psbt class from real UTXOs in
+// a production app. The wallet returns the signed PSBT.
+const signed = await connector.signTransaction(psbtBytes);
+```
+
+<Callout type="warn">
+  **No broadcast.** `bitcoinjs-lib` doesn't talk to a node. `signTransaction` returns a signed PSBT;
+  you finalize it and POST the raw transaction to an Esplora / Electrum / Bitcoin Core endpoint
+  yourself. The capability flag `signTransaction` is `false` on wallets that don't advertise
+  `bitcoin:signPsbt` — gate the UI on it.
+</Callout>
+
+<Callout type="info">
+  `chainPlatform` narrowing matters: `WalletAdapter`'s EVM variant has no `signTransaction` at all.
+  The discriminant teaches TypeScript that the method *can* exist on a Bitcoin connector; the
+  runtime `!connector.signTransaction` check still applies because it's optional even on Bitcoin.
+</Callout>
+
+<Callout type="info">
+  **Source:** `apps/demo-with-bitcoin/src/app.tsx` in the [butr
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-with-bitcoin). Run `pnpm
+  dev --filter=demo-with-bitcoin` → `http://localhost:5181`.
+</Callout>

@@ -5,7 +5,7 @@ import { WalletProvider } from "../wallet-provider";
 
 const RootDocument = ({ children }: { children: React.ReactNode }) => (
   // oxlint-disable-next-line no-head-element -- TanStack Start uses native <head>, not Next.js
-  <html lang="en" style={{ colorScheme: "light dark" }}>
+  <html lang="en" style={{ colorScheme: "light" }}>
     {/* oxlint-disable-next-line no-head-element -- TanStack Start shell */}
     <head>
       <HeadContent />

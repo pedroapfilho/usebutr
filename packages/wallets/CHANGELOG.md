@@ -1,5 +1,17 @@
 # @usebutr/wallets
 
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies [f846e77]
+  - @usebutr/core@0.2.1
+  - @usebutr/evm@0.1.2
+  - @usebutr/svm@0.2.1
+  - @usebutr/sui@0.2.1
+  - @usebutr/bitcoin@0.2.1
+  - @usebutr/react@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes

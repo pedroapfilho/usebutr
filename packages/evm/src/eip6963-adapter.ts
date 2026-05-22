@@ -1,4 +1,5 @@
 import type { Account, ChainBase, WalletAdapter } from "@usebutr/core";
+import { sanitizeIcon } from "@usebutr/core";
 
 import { resolveEip6963Capabilities } from "./capabilities";
 import type { Eip1193Listener, Eip1193Provider, Eip6963ProviderInfo } from "./eip1193";
@@ -182,7 +183,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       return { status: receipt.status === "0x1" ? "Success" : "Error" };
     },
 
-    icon: info.icon,
+    icon: sanitizeIcon(info.icon),
     id: info.rdns,
     name: info.name,
 

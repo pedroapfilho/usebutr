@@ -63,3 +63,6 @@ export { walletEqual } from "./wallet-equal";
 
 // Logger — re-exported so consuming packages can import from @usebutr/core
 export { logError, logWarn } from "./logger";
+
+// Icon normalization for wallet-announced metadata
+export { sanitizeIcon } from "./sanitize-icon";

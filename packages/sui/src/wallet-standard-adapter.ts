@@ -1,5 +1,5 @@
 import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
-import { logWarn } from "@usebutr/core";
+import { logWarn, sanitizeIcon } from "@usebutr/core";
 import {
   buildAccount,
   getFeature,
@@ -199,7 +199,7 @@ const buildSuiAdapter = (
       return Promise.resolve({ status: "Pending" as const });
     },
 
-    icon: wallet.icon,
+    icon: sanitizeIcon(wallet.icon),
     id: slugify(wallet.name),
     name: wallet.name,
 

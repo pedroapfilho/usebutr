@@ -7,6 +7,8 @@
     "gill",
     "solana-kit",
     "solana-wallet-adapter",
-    "solana-web3js"
+    "solana-web3js",
+    "sui",
+    "bitcoin"
   ]
 }

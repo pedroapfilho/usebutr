@@ -46,6 +46,8 @@ pnpm test                               # vitest unit tests
 | `demo-with-solana-kit`            | @solana/kit                  | `http://localhost:5179` |
 | `demo-with-sui`                   | @mysten/sui                  | `http://localhost:5180` |
 | `demo-with-bitcoin`               | bitcoinjs-lib                | `http://localhost:5181` |
+| `demo-with-gill`                  | gill                         | `http://localhost:5182` |
+| `demo-with-solana-framework-kit`  | @solana/react-hooks          | `http://localhost:5183` |
 
 ### Packages
 

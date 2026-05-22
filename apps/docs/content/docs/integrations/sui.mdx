@@ -1,0 +1,66 @@
+---
+title: "@mysten/sui"
+description: Read state with SuiClient, build transactions with the Transaction builder, sign and execute through the wallet.
+---
+
+`@mysten/sui` is Sui's official TypeScript SDK. butr discovers and manages the
+wallet; `@mysten/sui` owns the RPC client (`SuiClient`) and the transaction
+builder (`Transaction`); the wallet's Wallet Standard features supply signing
+and execution.
+
+## Read state with `SuiClient`
+
+`SuiClient` talks to a Sui full node directly — point it at a network and read
+balances without routing through the wallet:
+
+```ts
+import { SuiClient } from "@mysten/sui/client";
+
+const client = new SuiClient({ url: "https://fullnode.testnet.sui.io:443" });
+
+const { totalBalance } = await client.getBalance({ owner: wallet.account.walletAddress });
+const sui = `${Number(totalBalance) / 1_000_000_000} SUI`; // MIST → SUI
+```
+
+## Sign a message
+
+The Sui adapter wires `signMessage` directly — call it on the connector and get
+the signature bytes back:
+
+```ts
+const message = new TextEncoder().encode("Hello from butr + @mysten/sui");
+const { signature } = await wallet.connector.signMessage(message);
+// `signature` is a Uint8Array — render as hex for display.
+```
+
+## Build and send a transaction
+
+Build with `@mysten/sui`'s `Transaction` programmable-transaction builder, then
+hand the object to butr's `sendTx` — the Sui adapter routes it through the
+wallet's `sui:signAndExecuteTransaction` feature, which signs **and** broadcasts:
+
+```ts
+import { Transaction } from "@mysten/sui/transactions";
+
+const tx = new Transaction();
+tx.setSender(wallet.account.walletAddress);
+// A no-op self-transfer: split 0 MIST off the gas coin, send it back.
+const [coin] = tx.splitCoins(tx.gas, [0]);
+tx.transferObjects([coin], wallet.account.walletAddress);
+
+const digest = await wallet.connector.sendTx(tx);
+// digest → look up on https://suiscan.xyz/testnet/tx/<digest>
+```
+
+<Callout type="info">
+  Unlike EVM/SVM, you don't broadcast separately — Sui wallets expose
+  `sui:signAndExecuteTransaction`, which signs and submits in one step. `sendTx` resolves to the
+  transaction digest, not raw signed bytes. For sign-only flows (no broadcast), use
+  `signTransaction` instead.
+</Callout>
+
+<Callout type="info">
+  **Source:** `apps/demo-with-sui/src/app.tsx` in the [butr
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-with-sui). Targets Sui
+  testnet. Run `pnpm dev --filter=demo-with-sui` → `http://localhost:5180`.
+</Callout>

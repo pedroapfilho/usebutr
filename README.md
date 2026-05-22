@@ -9,7 +9,7 @@
 
 butr is a multi-chain wallet management library for React. It discovers EVM, Solana, Sui, and Bitcoin wallets in the browser, manages their connections across the lifetime of an app, and exposes them through composable hooks — so a single component can talk to a MetaMask account, a Phantom Solana account, a Sui Wallet account, and an Xverse Bitcoin account in the same render pass.
 
-The library is split across small focused packages so consumers bundle only what they need. The monorepo also ships eleven demo apps that exercise butr across the major React frameworks and integration patterns.
+The library is split across small focused packages so consumers bundle only what they need. The monorepo also ships thirteen demo apps that exercise butr across the major React frameworks and integration patterns.
 
 **At a glance**
 
@@ -478,17 +478,19 @@ Each one exercises every public hook in `@usebutr/react` against discovered wall
 
 ### Integration demos — butr + existing web3 libraries
 
-Each integration demo shows butr composing with a library you may already be using. butr handles wallet discovery and connection state; the integration library handles chain reads, signing, and submission. Every demo covers the same four scenarios: **connect → read balance → sign message → send transaction.**
+Each integration demo shows butr composing with a library you may already be using. butr handles wallet discovery and connection state; the integration library handles chain reads, signing, and submission. EVM/SVM/Sui demos cover **connect → read balance → sign message → send transaction**; the Bitcoin demo covers **connect → sign message → sign PSBT** (`bitcoinjs-lib` builds transactions but doesn't broadcast — pair it with an Esplora/Electrum client).
 
 | App                               | Library                               | Network      | Dev URL                 |
 | --------------------------------- | ------------------------------------- | ------------ | ----------------------- |
 | `demo-with-viem`                  | viem                                  | EVM, Sepolia | `http://localhost:5175` |
 | `demo-with-wagmi`                 | wagmi + `@wagmi/core`                 | EVM, Sepolia | `http://localhost:5176` |
-| `demo-with-solana-framework-kit`  | framework-kit (`@solana/react-hooks`) | SVM, Devnet  | `http://localhost:5181` |
-| `demo-with-gill`                  | `gill`                                | SVM, Devnet  | `http://localhost:5180` |
-| `demo-with-solana-kit`            | `@solana/kit`                         | SVM, Devnet  | `http://localhost:5179` |
-| `demo-with-solana-wallet-adapter` | `@solana/wallet-adapter-react`        | SVM, Devnet  | `http://localhost:5178` |
 | `demo-with-solana-web3js`         | `@solana/web3.js` (legacy v1)         | SVM, Devnet  | `http://localhost:5177` |
+| `demo-with-solana-wallet-adapter` | `@solana/wallet-adapter-react`        | SVM, Devnet  | `http://localhost:5178` |
+| `demo-with-solana-kit`            | `@solana/kit`                         | SVM, Devnet  | `http://localhost:5179` |
+| `demo-with-sui`                   | `@mysten/sui`                         | Sui, Testnet | `http://localhost:5180` |
+| `demo-with-bitcoin`               | `bitcoinjs-lib`                       | Bitcoin      | `http://localhost:5181` |
+| `demo-with-gill`                  | `gill`                                | SVM, Devnet  | `http://localhost:5182` |
+| `demo-with-solana-framework-kit`  | framework-kit (`@solana/react-hooks`) | SVM, Devnet  | `http://localhost:5183` |
 
 All web demos bind distinct ports so they can run concurrently.
 
@@ -519,8 +521,9 @@ pnpm dev --filter=demo-vite
 # or any of:
 #   demo-next, demo-tanstack-start, demo-expo-web,
 #   demo-with-viem, demo-with-wagmi,
-#   demo-with-solana-framework-kit, demo-with-gill, demo-with-solana-kit,
-#   demo-with-solana-wallet-adapter, demo-with-solana-web3js
+#   demo-with-solana-web3js, demo-with-solana-wallet-adapter, demo-with-solana-kit,
+#   demo-with-sui, demo-with-bitcoin,
+#   demo-with-gill, demo-with-solana-framework-kit
 ```
 
 Open the URL from the table above. Distinct ports let every demo run side by side.

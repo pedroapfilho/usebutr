@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/react",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "React provider and hooks for butr. Depends on @usebutr/core, react, zustand.",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",

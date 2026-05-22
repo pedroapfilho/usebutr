@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/ledger",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Ledger hardware-wallet adapter for butr (EVM + SVM + Sui + Bitcoin).",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",

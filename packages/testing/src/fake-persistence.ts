@@ -62,6 +62,8 @@ const createFakePersistence = (seed: FakePersistenceSeed = {}): WalletPersistenc
           accounts: wallet.accounts,
           chainPlatform: wallet.connector.chainPlatform,
           connectorId: wallet.connector.id,
+          icon: wallet.connector.icon,
+          name: wallet.connector.name,
         };
       }
       pool = record;

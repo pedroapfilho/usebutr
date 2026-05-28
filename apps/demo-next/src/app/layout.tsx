@@ -22,12 +22,12 @@ const RootLayout = async ({ children }: { children: ReactNode }) => {
   for (const { name, value } of cookieStore.getAll()) {
     initialCookies[name] = value;
   }
-  const initialSnapshot = readWalletSnapshot(initialCookies, { keyPrefix: STORAGE_KEY_PREFIX });
+  const initialState = readWalletSnapshot(initialCookies, { keyPrefix: STORAGE_KEY_PREFIX });
 
   return (
     <html lang="en" style={{ colorScheme: "light" }}>
       <body>
-        <WalletProvider initialCookies={initialCookies} initialSnapshot={initialSnapshot}>
+        <WalletProvider initialCookies={initialCookies} initialState={initialState}>
           {children}
         </WalletProvider>
       </body>

@@ -28,14 +28,14 @@ type WalletProviderProps = {
   initialCookies?: Readonly<Record<string, string>>;
   /**
    * Typed view of the persisted pool, parsed via `readWalletSnapshot`
-   * in the Server Component layout. Drives `useWalletSnapshot()` so
-   * the first paint can show "connected" without waiting for client
-   * hydration.
+   * in the Server Component layout. Synchronously seeds the wallet
+   * store so `useActiveWallet` etc. return values from render zero —
+   * no flash, no `isHydrated` gate.
    */
-  initialSnapshot?: WalletSnapshot;
+  initialState?: WalletSnapshot;
 };
 
-const WalletProvider = ({ children, initialCookies, initialSnapshot }: WalletProviderProps) => {
+const WalletProvider = ({ children, initialCookies, initialState }: WalletProviderProps) => {
   // Build the storage once at mount. The cookie driver covers the
   // persistent slot (pool / selection / active connector) so the same
   // values are reachable on the server; the session slot stays on
@@ -57,7 +57,7 @@ const WalletProvider = ({ children, initialCookies, initialSnapshot }: WalletPro
   return (
     <WalletManagerProvider
       discovery={evmDiscovery}
-      initialSnapshot={initialSnapshot}
+      initialState={initialState}
       storage={storage}
       storageKeyPrefix={STORAGE_KEY_PREFIX}
     >

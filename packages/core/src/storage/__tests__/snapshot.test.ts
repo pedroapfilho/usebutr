@@ -17,6 +17,7 @@ const validPoolEntry = {
   ],
   chainPlatform: "evm",
   connectorId: "metamask",
+  name: "MetaMask",
 };
 
 const poolCookieValue = JSON.stringify({ metamask: validPoolEntry });

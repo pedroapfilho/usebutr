@@ -49,10 +49,30 @@ const accountsEqual = (a: ReadonlyArray<Account>, b: ReadonlyArray<Account>) => 
 // Connection state
 // ============================================================================
 
-/** Connection status: "idle" | "connecting" | "success" | "error". */
+/**
+ * Connection status of the **active** wallet — wagmi-aligned vocabulary:
+ *
+ * - `"idle"` / `"connecting"` / `"success"` / `"error"` — the
+ *   user-initiated connect attempt's state, as written by the
+ *   reducer.
+ * - `"reconnecting"` — derived. Returned when the active wallet is
+ *   still backed by a shadow adapter (its connector id appears in
+ *   `state.reconnectingIds`). Indicates "we have the data, the
+ *   silent reconnect hasn't verified the live wallet yet."
+ *
+ * The derivation lives here rather than in the reducer so the state
+ * machine stays a narrow tracker of the in-flight connect attempt
+ * while the public hook gives consumers the broader vocabulary they
+ * need to render.
+ */
 const useConnectionStatus = () => {
   const store = useWalletStoreContext();
-  return useStore(store, (state) => state.connectionStatus);
+  return useStore(store, (state) => {
+    if (state.activeConnectorId && state.reconnectingIds.has(state.activeConnectorId)) {
+      return "reconnecting" as const;
+    }
+    return state.connectionStatus;
+  });
 };
 
 /** True iff `connectionStatus === "connecting"`. */

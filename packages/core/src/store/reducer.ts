@@ -11,6 +11,16 @@ type State = {
   isHydrated: boolean;
   isUserDisconnected: boolean;
   pool: Map<string, ConnectedWallet>;
+  /**
+   * Connector IDs whose pool entry is currently backed by a shadow
+   * adapter — created from `WalletManagerConfig.initialState` and
+   * waiting for the live adapter to be announced (via discovery) and
+   * the silent reconnect to succeed. The set shrinks as entries
+   * upgrade (`HYDRATED` / `CONNECT_SUCCEEDED` clear matching ids) or
+   * drop (`DISCONNECTED` / `RESET`). Empty for stores constructed
+   * without `initialState`.
+   */
+  reconnectingIds: ReadonlySet<string>;
   selection: Map<ChainPlatform, string>;
 };
 
@@ -84,6 +94,7 @@ const initialState: State = {
   isHydrated: false,
   isUserDisconnected: false,
   pool: new Map(),
+  reconnectingIds: new Set(),
   selection: new Map(),
 };
 
@@ -132,12 +143,28 @@ const reducer = (state: State, event: Event): State => {
       } else if (pool.size > 0) {
         activeConnectorId = pool.keys().next().value ?? null;
       }
+      // Clear reconnectingIds for every entry that came back via the
+      // event's live-pool. Shadows that weren't upgraded (adapter not
+      // yet announced) stay in `state.pool` and stay in
+      // `reconnectingIds`; they'll be cleared individually by
+      // CONNECT_SUCCEEDED when discovery's late-restore path resolves.
+      let nextReconnecting: ReadonlySet<string> = state.reconnectingIds;
+      if (state.reconnectingIds.size > 0 && event.pool.size > 0) {
+        const next = new Set(state.reconnectingIds);
+        for (const id of event.pool.keys()) {
+          next.delete(id);
+        }
+        if (next.size !== state.reconnectingIds.size) {
+          nextReconnecting = next;
+        }
+      }
       return {
         ...state,
         activeConnectorId,
         isHydrated: true,
         isUserDisconnected: event.isUserDisconnected,
         pool,
+        reconnectingIds: nextReconnecting,
         selection,
       };
     }
@@ -159,6 +186,14 @@ const reducer = (state: State, event: Event): State => {
       const { connectorId, entry } = event;
       const existing = state.pool.get(connectorId);
 
+      // Drop the id from reconnectingIds when present. Covers both the
+      // late-restore path (discovery announced after the initial seed)
+      // and ordinary connects — the latter typically have an empty set
+      // so this is a no-op for them.
+      const nextReconnecting: ReadonlySet<string> = state.reconnectingIds.has(connectorId)
+        ? new Set([...state.reconnectingIds].filter((id) => id !== connectorId))
+        : state.reconnectingIds;
+
       // Same connector + same address: only flip the status, keep object refs stable
       // so reactive selectors don't churn.
       if (
@@ -170,6 +205,15 @@ const reducer = (state: State, event: Event): State => {
           activeConnectorId: connectorId,
           connectingConnectorId: null,
           connectionStatus: "success",
+          pool:
+            // When the existing entry was a shadow, the address may
+            // match but the connector reference is the placeholder.
+            // Swap in the live entry so subsequent calls don't throw
+            // ShadowConnectorError.
+            existing.connector === entry.connector
+              ? state.pool
+              : new Map([...state.pool, [connectorId, entry] as const]),
+          reconnectingIds: nextReconnecting,
         };
       }
 
@@ -185,6 +229,7 @@ const reducer = (state: State, event: Event): State => {
         connectingConnectorId: null,
         connectionStatus: "success",
         pool: newPool,
+        reconnectingIds: nextReconnecting,
         selection: newSelection,
       };
     }
@@ -223,10 +268,15 @@ const reducer = (state: State, event: Event): State => {
           ? (firstId.value ?? null)
           : state.activeConnectorId;
 
+      const nextReconnecting: ReadonlySet<string> = state.reconnectingIds.has(event.connectorId)
+        ? new Set([...state.reconnectingIds].filter((id) => id !== event.connectorId))
+        : state.reconnectingIds;
+
       return {
         ...state,
         activeConnectorId,
         pool: newPool,
+        reconnectingIds: nextReconnecting,
         selection: newSelection,
       };
     }
@@ -321,6 +371,7 @@ const reducer = (state: State, event: Event): State => {
         ...initialState,
         isHydrated: state.isHydrated,
         isUserDisconnected: true,
+        reconnectingIds: new Set(),
       };
     }
 

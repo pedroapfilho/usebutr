@@ -1,5 +1,7 @@
 import type { StorageDriver } from "./persistence";
 
+type InitialCookies = Iterable<[string, string]> | Readonly<Record<string, string>>;
+
 type CookieDriverOptions = {
   /**
    * Cookie `domain` attribute. Omit to scope to the current host.
@@ -7,6 +9,18 @@ type CookieDriverOptions = {
    * across subdomains.
    */
   domain?: string;
+  /**
+   * Snapshot of cookies for the SSR pass — typically the result of
+   * Next.js' `cookies()` (from `next/headers`) or a parsed
+   * `req.headers.cookie`. Used only when `document` is unavailable.
+   *
+   * When provided, `getItem` reads from this snapshot during the
+   * server render so the store sees the same persisted state the
+   * client will see after hydration. Writes remain no-ops on the
+   * server — emitting `Set-Cookie` has to be done by the framework
+   * layer that owns the response.
+   */
+  initialCookies?: InitialCookies;
   /**
    * Lifetime in seconds. Defaults to 30 days. Pass `undefined`
    * (the default) for "until the session ends" — but note that
@@ -88,15 +102,27 @@ const buildCookieString = (
   return parts.join("; ");
 };
 
+const toCookieMap = (input: InitialCookies | undefined): Map<string, string> | null => {
+  if (!input) {
+    return null;
+  }
+  if (typeof (input as Iterable<[string, string]>)[Symbol.iterator] === "function") {
+    return new Map(input as Iterable<[string, string]>);
+  }
+  return new Map(Object.entries(input as Readonly<Record<string, string>>));
+};
+
 /**
  * Cookie-backed storage driver. Reads/writes `document.cookie` —
  * server-readable, survives reloads, scoped per `domain`/`path`.
  *
  * **When to use this:** SSR apps that need to know who's connected
  * during the server render (so they can stream the connected-wallet
- * UI without a client-side hydration flicker). The server can read
- * the same cookies via `req.headers.cookie` and feed them into
- * `WalletStorage` ahead of mount.
+ * UI without a client-side hydration flicker). Pass `initialCookies`
+ * from a server-side cookie source (e.g. `cookies()` in Next.js'
+ * `next/headers`, or a parsed `req.headers.cookie`) and the same
+ * driver will serve those values during the server render and switch
+ * to `document.cookie` once it mounts in the browser.
  *
  * **Trade-offs vs `localStorage`:** cookies travel with every
  * request, so they cost bytes on the wire. Keep the storage key
@@ -104,24 +130,38 @@ const buildCookieString = (
  * only — the `session` slot can stay in `sessionStorage` (which
  * cookies can't natively model anyway).
  *
- * **No-op on the server.** If `document` is undefined the driver
- * returns a read-only stub that always resolves to `null` for
- * `getItem` and ignores writes. The caller is expected to hydrate
- * server-side state by reading cookies from the request header
- * directly and seeding `WalletStorage` with an in-memory driver
- * built from that snapshot.
+ * **Server-side writes are no-ops.** Emitting `Set-Cookie` requires
+ * access to the framework's response object, which a storage driver
+ * shouldn't reach into. The store doesn't mutate persisted state
+ * during the SSR pass anyway — writes only fire after client mount,
+ * once `document.cookie` is reachable.
  */
 const createCookieStorageDriver = (options: CookieDriverOptions = {}): StorageDriver => {
+  const seeded = toCookieMap(options.initialCookies);
+
   if (typeof document === "undefined") {
+    if (!seeded) {
+      return {
+        getItem() {
+          return null;
+        },
+        removeItem() {
+          // server-side no-op
+        },
+        setItem() {
+          // server-side no-op
+        },
+      };
+    }
     return {
-      getItem() {
-        return null;
+      getItem(key) {
+        return seeded.get(key) ?? null;
       },
       removeItem() {
-        // server-side no-op
+        // server-side no-op — framework owns Set-Cookie
       },
       setItem() {
-        // server-side no-op
+        // server-side no-op — framework owns Set-Cookie
       },
     };
   }
@@ -140,5 +180,5 @@ const createCookieStorageDriver = (options: CookieDriverOptions = {}): StorageDr
   };
 };
 
-export type { CookieDriverOptions };
+export type { CookieDriverOptions, InitialCookies };
 export { createCookieStorageDriver };

@@ -1,0 +1,223 @@
+import { logWarn } from "../logger";
+import type { ChainPlatform } from "../types";
+
+import type { StoredPoolEntry, StoredPoolRecord, StoredSelectionRecord } from "./persistence";
+
+const VALID_CHAIN_PLATFORMS = new Set<ChainPlatform>(["evm", "svm", "sui", "bitcoin"]);
+
+/**
+ * Server-safe view of a butr-persisted session — everything you can
+ * know about a user's connected wallets from the cookie payload alone,
+ * without instantiating a `Connector`.
+ *
+ * Notably absent: the `Connector` instance. A wallet extension exists
+ * only in the browser, so a server render can know *which* wallet was
+ * connected and *what address* it held, but cannot dispatch
+ * `signMessage`/`sendTransaction` on it. Splitting display from action
+ * along this seam keeps the impossibility expressed in the types
+ * rather than hidden inside a runtime check.
+ */
+type WalletSnapshot = {
+  activeConnectorId: string | null;
+  pool: StoredPoolRecord;
+  selection: StoredSelectionRecord;
+};
+
+type CookieSource =
+  | Iterable<{ name: string; value: string }>
+  | Iterable<[string, string]>
+  | Readonly<Record<string, string>>;
+
+type SnapshotOptions = {
+  /**
+   * Same prefix passed to `WalletManagerProvider` / `WalletStorage`.
+   * Defaults to `"butr"` to match the library default.
+   */
+  keyPrefix?: string;
+};
+
+const EMPTY_SNAPSHOT: WalletSnapshot = Object.freeze({
+  activeConnectorId: null,
+  pool: Object.freeze({}) as StoredPoolRecord,
+  selection: Object.freeze({}) as StoredSelectionRecord,
+});
+
+const toCookieMap = (input: CookieSource): Map<string, string> => {
+  // Plain record: `{ name: "value", ... }`. Distinguished from
+  // iterables by the absence of a `Symbol.iterator` callable.
+  const maybeIterator = (input as { [Symbol.iterator]?: unknown })[Symbol.iterator];
+  if (typeof maybeIterator !== "function") {
+    return new Map(Object.entries(input as Readonly<Record<string, string>>));
+  }
+  const out = new Map<string, string>();
+  for (const entry of input as Iterable<{ name: string; value: string } | [string, string]>) {
+    if (Array.isArray(entry)) {
+      const [name, value] = entry;
+      if (typeof name === "string" && typeof value === "string") {
+        out.set(name, value);
+      }
+      continue;
+    }
+    if (
+      entry &&
+      typeof entry === "object" &&
+      "name" in entry &&
+      "value" in entry &&
+      typeof entry.name === "string" &&
+      typeof entry.value === "string"
+    ) {
+      out.set(entry.name, entry.value);
+    }
+  }
+  return out;
+};
+
+const isValidAccount = (value: unknown): boolean => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const account = value as Record<string, unknown>;
+  if (typeof account.walletAddress !== "string" || typeof account.id !== "string") {
+    return false;
+  }
+  if (!account.chain || typeof account.chain !== "object") {
+    return false;
+  }
+  return true;
+};
+
+const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const entry = value as Record<string, unknown>;
+  if (typeof entry.connectorId !== "string" || entry.connectorId !== key) {
+    return false;
+  }
+  if (typeof entry.chainPlatform !== "string") {
+    return false;
+  }
+  if (!VALID_CHAIN_PLATFORMS.has(entry.chainPlatform as ChainPlatform)) {
+    return false;
+  }
+  if (entry.name !== undefined && typeof entry.name !== "string") {
+    return false;
+  }
+  if (entry.icon !== undefined && typeof entry.icon !== "string") {
+    return false;
+  }
+  if (!isValidAccount(entry.account)) {
+    return false;
+  }
+  if (!Array.isArray(entry.accounts) || !entry.accounts.every(isValidAccount)) {
+    return false;
+  }
+  return true;
+};
+
+const parsePool = (raw: string | undefined): StoredPoolRecord => {
+  if (!raw) {
+    return {};
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return {};
+    }
+    const result: StoredPoolRecord = {};
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (isValidPoolEntry(key, value)) {
+        result[key] = value;
+      } else {
+        logWarn(`[butr] readWalletSnapshot: dropping invalid pool entry for ${key}`);
+      }
+    }
+    return result;
+  } catch (error) {
+    logWarn("[butr] readWalletSnapshot: failed to parse pool cookie:", error);
+    return {};
+  }
+};
+
+const parseSelection = (raw: string | undefined): StoredSelectionRecord => {
+  if (!raw) {
+    return {};
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return {};
+    }
+    const result: StoredSelectionRecord = {};
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (
+        VALID_CHAIN_PLATFORMS.has(key as ChainPlatform) &&
+        typeof value === "string" &&
+        value.length > 0
+      ) {
+        result[key as ChainPlatform] = value;
+      }
+    }
+    return result;
+  } catch (error) {
+    logWarn("[butr] readWalletSnapshot: failed to parse selection cookie:", error);
+    return {};
+  }
+};
+
+/**
+ * Parse a cookie source into a server-safe `WalletSnapshot`.
+ *
+ * Pure, sync, no `document`, no React — runnable in any environment
+ * (Server Component, route handler, edge middleware, even client
+ * code). Pair with `createCookieStorageDriver({ initialCookies })`
+ * and `<WalletManagerProvider initialSnapshot={…} />` to render a
+ * connected shell server-side without a hydration flash.
+ *
+ * **Stale-snapshot semantics.** The snapshot reflects whatever the
+ * browser most recently persisted. If the user has since uninstalled
+ * the wallet, switched accounts, or disconnected in another tab, the
+ * client-side hydration will reconcile reality and the live store
+ * will diverge from the snapshot. Treat the snapshot as an
+ * *optimistic* shell — accurate enough to avoid a paint flicker,
+ * authoritative only after `useIsHydrated()` is true.
+ *
+ * **Inputs.** Accepts the three shapes Next.js / Express / Hono /
+ * generic-Node cookie code naturally produces:
+ *  - A plain object: `{ "butr-pool": "{...}", … }`
+ *  - An array of `{ name, value }` (Next.js' `cookies().getAll()`)
+ *  - An iterable of `[name, value]` tuples
+ *
+ * Malformed entries are dropped with a `logWarn` (same policy as
+ * `WalletStorage.getPool`) — a cross-tab corruption shouldn't crash
+ * the server render.
+ */
+const readWalletSnapshot = (
+  source: CookieSource,
+  options: SnapshotOptions = {},
+): WalletSnapshot => {
+  const keyPrefix = options.keyPrefix || "butr";
+  const cookies = toCookieMap(source);
+
+  const pool = parsePool(cookies.get(`${keyPrefix}-pool`));
+  const selection = parseSelection(cookies.get(`${keyPrefix}-selection`));
+
+  const rawActive = cookies.get(`${keyPrefix}-active`);
+  let activeConnectorId: string | null = null;
+  if (rawActive && rawActive.length > 0 && pool[rawActive]) {
+    activeConnectorId = rawActive;
+  } else {
+    // Mirror `HydrationCoordinator.hydrate` selection-fallback: when no
+    // explicit active is stored, surface any pool member so the render
+    // shell can still show "connected" instead of "disconnected".
+    const firstKey = Object.keys(pool)[0];
+    if (firstKey) {
+      activeConnectorId = firstKey;
+    }
+  }
+
+  return { activeConnectorId, pool, selection };
+};
+
+export type { CookieSource, SnapshotOptions, WalletSnapshot };
+export { EMPTY_SNAPSHOT, readWalletSnapshot };

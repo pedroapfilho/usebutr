@@ -2,15 +2,66 @@ import { createStore } from "zustand/vanilla";
 
 import { logError, logWarn } from "../logger";
 import { WalletStorage } from "../storage";
-import type { WalletPersistence } from "../storage";
-import type { Account, ChainPlatform, ConnectedWallet, WalletManagerConfig } from "../types";
+import type { WalletPersistence, WalletSnapshot } from "../storage";
+import type {
+  Account,
+  ChainPlatform,
+  ConnectedWallet,
+  WalletAdapter,
+  WalletManagerConfig,
+} from "../types";
 import type { ConnectionError } from "../types/errors";
 import { mapConnectionError } from "../types/errors";
 
 import { createConnectorLifecycle } from "./connector-lifecycle";
 import { createHydrationCoordinator } from "./hydration";
 import { type Event, type State, initialState, reducer } from "./reducer";
+import { createShadowAdapter } from "./shadow-adapter";
 import { run } from "./wallet-store-helpers";
+
+/**
+ * Build a synchronously-populated `State` from `config.initialState`.
+ * Each pool entry becomes a `ConnectedWallet` whose `connector` is a
+ * shadow adapter; every connector id enters `reconnectingIds` so
+ * consumers can branch on "is this connection verified" without
+ * waiting for the async silent reconnect. `isHydrated` flips true
+ * synchronously — the consumer's first render sees the persisted
+ * state in the live store, not undefined.
+ */
+const seedStateFromSnapshot = (snapshot: WalletSnapshot): State => {
+  const pool = new Map<string, ConnectedWallet>();
+  const reconnectingIds = new Set<string>();
+  for (const [connectorId, entry] of Object.entries(snapshot.pool)) {
+    if (!entry) {
+      continue;
+    }
+    const connector: WalletAdapter = createShadowAdapter(entry);
+    pool.set(connectorId, {
+      account: entry.account,
+      accounts: [...entry.accounts],
+      connector,
+    });
+    reconnectingIds.add(connectorId);
+  }
+  const selection = new Map<ChainPlatform, string>();
+  for (const [platform, connectorId] of Object.entries(snapshot.selection)) {
+    if (connectorId && pool.has(connectorId)) {
+      selection.set(platform as ChainPlatform, connectorId);
+    }
+  }
+  const activeConnectorId =
+    snapshot.activeConnectorId && pool.has(snapshot.activeConnectorId)
+      ? snapshot.activeConnectorId
+      : (pool.keys().next().value ?? null);
+  return {
+    ...initialState,
+    activeConnectorId,
+    isHydrated: true,
+    pool,
+    reconnectingIds,
+    selection,
+  };
+};
 
 const CONNECT_TIMEOUT_MS = 90_000;
 const DEFAULT_SLOW_CONNECT_THRESHOLD_MS = 5000;
@@ -149,8 +200,12 @@ const createWalletStore = (config: WalletManagerConfig) => {
       },
     });
 
+    const seeded: State = config.initialState
+      ? seedStateFromSnapshot(config.initialState)
+      : initialState;
+
     return {
-      ...initialState,
+      ...seeded,
       _config: config,
       _storage: storage,
       connectWallet: async (connectorId, onSuccess, onError) => {

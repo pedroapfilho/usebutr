@@ -1,4 +1,5 @@
 import type { WalletPersistence } from "../storage/persistence";
+import type { WalletSnapshot } from "../storage/snapshot";
 
 import type { ChainBase } from "./chain";
 import type { ConnectionError } from "./errors";
@@ -363,6 +364,27 @@ type WalletManagerConfig = {
   connectors: Array<ConnectorMeta>;
   /** Function to instantiate a connector by ID */
   createConnector: (id: string) => WalletAdapter | null;
+  /**
+   * Seed the store synchronously with persisted wallet state — typically
+   * the return value of `readWalletSnapshot(cookies, { keyPrefix })`
+   * called from a Server Component. When provided:
+   *  - `pool` is populated with `ConnectedWallet` entries whose
+   *    `connector` is a shadow adapter (see `createShadowAdapter`):
+   *    identity-only, all capabilities `false`, methods throw
+   *    `ShadowConnectorError` if called.
+   *  - `activeConnectorId` and `selection` are set from the snapshot.
+   *  - `isHydrated` flips `true` immediately on construction.
+   *  - Every seeded id appears in `reconnectingIds`; the background
+   *    silent-reconnect pass removes the id and replaces the pool
+   *    entry with a live adapter on success, or drops the entry on
+   *    failure.
+   *
+   * Pre-hydration UI renders from the snapshot's data (address,
+   * accounts, chain, name, icon) without a flash. Action affordances
+   * (sign, send) are naturally gated by the shadow's all-false
+   * capabilities — or consumers can branch on `reconnectingIds`.
+   */
+  initialState?: WalletSnapshot;
   /** Called after a wallet is successfully connected */
   onConnect?: (wallet: ConnectedWallet) => void;
   /**

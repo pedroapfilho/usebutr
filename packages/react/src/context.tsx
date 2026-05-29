@@ -2,10 +2,11 @@ import type {
   ConnectorMeta,
   WalletAdapter,
   WalletManagerConfig,
+  WalletSnapshot,
   WalletSource,
   WalletStore,
 } from "@usebutr/core";
-import { createWalletStore, logError } from "@usebutr/core";
+import { createWalletStore, EMPTY_SNAPSHOT, logError } from "@usebutr/core";
 import React, { createContext, use, useEffect, useRef, useState } from "react";
 
 const WalletStoreContext: React.Context<WalletStore | null> = createContext<WalletStore | null>(
@@ -15,6 +16,15 @@ const WalletStoreContext: React.Context<WalletStore | null> = createContext<Wall
 const EMPTY_DISCOVERED: ReadonlyArray<WalletAdapter> = [];
 const DiscoveredWalletsContext: React.Context<ReadonlyArray<WalletAdapter>> =
   createContext<ReadonlyArray<WalletAdapter>>(EMPTY_DISCOVERED);
+
+/**
+ * SSR snapshot — captured once at provider mount, read by
+ * `useWalletSnapshot` while `isHydrated` is false. Lives alongside
+ * the store context so both halves of the public API (the live store
+ * and the snapshot) share a single provider boundary.
+ */
+const InitialSnapshotContext: React.Context<WalletSnapshot> =
+  createContext<WalletSnapshot>(EMPTY_SNAPSHOT);
 
 /**
  * All props — especially `on*` lifecycle callbacks, `storage`, and `discovery` —
@@ -31,6 +41,16 @@ type WalletManagerProviderProps = {
   /** Auto-discovery source. Omit to skip auto-discovery; no
    *  protocol code enters the bundle. */
   discovery?: WalletSource;
+  /**
+   * Server-rendered snapshot of the persisted wallet state. Typically
+   * produced by `readWalletSnapshot(cookies, { keyPrefix })` from
+   * `@usebutr/core` inside a Server Component, then passed through to
+   * this client provider. When omitted, snapshot reads return the
+   * frozen empty snapshot until client-side hydration completes —
+   * fine for apps that don't need an SSR-rendered connected shell.
+   * See `useWalletSnapshot`.
+   */
+  initialSnapshot?: WalletSnapshot;
   onConnect?: WalletManagerConfig["onConnect"];
   onConnectError?: WalletManagerConfig["onConnectError"];
   onDisconnect?: WalletManagerConfig["onDisconnect"];
@@ -76,7 +96,12 @@ const buildInitialConfig = (
  * provider's lifetime; props captured at mount are authoritative.
  */
 const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
-  const { children, discovery: discoveryProp } = props;
+  const { children, discovery: discoveryProp, initialSnapshot } = props;
+
+  // Snapshot captured once at mount — same prop-stability rule as the
+  // rest of this provider. Subsequent prop changes are ignored so a
+  // re-render with a new snapshot doesn't ping-pong the rendered shell.
+  const [snapshot] = useState<WalletSnapshot>(() => initialSnapshot ?? EMPTY_SNAPSHOT);
 
   // `adapters` is mutated in-place by the discovery subscription so the
   // store's `createConnector` closure always sees the latest discovered set.
@@ -131,7 +156,9 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
   return (
     <WalletStoreContext.Provider value={store}>
       <DiscoveredWalletsContext.Provider value={discoveredList}>
-        {children}
+        <InitialSnapshotContext.Provider value={snapshot}>
+          {children}
+        </InitialSnapshotContext.Provider>
       </DiscoveredWalletsContext.Provider>
     </WalletStoreContext.Provider>
   );
@@ -152,4 +179,10 @@ const useWalletStoreContext = (): WalletStore => {
 const useDiscoveredWallets = (): ReadonlyArray<WalletAdapter> => use(DiscoveredWalletsContext);
 
 export type { WalletManagerProviderProps };
-export { WalletManagerProvider, WalletStoreContext, useDiscoveredWallets, useWalletStoreContext };
+export {
+  InitialSnapshotContext,
+  WalletManagerProvider,
+  WalletStoreContext,
+  useDiscoveredWallets,
+  useWalletStoreContext,
+};

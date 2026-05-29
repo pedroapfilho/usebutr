@@ -44,17 +44,23 @@ export { createWalletStore } from "./store";
 export type {
   BrowserStorageDrivers,
   CookieDriverOptions,
+  CookieSource,
+  InitialCookies,
   MaybePromise,
+  SnapshotOptions,
   StorageDriver,
   StoredPoolEntry,
   StoredPoolRecord,
   StoredSelectionRecord,
   WalletPersistence,
+  WalletSnapshot,
 } from "./storage";
 export {
   createBrowserStorageDriver,
   createCookieStorageDriver,
   createMemoryStorageDriver,
+  EMPTY_SNAPSHOT,
+  readWalletSnapshot,
   WalletStorage,
 } from "./storage";
 

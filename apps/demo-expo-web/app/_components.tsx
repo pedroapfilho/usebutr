@@ -8,7 +8,6 @@ import {
   useConnectionStatus,
   useDiscoveredWallets,
   useDisconnectWallet,
-  useIsHydrated,
   useRequestAccounts,
   useSetActiveConnector,
 } from "@usebutr/react";
@@ -312,15 +311,10 @@ const WalletPicker = ({
 };
 
 const Content = () => {
-  const isHydrated = useIsHydrated();
   const status = useConnectionStatus();
   const connectionError = useConnectionError();
   const connected = useConnectedWallets();
   const discovered = useDiscoveredWallets();
-
-  if (!isHydrated) {
-    return <Text style={styles.muted}>Loading…</Text>;
-  }
 
   const available = discovered.filter((d) => !connected.some((c) => c.connector.id === d.id));
 

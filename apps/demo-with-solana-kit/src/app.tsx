@@ -34,12 +34,7 @@ const buildTransferInstruction = (from: Address, to: Address, lamports: bigint):
     programAddress: SYSTEM_PROGRAM,
   };
 };
-import {
-  useActiveWallet,
-  useConnectWallet,
-  useDisconnectWallet,
-  useIsHydrated,
-} from "@usebutr/react";
+import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
 import type { SolanaSignAndSendTransactionFeature, SolanaSignMessageFeature } from "@usebutr/svm";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
@@ -289,15 +284,10 @@ const Connected = ({
 };
 
 const Content = () => {
-  const isHydrated = useIsHydrated();
   const active = useActiveWallet();
   const connect = useConnectWallet();
   const disconnect = useDisconnectWallet();
   const discovered = useDiscoveredWallets();
-
-  if (!isHydrated) {
-    return <p className="text-sm text-neutral-500">Loading…</p>;
-  }
 
   if (!active) {
     return (

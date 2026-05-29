@@ -1,11 +1,6 @@
 import { SuiClient } from "@mysten/sui/client";
 import { Transaction } from "@mysten/sui/transactions";
-import {
-  useActiveWallet,
-  useConnectWallet,
-  useDisconnectWallet,
-  useIsHydrated,
-} from "@usebutr/react";
+import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 import { useEffect, useMemo, useState } from "react";
 
@@ -184,15 +179,10 @@ const Connected = ({
 };
 
 const Content = () => {
-  const isHydrated = useIsHydrated();
   const active = useActiveWallet();
   const connect = useConnectWallet();
   const disconnect = useDisconnectWallet();
   const discovered = useDiscoveredWallets();
-
-  if (!isHydrated) {
-    return <p className="text-sm text-neutral-500">Loading…</p>;
-  }
 
   if (!active) {
     return (

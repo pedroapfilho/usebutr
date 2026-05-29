@@ -5,12 +5,7 @@ import {
   useWallet,
 } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
-import {
-  useActiveWallet,
-  useConnectWallet,
-  useDisconnectWallet,
-  useIsHydrated,
-} from "@usebutr/react";
+import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 import { useEffect, useMemo, useState } from "react";
 
@@ -246,14 +241,9 @@ const BridgeAndExplore = ({ wallet }: { wallet: ReturnType<typeof useActiveWalle
 };
 
 const Content = () => {
-  const isHydrated = useIsHydrated();
   const active = useActiveWallet();
   const connect = useConnectWallet();
   const discovered = useDiscoveredWallets();
-
-  if (!isHydrated) {
-    return <p className="text-sm text-neutral-500">Loading…</p>;
-  }
 
   if (!active) {
     return (

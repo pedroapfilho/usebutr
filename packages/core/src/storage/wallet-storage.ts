@@ -62,6 +62,15 @@ const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry
   if (!VALID_CHAIN_PLATFORMS.has(entry.chainPlatform as ChainPlatform)) {
     return false;
   }
+  // `name` and `icon` are both optional; reject only when present
+  // but wrong-typed. Legacy entries written before this field was
+  // captured will lack `name`; consumers fall back to `connectorId`.
+  if (entry.name !== undefined && typeof entry.name !== "string") {
+    return false;
+  }
+  if (entry.icon !== undefined && typeof entry.icon !== "string") {
+    return false;
+  }
   if (!isValidAccount(entry.account)) {
     return false;
   }
@@ -133,6 +142,8 @@ class WalletStorage implements WalletPersistence {
           accounts: wallet.accounts,
           chainPlatform: wallet.connector.chainPlatform,
           connectorId,
+          icon: wallet.connector.icon,
+          name: wallet.connector.name,
         };
         // The runtime's reducer state is the source of truth — a
         // malformed entry here means a programming error inside butr,

@@ -100,7 +100,7 @@ const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry
   if (!VALID_CHAIN_PLATFORMS.has(entry.chainPlatform as ChainPlatform)) {
     return false;
   }
-  if (entry.name !== undefined && typeof entry.name !== "string") {
+  if (typeof entry.name !== "string" || entry.name.length === 0) {
     return false;
   }
   if (entry.icon !== undefined && typeof entry.icon !== "string") {

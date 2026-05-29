@@ -12,10 +12,8 @@ import {
   useConnectionStatus,
   useConnectingConnectorId,
   useDisconnectWallet,
-  useIsHydrated,
   useRequestAccounts,
   useSetActiveConnector,
-  useWalletSnapshot,
 } from "@usebutr/react";
 import Image from "next/image";
 import { type ReactNode, useState } from "react";
@@ -384,81 +382,11 @@ const WalletPicker = ({
   );
 };
 
-// Pre-hydration shell rendered from the server-side cookie snapshot.
-// Mirrors `ConnectedWalletCard`'s layout precisely — same card chrome,
-// same dl grid, same address list — so the visual transition at
-// hydration is invisible. Skeleton placeholders stand in for the
-// values that need the live connector (icon, wallet name, balance);
-// once hydration completes, `Content` swaps in the live cards with
-// the same outer geometry and the placeholders are replaced in place.
-// No layout shift, no text that disappears.
-const SnapshotShell = () => {
-  const snapshot = useWalletSnapshot();
-  const entries = Object.values(snapshot.pool).filter((entry) => entry !== undefined);
-
-  if (entries.length === 0) {
-    return <p className="text-sm text-neutral-500">Loading…</p>;
-  }
-
-  return (
-    <section aria-busy="true">
-      <h2 className="mb-3 flex items-center gap-2 font-semibold">
-        Connected
-        <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-xs text-neutral-500">
-          {entries.length}
-        </span>
-      </h2>
-      <ul className="space-y-3">
-        {entries.map((entry) => (
-          <li key={entry.connectorId}>
-            <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {/* Icon placeholder — reserves the same 32×32 box the
-                      live card's <Image> occupies, so nothing reflows
-                      when the icon paints post-hydration. */}
-                  <span aria-hidden="true" className="size-8 rounded bg-neutral-100" />
-                  <div>
-                    <h3 className="font-semibold text-neutral-700">{entry.connectorId}</h3>
-                    <p className="text-xs text-neutral-500">{entry.account.chain.name}</p>
-                  </div>
-                </div>
-              </div>
-              <dl className="grid grid-cols-[120px_1fr] gap-y-1.5 text-sm">
-                <dt className="text-neutral-500">Address</dt>
-                <dd>
-                  <ul className="space-y-1">
-                    {entry.accounts.map((account) => (
-                      <li
-                        className="rounded-md border border-neutral-200 px-2 py-1 font-mono text-xs break-all text-neutral-700"
-                        key={account.id}
-                      >
-                        {account.walletAddress}
-                      </li>
-                    ))}
-                  </ul>
-                </dd>
-                <dt className="text-neutral-500">Balance</dt>
-                <dd className="font-mono text-xs text-neutral-400">—</dd>
-              </dl>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-};
-
 const Content = () => {
-  const isHydrated = useIsHydrated();
   const status = useConnectionStatus();
   const error = useConnectionError();
   const connected = useConnectedWallets();
   const discovered = useDiscoveredWallets();
-
-  if (!isHydrated) {
-    return <SnapshotShell />;
-  }
 
   const available = discovered.filter((d) => !connected.some((c) => c.connector.id === d.id));
 

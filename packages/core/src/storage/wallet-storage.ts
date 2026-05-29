@@ -62,12 +62,11 @@ const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry
   if (!VALID_CHAIN_PLATFORMS.has(entry.chainPlatform as ChainPlatform)) {
     return false;
   }
-  // `name` and `icon` are both optional; reject only when present
-  // but wrong-typed. Legacy entries written before this field was
-  // captured will lack `name`; consumers fall back to `connectorId`.
-  if (entry.name !== undefined && typeof entry.name !== "string") {
+  if (typeof entry.name !== "string" || entry.name.length === 0) {
     return false;
   }
+  // `icon` is optional (some adapters announce no icon); reject only
+  // when present-but-wrong-typed.
   if (entry.icon !== undefined && typeof entry.icon !== "string") {
     return false;
   }

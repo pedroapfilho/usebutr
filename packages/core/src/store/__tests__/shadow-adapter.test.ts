@@ -33,11 +33,6 @@ describe("createShadowAdapter", () => {
     expect(adapter.chainPlatform).toBe("evm");
   });
 
-  it("falls back to connectorId when name is missing (legacy cookie)", () => {
-    const adapter = createShadowAdapter(evmEntry({ name: undefined }));
-    expect(adapter.name).toBe("metamask");
-  });
-
   it("sets every capability to false", () => {
     const adapter = createShadowAdapter(evmEntry());
     expect(adapter.capabilities).toEqual({

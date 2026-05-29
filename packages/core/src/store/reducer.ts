@@ -1,7 +1,18 @@
 import type { Account, ChainPlatform, ConnectedWallet } from "../types";
 import type { ConnectionError } from "../types/errors";
 
-type ConnectionStatus = "idle" | "connecting" | "success" | "error";
+/**
+ * Public connection-status enum. `state.connectionStatus` in the
+ * reducer only takes the first four values ("idle" | "connecting" |
+ * "success" | "error") — those track the user-initiated connect
+ * attempt. The fifth value, `"reconnecting"`, is *derived* by
+ * `useConnectionStatus` when the active wallet is still backed by a
+ * shadow adapter (its id is in `state.reconnectingIds`). The
+ * derivation lives in the React selector so the reducer can stay a
+ * narrow state machine while the public API matches wagmi's
+ * vocabulary.
+ */
+type ConnectionStatus = "idle" | "connecting" | "success" | "error" | "reconnecting";
 
 type State = {
   activeConnectorId: string | null;

@@ -17,16 +17,16 @@ type StoredPoolEntry = {
   accounts: Array<Account>;
   chainPlatform: ChainPlatform;
   connectorId: string;
-  /** Optional wallet icon URL or data-URI captured at persist time.
-   *  Lets the shadow adapter render the same icon the live adapter
-   *  will when the store is seeded from a snapshot. Omitted when the
-   *  adapter had no icon. */
+  /** Wallet icon URL or data-URI captured at persist time. Lets the
+   *  shadow adapter render the same icon the live adapter will when
+   *  the store is seeded from a snapshot. Omitted when the adapter
+   *  itself has no icon. */
   icon?: string;
-  /** Optional human-facing wallet name (e.g. "MetaMask") captured at
-   *  persist time. When omitted (legacy entries, hand-written test
-   *  fixtures), consumers fall back to `connectorId`. New writes via
-   *  `WalletStorage.setPool` always populate this. */
-  name?: string;
+  /** Human-facing wallet name (e.g. "MetaMask") captured at persist
+   *  time. Required so the shadow adapter renders the same identity
+   *  the live adapter will — no "metamask" → "MetaMask" swap at the
+   *  hydration boundary. */
+  name: string;
 };
 
 type StoredPoolRecord = Partial<Record<string, StoredPoolEntry>>;

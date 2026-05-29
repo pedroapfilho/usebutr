@@ -46,6 +46,7 @@ describe("WalletStorage", () => {
           accounts: [account],
           chainPlatform: "evm",
           connectorId: "metamask",
+          name: "MetaMask",
         },
       };
       await persistent.setItem("test-pool", JSON.stringify(data));
@@ -73,6 +74,7 @@ describe("WalletStorage", () => {
           account,
           chainPlatform: "evm",
           connectorId: "metamask",
+          name: "MetaMask",
         },
       };
       await persistent.setItem("test-pool", JSON.stringify(invalid));
@@ -98,6 +100,7 @@ describe("WalletStorage", () => {
           },
           chainPlatform: "evm",
           connectorId: "different-id",
+          name: "MetaMask",
         },
       };
       await persistent.setItem("test-pool", JSON.stringify(data));
@@ -122,6 +125,7 @@ describe("WalletStorage", () => {
           },
           chainPlatform: "cosmos",
           connectorId: "keplr",
+          name: "Keplr",
         },
       };
       await persistent.setItem("test-pool", JSON.stringify(data));
@@ -216,12 +220,14 @@ describe("WalletStorage", () => {
           accounts: [evmAccount],
           chainPlatform: "evm",
           connectorId: "metamask",
+          name: "MetaMask",
         },
         phantom: {
           account: svmAccount,
           accounts: [svmAccount],
           chainPlatform: "svm",
           connectorId: "phantom",
+          name: "Phantom",
         },
       };
       await persistent.setItem("test-pool", JSON.stringify(data));

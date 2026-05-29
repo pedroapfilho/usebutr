@@ -75,15 +75,13 @@ const ALL_FALSE_CAPABILITIES: WalletCapabilities = Object.freeze({
  * On success the connector id is removed from `reconnectingIds`; on
  * failure the entry is dropped from the pool and storage.
  *
- * **Name + icon fallback.** When the persisted entry predates the
- * `name` / `icon` capture (legacy cookies written before ADR 0003's
- * PR 1), `name` falls back to `connectorId` and `icon` is undefined.
- * Consumers that want to avoid the slug-rendered intermediate state
- * should re-persist via `WalletStorage.setPool` on the next connect.
+ * The entry's `name` is required (the storage validator rejects
+ * entries without it); `icon` is optional only because some live
+ * adapters genuinely have no icon to begin with.
  */
 const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
   const id = entry.connectorId;
-  const name = entry.name ?? entry.connectorId;
+  const name = entry.name;
   const icon = entry.icon;
 
   const reject = (method: string): Promise<never> =>

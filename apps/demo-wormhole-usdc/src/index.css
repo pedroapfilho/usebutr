@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  *:focus-visible {
+    outline: 2px solid oklch(0.5 0.2 250);
+    outline-offset: 2px;
+  }
+}

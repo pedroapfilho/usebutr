@@ -1,0 +1,42 @@
+{
+  "name": "demo-wormhole-usdc",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "start": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint src",
+    "clean": "rm -rf dist node_modules"
+  },
+  "dependencies": {
+    "@solana/kit": "^2.1.0",
+    "@tailwindcss/vite": "^4.3.0",
+    "@usebutr/core": "workspace:*",
+    "@usebutr/evm": "workspace:*",
+    "@usebutr/react": "workspace:*",
+    "@usebutr/svm": "workspace:*",
+    "@wormhole-foundation/sdk-connect": "^3.4.0",
+    "@wormhole-foundation/sdk-evm": "^3.4.0",
+    "@wormhole-foundation/sdk-evm-cctp": "^3.4.0",
+    "@wormhole-foundation/sdk-evm-tokenbridge": "^3.4.0",
+    "@wormhole-foundation/sdk-solana": "^3.4.0",
+    "@wormhole-foundation/sdk-solana-cctp": "^3.4.0",
+    "buffer": "^6.0.3",
+    "ethers": "^6.13.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "tailwindcss": "^4.3.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.12"
+  }
+}

@@ -23,9 +23,11 @@ type RestoreOutcome =
  */
 type HydrateResult = {
   activeConnectorId: string | null;
-  /** Entries whose restore actually failed (connect() rejected, the
-   *  connector threw mid-flight). The coordinator has already removed
-   *  these from storage so a reload won't re-try the same broken entry. */
+  /** Entries whose restore failed (connect() rejected, the connector
+   *  threw mid-flight). Reported for telemetry only — storage is
+   *  preserved so the next load can retry. The most common cause is
+   *  EIP-1193 `eth_accounts: []` from a locked wallet, which clears as
+   *  soon as the user unlocks and reloads. */
   dropped: Array<{ connectorId: string; reason: unknown }>;
   isUserDisconnected: boolean;
   /** Entries parked because `createConnector(id)` returned `null` at
@@ -61,8 +63,6 @@ type HydrationCoordinator = {
   pendingIds(): Array<string>;
 };
 
-type StorageErrorReporter = (context: string, error: unknown) => void;
-
 /** Pick the right `accounts` list: fresh from the connector if it
  *  exposes `getAccounts`, otherwise the persisted list, otherwise just
  *  the active account. */
@@ -91,9 +91,12 @@ const restoreOneEntry = async (
   try {
     // Eager restore: ask the wallet to reconnect to already-authorized
     // accounts without prompting (Wallet Standard `silent`, EIP-1193
-    // `eth_accounts`). A wallet that can't do this silently rejects, and
-    // the entry is dropped as a clean restore failure rather than the
-    // user being surprised by a connect popup on page load.
+    // `eth_accounts`). A wallet that can't do this silently rejects;
+    // the entry stays out of the pool for this session but storage is
+    // preserved so the next load (e.g. once the user unlocks their
+    // wallet) can retry. EIP-1193 `eth_accounts: []` is ambiguous
+    // between "locked" and "deauthorized" — dropping the storage entry
+    // on a transient `[]` was the cause of the reload-disconnect race.
     await connector.connect({ silent: true });
     const freshAccount = await connector.getAccount();
     const accountToUse = freshAccount || entry.account;
@@ -115,23 +118,17 @@ const restoreOneEntry = async (
 const createHydrationCoordinator = (
   storage: WalletPersistence,
   createConnector: WalletManagerConfig["createConnector"],
-  reportStorageError: StorageErrorReporter,
 ): HydrationCoordinator => {
+  // Storage entries only leave on explicit `disconnectWallet`. Failed
+  // restores stay parked / reported as `dropped` — they re-attempt on
+  // the next hydrate, so a transient `eth_accounts: []` from a locked
+  // wallet doesn't permanently erase the connection.
+  //
   // Private to the coordinator — the runtime never touches the queue
   // directly. Storing the raw `StoredPoolEntry` is enough; the entry
   // gets re-restored through the same `restoreOneEntry` path used by
   // the eager pass, so the two code paths can't drift.
   const pending = new Map<string, StoredPoolEntry>();
-
-  const removeBrokenEntry = (connectorId: string) => {
-    void (async () => {
-      try {
-        await storage.removePoolEntry(connectorId);
-      } catch (error: unknown) {
-        reportStorageError("failed to remove broken entry", error);
-      }
-    })();
-  };
 
   return {
     drainPending: async (connectorId) => {
@@ -146,9 +143,6 @@ const createHydrationCoordinator = (
       }
       const outcome = await restoreOneEntry(connectorId, entry, connector);
       pending.delete(connectorId);
-      if (outcome.kind === "fail") {
-        removeBrokenEntry(connectorId);
-      }
       return outcome;
     },
 
@@ -192,7 +186,6 @@ const createHydrationCoordinator = (
           continue;
         }
         dropped.push({ connectorId: outcome.connectorId, reason: outcome.error });
-        removeBrokenEntry(outcome.connectorId);
       }
 
       // Reconcile selection: drop stale entries, fill platforms with
@@ -231,5 +224,5 @@ const createHydrationCoordinator = (
   };
 };
 
-export type { HydrateResult, HydrationCoordinator, RestoreOutcome, StorageErrorReporter };
+export type { HydrateResult, HydrationCoordinator, RestoreOutcome };
 export { createHydrationCoordinator };

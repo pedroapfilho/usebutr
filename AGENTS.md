@@ -48,6 +48,7 @@ pnpm test                               # vitest unit tests
 | `demo-with-bitcoin`               | bitcoinjs-lib                | `http://localhost:5181` |
 | `demo-with-gill`                  | gill                         | `http://localhost:5182` |
 | `demo-with-solana-framework-kit`  | @solana/react-hooks          | `http://localhost:5183` |
+| `demo-wormhole-usdc`              | @wormhole-foundation/sdk     | `http://localhost:5184` |
 
 ### Packages
 

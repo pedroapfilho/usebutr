@@ -45,6 +45,64 @@ const formatEther = (wei: bigint): string => {
   return fraction.length > 0 ? `${integer}.${fraction}` : integer.toString();
 };
 
+/** General-purpose `value / 10^decimals` formatter that trims trailing
+ *  zeros. Mirrors `formatEther` but for arbitrary token decimals. */
+const formatTokenUnits = (raw: bigint, decimals: number): string => {
+  if (decimals === 0) {
+    return raw.toString();
+  }
+  const unit = 10n ** BigInt(decimals);
+  const integer = raw / unit;
+  const remainder = raw % unit;
+  if (remainder === 0n) {
+    return integer.toString();
+  }
+  const fraction = remainder.toString().padStart(decimals, "0").replace(/0+$/v, "");
+  return fraction.length > 0 ? `${integer}.${fraction}` : integer.toString();
+};
+
+// ERC20 function selectors (first 4 bytes of keccak256 of the
+// signature). Hard-coding avoids pulling in an ABI encoder.
+const ERC20_BALANCE_OF_SELECTOR = "0x70a08231";
+const ERC20_DECIMALS_SELECTOR = "0x313ce567";
+const ERC20_SYMBOL_SELECTOR = "0x95d89b41";
+
+const padAddressForCall = (address: string): string =>
+  address.replace(/^0x/v, "").toLowerCase().padStart(64, "0");
+
+/**
+ * Decode an ABI-encoded `string` return value. Layout:
+ *   bytes 0–31  : offset to the data (always 0x20 for a single string)
+ *   bytes 32–63 : string length (big-endian uint256)
+ *   bytes 64+   : UTF-8 bytes, right-padded to a 32-byte boundary
+ *
+ * Some non-standard tokens (early MakerDAO, etc.) return a `bytes32`
+ * directly instead of a length-prefixed string; the fallback strips
+ * trailing nulls and decodes the raw bytes.
+ */
+const decodeAbiString = (hex: string): string => {
+  const clean = hex.startsWith(HEX_PREFIX) ? hex.slice(2) : hex;
+  if (clean.length === 0) {
+    return "";
+  }
+  // Length-prefixed string (standard ERC20)
+  if (clean.length >= 128) {
+    const lengthHex = clean.slice(64, 128);
+    const length = Number(BigInt(`0x${lengthHex}`));
+    if (length > 0 && clean.length >= 128 + length * 2) {
+      const dataHex = clean.slice(128, 128 + length * 2);
+      return new TextDecoder().decode(hexToBytes(dataHex));
+    }
+  }
+  // bytes32 fallback — trim trailing zero bytes.
+  const buf = hexToBytes(clean.slice(0, 64));
+  let end = buf.length;
+  while (end > 0 && buf[end - 1] === 0) {
+    end -= 1;
+  }
+  return new TextDecoder().decode(buf.subarray(0, end));
+};
+
 const buildEvmChain = (chainIdHex: string, walletName: string): ChainBase => {
   const reference = chainIdHexToDecimal(chainIdHex);
   return {
@@ -82,10 +140,16 @@ const buildEvmAccount = (address: string, chain: ChainBase): Account => ({
  *    own UI. butr's `subscribe` bridge auto-updates the pool entry when
  *    `accountsChanged` fires. Call `requestAccounts` if you want the
  *    wallet to expose more accounts.
- *  - `getBalance` returns the native ETH balance with symbol `"ETH"`,
+ *  - `getBalance()` returns the native ETH balance with symbol `"ETH"`
  *    regardless of which EVM chain the wallet is currently on. Consumers
  *    that target multiple EVM chains should overlay the symbol via
  *    their own logic.
+ *  - `getBalance(tokenAddress)` reads the ERC20 balance for the active
+ *    account on the currently-connected chain. The token's own
+ *    `decimals()` and `symbol()` are queried for accurate formatting;
+ *    if `symbol()` is non-standard (bytes32) it's decoded as best-
+ *    effort. Routed through `eth_call` on the wallet's own provider
+ *    — the demo doesn't ship a separate RPC.
  *  - `getSigner` returns the raw EIP-1193 provider. Wrap it in viem's
  *    `createWalletClient` or ethers' `BrowserProvider` at the call site.
  */
@@ -147,21 +211,50 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       return accounts.map((addr) => buildEvmAccount(addr, chain));
     },
 
-    async getBalance() {
+    async getBalance(mint) {
       const accounts = (await provider.request({ method: "eth_accounts" })) as Array<string>;
       const first = accounts[0];
       if (!first) {
         throw new Error("No connected account");
       }
-      const balanceHex = (await provider.request({
-        method: "eth_getBalance",
-        params: [first, "latest"],
-      })) as string;
+      if (!mint) {
+        // Native ETH path.
+        const balanceHex = (await provider.request({
+          method: "eth_getBalance",
+          params: [first, "latest"],
+        })) as string;
+        const value = BigInt(balanceHex);
+        return {
+          decimals: Number(ETH_DECIMALS),
+          formatted: formatEther(value),
+          symbol: "ETH",
+          value,
+        };
+      }
+      // ERC20 path. Three `eth_call`s in parallel — the wallet's RPC
+      // handles them locally so we don't need an external provider.
+      const balanceCallData = `${ERC20_BALANCE_OF_SELECTOR}${padAddressForCall(first)}`;
+      const [balanceHex, decimalsHex, symbolHex] = (await Promise.all([
+        provider.request({
+          method: "eth_call",
+          params: [{ data: balanceCallData, to: mint }, "latest"],
+        }),
+        provider.request({
+          method: "eth_call",
+          params: [{ data: ERC20_DECIMALS_SELECTOR, to: mint }, "latest"],
+        }),
+        provider.request({
+          method: "eth_call",
+          params: [{ data: ERC20_SYMBOL_SELECTOR, to: mint }, "latest"],
+        }),
+      ])) as [string, string, string];
       const value = BigInt(balanceHex);
+      const decimals = Number(BigInt(decimalsHex));
+      const symbol = decodeAbiString(symbolHex);
       return {
-        decimals: Number(ETH_DECIMALS),
-        formatted: formatEther(value),
-        symbol: "ETH",
+        decimals,
+        formatted: formatTokenUnits(value, decimals),
+        symbol,
         value,
       };
     },

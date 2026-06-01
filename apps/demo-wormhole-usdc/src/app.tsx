@@ -65,7 +65,12 @@ const makeSigner = async (spec: ChainSpec, wallet: ConnectedWallet) => {
     await ensureChain(provider, spec.evmChainIdHex);
     return new ButrEvmWormholeSigner(spec.chain, wallet.account.walletAddress, provider);
   }
-  return new ButrSvmWormholeSigner(spec.chain, wallet.account.walletAddress, wallet.connector);
+  return new ButrSvmWormholeSigner(
+    spec.chain,
+    wallet.account.walletAddress,
+    wallet.connector,
+    spec.rpcUrl,
+  );
 };
 
 const formatBalance = (b: UsdcBalance): string => {

@@ -44,6 +44,7 @@ export default defineConfig({
         "apps/demo-with-solana-framework-kit/src/**/*.tsx",
         "apps/demo-with-sui/src/**/*.tsx",
         "apps/demo-with-bitcoin/src/**/*.tsx",
+        "apps/demo-wormhole-usdc/src/**/*.tsx",
       ],
       rules: {
         "no-img-element": "off",

@@ -120,28 +120,34 @@ const createWalletStore = (config: WalletManagerConfig) => {
   // yet, drain parked entries when discovery announces a matching id.
   // `pendingRestores` lives inside the coordinator — the runtime no
   // longer manages the queue directly.
-  const hydration = createHydrationCoordinator(storage, config.createConnector, (context, error) =>
-    reportStorageError(context)(error),
-  );
+  const hydration = createHydrationCoordinator(storage, config.createConnector);
 
   return createStore<State & RuntimeMembers>()((set, get) => {
     const dispatch = (event: Event) => {
       set((prev) => reducer(prev, event), false);
     };
 
-    // Fire-and-forget storage writes. Each persister is independent
-    // — `persistPool` only writes the pool, `persistSelection` only
-    // writes the selection, etc. Some events update one slot
-    // (`SELECTION_CHANGED` → `persistSelection`), others update all
-    // three (`CONNECT_SUCCEEDED`, hydration). When multiple
-    // persisters fire from the same call site, they race —
-    // intentionally. Each storage key is durable on its own; the
-    // order of resolution doesn't affect correctness. Don't
-    // collapse these into a single `persistAll()` helper without
-    // first reading the call sites — many of them only need one.
-    const persistPool = () => {
-      void run(() => storage.setPool(get().pool), reportStorageError("failed to persist pool"));
-    };
+    // Each persister returns the storage write's Promise so call
+    // sites that need a "storage is now durable" guarantee (e.g.
+    // `connectWallet`, `disconnectWallet`) can await before
+    // resolving. Wallet-event-driven helpers (`refreshPoolEntry`)
+    // still fire-and-forget — the order of resolution for those
+    // doesn't matter because `WalletStorage` serializes pool
+    // mutations through an internal queue.
+    const persistPool = (): Promise<void> =>
+      run(() => storage.setPool(get().pool), reportStorageError("failed to persist pool"));
+
+    const persistSelection = (): Promise<void> =>
+      run(
+        () => storage.setSelection(get().selection),
+        reportStorageError("failed to persist selection"),
+      );
+
+    const persistActive = (): Promise<void> =>
+      run(
+        () => storage.setActiveConnectorId(get().activeConnectorId),
+        reportStorageError("failed to persist active connector"),
+      );
 
     // Single entry point for "the pool entry's exposed accounts
     // changed." Three call sites use it: the wallet-event bridge
@@ -152,21 +158,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
     // list and wants the reducer's preserve-or-fallback logic.
     const refreshPoolEntry = (connectorId: string, accounts: Array<Account>, active?: Account) => {
       dispatch({ accounts, active, connectorId, type: "ACCOUNTS_REFRESHED" });
-      persistPool();
-    };
-
-    const persistSelection = () => {
-      void run(
-        () => storage.setSelection(get().selection),
-        reportStorageError("failed to persist selection"),
-      );
-    };
-
-    const persistActive = () => {
-      void run(
-        () => storage.setActiveConnectorId(get().activeConnectorId),
-        reportStorageError("failed to persist active connector"),
-      );
+      void persistPool();
     };
 
     // Owns the "exactly one subscription per connector" invariant,
@@ -184,18 +176,18 @@ const createWalletStore = (config: WalletManagerConfig) => {
         refreshPoolEntry(connectorId, [...accounts], active);
       },
       onDisconnected: (connectorId, chainPlatform) => {
-        // Mirror an external disconnect into the reducer. Don't call
-        // connector.disconnect — the wallet already did the work; the
-        // lifecycle bridge has already cleared the subscription. Just
-        // dispatch, persist, notify.
+        // Mirror an external disconnect into the reducer so the UI
+        // hides the wallet, but DON'T touch storage — EIP-1193 emits
+        // `accountsChanged: []` (which we forward as a `disconnected`
+        // event) both when the user revokes permissions AND when
+        // MetaMask simply auto-locks. The two are indistinguishable
+        // from our side, so persisting the empty pool would erase the
+        // saved connection on every wallet lock. Keeping storage
+        // intact lets the next hydrate retry — the user-locked case
+        // self-heals once they unlock and reload, and a genuine
+        // revocation gets cleaned up by the next call to
+        // `disconnectWallet` (or just lingers as dead bytes).
         dispatch({ connectorId, type: "DISCONNECTED" });
-        if (get().pool.size === 0) {
-          void run(() => storage.clearAll(), reportStorageError("failed to clear storage"));
-        } else {
-          persistPool();
-          persistSelection();
-          persistActive();
-        }
         config.onDisconnect?.(chainPlatform);
       },
     });
@@ -261,9 +253,11 @@ const createWalletStore = (config: WalletManagerConfig) => {
 
           lifecycle.attach(connectorId, connector);
 
-          persistPool();
-          persistSelection();
-          persistActive();
+          // Await so callers can `await connectWallet(id)` and trust
+          // that storage reflects the new connection on the very next
+          // line — load `useConnectedWallets` snapshots, expect
+          // localStorage to contain the entry, etc.
+          await Promise.all([persistPool(), persistSelection(), persistActive()]);
 
           config.onConnect?.(entry);
           onSuccess?.(entry);
@@ -311,9 +305,17 @@ const createWalletStore = (config: WalletManagerConfig) => {
         if (get().pool.size === 0) {
           void run(() => storage.clearAll(), reportStorageError("failed to clear storage"));
         } else {
-          persistPool();
-          persistSelection();
-          persistActive();
+          // Explicit eviction so storage doesn't keep retrying the
+          // disconnected wallet on the next load. `persistPool` is
+          // additive (see `WalletStorage.setPool`), so we can't rely
+          // on it to remove entries — that's what `removePoolEntry`
+          // is for.
+          void run(
+            () => storage.removePoolEntry(connectorId),
+            reportStorageError("failed to remove pool entry"),
+          );
+          void persistSelection();
+          void persistActive();
         }
 
         config.onDisconnect?.(platform);
@@ -337,8 +339,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
           lifecycle.attach(connectorId, wallet.connector);
         }
         // Persist any reconciled values back so future loads stay consistent.
-        persistSelection();
-        persistActive();
+        await Promise.all([persistSelection(), persistActive()]);
         // Drain: catch the race where a Wallet Standard adapter
         // announced BEFORE hydration finished populating its queue.
         // Without this, the discovery callback's
@@ -428,7 +429,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
 
       setActiveConnector: (connectorId) => {
         dispatch({ connectorId, type: "ACTIVE_CHANGED" });
-        persistActive();
+        void persistActive();
       },
 
       setConnectionError: (error) => {
@@ -437,7 +438,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
 
       setSelection: (chainPlatform, connectorId) => {
         dispatch({ chainPlatform, connectorId, type: "SELECTION_CHANGED" });
-        persistSelection();
+        void persistSelection();
       },
 
       setUserDisconnected: (value: boolean) => {
@@ -466,9 +467,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
         // active reconciliation matches a normal connect flow.
         dispatch({ connectorId, entry: outcome.entry, type: "CONNECT_SUCCEEDED" });
         lifecycle.attach(connectorId, outcome.entry.connector);
-        persistPool();
-        persistSelection();
-        persistActive();
+        await Promise.all([persistPool(), persistSelection(), persistActive()]);
         config.onConnect?.(outcome.entry);
       },
 

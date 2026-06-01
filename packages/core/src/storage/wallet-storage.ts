@@ -86,6 +86,15 @@ class WalletStorage implements WalletPersistence {
   private userDisconnectedKey: string;
   private persistent: StorageDriver;
   private session: StorageDriver;
+  /**
+   * Serializes pool-key mutations so concurrent fire-and-forget
+   * writes can't interleave their read-modify-write phases. Without
+   * this, two simultaneous `setPool` calls both read the pre-write
+   * state, each merge their own entries, and whichever finishes last
+   * overwrites the other's additions. Reads (`getPool`) don't enter
+   * the queue — they observe whatever's currently in the driver.
+   */
+  private poolMutationQueue: Promise<unknown> = Promise.resolve();
 
   constructor(config: StorageConfig) {
     this.poolKey = `${config.keyPrefix}-pool`;
@@ -100,6 +109,31 @@ class WalletStorage implements WalletPersistence {
       const defaults = createBrowserStorageDriver();
       this.persistent = config.persistent ?? defaults.persistent;
       this.session = config.session ?? defaults.session;
+    }
+  }
+
+  /** Chain `fn` after the in-flight pool mutation. */
+  private async serializePoolMutation<T>(fn: () => Promise<T>): Promise<T> {
+    // Capture and advance the queue synchronously so concurrent
+    // callers serialize against the same head — awaiting the queue
+    // first would let two callers both observe the pre-advance head
+    // and run in parallel.
+    const previous = this.poolMutationQueue;
+    // oxlint-disable-next-line unicorn/consistent-function-scoping -- assigned by Promise constructor below
+    let resolve: () => void = () => {};
+    this.poolMutationQueue = new Promise<void>((r) => {
+      resolve = r;
+    });
+    try {
+      await previous;
+    } catch {
+      // Previous mutation's failure shouldn't jam the queue — each
+      // call site already observes its own rejection.
+    }
+    try {
+      return await fn();
+    } finally {
+      resolve();
     }
   }
 
@@ -132,49 +166,66 @@ class WalletStorage implements WalletPersistence {
     }
   }
 
-  async setPool(pool: Map<string, ConnectedWallet>): Promise<void> {
-    try {
-      const serializable: StoredPoolRecord = {};
-      for (const [connectorId, wallet] of pool) {
-        const entry: StoredPoolEntry = {
-          account: wallet.account,
-          accounts: wallet.accounts,
-          chainPlatform: wallet.connector.chainPlatform,
-          connectorId,
-          icon: wallet.connector.icon,
-          name: wallet.connector.name,
-        };
-        // The runtime's reducer state is the source of truth — a
-        // malformed entry here means a programming error inside butr,
-        // not data drift. Throw loudly so the bug surfaces at the
-        // write site rather than silently corrupting storage and
-        // re-emerging as a "wallet didn't restore" puzzle on the next
-        // page load.
-        if (!isValidPoolEntry(connectorId, entry)) {
-          throw new Error(`[butr] refusing to persist invalid pool entry for ${connectorId}`);
+  /**
+   * Upsert the in-memory pool into storage. Additive: entries in
+   * `pool` are written; entries already in storage that aren't in
+   * `pool` are kept. The in-memory pool reflects "what's live right
+   * now", not "the complete list of remembered connections" — a
+   * silent reconnect that fails on reload leaves the entry out of
+   * the pool but the saved entry stays so the next load can retry.
+   * Use `removePoolEntry` for explicit eviction (the user clicked
+   * Disconnect) and `clearAll` for a full wipe (reset).
+   */
+  setPool(pool: Map<string, ConnectedWallet>): Promise<void> {
+    return this.serializePoolMutation(async () => {
+      try {
+        const existing = await this.getPool();
+        const serializable: StoredPoolRecord = { ...existing };
+        for (const [connectorId, wallet] of pool) {
+          const entry: StoredPoolEntry = {
+            account: wallet.account,
+            accounts: wallet.accounts,
+            chainPlatform: wallet.connector.chainPlatform,
+            connectorId,
+            icon: wallet.connector.icon,
+            name: wallet.connector.name,
+          };
+          // The runtime's reducer state is the source of truth — a
+          // malformed entry here means a programming error inside butr,
+          // not data drift. Throw loudly so the bug surfaces at the
+          // write site rather than silently corrupting storage and
+          // re-emerging as a "wallet didn't restore" puzzle on the next
+          // page load.
+          if (!isValidPoolEntry(connectorId, entry)) {
+            throw new Error(`[butr] refusing to persist invalid pool entry for ${connectorId}`);
+          }
+          serializable[connectorId] = entry;
         }
-        serializable[connectorId] = entry;
+        await this.persistent.setItem(this.poolKey, JSON.stringify(serializable));
+      } catch (error) {
+        logWarn("[butr] failed to persist pool:", error);
       }
-      await this.persistent.setItem(this.poolKey, JSON.stringify(serializable));
-    } catch (error) {
-      logWarn("[butr] failed to persist pool:", error);
-    }
+    });
   }
 
-  async removePoolEntry(connectorId: string): Promise<void> {
-    try {
-      const stored = await this.getPool();
-      if (stored[connectorId]) {
-        const { [connectorId]: _, ...remaining } = stored;
-        await this.persistent.setItem(this.poolKey, JSON.stringify(remaining));
+  removePoolEntry(connectorId: string): Promise<void> {
+    return this.serializePoolMutation(async () => {
+      try {
+        const stored = await this.getPool();
+        if (stored[connectorId]) {
+          const { [connectorId]: _, ...remaining } = stored;
+          await this.persistent.setItem(this.poolKey, JSON.stringify(remaining));
+        }
+      } catch (error) {
+        logWarn(`[butr] failed to remove pool entry ${connectorId}:`, error);
       }
-    } catch (error) {
-      logWarn(`[butr] failed to remove pool entry ${connectorId}:`, error);
-    }
+    });
   }
 
-  async clearPool(): Promise<void> {
-    await this.persistent.removeItem(this.poolKey);
+  clearPool(): Promise<void> {
+    return this.serializePoolMutation(async () => {
+      await this.persistent.removeItem(this.poolKey);
+    });
   }
 
   // ---- Selection ----
@@ -242,12 +293,12 @@ class WalletStorage implements WalletPersistence {
   // ---- Bulk clear ----
 
   async clearAll(): Promise<void> {
-    // Three independent removeItem calls — run them concurrently
-    // instead of awaiting in sequence. Drivers with async I/O
-    // (AsyncStorage, MMKV, IndexedDB-wrapped) benefit; sync drivers
-    // (localStorage, memory) just collapse to immediate resolves.
+    // Pool removal goes through the mutation queue so it can't race
+    // with an in-flight `setPool` / `removePoolEntry`. The selection
+    // and active keys have no read-modify-write writers, so they can
+    // remove concurrently.
     await Promise.all([
-      this.persistent.removeItem(this.poolKey),
+      this.clearPool(),
       this.persistent.removeItem(this.selectionKey),
       this.persistent.removeItem(this.activeKey),
     ]);

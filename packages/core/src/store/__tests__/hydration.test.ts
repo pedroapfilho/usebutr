@@ -72,8 +72,7 @@ describe("createHydrationCoordinator", () => {
       pool: { "wallet-a": buildEntry("wallet-a") },
     });
     const createConnector = createConnectorEagerPath;
-    const onStorageError = vi.fn();
-    const coordinator = createHydrationCoordinator(storage, createConnector, onStorageError);
+    const coordinator = createHydrationCoordinator(storage, createConnector);
 
     const result = await coordinator.hydrate();
 
@@ -81,12 +80,11 @@ describe("createHydrationCoordinator", () => {
     expect(result.pendingIds).toEqual([]);
     expect(result.dropped).toEqual([]);
     expect(result.activeConnectorId).toBe("wallet-a");
-    expect(onStorageError).not.toHaveBeenCalled();
   });
 
   it("parks entries whose adapter is not yet registered", async () => {
     const storage = createFakeStorage({ pool: { "late-adapter": buildEntry("late-adapter") } });
-    const coordinator = createHydrationCoordinator(storage, () => null, vi.fn());
+    const coordinator = createHydrationCoordinator(storage, () => null);
 
     const result = await coordinator.hydrate();
 
@@ -96,7 +94,7 @@ describe("createHydrationCoordinator", () => {
   });
 
   it("drainPending returns null when the entry isn't parked", async () => {
-    const coordinator = createHydrationCoordinator(createFakeStorage(), () => null, vi.fn());
+    const coordinator = createHydrationCoordinator(createFakeStorage(), () => null);
     await coordinator.hydrate();
     const outcome = await coordinator.drainPending("never-registered");
     expect(outcome).toBeNull();
@@ -104,7 +102,7 @@ describe("createHydrationCoordinator", () => {
 
   it("drainPending returns null when the adapter is still missing", async () => {
     const storage = createFakeStorage({ pool: { "wallet-late": buildEntry("wallet-late") } });
-    const coordinator = createHydrationCoordinator(storage, () => null, vi.fn());
+    const coordinator = createHydrationCoordinator(storage, () => null);
     await coordinator.hydrate();
 
     const outcome = await coordinator.drainPending("wallet-late");
@@ -122,7 +120,7 @@ describe("createHydrationCoordinator", () => {
       }
       return null;
     };
-    const coordinator = createHydrationCoordinator(storage, createConnector, vi.fn());
+    const coordinator = createHydrationCoordinator(storage, createConnector);
     await coordinator.hydrate();
     expect(coordinator.pendingIds()).toEqual(["wallet-late"]);
 
@@ -136,43 +134,17 @@ describe("createHydrationCoordinator", () => {
     expect(coordinator.pendingIds()).toEqual([]);
   });
 
-  it("drops entries whose restore throws and removes them from storage", async () => {
+  it("reports failed restores as dropped but preserves storage so the next load can retry", async () => {
     const storage = createFakeStorage({ pool: { "broken-wallet": buildEntry("broken-wallet") } });
-    const coordinator = createHydrationCoordinator(storage, createConnectorAlwaysFails, vi.fn());
+    const coordinator = createHydrationCoordinator(storage, createConnectorAlwaysFails);
 
     const result = await coordinator.hydrate();
 
     expect(result.pool.size).toBe(0);
     expect(result.dropped).toEqual([{ connectorId: "broken-wallet", reason: expect.any(Error) }]);
-    expect(getRemoved(storage)).toEqual(["broken-wallet"]);
-  });
-
-  it("routes storage cleanup failures through the error reporter", async () => {
-    const baseStorage = createFakeStorage({ pool: { broken: buildEntry("broken") } });
-    const storage: WalletPersistence = {
-      ...baseStorage,
-      removePoolEntry: vi.fn().mockRejectedValue(new Error("storage down")),
-    };
-    const reportStorageError = vi.fn();
-    const coordinator = createHydrationCoordinator(
-      storage,
-      () =>
-        createMockConnector({
-          connect: vi.fn().mockRejectedValue(new Error("rejected")),
-        }),
-      reportStorageError,
-    );
-
-    await coordinator.hydrate();
-    // The cleanup is fire-and-forget — wait a microtask for the
-    // rejected removePoolEntry to flush.
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(reportStorageError).toHaveBeenCalledWith(
-      "failed to remove broken entry",
-      expect.any(Error),
-    );
+    // Storage stays intact — an EIP-1193 `eth_accounts: []` from a
+    // locked wallet would otherwise erase the connection permanently.
+    expect(getRemoved(storage)).toEqual([]);
   });
 
   it("reconciles selection — drops stale connector ids and fills missing platforms", async () => {
@@ -183,7 +155,7 @@ describe("createHydrationCoordinator", () => {
       },
       selection: { evm: "evm-a", svm: "ghost-svm" },
     });
-    const coordinator = createHydrationCoordinator(storage, createConnectorReconcile, vi.fn());
+    const coordinator = createHydrationCoordinator(storage, createConnectorReconcile);
 
     const result = await coordinator.hydrate();
 
@@ -197,10 +169,8 @@ describe("createHydrationCoordinator", () => {
       active: "missing-wallet",
       pool: { "real-wallet": buildEntry("real-wallet") },
     });
-    const coordinator = createHydrationCoordinator(
-      storage,
-      (id) => (id === "real-wallet" ? createMockConnector({ id }) : null),
-      vi.fn(),
+    const coordinator = createHydrationCoordinator(storage, (id) =>
+      id === "real-wallet" ? createMockConnector({ id }) : null,
     );
 
     const result = await coordinator.hydrate();
@@ -209,7 +179,7 @@ describe("createHydrationCoordinator", () => {
 
   it("activeConnectorId is null when the pool is empty", async () => {
     const storage = createFakeStorage({ active: "anything" });
-    const coordinator = createHydrationCoordinator(storage, () => null, vi.fn());
+    const coordinator = createHydrationCoordinator(storage, () => null);
 
     const result = await coordinator.hydrate();
     expect(result.activeConnectorId).toBeNull();
@@ -217,21 +187,21 @@ describe("createHydrationCoordinator", () => {
 
   it("clears prior pending entries on rehydrate", async () => {
     const storage = createFakeStorage({ pool: { "wallet-a": buildEntry("wallet-a") } });
-    const coordinator = createHydrationCoordinator(storage, () => null, vi.fn());
+    const coordinator = createHydrationCoordinator(storage, () => null);
     await coordinator.hydrate();
     expect(coordinator.pendingIds()).toEqual(["wallet-a"]);
 
     // Second hydrate with a fresh storage shape — prior pending should
     // not leak into the new run.
     const storage2 = createFakeStorage({ pool: { "wallet-b": buildEntry("wallet-b") } });
-    const coordinator2 = createHydrationCoordinator(storage2, () => null, vi.fn());
+    const coordinator2 = createHydrationCoordinator(storage2, () => null);
     await coordinator2.hydrate();
     expect(coordinator2.pendingIds()).toEqual(["wallet-b"]);
   });
 
   it("preserves isUserDisconnected from storage", async () => {
     const storage = createFakeStorage({ userDisconnected: true });
-    const coordinator = createHydrationCoordinator(storage, () => null, vi.fn());
+    const coordinator = createHydrationCoordinator(storage, () => null);
 
     const result = await coordinator.hydrate();
     expect(result.isUserDisconnected).toBe(true);

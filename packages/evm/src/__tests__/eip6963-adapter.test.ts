@@ -241,6 +241,71 @@ describe("buildEvmAdapter", () => {
     expect(balance.formatted).toBe("1");
   });
 
+  it("getBalance(mint) reads ERC20 balanceOf + decimals + symbol via eth_call", async () => {
+    const provider = createMockProvider();
+    provider.setHandler("eth_accounts", () => ["0x1234567890aBCDEF1234567890ABCDef12345678"]);
+    const USDC = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
+    provider.setHandler("eth_call", (params) => {
+      const call = (params as Array<{ data: string; to: string }>)[0];
+      if (!call) {
+        throw new Error("missing call");
+      }
+      if (call.to.toLowerCase() !== USDC.toLowerCase()) {
+        throw new Error(`unexpected contract: ${call.to}`);
+      }
+      const selector = call.data.slice(0, 10);
+      if (selector === "0x70a08231") {
+        // balanceOf — return 2.5 USDC at 6 decimals = 2_500_000
+        return "0x00000000000000000000000000000000000000000000000000000000002625a0";
+      }
+      if (selector === "0x313ce567") {
+        // decimals() = 6
+        return "0x0000000000000000000000000000000000000000000000000000000000000006";
+      }
+      if (selector === "0x95d89b41") {
+        // symbol() = "USDC" (ABI-encoded string: offset 0x20, length 4, bytes)
+        return (
+          "0x0000000000000000000000000000000000000000000000000000000000000020" +
+          "0000000000000000000000000000000000000000000000000000000000000004" +
+          "5553444300000000000000000000000000000000000000000000000000000000"
+        );
+      }
+      throw new Error(`unexpected selector: ${selector}`);
+    });
+
+    const adapter = buildEvmAdapter(INFO, provider);
+    const balance = await adapter.getBalance(USDC);
+
+    expect(balance.decimals).toBe(6);
+    expect(balance.symbol).toBe("USDC");
+    expect(balance.value).toBe(2_500_000n);
+    expect(balance.formatted).toBe("2.5");
+  });
+
+  it("getBalance(mint) decodes bytes32 symbols from non-standard tokens", async () => {
+    const provider = createMockProvider();
+    provider.setHandler("eth_accounts", () => ["0xAAA"]);
+    provider.setHandler("eth_call", (params) => {
+      const call = (params as Array<{ data: string }>)[0];
+      const selector = call?.data.slice(0, 10);
+      if (selector === "0x70a08231") {
+        return "0x0000000000000000000000000000000000000000000000000000000000000000";
+      }
+      if (selector === "0x313ce567") {
+        return "0x0000000000000000000000000000000000000000000000000000000000000012";
+      }
+      if (selector === "0x95d89b41") {
+        // bytes32 form: "MKR" zero-padded right, no length prefix
+        return "0x4d4b520000000000000000000000000000000000000000000000000000000000";
+      }
+      throw new Error(`unexpected selector: ${selector ?? "?"}`);
+    });
+
+    const adapter = buildEvmAdapter(INFO, provider);
+    const balance = await adapter.getBalance("0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2");
+    expect(balance.symbol).toBe("MKR");
+  });
+
   it("disconnect() ignores wallets that don't implement wallet_revokePermissions", async () => {
     const provider = createMockProvider();
     provider.setHandler("wallet_revokePermissions", () => {

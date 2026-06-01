@@ -697,7 +697,7 @@ describe("createWalletStore", () => {
       expect(store.getState().isUserDisconnected).toBe(true);
     });
 
-    it("drops connectors that fail to connect during hydration", async () => {
+    it("keeps failed connectors out of the pool but preserves storage for the next load", async () => {
       const connector = createMockConnector({
         connect: vi.fn().mockRejectedValue(new Error("connection failed")),
         id: "broken",
@@ -715,7 +715,10 @@ describe("createWalletStore", () => {
 
       expect(store.getState().pool.size).toBe(0);
       expect(store.getState().isHydrated).toBe(true);
-      expect(removeSpy).toHaveBeenCalledWith("broken");
+      // Storage stays intact so a transient EIP-1193 `eth_accounts: []`
+      // (locked wallet, slow MetaMask init) doesn't erase the saved
+      // connection — the next hydrate retries.
+      expect(removeSpy).not.toHaveBeenCalled();
     });
 
     it("drops stale selection entries pointing at missing connectors", async () => {

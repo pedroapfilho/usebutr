@@ -3,10 +3,12 @@ packages:
   - packages/*
 
 allowBuilds:
+  bigint-buffer: false
   bufferutil: true
   esbuild: true
   fallow: true
   keccak: true
+  protobufjs: false
   sharp: true
   utf-8-validate: true
 

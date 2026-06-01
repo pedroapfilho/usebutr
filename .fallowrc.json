@@ -35,5 +35,11 @@
     "react-native-web",
     "wagmi",
     "zustand"
+  ],
+  "usedClassMembers": [
+    {
+      "implements": "SignAndSendSigner",
+      "members": ["address", "chain", "signAndSend"]
+    }
   ]
 }

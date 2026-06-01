@@ -34,17 +34,14 @@ class ButrEvmWormholeSigner<N extends Network, C extends Chain> implements SignA
     this._eip1193 = eip1193;
   }
 
-  // fallow-ignore-next-line unused-class-member
   chain(): C {
     return this._chain;
   }
 
-  // fallow-ignore-next-line unused-class-member
   address(): string {
     return this._address;
   }
 
-  // fallow-ignore-next-line unused-class-member
   async signAndSend(txs: Array<UnsignedTransaction<N, C>>): Promise<Array<TxHash>> {
     const provider = new BrowserProvider(this._eip1193);
     const signer = await provider.getSigner(this._address);

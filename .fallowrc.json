@@ -26,6 +26,7 @@
     "@usebutr/wallets",
     "@vitest/coverage-v8",
     "@wallet-standard/app",
+    "@wormhole-foundation/sdk-evm-tokenbridge",
     "expo-status-bar",
     "jsdom",
     "nitro-nightly",

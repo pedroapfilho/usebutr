@@ -235,9 +235,9 @@ const App = () => {
   const [destChain, setDestChain] = useState<Chain>("Solana");
   const [amountInput, setAmountInput] = useState("1");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const [xfer, setXfer] = useState<Awaited<
-    ReturnType<Wormhole<Network>["circleTransfer"]>
-  > | null>(null);
+  const [xfer, setXfer] = useState<Awaited<ReturnType<Wormhole<Network>["circleTransfer"]>> | null>(
+    null,
+  );
 
   const srcSpec = getChainSpec(sourceChain);
   const dstSpec = getChainSpec(destChain);
@@ -409,8 +409,8 @@ const App = () => {
 
         {missingWallet ? (
           <p className="text-center text-xs text-amber-700">
-            Connect and activate a {missingWallet.toUpperCase()} wallet above to bridge between these
-            chains.
+            Connect and activate a {missingWallet.toUpperCase()} wallet above to bridge between
+            these chains.
           </p>
         ) : null}
 
@@ -423,7 +423,9 @@ const App = () => {
             }}
             type="button"
           >
-            {status.kind === "redeeming" ? `Minting on ${dstSpec.label}…` : `Mint on ${dstSpec.label}`}
+            {status.kind === "redeeming"
+              ? `Minting on ${dstSpec.label}…`
+              : `Mint on ${dstSpec.label}`}
           </button>
         ) : null}
 

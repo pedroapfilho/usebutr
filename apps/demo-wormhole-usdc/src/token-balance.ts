@@ -112,9 +112,7 @@ const useUsdcBalance = (spec: ChainSpec, owner: string | null | undefined): Usdc
     void (async () => {
       try {
         const uiAmountString =
-          spec.platform === "evm"
-            ? await readEvmUsdc(spec, owner)
-            : await readSvmUsdc(spec, owner);
+          spec.platform === "evm" ? await readEvmUsdc(spec, owner) : await readSvmUsdc(spec, owner);
         if (!cancelled) {
           dispatch({ type: "success", uiAmountString });
         }

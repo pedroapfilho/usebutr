@@ -14,15 +14,15 @@
 
 ## File Structure
 
-| File | Status | Responsibility |
-| --- | --- | --- |
-| `apps/demo-wormhole-usdc/src/chains.ts` | Create | `ChainSpec` type + curated CCTP testnet registry; USDC from SDK; `USDC_DECIMALS`; `CHAIN_LIST`/`getChainSpec`. |
-| `apps/demo-wormhole-usdc/src/token-balance.ts` | Create | `useUsdcBalance(spec, owner)` — chain-aware USDC read (EVM `eth_call`, SVM `getTokenAccountsByOwner`). |
-| `apps/demo-wormhole-usdc/src/solana-balance.ts` | Delete | Folded into `token-balance.ts`. |
-| `apps/demo-wormhole-usdc/src/wallet-list.tsx` | Create | Wallet manager: pool grouped by platform, active-selection, connect, disconnect. |
-| `apps/demo-wormhole-usdc/src/app.tsx` | Rewrite | Chain pickers + flip, platform-aware wallet/signer/balance resolution, transfer flow, mount `WalletList`. |
-| `apps/demo-wormhole-usdc/src/wormhole-signer.ts` | Unchanged | EVM `SignAndSendSigner`. |
-| `apps/demo-wormhole-usdc/src/wormhole-svm-signer.ts` | Unchanged | SVM `SignAndSendSigner`. |
+| File                                                 | Status    | Responsibility                                                                                                 |
+| ---------------------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------- |
+| `apps/demo-wormhole-usdc/src/chains.ts`              | Create    | `ChainSpec` type + curated CCTP testnet registry; USDC from SDK; `USDC_DECIMALS`; `CHAIN_LIST`/`getChainSpec`. |
+| `apps/demo-wormhole-usdc/src/token-balance.ts`       | Create    | `useUsdcBalance(spec, owner)` — chain-aware USDC read (EVM `eth_call`, SVM `getTokenAccountsByOwner`).         |
+| `apps/demo-wormhole-usdc/src/solana-balance.ts`      | Delete    | Folded into `token-balance.ts`.                                                                                |
+| `apps/demo-wormhole-usdc/src/wallet-list.tsx`        | Create    | Wallet manager: pool grouped by platform, active-selection, connect, disconnect.                               |
+| `apps/demo-wormhole-usdc/src/app.tsx`                | Rewrite   | Chain pickers + flip, platform-aware wallet/signer/balance resolution, transfer flow, mount `WalletList`.      |
+| `apps/demo-wormhole-usdc/src/wormhole-signer.ts`     | Unchanged | EVM `SignAndSendSigner`.                                                                                       |
+| `apps/demo-wormhole-usdc/src/wormhole-svm-signer.ts` | Unchanged | SVM `SignAndSendSigner`.                                                                                       |
 
 Work from a feature branch (the repo norm; do not commit on `main`).
 
@@ -42,6 +42,7 @@ git checkout -b feat/wormhole-usdc-multichain
 ## Task 1: Chain registry (`chains.ts`)
 
 **Files:**
+
 - Create: `apps/demo-wormhole-usdc/src/chains.ts`
 
 - [ ] **Step 1: Write `chains.ts`**
@@ -181,6 +182,7 @@ git commit -m "feat(demo-wormhole-usdc): add CCTP testnet chain registry"
 ## Task 2: Chain-aware balance hook (`token-balance.ts`)
 
 **Files:**
+
 - Create: `apps/demo-wormhole-usdc/src/token-balance.ts`
 - Delete: `apps/demo-wormhole-usdc/src/solana-balance.ts` (in Task 4, once `app.tsx` no longer imports it)
 
@@ -301,9 +303,7 @@ const useUsdcBalance = (spec: ChainSpec, owner: string | null | undefined): Usdc
     void (async () => {
       try {
         const uiAmountString =
-          spec.platform === "evm"
-            ? await readEvmUsdc(spec, owner)
-            : await readSvmUsdc(spec, owner);
+          spec.platform === "evm" ? await readEvmUsdc(spec, owner) : await readSvmUsdc(spec, owner);
         if (!cancelled) {
           dispatch({ type: "success", uiAmountString });
         }
@@ -346,6 +346,7 @@ git commit -m "feat(demo-wormhole-usdc): add chain-aware USDC balance hook"
 ## Task 3: Wallet manager (`wallet-list.tsx`)
 
 **Files:**
+
 - Create: `apps/demo-wormhole-usdc/src/wallet-list.tsx`
 
 - [ ] **Step 1: Write `wallet-list.tsx`**
@@ -530,6 +531,7 @@ git commit -m "feat(demo-wormhole-usdc): add multi-wallet manager"
 ## Task 4: Rewire `app.tsx` + remove `solana-balance.ts`
 
 **Files:**
+
 - Rewrite: `apps/demo-wormhole-usdc/src/app.tsx`
 - Delete: `apps/demo-wormhole-usdc/src/solana-balance.ts`
 
@@ -773,9 +775,9 @@ const App = () => {
   const [destChain, setDestChain] = useState<Chain>("Solana");
   const [amountInput, setAmountInput] = useState("1");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const [xfer, setXfer] = useState<Awaited<
-    ReturnType<Wormhole<Network>["circleTransfer"]>
-  > | null>(null);
+  const [xfer, setXfer] = useState<Awaited<ReturnType<Wormhole<Network>["circleTransfer"]>> | null>(
+    null,
+  );
 
   const srcSpec = getChainSpec(sourceChain);
   const dstSpec = getChainSpec(destChain);
@@ -902,7 +904,9 @@ const App = () => {
           amountValue={amountInput}
           balance={formatBalance(srcBalance)}
           direction="out"
-          networkSlot={<ChainSelect disabled={isWorking} onChange={selectSource} value={sourceChain} />}
+          networkSlot={
+            <ChainSelect disabled={isWorking} onChange={selectSource} value={sourceChain} />
+          }
           onAmountChange={isWorking ? undefined : setAmountInput}
         />
         <div className="flex justify-center">
@@ -945,8 +949,8 @@ const App = () => {
 
         {missingWallet ? (
           <p className="text-center text-xs text-amber-700">
-            Connect and activate a {missingWallet.toUpperCase()} wallet above to bridge between these
-            chains.
+            Connect and activate a {missingWallet.toUpperCase()} wallet above to bridge between
+            these chains.
           </p>
         ) : null}
 
@@ -959,7 +963,9 @@ const App = () => {
             }}
             type="button"
           >
-            {status.kind === "redeeming" ? `Minting on ${dstSpec.label}…` : `Mint on ${dstSpec.label}`}
+            {status.kind === "redeeming"
+              ? `Minting on ${dstSpec.label}…`
+              : `Mint on ${dstSpec.label}`}
           </button>
         ) : null}
 
@@ -1032,14 +1038,15 @@ Expected: no matches (all removed).
 
 Run: `pnpm dev --filter=demo-wormhole-usdc` and open `http://localhost:5184`.
 Verify:
-  1. Wallets section lists installed EVM and SVM wallets; connecting two EVM wallets shows both, and "Use" switches the active (● marker moves).
-  2. Disconnect removes a wallet; if it was active, another of that platform becomes active (or the Swap button disables when none remain).
-  3. Default route Sepolia → Solana Devnet shows correct USDC balances on both sides.
-  4. The ⇅ button flips to Solana Devnet → Sepolia; balances/labels swap.
-  5. Picking the same chain on both sides auto-swaps the other side (never equal).
-  6. A Sepolia → Solana transfer completes end-to-end (burn approve, attestation wait, mint approve), and both balances refetch.
-  7. A reverse Solana → Sepolia transfer completes (SVM burn, EVM mint with network switch).
-  8. An EVM → EVM route (e.g. Sepolia → Base Sepolia) completes using the one active EVM wallet, switching networks between burn and mint.
+
+1. Wallets section lists installed EVM and SVM wallets; connecting two EVM wallets shows both, and "Use" switches the active (● marker moves).
+2. Disconnect removes a wallet; if it was active, another of that platform becomes active (or the Swap button disables when none remain).
+3. Default route Sepolia → Solana Devnet shows correct USDC balances on both sides.
+4. The ⇅ button flips to Solana Devnet → Sepolia; balances/labels swap.
+5. Picking the same chain on both sides auto-swaps the other side (never equal).
+6. A Sepolia → Solana transfer completes end-to-end (burn approve, attestation wait, mint approve), and both balances refetch.
+7. A reverse Solana → Sepolia transfer completes (SVM burn, EVM mint with network switch).
+8. An EVM → EVM route (e.g. Sepolia → Base Sepolia) completes using the one active EVM wallet, switching networks between burn and mint.
 
 - [ ] **Step 4: Final commit (if any manual-fix tweaks were needed)**
 
@@ -1055,6 +1062,7 @@ git commit -m "chore(demo-wormhole-usdc): manual-verification fixes"
 ## Self-Review
 
 **Spec coverage:**
+
 - Arbitrary CCTP testnet source/dest → Task 1 (registry) + Task 4 (`ChainSelect`, `sourceChain`/`destChain` state). ✓
 - Flip control → Task 4 (`flip`, ⇅ button). ✓
 - Multi-wallet manager (pool grouped by platform, active-selection, connect, disconnect) → Task 3. ✓
@@ -1068,6 +1076,7 @@ git commit -m "chore(demo-wormhole-usdc): manual-verification fixes"
 **Placeholder scan:** No TBD/TODO; every code step contains complete file content or exact commands. ✓
 
 **Type consistency:**
+
 - `ChainSpec` fields (`chain`, `label`, `platform`, `usdc`, `rpcUrl`, `explorerTx`, `evmChainIdHex?`) defined in Task 1 and used identically in Tasks 2 and 4. ✓
 - `useUsdcBalance(spec, owner)` returns `UsdcBalance` (`{ status, uiAmountString, refetch }`); `formatBalance` in Task 4 reads exactly those fields. ✓
 - `makeSigner(spec, wallet)` returns `ButrEvmWormholeSigner | ButrSvmWormholeSigner` (both implement `SignAndSendSigner`), passed to `initiateTransfer`/`completeTransfer`. ✓

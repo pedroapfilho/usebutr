@@ -33,7 +33,7 @@ symmetric, so direction reversal needs no new SDK calls.
 - A wallet-manager section lists the full pool grouped by platform with active-selection,
   connect, and per-wallet disconnect controls.
 - The transfer runs off the per-platform **active** wallet, not first-match.
-- Balances are accurate for the *selected* chain, regardless of the wallet's current
+- Balances are accurate for the _selected_ chain, regardless of the wallet's current
   network.
 
 ## Non-goals
@@ -48,16 +48,16 @@ symmetric, so direction reversal needs no new SDK calls.
 
 ### Module map
 
-| File | Status | Responsibility |
-| --- | --- | --- |
-| `src/chains.ts` | **new** | `ChainSpec` type + the curated testnet registry; USDC addresses sourced from the SDK. |
-| `src/token-balance.ts` | **new** (generalizes `solana-balance.ts`) | Chain-aware USDC balance read: `eth_call balanceOf` for EVM, `getTokenAccountsByOwner` for SVM. |
-| `src/wallet-list.tsx` | **new** | The "Wallets" manager: pool grouped by platform, active-selection, connect, disconnect. |
-| `src/wormhole-signer.ts` | unchanged | EVM `SignAndSendSigner`. |
-| `src/wormhole-svm-signer.ts` | unchanged | SVM `SignAndSendSigner`. |
-| `src/app.tsx` | **modified** | Chain pickers + flip, platform-aware wallet/signer/balance resolution, transfer flow. |
-| `src/solana-balance.ts` | **removed** | Folded into `token-balance.ts`. |
-| `package.json` | unchanged | Deps already correct (sdk-evm-cctp, sdk-solana-cctp, sdk-evm-tokenbridge for the transitive import, @solana/kit, ethers). |
+| File                         | Status                                    | Responsibility                                                                                                            |
+| ---------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `src/chains.ts`              | **new**                                   | `ChainSpec` type + the curated testnet registry; USDC addresses sourced from the SDK.                                     |
+| `src/token-balance.ts`       | **new** (generalizes `solana-balance.ts`) | Chain-aware USDC balance read: `eth_call balanceOf` for EVM, `getTokenAccountsByOwner` for SVM.                           |
+| `src/wallet-list.tsx`        | **new**                                   | The "Wallets" manager: pool grouped by platform, active-selection, connect, disconnect.                                   |
+| `src/wormhole-signer.ts`     | unchanged                                 | EVM `SignAndSendSigner`.                                                                                                  |
+| `src/wormhole-svm-signer.ts` | unchanged                                 | SVM `SignAndSendSigner`.                                                                                                  |
+| `src/app.tsx`                | **modified**                              | Chain pickers + flip, platform-aware wallet/signer/balance resolution, transfer flow.                                     |
+| `src/solana-balance.ts`      | **removed**                               | Folded into `token-balance.ts`.                                                                                           |
+| `package.json`               | unchanged                                 | Deps already correct (sdk-evm-cctp, sdk-solana-cctp, sdk-evm-tokenbridge for the transitive import, @solana/kit, ethers). |
 
 ### 1. Chain registry — `chains.ts`
 
@@ -67,11 +67,11 @@ import { type Chain, circle } from "@wormhole-foundation/sdk-connect";
 type ChainPlatform = "evm" | "svm";
 
 type ChainSpec = {
-  chain: Chain;            // Wormhole chain name, e.g. "Sepolia"
-  label: string;          // human label, e.g. "Ethereum Sepolia"
+  chain: Chain; // Wormhole chain name, e.g. "Sepolia"
+  label: string; // human label, e.g. "Ethereum Sepolia"
   platform: ChainPlatform;
-  usdc: string;           // USDC token / mint address
-  rpcUrl: string;         // public RPC for balance reads
+  usdc: string; // USDC token / mint address
+  rpcUrl: string; // public RPC for balance reads
   explorerTx: (hash: string) => string;
   evmChainIdHex?: string; // EIP-3326 chain id for wallet network switch (EVM only)
 };
@@ -81,15 +81,15 @@ The USDC address is read once from `circle.usdcContract.get("Testnet")` (authori
 keyed by Wormhole `Chain`). The registry supplies the remaining per-chain bits. Curated
 set (key = Wormhole `Chain`):
 
-| Chain key | Label | Platform | evmChainIdHex |
-| --- | --- | --- | --- |
-| `Sepolia` | Ethereum Sepolia | evm | `0xaa36a7` |
-| `Avalanche` | Avalanche Fuji | evm | `0xa869` |
-| `BaseSepolia` | Base Sepolia | evm | `0x14a34` |
-| `ArbitrumSepolia` | Arbitrum Sepolia | evm | `0x66eee` |
-| `OptimismSepolia` | OP Sepolia | evm | `0xaa37dc` |
-| `Polygon` | Polygon Amoy | evm | `0x13882` |
-| `Solana` | Solana Devnet | svm | — |
+| Chain key         | Label            | Platform | evmChainIdHex |
+| ----------------- | ---------------- | -------- | ------------- |
+| `Sepolia`         | Ethereum Sepolia | evm      | `0xaa36a7`    |
+| `Avalanche`       | Avalanche Fuji   | evm      | `0xa869`      |
+| `BaseSepolia`     | Base Sepolia     | evm      | `0x14a34`     |
+| `ArbitrumSepolia` | Arbitrum Sepolia | evm      | `0x66eee`     |
+| `OptimismSepolia` | OP Sepolia       | evm      | `0xaa37dc`    |
+| `Polygon`         | Polygon Amoy     | evm      | `0x13882`     |
+| `Solana`          | Solana Devnet    | svm      | —             |
 
 `rpcUrl` and `explorerTx` use public testnet endpoints (e.g.
 `https://sepolia.etherscan.io/tx/<h>`, `https://explorer.solana.com/tx/<h>?cluster=devnet`,
@@ -174,7 +174,7 @@ const useUsdcBalance = (spec: ChainSpec, ownerAddress: string | null | undefined
   with a minimal `fetch` JSON-RPC POST (no new dependency; `ethers` is available if a
   decoder is preferred).
 - Keyed on `(spec.chain, ownerAddress, tick)` so a chain flip or `refetch()` re-queries.
-- Reads the *selected chain's* RPC directly, so the figure is correct regardless of which
+- Reads the _selected chain's_ RPC directly, so the figure is correct regardless of which
   network the wallet is currently on. (This intentionally replaces butr's `useBalance`,
   which reads via the wallet provider and would report the wallet's current-network
   balance — wrong once chains are arbitrary. butr's `useBalance` remains demonstrated in

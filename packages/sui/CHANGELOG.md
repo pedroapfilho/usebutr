@@ -1,5 +1,13 @@
 # @usebutr/sui
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies [db5d7e9]
+  - @usebutr/core@0.2.2
+  - @usebutr/wallet-standard-shared@0.2.2
+
 ## 0.2.1
 
 ### Patch Changes

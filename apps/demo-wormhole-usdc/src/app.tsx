@@ -1,23 +1,14 @@
 import type { ConnectedWallet } from "@usebutr/core";
 import { useSelectedWallet } from "@usebutr/react";
 import { type Chain, type Network, Wormhole, amount } from "@wormhole-foundation/sdk-connect";
-// Direct chain-SDK imports — bypass the `@wormhole-foundation/sdk`
-// umbrella, which side-effect-imports addresses for chains we don't use.
-// The Circle (CCTP) protocol modules register themselves via side-effect
-// imports in `main.tsx`, sequenced before any `sdk-solana` import to keep
-// the bundler's circular dep out of the boot path.
-import { EvmPlatform } from "@wormhole-foundation/sdk-evm";
-import { SolanaPlatform } from "@wormhole-foundation/sdk-solana";
-import type { Eip1193Provider } from "ethers";
 import { type ReactNode, useState } from "react";
 
 import { type ChainSpec, CHAIN_LIST, USDC_DECIMALS, getChainSpec } from "./chains";
+import { PendingTransfers } from "./pending-transfers";
 import { type UsdcBalance, useUsdcBalance } from "./token-balance";
 import { WalletList } from "./wallet-list";
-import { ButrEvmWormholeSigner } from "./wormhole-signer";
-import { ButrSvmWormholeSigner } from "./wormhole-svm-signer";
+import { getWormhole, makeSigner } from "./wormhole";
 
-const NETWORK: Network = "Testnet";
 const ATTESTATION_TIMEOUT_MS = 10 * 60 * 1000;
 
 type Status =
@@ -37,40 +28,6 @@ const formatError = (e: unknown): string => {
     return e;
   }
   return "unknown error";
-};
-
-const ensureChain = async (
-  provider: Eip1193Provider,
-  expectedChainIdHex: string,
-): Promise<void> => {
-  const current = (await provider.request({ method: "eth_chainId" })) as string;
-  if (current.toLowerCase() === expectedChainIdHex.toLowerCase()) {
-    return;
-  }
-  await provider.request({
-    method: "wallet_switchEthereumChain",
-    params: [{ chainId: expectedChainIdHex }],
-  });
-};
-
-// Build a Wormhole SignAndSendSigner for the given chain + butr wallet.
-// EVM legs first switch the wallet to that chain's network so the burn
-// (or the mint, on an EVM destination) lands on the correct chain.
-const makeSigner = async (spec: ChainSpec, wallet: ConnectedWallet) => {
-  if (spec.platform === "evm") {
-    if (!spec.evmChainIdHex) {
-      throw new Error(`${spec.label} is missing an EVM chain id`);
-    }
-    const provider = (await wallet.connector.getSigner()) as Eip1193Provider;
-    await ensureChain(provider, spec.evmChainIdHex);
-    return new ButrEvmWormholeSigner(spec.chain, wallet.account.walletAddress, provider);
-  }
-  return new ButrSvmWormholeSigner(
-    spec.chain,
-    wallet.account.walletAddress,
-    wallet.connector,
-    spec.rpcUrl,
-  );
 };
 
 const formatBalance = (b: UsdcBalance): string => {
@@ -302,7 +259,7 @@ const App = () => {
     setStatus({ kind: "initiating" });
     setXfer(null);
     try {
-      const wh = new Wormhole(NETWORK, [EvmPlatform, SolanaPlatform]);
+      const wh = getWormhole();
       const sourceAddress = Wormhole.chainAddress(srcSpec.chain, srcWallet.account.walletAddress);
       const destAddress = Wormhole.chainAddress(dstSpec.chain, dstWallet.account.walletAddress);
       const units = amount.units(amount.parse(amountInput, USDC_DECIMALS));
@@ -458,6 +415,8 @@ const App = () => {
           </a>
         </p>
       </section>
+
+      <PendingTransfers />
     </main>
   );
 };

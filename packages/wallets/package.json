@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/wallets",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Batteries-included EVM + SVM + Sui + Bitcoin discovery: autoDiscovery() WalletSource + combined chain registries.",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",

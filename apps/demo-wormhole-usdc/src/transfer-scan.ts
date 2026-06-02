@@ -1,4 +1,11 @@
-import { type Address, type Signature, address as toAddress, createSolanaRpc } from "@solana/kit";
+import {
+  type Address,
+  type Signature,
+  address as toAddress,
+  createSolanaRpc,
+  getAddressEncoder,
+  getProgramDerivedAddress,
+} from "@solana/kit";
 import type { Chain } from "@wormhole-foundation/sdk-connect";
 import { Interface, JsonRpcProvider, zeroPadValue } from "ethers";
 
@@ -59,6 +66,26 @@ const mapPool = async <T, R>(
   };
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
   return results;
+};
+
+// Classic SPL token + associated-token program ids. USDC on Solana devnet
+// uses the classic Token program, so we derive the owner's USDC ATA — the
+// account CCTP mints into — to tell whether the active wallet is the
+// recipient of a given transfer.
+const ASSOCIATED_TOKEN_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
+const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+
+const deriveUsdcAta = async (owner: string, mint: string): Promise<string> => {
+  const encoder = getAddressEncoder();
+  const [ata] = await getProgramDerivedAddress({
+    programAddress: ASSOCIATED_TOKEN_PROGRAM as Address,
+    seeds: [
+      encoder.encode(owner as Address),
+      encoder.encode(TOKEN_PROGRAM as Address),
+      encoder.encode(mint as Address),
+    ],
+  });
+  return ata;
 };
 
 // Find this wallet's CCTP burns on an EVM source chain via a `depositor`-
@@ -170,4 +197,11 @@ const scanSolanaBurns = async (
 };
 
 export type { DiscoveredBurn };
-export { EVM_LOOKBACK_BLOCKS, SOLANA_SIGNATURE_LIMIT, mapPool, scanEvmBurns, scanSolanaBurns };
+export {
+  EVM_LOOKBACK_BLOCKS,
+  SOLANA_SIGNATURE_LIMIT,
+  deriveUsdcAta,
+  mapPool,
+  scanEvmBurns,
+  scanSolanaBurns,
+};

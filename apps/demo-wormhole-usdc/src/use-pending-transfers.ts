@@ -1,5 +1,5 @@
 import type { ConnectedWallet } from "@usebutr/core";
-import type { Chain } from "@wormhole-foundation/sdk-connect";
+import { type Chain, Wormhole } from "@wormhole-foundation/sdk-connect";
 import { formatUnits } from "ethers";
 import { useCallback, useState } from "react";
 
@@ -8,6 +8,7 @@ import {
   type DiscoveredBurn,
   EVM_LOOKBACK_BLOCKS,
   SOLANA_SIGNATURE_LIMIT,
+  deriveUsdcAta,
   mapPool,
   scanEvmBurns,
   scanSolanaBurns,
@@ -19,6 +20,10 @@ type ResumableTransfer = {
   amount: string;
   destAddress: string;
   destChain: Chain;
+  // Solana CCTP mints into the recipient's own USDC ATA, baked into the burn.
+  // The SDK can only create/complete it when the active wallet owns that ATA —
+  // false means the wrong Solana account is connected for this transfer.
+  destOwnedByActive: boolean;
   destSupported: boolean;
   key: string;
   sourceChain: Chain;
@@ -105,6 +110,17 @@ const usePendingTransfers = (
         }
       });
 
+      // The active Solana wallet's USDC ATA (as a universal address) lets us
+      // mark transfers whose baked-in recipient the active wallet doesn't own —
+      // i.e. the wrong Solana account is connected to complete them.
+      const solanaUsdc = findChainSpec("Solana")?.usdc;
+      const activeSvmAtaUniversal =
+        svmAddr && solanaUsdc
+          ? Wormhole.chainAddress("Solana", await deriveUsdcAta(svmAddr, solanaUsdc))
+              .address.toUniversalAddress()
+              .toString()
+          : null;
+
       const checked = await mapPool(discovered, REDEMPTION_CHECK_CONCURRENCY, async (burn) => {
         try {
           const srcBridge = await wh.getChain(burn.sourceChain).getCircleBridge();
@@ -117,10 +133,16 @@ const usePendingTransfers = (
               return null;
             }
           }
+          const recipientUniversal = message.to.address.toUniversalAddress().toString();
           const item: ResumableTransfer = {
             amount: formatUnits(message.amount, USDC_DECIMALS),
             destAddress: message.to.address.toString(),
             destChain,
+            // EVM mints have no ATA-owner constraint (any wallet can complete);
+            // Solana requires the active wallet to own the recipient ATA.
+            destOwnedByActive:
+              destChain !== "Solana" ||
+              (activeSvmAtaUniversal !== null && recipientUniversal === activeSvmAtaUniversal),
             destSupported: findChainSpec(destChain) !== undefined,
             key: `${burn.sourceChain}:${burn.txid}`,
             sourceChain: burn.sourceChain,

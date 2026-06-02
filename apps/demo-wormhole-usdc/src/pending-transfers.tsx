@@ -8,12 +8,24 @@ import { getWormhole, makeSigner } from "./wormhole";
 
 const ATTESTATION_TIMEOUT_MS = 10 * 60 * 1000;
 
-const formatError = (e: unknown): string => {
-  if (e instanceof Error) {
-    return e.message;
+const formatError = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
   }
-  if (typeof e === "string") {
-    return e;
+  if (typeof error === "string") {
+    return error;
+  }
+  // SDK / wallet errors are often plain objects — surface their message
+  // instead of a useless "unknown error".
+  if (error !== null && typeof error === "object") {
+    if ("message" in error && typeof error.message === "string") {
+      return error.message;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
   }
   return "unknown error";
 };
@@ -30,15 +42,19 @@ type RowStatus =
 
 // Why the "Complete mint" button can't be used yet, if anything.
 const DestHint = ({
-  blocked,
   destLabel,
   destPlatform,
+  ownedByActive,
+  recipient,
   supported,
+  walletMissing,
 }: {
-  blocked: boolean;
   destLabel: string;
   destPlatform: string | undefined;
+  ownedByActive: boolean;
+  recipient: string;
   supported: boolean;
+  walletMissing: boolean;
 }) => {
   if (!supported) {
     return (
@@ -47,10 +63,19 @@ const DestHint = ({
       </p>
     );
   }
-  if (blocked) {
+  if (walletMissing) {
     return (
       <p className="text-xs text-amber-700">
         Connect a {destPlatform?.toUpperCase() ?? "destination"} wallet to complete.
+      </p>
+    );
+  }
+  if (!ownedByActive) {
+    return (
+      <p className="text-xs text-amber-700">
+        Wrong wallet — this transfer was sent to {truncate(recipient)}, which the active{" "}
+        {destPlatform?.toUpperCase() ?? ""} wallet doesn’t own. Switch to that account, then Scan
+        again.
       </p>
     );
   }
@@ -141,7 +166,7 @@ const PendingTransfers = () => {
         const destWallet = destSpec?.platform === "evm" ? evmWallet : svmWallet;
         const row = rows[item.key] ?? { kind: "idle" };
         const srcSpec = getChainSpec(item.sourceChain);
-        const blocked = !destSpec || !destWallet;
+        const blocked = !destSpec || !destWallet || !item.destOwnedByActive;
         return (
           <div
             className="space-y-2 rounded-lg border border-neutral-200 bg-white p-4"
@@ -199,10 +224,12 @@ const PendingTransfers = () => {
                     : `Complete mint on ${chainLabel(item.destChain)}`}
                 </button>
                 <DestHint
-                  blocked={blocked}
                   destLabel={chainLabel(item.destChain)}
                   destPlatform={destSpec?.platform}
+                  ownedByActive={item.destOwnedByActive}
+                  recipient={item.destAddress}
                   supported={item.destSupported}
+                  walletMissing={!destWallet}
                 />
                 {row.kind === "error" ? (
                   <p className="text-sm text-red-700" role="alert">

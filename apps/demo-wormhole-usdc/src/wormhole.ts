@@ -57,4 +57,4 @@ const makeSigner = async (spec: ChainSpec, wallet: ConnectedWallet) => {
   );
 };
 
-export { NETWORK, getWormhole, makeSigner };
+export { getWormhole, makeSigner };

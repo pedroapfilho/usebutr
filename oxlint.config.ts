@@ -102,6 +102,12 @@ export default defineConfig({
       rules: {
         "no-console": "off",
         "no-underscore-dangle": "off",
+        // `callback-return` (node plugin) targets Node-style error-first
+        // callbacks whose call should be returned. butr's adapters take `cb`
+        // as a fire-and-forget notification hook (e.g. "the wallet switched
+        // chains") and must keep executing afterward to send the transaction —
+        // returning at the call site would abort the operation.
+        "callback-return": "off",
       },
     },
     // Demo apps are intentionally standalone — each demo is a self-contained

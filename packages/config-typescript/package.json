@@ -4,6 +4,6 @@
   "private": true,
   "license": "MIT",
   "dependencies": {
-    "expo": "^55.0.23"
+    "expo": "^56.0.8"
   }
 }

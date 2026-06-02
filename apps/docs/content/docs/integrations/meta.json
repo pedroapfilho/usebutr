@@ -1,14 +1,18 @@
 {
   "title": "Integrations",
   "pages": [
-    "viem",
-    "wagmi",
+    "---Solana---",
     "solana-framework-kit",
     "gill",
     "solana-kit",
     "solana-wallet-adapter",
     "solana-web3js",
-    "sui",
-    "bitcoin"
+    "---EVM---",
+    "viem",
+    "wagmi",
+    "---Bitcoin---",
+    "bitcoin",
+    "---Sui---",
+    "sui"
   ]
 }

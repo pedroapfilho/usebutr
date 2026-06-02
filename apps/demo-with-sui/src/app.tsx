@@ -1,4 +1,4 @@
-import { SuiClient } from "@mysten/sui/client";
+import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { Transaction } from "@mysten/sui/transactions";
 import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
@@ -8,7 +8,9 @@ import { useDiscoveredWallets } from "./wallet-provider";
 
 const RPC_URL = "https://fullnode.testnet.sui.io:443";
 
-const client = new SuiClient({ url: RPC_URL });
+// @mysten/sui v2 removed the unified `SuiClient`; the JSON-RPC client now
+// lives in `@mysten/sui/jsonRpc` and requires an explicit `network`.
+const client = new SuiJsonRpcClient({ network: "testnet", url: RPC_URL });
 
 const formatError = (e: unknown): string => {
   if (e instanceof Error) {
@@ -132,7 +134,7 @@ const Connected = ({
           Disconnect
         </button>
       </div>
-      <Row label="Network">Sui Testnet (via @mysten/sui SuiClient)</Row>
+      <Row label="Network">Sui Testnet (via @mysten/sui SuiJsonRpcClient)</Row>
       <Row label="Balance">{balance}</Row>
       <div className="flex flex-wrap gap-2">
         <button

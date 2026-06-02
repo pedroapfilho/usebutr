@@ -15,29 +15,29 @@
     "clean": "rm -rf .expo node_modules dist"
   },
   "dependencies": {
-    "@expo/metro-runtime": "^55.0.11",
-    "@react-native-async-storage/async-storage": "^2.1.2",
+    "@expo/metro-runtime": "^56.0.13",
+    "@react-native-async-storage/async-storage": "^3.1.1",
     "@usebutr/core": "workspace:*",
     "@usebutr/react": "workspace:*",
     "@usebutr/wallets": "workspace:*",
-    "expo": "^55.0.23",
-    "expo-constants": "^55.0.16",
-    "expo-image": "^55.0.10",
-    "expo-linking": "^55.0.15",
-    "expo-router": "^55.0.14",
-    "expo-status-bar": "^55.0.6",
+    "expo": "^56.0.8",
+    "expo-constants": "^56.0.16",
+    "expo-image": "^56.0.9",
+    "expo-linking": "^56.0.13",
+    "expo-router": "^56.2.8",
+    "expo-status-bar": "^56.0.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-native": "^0.85.3",
-    "react-native-safe-area-context": "^5.4.0",
-    "react-native-screens": "^4.25.0",
+    "react-native-safe-area-context": "^5.8.0",
+    "react-native-screens": "^4.25.2",
     "react-native-web": "^0.21.2",
-    "zustand": "^5.0.0"
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
-    "@babel/core": "^7.24.0",
+    "@babel/core": "^7.29.7",
     "@repo/typescript-config": "workspace:*",
-    "@types/react": "^19.0.0",
+    "@types/react": "^19.2.15",
     "typescript": "^6.0.3"
   }
 }

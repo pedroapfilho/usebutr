@@ -41,39 +41,39 @@ docs/                 # Repo-level design notes (not the Fumadocs site)
 
 **Integration demos** (one library each, on the chain's testnet):
 
-| App                               | Library                      | Dev URL                 |
-| --------------------------------- | ---------------------------- | ----------------------- |
-| `demo-with-viem`                  | viem                         | `http://localhost:5175` |
-| `demo-with-wagmi`                 | wagmi (`@wagmi/core`)        | `http://localhost:5176` |
-| `demo-with-solana-web3js`         | `@solana/web3.js`            | `http://localhost:5177` |
+| App                               | Library                        | Dev URL                 |
+| --------------------------------- | ------------------------------ | ----------------------- |
+| `demo-with-viem`                  | viem                           | `http://localhost:5175` |
+| `demo-with-wagmi`                 | wagmi (`@wagmi/core`)          | `http://localhost:5176` |
+| `demo-with-solana-web3js`         | `@solana/web3.js`              | `http://localhost:5177` |
 | `demo-with-solana-wallet-adapter` | `@solana/wallet-adapter-react` | `http://localhost:5178` |
-| `demo-with-solana-kit`            | `@solana/kit`                | `http://localhost:5179` |
-| `demo-with-sui`                   | `@mysten/sui`                | `http://localhost:5180` |
-| `demo-with-bitcoin`               | `bitcoinjs-lib`              | `http://localhost:5181` |
-| `demo-with-gill`                  | gill                         | `http://localhost:5182` |
-| `demo-with-solana-framework-kit`  | `@solana/react-hooks`        | `http://localhost:5183` |
-| `demo-wormhole-usdc`              | `@wormhole-foundation/sdk`   | `http://localhost:5184` |
+| `demo-with-solana-kit`            | `@solana/kit`                  | `http://localhost:5179` |
+| `demo-with-sui`                   | `@mysten/sui`                  | `http://localhost:5180` |
+| `demo-with-bitcoin`               | `bitcoinjs-lib`                | `http://localhost:5181` |
+| `demo-with-gill`                  | gill                           | `http://localhost:5182` |
+| `demo-with-solana-framework-kit`  | `@solana/react-hooks`          | `http://localhost:5183` |
+| `demo-wormhole-usdc`              | `@wormhole-foundation/sdk`     | `http://localhost:5184` |
 
 **Docs:** `apps/docs` — Fumadocs (Next.js 16 + Turbopack) on `http://localhost:4000`.
 
 ### Packages
 
-| Package                        | Published? | Purpose                                                                            |
-| ------------------------------ | ---------- | ---------------------------------------------------------------------------------- |
-| `@usebutr/core`                | yes        | Types, store, storage, discovery seam. No React, no protocols.                     |
-| `@usebutr/react`               | yes        | `WalletManagerProvider`, hooks, persisted connections.                             |
-| `@usebutr/evm`                 | yes        | EIP-6963 discovery + EVM connector.                                                |
-| `@usebutr/svm`                 | yes        | Wallet Standard discovery + Solana connector.                                      |
-| `@usebutr/sui`                 | yes        | Wallet Standard discovery + Sui connector.                                         |
-| `@usebutr/bitcoin`             | yes        | Injected fallbacks (Unisat, Xverse, `window.btc`) + Bitcoin connector.             |
-| `@usebutr/wallets`             | yes        | `autoDiscovery()` — the one-call discovery source.                                 |
-| `@usebutr/walletconnect`       | yes        | WalletConnect connector.                                                           |
-| `@usebutr/ledger`              | yes        | Ledger connector.                                                                  |
-| `@usebutr/wallet-standard-shared` | yes     | Shared Wallet Standard helpers.                                                    |
-| `@usebutr/testing`             | yes        | Testing helpers for consumer apps.                                                 |
-| `@repo/typescript-config`      | no         | Shared tsconfig bases: `base/library/nextjs/react-library/server/vite/expo.json`. |
-| `@repo/config-vitest`          | no         | Shared Vitest config (`react.ts`, `node.ts`).                                      |
-| `@repo/wallet-extensions`      | no         | Internal registry + Playwright helpers for extension fixtures (not for e2e here).  |
+| Package                           | Published? | Purpose                                                                           |
+| --------------------------------- | ---------- | --------------------------------------------------------------------------------- |
+| `@usebutr/core`                   | yes        | Types, store, storage, discovery seam. No React, no protocols.                    |
+| `@usebutr/react`                  | yes        | `WalletManagerProvider`, hooks, persisted connections.                            |
+| `@usebutr/evm`                    | yes        | EIP-6963 discovery + EVM connector.                                               |
+| `@usebutr/svm`                    | yes        | Wallet Standard discovery + Solana connector.                                     |
+| `@usebutr/sui`                    | yes        | Wallet Standard discovery + Sui connector.                                        |
+| `@usebutr/bitcoin`                | yes        | Injected fallbacks (Unisat, Xverse, `window.btc`) + Bitcoin connector.            |
+| `@usebutr/wallets`                | yes        | `autoDiscovery()` — the one-call discovery source.                                |
+| `@usebutr/walletconnect`          | yes        | WalletConnect connector.                                                          |
+| `@usebutr/ledger`                 | yes        | Ledger connector.                                                                 |
+| `@usebutr/wallet-standard-shared` | yes        | Shared Wallet Standard helpers.                                                   |
+| `@usebutr/testing`                | yes        | Testing helpers for consumer apps.                                                |
+| `@repo/typescript-config`         | no         | Shared tsconfig bases: `base/library/nextjs/react-library/server/vite/expo.json`. |
+| `@repo/config-vitest`             | no         | Shared Vitest config (`react.ts`, `node.ts`).                                     |
+| `@repo/wallet-extensions`         | no         | Internal registry + Playwright helpers for extension fixtures (not for e2e here). |
 
 ## Dev workflow
 
@@ -118,7 +118,7 @@ There is no Docker, no Prisma, no Playwright, no e2e suite — this is a pure li
 - **`@usebutr/*` published, `@repo/*` private.** The `@repo/*` namespace is a workspace-internal convention shared with the SaaS repos; only the public connector packages live under `@usebutr/*`.
 - **`tsdown` over `tsup`/`unbuild`.** Faster builds, ESM-first, matches the React 19 + Node 24 baseline.
 - **Fumadocs over plain Next.js content.** `apps/docs` is the source of `docs.usebutr.com`; content lives as MDX under that app.
-- **`@repo/wallet-extensions`** ships Playwright + registry helpers for *consumer* apps that want to drive real wallet extensions in their own e2e suites. This repo doesn't run those e2e tests itself.
+- **`@repo/wallet-extensions`** ships Playwright + registry helpers for _consumer_ apps that want to drive real wallet extensions in their own e2e suites. This repo doesn't run those e2e tests itself.
 
 ## References
 

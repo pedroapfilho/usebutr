@@ -127,13 +127,8 @@ const createWalletStore = (config: WalletManagerConfig) => {
       set((prev) => reducer(prev, event), false);
     };
 
-    // Each persister returns the storage write's Promise so call
-    // sites that need a "storage is now durable" guarantee (e.g.
-    // `connectWallet`, `disconnectWallet`) can await before
-    // resolving. Wallet-event-driven helpers (`refreshPoolEntry`)
-    // still fire-and-forget — the order of resolution for those
-    // doesn't matter because `WalletStorage` serializes pool
-    // mutations through an internal queue.
+    // Returns the write Promise so connect/disconnect can await durability;
+    // `WalletStorage` serializes pool mutations internally so fire-and-forget callers are safe.
     const persistPool = (): Promise<void> =>
       run(() => storage.setPool(get().pool), reportStorageError("failed to persist pool"));
 
@@ -168,11 +163,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
     // subscription exists.
     const lifecycle = createConnectorLifecycle({
       onAccountChanged: (connectorId, accounts, active) => {
-        // Full-replace the accounts array so the pool entry mirrors
-        // the wallet's current exposure. Drops the previously-active
-        // address on single-account wallets (Phantom EVM/SVM,
-        // MetaMask Snap); preserves the multi-account list on
-        // MetaMask, Rabby, etc. The wallet tells us which is active.
+        // Full-replace so the pool mirrors the wallet's current exposure; the wallet picks `active`.
         refreshPoolEntry(connectorId, [...accounts], active);
       },
       onDisconnected: (connectorId, chainPlatform) => {
@@ -472,11 +463,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
       },
 
       updateWalletAccount: (connectorId, account) => {
-        // Manual variant of the wallet-event path. Builds the
-        // next accounts list (dedupe-by-address + chain refresh
-        // since chain is wallet-level) and routes through
-        // ACCOUNTS_REFRESHED so there's one reducer case for
-        // "the wallet's exposure changed."
+        // Routes through ACCOUNTS_REFRESHED so the manual and wallet-event paths share a reducer case.
         const entry = get().pool.get(connectorId);
         if (!entry) {
           return;

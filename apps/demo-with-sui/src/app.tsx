@@ -8,8 +8,6 @@ import { useDiscoveredWallets } from "./wallet-provider";
 
 const RPC_URL = "https://fullnode.testnet.sui.io:443";
 
-// @mysten/sui v2 removed the unified `SuiClient`; the JSON-RPC client now
-// lives in `@mysten/sui/jsonRpc` and requires an explicit `network`.
 const client = new SuiJsonRpcClient({ network: "testnet", url: RPC_URL });
 
 const formatError = (e: unknown): string => {

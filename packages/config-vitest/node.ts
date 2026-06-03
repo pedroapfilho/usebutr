@@ -15,13 +15,7 @@ const nodeConfig = defineConfig({
       include: ["src/**/*.{ts,tsx}"],
       provider: "v8",
       reporter: ["text", "html", "json-summary"],
-      // Per-package threshold. Each package can ratchet up by overriding
-      // in its own vitest.config.ts (`mergeConfig` + a stricter floor).
-      // The realistic floor today: protocol adapters (@usebutr/evm, @usebutr/
-      // ledger, @usebutr/walletconnect) have EIP-1193 error-handling branches
-      // and protocol-specific wallet quirks that need expensive mocks
-      // to reach; the floor is set so they pass without forcing low-value
-      // coverage tests.
+      // Floor only; packages ratchet up via mergeConfig in their own vitest.config.ts.
       thresholds: {
         branches: 60,
         functions: 70,

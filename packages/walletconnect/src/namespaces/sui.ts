@@ -275,12 +275,7 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
 
       async signMessage(msg, account) {
         const address = resolveAddress(account);
-        // The Sui WC spec describes `message` as plain text, but mobile
-        // wallets (and the Mysten Dappkit reference) typically exchange
-        // base64-encoded bytes. butr's contract is `Uint8Array`, so
-        // encode to base64 here — wallets that expect plain text will
-        // still decode it correctly because base64 is a strict subset
-        // of UTF-8.
+        // Encode as base64: WC mobile wallets expect it, and plain-text wallets still decode (base64 ⊂ UTF-8).
         const result = (await provider.request({
           method: "sui_signPersonalMessage",
           params: { address, message: bytesToBase64(msg) },

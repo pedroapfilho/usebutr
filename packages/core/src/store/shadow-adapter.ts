@@ -109,10 +109,7 @@ const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
     switchChain: () => reject("switchChain"),
   };
 
-  // Discriminated-union return: the runtime `chainPlatform` value
-  // determines which variant we hand back. The cast is required
-  // because TypeScript can't narrow the literal `chainPlatform` field
-  // through a spread.
+  // Cast required: TS can't narrow the literal `chainPlatform` field through a spread.
   switch (entry.chainPlatform) {
     case "bitcoin": {
       return { ...base, chainPlatform: "bitcoin" } as BitcoinAdapter;

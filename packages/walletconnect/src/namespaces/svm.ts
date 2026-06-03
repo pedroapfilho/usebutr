@@ -98,10 +98,7 @@ const base58ToBytes = (input: string): Uint8Array => {
     intVal = intVal * 58n + BigInt(digit);
   }
   const bytes: Array<number> = [];
-  // 255n = 0xFF mask. Spelt as a decimal literal because oxfmt
-  // lowercases hex BigInt literals while the lint rule wants uppercase
-  // — using a decimal sidesteps that fight without scoping a per-file
-  // lint override into production code.
+  // Decimal literal (= 0xFF) sidesteps an oxfmt/lint conflict on hex BigInt casing.
   const byteMask = 255n;
   while (intVal > 0n) {
     bytes.unshift(Number(intVal & byteMask));

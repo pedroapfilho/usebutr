@@ -202,9 +202,7 @@ describe("multi-platform hydration (EVM + SVM)", () => {
     await seedStore.getState().connectWallet(evmAdapter.id);
     await seedStore.getState().connectWallet(svmAdapter.id);
 
-    // Simulated reload. At first only EVM is registered; SVM arrives
-    // during the await window. The order is deterministic in this test
-    // because we drive it manually.
+    // Simulated reload: EVM registered up-front, SVM arrives mid-await.
     const lateAdapters = new Map<string, WalletAdapter>([[evmAdapter.id, evmAdapter]]);
     const reloadedStore = createWalletStore({
       connectors: [],

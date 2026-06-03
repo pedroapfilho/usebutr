@@ -107,9 +107,6 @@ const buildEvmChain = (chainIdHex: string, walletName: string): ChainBase => {
   const reference = chainIdHexToDecimal(chainIdHex);
   return {
     id: `eip155:${reference}`,
-    // We don't ship a chain-id → name table because that's a
-    // domain decision (mainnet, sepolia, base, polygon, …). Consumers
-    // overlay their own name via structural typing if needed.
     name: walletName,
     namespace: "eip155",
     reference,

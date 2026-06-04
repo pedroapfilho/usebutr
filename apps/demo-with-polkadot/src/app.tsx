@@ -4,7 +4,7 @@ import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr
 import { createClient } from "polkadot-api";
 import { connectInjectedExtension } from "polkadot-api/pjs-signer";
 import { getWsProvider } from "polkadot-api/ws";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useDiscoveredWallets } from "./wallet-provider";
 
@@ -60,8 +60,13 @@ const Connected = ({
   const [signedMessage, setSignedMessage] = useState<string | null>(null);
   const [txStatus, setTxStatus] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const txSubRef = useRef<{ unsubscribe: () => void } | null>(null);
 
   const addr = wallet.account.walletAddress;
+
+  // Tear down any in-flight transaction watch when the component unmounts,
+  // so its callbacks don't update state after we're gone.
+  useEffect(() => () => txSubRef.current?.unsubscribe(), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,7 +123,8 @@ const Connected = ({
         dest: MultiAddress.Id(handle.address),
         value: 1_000_000_000n,
       });
-      tx.signSubmitAndWatch(account.polkadotSigner).subscribe({
+      txSubRef.current?.unsubscribe();
+      txSubRef.current = tx.signSubmitAndWatch(account.polkadotSigner).subscribe({
         complete: () => setTxStatus("Finalized"),
         error: (error: unknown) => {
           setTxStatus(null);

@@ -1,0 +1,12 @@
+{
+  "version": 0,
+  "descriptorPath": ".papi/descriptors",
+  "entries": {
+    "paseo": {
+      "wsUrl": "wss://paseo.rpc.amforc.com",
+      "metadata": ".papi/metadata/paseo.scale",
+      "genesis": "0x77afd6190f1554ad45fd0d31aee62aacc33c6db0ea801129acb813f913e0764f",
+      "codeHash": "0x78abd479e98f6160fc03a2377aa083c10dac2304ca348b3e9620c1dc61cfa0a3"
+    }
+  }
+}

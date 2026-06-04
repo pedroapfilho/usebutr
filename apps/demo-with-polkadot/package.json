@@ -12,12 +12,14 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
+    "@polkadot-api/descriptors": "file:.papi/descriptors",
     "@tailwindcss/vite": "^4.3.0",
     "@usebutr/core": "workspace:*",
     "@usebutr/polkadot": "workspace:*",
     "@usebutr/react": "workspace:*",
     "@usebutr/wallets": "workspace:*",
     "@wallet-standard/app": "^1.1.0",
+    "polkadot-api": "^2.1.5",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "tailwindcss": "^4.3.0",

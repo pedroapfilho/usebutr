@@ -62,6 +62,21 @@ const buildPolkadotWalletStandardAdapter = (
   const currentChain = (): ChainBase => buildChain(currentChainId, wallet.name);
 
   const listeners = new Set<(event: ConnectorEvent) => void>();
+  const notifyAccountChanged = () => {
+    if (wallet.accounts.length === 0) {
+      return;
+    }
+    const chain = currentChain();
+    const built = wallet.accounts.map((a) => buildWsAccount(a.address, chain));
+    const first = built[0];
+    if (!first) {
+      return;
+    }
+    for (const listener of listeners) {
+      listener({ account: first, accounts: built, type: "accountChanged" });
+    }
+  };
+
   registerDisconnector?.(() => {
     for (const listener of listeners) {
       listener({ type: "disconnected" });
@@ -183,6 +198,7 @@ const buildPolkadotWalletStandardAdapter = (
         );
       }
       currentChainId = target.id;
+      notifyAccountChanged();
       return Promise.resolve();
     },
   };

@@ -29,7 +29,7 @@ type InjectedPolkadotDiscoveryOptions = {
   target?: InjectedWindow | null;
 };
 
-const DEFAULT_POLLS: ReadonlyArray<number> = [0, 250, 750];
+const DEFAULT_POLLS: ReadonlyArray<number> = [250, 750];
 
 /**
  * Primary Polkadot discovery: enumerate `window.injectedWeb3` keys and

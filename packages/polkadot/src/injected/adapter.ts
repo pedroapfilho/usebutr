@@ -130,7 +130,7 @@ const buildInjectedPolkadotAdapter = (
     },
 
     icon: sanitizeIcon(GENERIC_POLKADOT_ICON),
-    id: `injected:polkadot:${toKebab(displayName)}`,
+    id: `injected:polkadot:${toKebab(extensionName)}`,
     name: displayName,
 
     sendTx() {

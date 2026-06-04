@@ -1246,6 +1246,9 @@ importers:
       '@usebutr/evm':
         specifier: workspace:*
         version: link:../evm
+      '@usebutr/polkadot':
+        specifier: workspace:*
+        version: link:../polkadot
       '@usebutr/react':
         specifier: workspace:*
         version: link:../react

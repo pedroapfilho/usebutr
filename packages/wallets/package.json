@@ -39,6 +39,7 @@
     "@usebutr/bitcoin": "workspace:*",
     "@usebutr/core": "workspace:*",
     "@usebutr/evm": "workspace:*",
+    "@usebutr/polkadot": "workspace:*",
     "@usebutr/react": "workspace:*",
     "@usebutr/sui": "workspace:*",
     "@usebutr/svm": "workspace:*"

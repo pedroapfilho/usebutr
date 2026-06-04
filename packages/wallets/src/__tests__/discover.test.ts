@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { discoverWalletAdapters, resolveDiscoverOptions } from "../discover";
+import { KNOWN_DISCOVERERS, discoverWalletAdapters, resolveDiscoverOptions } from "../discover";
 
 describe("resolveDiscoverOptions", () => {
   it("active=false when input is undefined", () => {
@@ -10,6 +10,8 @@ describe("resolveDiscoverOptions", () => {
       evm: false,
       injected: false,
       injectedBitcoin: false,
+      polkadot: false,
+      polkadotWalletStandard: false,
       sui: false,
       svm: false,
     });
@@ -22,6 +24,8 @@ describe("resolveDiscoverOptions", () => {
       evm: false,
       injected: false,
       injectedBitcoin: false,
+      polkadot: false,
+      polkadotWalletStandard: false,
       sui: false,
       svm: false,
     });
@@ -34,6 +38,8 @@ describe("resolveDiscoverOptions", () => {
       evm: true,
       injected: true,
       injectedBitcoin: true,
+      polkadot: true,
+      polkadotWalletStandard: true,
       sui: true,
       svm: true,
     });
@@ -46,6 +52,8 @@ describe("resolveDiscoverOptions", () => {
       evm: true,
       injected: true,
       injectedBitcoin: false,
+      polkadot: false,
+      polkadotWalletStandard: false,
       sui: false,
       svm: false,
     });
@@ -58,6 +66,8 @@ describe("resolveDiscoverOptions", () => {
       evm: false,
       injected: false,
       injectedBitcoin: false,
+      polkadot: false,
+      polkadotWalletStandard: false,
       sui: false,
       svm: true,
     });
@@ -70,6 +80,8 @@ describe("resolveDiscoverOptions", () => {
       evm: true,
       injected: false,
       injectedBitcoin: false,
+      polkadot: false,
+      polkadotWalletStandard: false,
       sui: false,
       svm: false,
     });
@@ -82,6 +94,8 @@ describe("resolveDiscoverOptions", () => {
       evm: false,
       injected: false,
       injectedBitcoin: true,
+      polkadot: false,
+      polkadotWalletStandard: false,
       sui: false,
       svm: false,
     });
@@ -94,6 +108,8 @@ describe("resolveDiscoverOptions", () => {
       evm: false,
       injected: false,
       injectedBitcoin: false,
+      polkadot: false,
+      polkadotWalletStandard: false,
       sui: false,
       svm: false,
     });
@@ -106,6 +122,8 @@ describe("resolveDiscoverOptions", () => {
       evm: false,
       injected: false,
       injectedBitcoin: false,
+      polkadot: false,
+      polkadotWalletStandard: false,
       sui: true,
       svm: false,
     });
@@ -154,5 +172,30 @@ describe("discoverWalletAdapters", () => {
     });
     expect(typeof unsubscribe).toBe("function");
     expect(() => unsubscribe()).not.toThrow();
+  });
+});
+
+describe("polkadot wiring", () => {
+  it("registers a polkadot discoverer", () => {
+    expect(KNOWN_DISCOVERERS.polkadot.platform).toBe("polkadot");
+  });
+
+  it("enables polkadot + its WS fallback under auto=true", () => {
+    const resolved = resolveDiscoverOptions(true);
+    expect(resolved.polkadot).toBe(true);
+    expect(resolved.polkadotWalletStandard).toBe(true);
+  });
+
+  it("opt-in: { polkadot: true } enables polkadot with WS fallback by default", () => {
+    const resolved = resolveDiscoverOptions({ polkadot: true });
+    expect(resolved.polkadot).toBe(true);
+    expect(resolved.polkadotWalletStandard).toBe(true);
+    expect(resolved.evm).toBe(false);
+  });
+
+  it("opt-in: WS fallback can be disabled explicitly", () => {
+    const resolved = resolveDiscoverOptions({ polkadot: true, polkadotWalletStandard: false });
+    expect(resolved.polkadot).toBe(true);
+    expect(resolved.polkadotWalletStandard).toBe(false);
   });
 });

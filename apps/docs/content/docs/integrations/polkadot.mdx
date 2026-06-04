@@ -1,0 +1,66 @@
+---
+title: polkadot-api (PAPI)
+description: Read state with a typed API client, sign messages, and submit extrinsics through the wallet on Paseo testnet.
+---
+
+`polkadot-api` (PAPI) is the modern Polkadot TypeScript SDK. butr discovers and
+manages the wallet; PAPI owns the typed chain descriptor, the RPC client
+(`createClient`), and the extrinsic builder; the wallet's `injectedWeb3`
+interface supplies signing.
+
+## Connect a PAPI client to the chain
+
+PAPI uses a light-client or WebSocket provider. Point it at Paseo testnet and
+read balances without routing through the wallet:
+
+```ts
+import { createClient } from "polkadot-api";
+import { getWsProvider } from "polkadot-api/ws-provider/web";
+import { paseo } from "@polkadot-api/descriptors";
+
+const client = createClient(getWsProvider("wss://paseo.rpc.amforc.com"));
+const api = client.getTypedApi(paseo);
+
+const { data } = await api.query.System.Account.getValue(wallet.account.walletAddress);
+const dot = `${Number(data.free) / 1e10} DOT`;
+```
+
+## Sign a message
+
+The Polkadot adapter wires `signMessage` for raw-bytes signing — call it on the
+connector and get the signature back:
+
+```ts
+const message = new TextEncoder().encode("Hello from butr + polkadot-api");
+const { signature } = await wallet.connector.signMessage(message);
+// `signature` is a Uint8Array — render as hex for display.
+```
+
+## Build and submit an extrinsic
+
+Build the extrinsic with PAPI's typed API, sign it via `getSigner()`, then
+broadcast through the client:
+
+```ts
+const signer = await wallet.connector.getSigner();
+
+const tx = api.tx.Balances.transfer_keep_alive({
+  dest: { type: "Id", value: recipientAddress },
+  value: BigInt(10_000_000_000), // 1 DOT in Planck
+});
+
+const result = await tx.signAndSubmit(signer);
+// result.txHash → look up on https://paseo.subscan.io/extrinsic/<txHash>
+```
+
+<Callout type="info">
+  Unlike EVM, Polkadot extrinsics are SCALE-encoded and include a mortal era (block expiry). PAPI
+  handles encoding; `getSigner()` returns the raw `injectedWeb3` signer that PAPI expects. Signing
+  is always done in the wallet extension — butr never touches the private key.
+</Callout>
+
+<Callout type="info">
+  **Source:** `apps/demo-with-polkadot/src/app.tsx` in the [butr
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-with-polkadot). Targets
+  Paseo testnet. Run `pnpm dev --filter=demo-with-polkadot` → `http://localhost:5185`.
+</Callout>

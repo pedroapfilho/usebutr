@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in the **usebutr** monorepo — a multi-chain browser-wallet management library for React (`@usebutr/*`), plus thirteen demo apps and a Fumadocs site.
+Guidance for AI coding agents working in the **usebutr** monorepo — a multi-chain browser-wallet management library for React (`@usebutr/*`), plus fourteen demo apps and a Fumadocs site.
 
 ## Stack
 
@@ -16,7 +16,7 @@ Guidance for AI coding agents working in the **usebutr** monorepo — a multi-ch
 ## Layout
 
 ```
-apps/                 # 14 apps: 4 framework demos + 10 integration demos + docs
+apps/                 # 15 apps: 4 framework demos + 11 integration demos + docs
 packages/             # @usebutr/* library packages + 2 @repo/* configs + 1 @repo/* internal
 .changeset/           # Changesets — version bumps + release notes
 .github/workflows/    # CI: test, lint, format, fallow, release (Changesets publish)
@@ -53,6 +53,7 @@ docs/                 # Repo-level design notes (not the Fumadocs site)
 | `demo-with-gill`                  | gill                           | `http://localhost:5182` |
 | `demo-with-solana-framework-kit`  | `@solana/react-hooks`          | `http://localhost:5183` |
 | `demo-wormhole-usdc`              | `@wormhole-foundation/sdk`     | `http://localhost:5184` |
+| `demo-with-polkadot`              | `polkadot-api`                 | `http://localhost:5185` |
 
 **Docs:** `apps/docs` — Fumadocs (Next.js 16 + Turbopack) on `http://localhost:4000`.
 
@@ -66,6 +67,7 @@ docs/                 # Repo-level design notes (not the Fumadocs site)
 | `@usebutr/svm`                    | yes        | Wallet Standard discovery + Solana connector.                                     |
 | `@usebutr/sui`                    | yes        | Wallet Standard discovery + Sui connector.                                        |
 | `@usebutr/bitcoin`                | yes        | Injected fallbacks (Unisat, Xverse, `window.btc`) + Bitcoin connector.            |
+| `@usebutr/polkadot`               | yes        | injectedWeb3 + Wallet Standard discovery + Polkadot connector.                    |
 | `@usebutr/wallets`                | yes        | `autoDiscovery()` — the one-call discovery source.                                |
 | `@usebutr/walletconnect`          | yes        | WalletConnect connector.                                                          |
 | `@usebutr/ledger`                 | yes        | Ledger connector.                                                                 |

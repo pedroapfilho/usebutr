@@ -19,6 +19,7 @@
     "@solana/react-hooks",
     "@tanstack/react-query",
     "@usebutr/bitcoin",
+    "@usebutr/polkadot",
     "@usebutr/sui",
     "@usebutr/svm",
     "@usebutr/testing",

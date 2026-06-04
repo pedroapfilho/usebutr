@@ -31,8 +31,7 @@ const buildChain = (chainId: string, walletName: string): ChainBase => ({
   reference: chainId.slice(POLKADOT_PREFIX.length),
 });
 
-const buildWsAccount = (address: string, chain: ChainBase): Account =>
-  buildAccount(address, chain);
+const buildWsAccount = (address: string, chain: ChainBase): Account => buildAccount(address, chain);
 
 /**
  * Adapt a Wallet Standard wallet advertising `polkadot:*` features into a
@@ -204,4 +203,4 @@ const buildPolkadotWalletStandardAdapter = (
   };
 };
 
-export { buildPolkadotWalletStandardAdapter, slugify };
+export { buildPolkadotWalletStandardAdapter };

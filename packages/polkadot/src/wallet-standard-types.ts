@@ -24,8 +24,4 @@ type PolkadotSignMessageFeature = {
   signMessage(input: PolkadotSignMessageInput): Promise<PolkadotSignMessageOutput>;
 };
 
-export type {
-  PolkadotSignMessageFeature,
-  PolkadotSignMessageInput,
-  PolkadotSignMessageOutput,
-};
+export type { PolkadotSignMessageFeature, PolkadotSignMessageInput, PolkadotSignMessageOutput };

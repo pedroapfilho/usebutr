@@ -180,7 +180,9 @@ const Connected = ({
       ) : null}
       {signedMessage ? (
         <Row label="Signed payload">
-          <span className="text-xs text-neutral-500">{"<Bytes>"}-wrapped hex sent to signRaw: </span>
+          <span className="text-xs text-neutral-500">
+            {"<Bytes>"}-wrapped hex sent to signRaw:{" "}
+          </span>
           <code className="font-mono text-xs break-all">{signedMessage}</code>
         </Row>
       ) : null}
@@ -238,8 +240,8 @@ const App = () => (
       <p className="mt-1 text-sm text-neutral-500">
         butr discovers and manages the wallet via injectedWeb3 (Polkadot&#123;.js&#125;, Talisman,
         SubWallet); polkadot-api handles the RPC, balance read, and the Paseo transfer. Message
-        signing uses the injected signer&apos;s signRaw; the transaction is signed through PAPI&apos;s
-        pjs-signer bridge.
+        signing uses the injected signer&apos;s signRaw; the transaction is signed through
+        PAPI&apos;s pjs-signer bridge.
       </p>
     </header>
     <Content />

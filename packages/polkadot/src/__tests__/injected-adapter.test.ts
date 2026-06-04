@@ -39,9 +39,7 @@ describe("buildInjectedPolkadotAdapter", () => {
   it("signs a message via signRaw and returns the <Bytes>-wrapped payload", async () => {
     const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
     await adapter.connect();
-    const { signature, signedMessage } = await adapter.signMessage(
-      new TextEncoder().encode("hi"),
-    );
+    const { signature, signedMessage } = await adapter.signMessage(new TextEncoder().encode("hi"));
     expect([...signature]).toEqual([0xde, 0xad]);
     expect(new TextDecoder().decode(signedMessage)).toBe("<Bytes>hi</Bytes>");
   });
@@ -61,7 +59,12 @@ describe("buildInjectedPolkadotAdapter", () => {
     const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
     await adapter.connect();
     await expect(
-      adapter.switchChain({ id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" }),
+      adapter.switchChain({
+        id: "eip155:1",
+        name: "Ethereum",
+        namespace: "eip155",
+        reference: "1",
+      }),
     ).rejects.toThrow(/non-Polkadot/v);
   });
 });

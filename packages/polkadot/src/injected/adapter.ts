@@ -7,8 +7,8 @@ import type {
 } from "@usebutr/core";
 import { sanitizeIcon } from "@usebutr/core";
 
-import { POLKADOT_CHAINS } from "../chains";
 import { resolveInjectedPolkadotCapabilities } from "../capabilities";
+import { POLKADOT_CHAINS } from "../chains";
 
 import { GENERIC_POLKADOT_ICON } from "./icon";
 import type { Injected, InjectedWindowProvider } from "./injected-web3";

@@ -84,11 +84,5 @@ const readInjectedWindow = (target?: InjectedWindow | null): InjectedWindow | nu
   return typeof window === "undefined" ? null : (window as unknown as InjectedWindow);
 };
 
-export type {
-  Injected,
-  InjectedAccount,
-  InjectedSigner,
-  InjectedWindow,
-  InjectedWindowProvider,
-};
+export type { Injected, InjectedAccount, InjectedSigner, InjectedWindow, InjectedWindowProvider };
 export { bytesToHex, hexToBytes, readInjectedWindow, wrapBytes };

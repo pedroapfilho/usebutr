@@ -9,12 +9,14 @@
 **Tech Stack:** TypeScript (strict), tsdown, Vitest, oxlint/oxfmt, pnpm workspaces + Turborepo. Demo: Vite 7 + React 19 + polkadot-api (PAPI).
 
 **Reference files to imitate (read before starting):**
+
 - `packages/sui/` — entire package is the template for `packages/polkadot/`.
 - `packages/bitcoin/src/injected/` — the injected-provider pattern (local provider types, lazy connect).
 - `packages/wallets/src/discover.ts` + `chains.ts` — aggregator wiring.
 - `apps/demo-with-sui/` — demo scaffold template.
 
 **Two verification points** (flagged inline — confirm during implementation, code is otherwise complete):
+
 1. Wallet Standard `polkadot:*` feature field names (Task 7) — confirm against Talisman's advertised features; adjust if they differ.
 2. PAPI descriptor name + RPC endpoint for Paseo (Task 11) — confirm via `pnpm papi add`.
 
@@ -23,6 +25,7 @@
 ## Task 1: Widen `ChainPlatform` and add Polkadot adapter types in `@usebutr/core`
 
 **Files:**
+
 - Modify: `packages/core/src/types/wallet.ts`
 - Modify: `packages/core/src/types/chains-by-platform.ts:42-47`
 - Modify: `packages/core/src/index.ts:6-37`
@@ -70,11 +73,13 @@ Expected: FAIL — `result.polkadot` is `undefined` (property missing).
 In `packages/core/src/types/wallet.ts`:
 
 Change line 7:
+
 ```ts
 type ChainPlatform = "evm" | "svm" | "sui" | "bitcoin" | "polkadot";
 ```
 
 After the `BitcoinWallet` type block (around line 283), add:
+
 ```ts
 /**
  * Polkadot/Substrate wallet surface. No standalone `signTransaction`:
@@ -88,22 +93,26 @@ type PolkadotWallet = WalletBase;
 ```
 
 In the per-platform adapter block (around lines 288-291), add after `BitcoinAdapter`:
+
 ```ts
 type PolkadotAdapter = Connector<"polkadot"> & PolkadotWallet;
 ```
 
 Change the `WalletAdapter` union (line 311):
+
 ```ts
 type WalletAdapter = EvmAdapter | SvmAdapter | SuiAdapter | BitcoinAdapter | PolkadotAdapter;
 ```
 
 In the `export type { … }` block (lines 437-460), add `PolkadotAdapter` and `PolkadotWallet` in alphabetical position (after `HydrationOutcome`, before `SuiAdapter`):
+
 ```ts
   PolkadotAdapter,
   PolkadotWallet,
 ```
 
 In `packages/core/src/types/chains-by-platform.ts`, change the return object (lines 42-47):
+
 ```ts
 const buildChainsByPlatform = (partial: Partial<ChainsByPlatform>): ChainsByPlatform => ({
   bitcoin: partial.bitcoin ?? [],
@@ -115,6 +124,7 @@ const buildChainsByPlatform = (partial: Partial<ChainsByPlatform>): ChainsByPlat
 ```
 
 In `packages/core/src/index.ts`, add to the type export block (after `HydrationOutcome` on line ~19, keeping alpha order):
+
 ```ts
   PolkadotAdapter,
   PolkadotWallet,
@@ -137,6 +147,7 @@ git commit -m "feat(core): widen ChainPlatform with polkadot + add PolkadotAdapt
 ## Task 2: Scaffold the `@usebutr/polkadot` package
 
 **Files:**
+
 - Create: `packages/polkadot/package.json`
 - Create: `packages/polkadot/tsconfig.json`
 - Create: `packages/polkadot/tsdown.config.ts`
@@ -157,9 +168,7 @@ git commit -m "feat(core): widen ChainPlatform with polkadot + add PolkadotAdapt
     "url": "git+https://github.com/pedroapfilho/usebutr.git",
     "directory": "packages/polkadot"
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "type": "module",
   "sideEffects": false,
   "types": "dist/index.d.ts",
@@ -275,6 +284,7 @@ git commit -m "chore(polkadot): scaffold @usebutr/polkadot package"
 ## Task 3: Chain registry (`chains.ts`)
 
 **Files:**
+
 - Create: `packages/polkadot/src/chains.ts`
 - Test: `packages/polkadot/src/__tests__/chains.test.ts`
 
@@ -375,6 +385,7 @@ git commit -m "feat(polkadot): add CAIP-2 chain registry"
 ## Task 4: Capability resolver (`capabilities.ts`)
 
 **Files:**
+
 - Create: `packages/polkadot/src/capabilities.ts`
 - Test: `packages/polkadot/src/__tests__/capabilities.test.ts`
 
@@ -383,7 +394,10 @@ git commit -m "feat(polkadot): add CAIP-2 chain registry"
 ```ts
 import { describe, expect, it } from "vitest";
 
-import { resolveInjectedPolkadotCapabilities, resolveWalletStandardPolkadotCapabilities } from "../capabilities";
+import {
+  resolveInjectedPolkadotCapabilities,
+  resolveWalletStandardPolkadotCapabilities,
+} from "../capabilities";
 
 describe("resolveInjectedPolkadotCapabilities", () => {
   it("enables signMessage, subscribe, switchChain; gates RPC features off", () => {
@@ -518,6 +532,7 @@ git commit -m "feat(polkadot): add capability resolvers for injected + wallet st
 ## Task 5: injectedWeb3 types + byte helpers (`injected/injected-web3.ts`)
 
 **Files:**
+
 - Create: `packages/polkadot/src/injected/injected-web3.ts`
 - Create: `packages/polkadot/src/injected/icon.ts`
 - Test: `packages/polkadot/src/__tests__/injected-web3.test.ts`
@@ -644,22 +659,14 @@ const hexToBytes = (hex: string): Uint8Array => {
   return out;
 };
 
-const readInjectedWindow = (
-  target?: InjectedWindow | null,
-): InjectedWindow | null => {
+const readInjectedWindow = (target?: InjectedWindow | null): InjectedWindow | null => {
   if (target !== undefined) {
     return target;
   }
   return typeof window === "undefined" ? null : (window as unknown as InjectedWindow);
 };
 
-export type {
-  Injected,
-  InjectedAccount,
-  InjectedSigner,
-  InjectedWindow,
-  InjectedWindowProvider,
-};
+export type { Injected, InjectedAccount, InjectedSigner, InjectedWindow, InjectedWindowProvider };
 export { bytesToHex, hexToBytes, readInjectedWindow, wrapBytes };
 ```
 
@@ -680,6 +687,7 @@ git commit -m "feat(polkadot): add injectedWeb3 types + byte helpers"
 ## Task 6: Injected adapter (`injected/adapter.ts`)
 
 **Files:**
+
 - Create: `packages/polkadot/src/injected/adapter.ts`
 - Test: `packages/polkadot/src/__tests__/injected-adapter.test.ts`
 
@@ -727,9 +735,7 @@ describe("buildInjectedPolkadotAdapter", () => {
   it("signs a message via signRaw and returns the <Bytes>-wrapped payload", async () => {
     const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
     await adapter.connect();
-    const { signature, signedMessage } = await adapter.signMessage(
-      new TextEncoder().encode("hi"),
-    );
+    const { signature, signedMessage } = await adapter.signMessage(new TextEncoder().encode("hi"));
     expect(Array.from(signature)).toEqual([0xde, 0xad]);
     expect(new TextDecoder().decode(signedMessage)).toBe("<Bytes>hi</Bytes>");
   });
@@ -749,7 +755,12 @@ describe("buildInjectedPolkadotAdapter", () => {
     const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
     await adapter.connect();
     await expect(
-      adapter.switchChain({ id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" }),
+      adapter.switchChain({
+        id: "eip155:1",
+        name: "Ethereum",
+        namespace: "eip155",
+        reference: "1",
+      }),
     ).rejects.toThrow(/non-Polkadot/);
   });
 });
@@ -977,6 +988,7 @@ git commit -m "feat(polkadot): add injectedWeb3 adapter (lazy enable, signRaw, g
 ## Task 7: Injected discovery + Wallet Standard fallback
 
 **Files:**
+
 - Create: `packages/polkadot/src/injected/index.ts`
 - Create: `packages/polkadot/src/wallet-standard-types.ts`
 - Create: `packages/polkadot/src/wallet-standard-adapter.ts`
@@ -1006,10 +1018,7 @@ describe("discoverInjectedPolkadotAdapters", () => {
       pollMs: [],
     });
     stop();
-    expect(seen.sort()).toEqual([
-      "injected:polkadot:polkadot-js",
-      "injected:polkadot:talisman",
-    ]);
+    expect(seen.sort()).toEqual(["injected:polkadot:polkadot-js", "injected:polkadot:talisman"]);
   });
 
   it("emits nothing when injectedWeb3 is absent", () => {
@@ -1159,11 +1168,7 @@ type PolkadotSignMessageFeature = {
   signMessage(input: PolkadotSignMessageInput): Promise<PolkadotSignMessageOutput>;
 };
 
-export type {
-  PolkadotSignMessageFeature,
-  PolkadotSignMessageInput,
-  PolkadotSignMessageOutput,
-};
+export type { PolkadotSignMessageFeature, PolkadotSignMessageInput, PolkadotSignMessageOutput };
 ```
 
 `packages/polkadot/src/wallet-standard-adapter.ts`:
@@ -1202,8 +1207,7 @@ const buildChain = (chainId: string, walletName: string): ChainBase => ({
   reference: chainId.slice(POLKADOT_PREFIX.length),
 });
 
-const buildWsAccount = (address: string, chain: ChainBase): Account =>
-  buildAccount(address, chain);
+const buildWsAccount = (address: string, chain: ChainBase): Account => buildAccount(address, chain);
 
 /**
  * Adapt a Wallet Standard wallet advertising `polkadot:*` features into a
@@ -1403,6 +1407,7 @@ git commit -m "feat(polkadot): add injected discovery + wallet standard fallback
 ## Task 8: `PlatformDiscoverer` + signer augmentation + public `index.ts`
 
 **Files:**
+
 - Create: `packages/polkadot/src/discoverer.ts`
 - Create: `packages/polkadot/src/signer-augmentation.ts`
 - Modify: `packages/polkadot/src/index.ts`
@@ -1553,6 +1558,7 @@ git commit -m "feat(polkadot): add PlatformDiscoverer, signer augmentation, publ
 ## Task 9: Wire Polkadot into `@usebutr/wallets`
 
 **Files:**
+
 - Modify: `packages/wallets/src/discover.ts`
 - Modify: `packages/wallets/src/chains.ts`
 - Modify: `packages/wallets/package.json` (add dependency)
@@ -1561,6 +1567,7 @@ git commit -m "feat(polkadot): add PlatformDiscoverer, signer augmentation, publ
 - [ ] **Step 1: Add the dependency**
 
 In `packages/wallets/package.json`, add to `dependencies` (alpha order, alongside the other `@usebutr/*` platform packages):
+
 ```json
     "@usebutr/polkadot": "workspace:*",
 ```
@@ -1610,11 +1617,13 @@ Expected: FAIL — `KNOWN_DISCOVERERS.polkadot` undefined; `resolved.polkadot` u
 - [ ] **Step 4: Edit `packages/wallets/src/discover.ts`**
 
 Add the import (alpha order, after the evm import):
+
 ```ts
 import { polkadotDiscoverer } from "@usebutr/polkadot";
 ```
 
 Add to the `DiscoverOptions` type (alpha order):
+
 ```ts
   polkadot?: boolean;
   /** Wallet Standard `polkadot:*` fallback. Meaningful only when
@@ -1624,61 +1633,72 @@ Add to the `DiscoverOptions` type (alpha order):
 ```
 
 Add to the `ResolvedDiscoverOptions` type:
+
 ```ts
-  polkadot: boolean;
-  polkadotWalletStandard: boolean;
+polkadot: boolean;
+polkadotWalletStandard: boolean;
 ```
 
 Add to `KNOWN_DISCOVERERS`:
+
 ```ts
   polkadot: polkadotDiscoverer,
 ```
 
 In `resolveDiscoverOptions`, the `auto === false` branch — add:
+
 ```ts
       polkadot: false,
       polkadotWalletStandard: false,
 ```
 
 The `auto === true` branch — add:
+
 ```ts
       polkadot: true,
       polkadotWalletStandard: true,
 ```
 
 The object-form return — add after computing `bitcoin`:
+
 ```ts
-  const polkadot = auto.polkadot === true;
+const polkadot = auto.polkadot === true;
 ```
+
 and in the returned object:
+
 ```ts
     polkadot,
     polkadotWalletStandard: polkadot && auto.polkadotWalletStandard !== false,
 ```
 
 In `collectActiveDiscoverers`, add after the bitcoin block:
+
 ```ts
-  if (resolved.polkadot) {
-    out.push({
-      discoverer: KNOWN_DISCOVERERS.polkadot,
-      useFallback: resolved.polkadotWalletStandard,
-    });
-  }
+if (resolved.polkadot) {
+  out.push({
+    discoverer: KNOWN_DISCOVERERS.polkadot,
+    useFallback: resolved.polkadotWalletStandard,
+  });
+}
 ```
 
 - [ ] **Step 5: Edit `packages/wallets/src/chains.ts`**
 
 Add the import:
+
 ```ts
 import { POLKADOT_CHAINS, POLKADOT_CHAINS_LIST } from "@usebutr/polkadot";
 ```
 
 Add to `CHAINS`:
+
 ```ts
   polkadot: POLKADOT_CHAINS,
 ```
 
 Add to the `buildChainsByPlatform({ … })` call:
+
 ```ts
   polkadot: POLKADOT_CHAINS_LIST,
 ```
@@ -1700,6 +1720,7 @@ git commit -m "feat(wallets): wire polkadot into autoDiscovery + chain registrie
 ## Task 10: `demo-with-polkadot` scaffold
 
 **Files:**
+
 - Create: `apps/demo-with-polkadot/package.json`
 - Create: `apps/demo-with-polkadot/index.html`
 - Create: `apps/demo-with-polkadot/vite.config.ts`
@@ -1834,17 +1855,20 @@ git commit -m "chore(demo-with-polkadot): scaffold Vite + React app on port 5185
 ## Task 11: `demo-with-polkadot` PAPI integration (`src/app.tsx`)
 
 **Files:**
+
 - Create: `apps/demo-with-polkadot/src/app.tsx`
 - Generated: `apps/demo-with-polkadot/.papi/` (via `papi add`)
 
 - [ ] **Step 1: Generate the Paseo descriptor**
 
 From `apps/demo-with-polkadot/`, run:
+
 ```bash
 cd apps/demo-with-polkadot
 pnpm dlx polkadot-api add paseo -n paseo --wsUrl wss://paseo.rpc.amforc.com
 cd ../..
 ```
+
 Expected: creates `.papi/` with a generated `@polkadot-api/descriptors` package exporting the `paseo` descriptor. Confirm the descriptor export name (`paseo`) and that the package.json dependency entry matches what was scaffolded in Task 10; reconcile if different. Add `.papi/.gitignore`'d metadata per PAPI's output, but commit `.papi/polkadot-api.json` (the descriptor manifest) so CI can regenerate.
 
 VERIFICATION POINT: if `wss://paseo.rpc.amforc.com` is unreachable, substitute a current Paseo RPC endpoint from the Polkadot ecosystem RPC list and re-run.
@@ -1982,6 +2006,7 @@ export { App };
 ```
 
 VERIFICATION POINTS (reconcile against the actual `@usebutr/react` hook surface and PAPI API during implementation):
+
 - The `useDiscoveredWallets()` item shape — `isConnected`, `connect()`, `disconnect()`, `account`, `connector` — must match what other demos use. Read `apps/demo-with-sui/src/app.tsx` and copy the exact hook usage/property names; adjust this file to match.
 - PAPI import paths (`polkadot-api/ws-provider/web`, `polkadot-api/pjs-signer`) and the descriptor export (`paseo`, `MultiAddress`) — confirm against the generated descriptor and installed `polkadot-api` version.
 
@@ -2006,6 +2031,7 @@ git commit -m "feat(demo-with-polkadot): PAPI balance read + Paseo self-transfer
 ## Task 12: Native-deps gating + changeset
 
 **Files:**
+
 - Modify: `pnpm-workspace.yaml`
 - Create: `.changeset/<random-name>.md`
 
@@ -2044,6 +2070,7 @@ git commit -m "chore: changeset for polkadot support + native-deps gating"
 ## Task 13: Docs + repo-wide verification
 
 **Files:**
+
 - Modify: `apps/docs/content/.../comparison.mdx` (locate exact path)
 - Modify: `CLAUDE.md` (the AGENTS.md content at repo root)
 
@@ -2055,6 +2082,7 @@ Open the comparison table that lists per-chain integrations and add a Polkadot r
 - [ ] **Step 2: Update `CLAUDE.md` (AGENTS.md) tables and counts**
 
 In `/Users/pedroapfilho/dev/usebutr/CLAUDE.md`:
+
 - Packages table: add a `@usebutr/polkadot` row (Published: yes; Purpose: "injectedWeb3 + Wallet Standard discovery + Polkadot connector.").
 - Integration demos table: add a `demo-with-polkadot` row (Library: `polkadot-api`; Dev URL: `http://localhost:5185`).
 - Update prose counts: "thirteen demo apps" → "fourteen demo apps"; "14 apps: 4 framework demos + 10 integration demos + docs" → "15 apps: 4 framework demos + 11 integration demos + docs"; the integration-demos intro count.
@@ -2063,6 +2091,7 @@ In `/Users/pedroapfilho/dev/usebutr/CLAUDE.md`:
 - [ ] **Step 3: Repo-wide verification**
 
 Run each and confirm clean:
+
 ```bash
 pnpm install
 pnpm build
@@ -2072,6 +2101,7 @@ pnpm format:check
 pnpm test
 pnpm fallow:dead
 ```
+
 Expected: all green. `fallow:dead` should report no new unused exports (every export in `@usebutr/polkadot/index.ts` is consumed by `@usebutr/wallets` or the demo, except the builder/type exports that are public API — if fallow flags those, confirm they match the pattern of `@usebutr/sui`'s public exports, which fallow already tolerates).
 
 - [ ] **Step 4: Commit**

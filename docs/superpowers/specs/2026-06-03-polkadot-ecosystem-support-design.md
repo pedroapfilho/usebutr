@@ -76,7 +76,7 @@ Coverage: polkadot-js, Talisman, SubWallet, Nova, Enkrypt.
 
 Newer, additive. Wallets advertise `standard:connect` / `standard:events` plus
 `polkadot:signTransaction` / `polkadot:signMessage`. Today only Talisman and
-SubWallet expose it, and always *in addition to* injectedWeb3.
+SubWallet expose it, and always _in addition to_ injectedWeb3.
 
 **Dedup posture.** The fallback defers via `hasAnyPrimaryAdapter` (mirrors
 `bitcoinDiscoverer`); the discovery-bus dedups by `adapter.id` so a wallet present
@@ -156,18 +156,18 @@ via Context7 during implementation.
 
 **Capabilities the adapter reports:**
 
-| Flag | Value | Reason |
-| --- | --- | --- |
-| `signMessage` | `true` | `signer.signRaw`; `signedMessage` carries the `<Bytes>…</Bytes>`-wrapped payload |
-| `subscribe` | `true` | `accounts.subscribe` bridges account changes |
-| `switchChain` | `true` | local-state switch among advertised chains (accounts chain-agnostic) |
-| `getBalance` | `false` | no RPC |
-| `getTransactionReceipt` | `false` | no RPC |
-| `sendTransaction` | `false` | no RPC broadcast |
-| `signTransaction` | `false` | extrinsic build needs chain metadata; use `getSigner()` |
-| `requestAccounts` | `false` | extension manages account exposure in its own UI |
-| `signIn` | `false` | no standardized Polkadot sign-in |
-| `switchAccount` | `false` | no silent switch |
+| Flag                    | Value   | Reason                                                                           |
+| ----------------------- | ------- | -------------------------------------------------------------------------------- |
+| `signMessage`           | `true`  | `signer.signRaw`; `signedMessage` carries the `<Bytes>…</Bytes>`-wrapped payload |
+| `subscribe`             | `true`  | `accounts.subscribe` bridges account changes                                     |
+| `switchChain`           | `true`  | local-state switch among advertised chains (accounts chain-agnostic)             |
+| `getBalance`            | `false` | no RPC                                                                           |
+| `getTransactionReceipt` | `false` | no RPC                                                                           |
+| `sendTransaction`       | `false` | no RPC broadcast                                                                 |
+| `signTransaction`       | `false` | extrinsic build needs chain metadata; use `getSigner()`                          |
+| `requestAccounts`       | `false` | extension manages account exposure in its own UI                                 |
+| `signIn`                | `false` | no standardized Polkadot sign-in                                                 |
+| `switchAccount`         | `false` | no silent switch                                                                 |
 
 ### `@usebutr/wallets` wiring
 
@@ -175,7 +175,7 @@ via Context7 during implementation.
   - `KNOWN_DISCOVERERS` += `polkadot: polkadotDiscoverer`.
   - `DiscoverOptions` += `polkadot?: boolean` and `polkadotWalletStandard?: boolean`.
     The existing convention names the fallback toggle after the fallback channel
-    (`injectedBitcoin` gates Bitcoin's injected *fallback*, where WS is primary).
+    (`injectedBitcoin` gates Bitcoin's injected _fallback_, where WS is primary).
     Polkadot inverts the channels — injectedWeb3 is primary, Wallet Standard is
     the fallback — so the toggle is named for the WS fallback it gates. Defaults
     to `true` when `polkadot` is enabled, like the other fallback flags.

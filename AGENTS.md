@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in the **usebutr** monorepo — a multi-chain browser-wallet management library for React (`@usebutr/*`), plus fourteen demo apps and a Fumadocs site.
+Guidance for AI coding agents working in the **usebutr** monorepo — a multi-chain browser-wallet management library for React (`@usebutr/*`), plus fifteen demo apps and a Fumadocs site.
 
 ## Stack
 
@@ -16,7 +16,7 @@ Guidance for AI coding agents working in the **usebutr** monorepo — a multi-ch
 ## Layout
 
 ```
-apps/                 # 15 apps: 4 framework demos + 11 integration demos + docs
+apps/                 # 16 apps: 4 framework demos + 11 integration demos + docs
 packages/             # @usebutr/* library packages + 2 @repo/* configs + 1 @repo/* internal
 .changeset/           # Changesets — version bumps + release notes
 .github/workflows/    # CI: test, lint, format, fallow, release (Changesets publish)

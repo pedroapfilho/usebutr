@@ -1,11 +1,6 @@
 /**
  * Wallet Standard `polkadot:*` feature shapes. Shared protocol types
  * come from `@usebutr/wallet-standard-shared`.
- *
- * VERIFICATION POINT: field names below model the common Polkadot Wallet
- * Standard feature shape. Confirm against Talisman's advertised
- * `polkadot:signMessage` feature during implementation and adjust if the
- * wallet returns different keys.
  */
 
 import type { WalletStandardWalletAccount } from "@usebutr/wallet-standard-shared";

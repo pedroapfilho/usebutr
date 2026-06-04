@@ -4,7 +4,7 @@ import type { WalletSnapshot } from "../storage/snapshot";
 import type { ChainBase } from "./chain";
 import type { ConnectionError } from "./errors";
 
-type ChainPlatform = "evm" | "svm" | "sui" | "bitcoin";
+type ChainPlatform = "evm" | "svm" | "sui" | "bitcoin" | "polkadot";
 
 type Account = {
   chain: ChainBase;
@@ -282,6 +282,16 @@ type BitcoinWallet = WalletBase & {
   signTransaction?(tx: unknown, account?: Account): Promise<Uint8Array>;
 };
 
+/**
+ * Polkadot/Substrate wallet surface. No standalone `signTransaction`:
+ * building an extrinsic needs chain metadata (an RPC round-trip butr
+ * doesn't ship), so transaction signing happens through the
+ * `getSigner()` handoff — the consumer builds and submits with the
+ * wallet's signer (e.g. polkadot-api). Message signing works via the
+ * injected `signer.signRaw`. Same shape as `EvmWallet`.
+ */
+type PolkadotWallet = WalletBase;
+
 /** Per-platform full adapter shapes — `Connector` + the platform's
  *  `Wallet` surface. These are the discriminated-union variants of
  *  `WalletAdapter`. */
@@ -289,6 +299,7 @@ type EvmAdapter = Connector<"evm"> & EvmWallet;
 type SvmAdapter = Connector<"svm"> & SvmWallet;
 type SuiAdapter = Connector<"sui"> & SuiWallet;
 type BitcoinAdapter = Connector<"bitcoin"> & BitcoinWallet;
+type PolkadotAdapter = Connector<"polkadot"> & PolkadotWallet;
 
 /**
  * Full adapter interface — discriminated union by `chainPlatform`.
@@ -308,7 +319,7 @@ type BitcoinAdapter = Connector<"bitcoin"> & BitcoinWallet;
  * supports this feature"; the discriminated union narrows "this
  * platform has this concept at all".
  */
-type WalletAdapter = EvmAdapter | SvmAdapter | SuiAdapter | BitcoinAdapter;
+type WalletAdapter = EvmAdapter | SvmAdapter | SuiAdapter | BitcoinAdapter | PolkadotAdapter;
 
 /** Deprecated. Use one of the per-platform `*Wallet` types or
  *  `WalletBase`. Retained as an alias so existing names resolve. */
@@ -447,6 +458,8 @@ export type {
   EvmAdapter,
   EvmWallet,
   HydrationOutcome,
+  PolkadotAdapter,
+  PolkadotWallet,
   SuiAdapter,
   SuiWallet,
   SvmAdapter,

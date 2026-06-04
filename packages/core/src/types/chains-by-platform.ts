@@ -42,6 +42,7 @@ type ChainsByPlatform = Readonly<Record<ChainPlatform, ReadonlyArray<ChainBase>>
 const buildChainsByPlatform = (partial: Partial<ChainsByPlatform>): ChainsByPlatform => ({
   bitcoin: partial.bitcoin ?? [],
   evm: partial.evm ?? [],
+  polkadot: partial.polkadot ?? [],
   sui: partial.sui ?? [],
   svm: partial.svm ?? [],
 });

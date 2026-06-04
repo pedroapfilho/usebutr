@@ -19,6 +19,8 @@ export type {
   EvmAdapter,
   EvmWallet,
   HydrationOutcome,
+  PolkadotAdapter,
+  PolkadotWallet,
   SuiAdapter,
   SuiWallet,
   SvmAdapter,

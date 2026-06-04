@@ -1,0 +1,6 @@
+// Generic Polkadot mark (pink dot), data-URI so the connector ships no
+// asset files. Mirrors @usebutr/bitcoin's GENERIC_BITCOIN_ICON approach.
+const GENERIC_POLKADOT_ICON =
+  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNFNjAwN0EiLz48L3N2Zz4=";
+
+export { GENERIC_POLKADOT_ICON };

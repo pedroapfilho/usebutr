@@ -45,6 +45,7 @@ export default defineConfig({
         "apps/demo-with-sui/src/**/*.tsx",
         "apps/demo-with-bitcoin/src/**/*.tsx",
         "apps/demo-wormhole-usdc/src/**/*.tsx",
+        "apps/demo-with-polkadot/src/**/*.tsx",
       ],
       rules: {
         "no-img-element": "off",

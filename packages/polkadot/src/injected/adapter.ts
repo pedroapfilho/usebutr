@@ -208,4 +208,4 @@ const buildInjectedPolkadotAdapter = (
 };
 
 export type { PolkadotSignerHandle };
-export { buildInjectedPolkadotAdapter, toKebab };
+export { buildInjectedPolkadotAdapter };

@@ -9,6 +9,7 @@ import { sanitizeIcon } from "@usebutr/core";
 
 import { resolveInjectedPolkadotCapabilities } from "../capabilities";
 import { POLKADOT_CHAINS } from "../chains";
+import { noRpcBalance, noRpcSendTx, noRpcSendTxToChain, noRpcTransactionReceipt } from "../no-rpc";
 
 import { GENERIC_POLKADOT_ICON } from "./icon";
 import type { Injected, InjectedWindowProvider } from "./injected-web3";
@@ -114,42 +115,27 @@ const buildInjectedPolkadotAdapter = (
       return accounts.map((a) => buildPolkadotAccount(a.address, chain));
     },
 
-    getBalance() {
-      return Promise.resolve({ decimals: 10, formatted: "0", symbol: "DOT", value: 0n });
-    },
+    getBalance: noRpcBalance,
 
     async getSigner() {
       const ext = requireInjected();
-      const address = (await firstAddress()) ?? "";
+      const address = await firstAddress();
+      if (!address) {
+        throw new Error("No connected account");
+      }
       const handle: PolkadotSignerHandle = { address, extension: ext, extensionName };
       return handle;
     },
 
-    getTransactionReceipt() {
-      return Promise.resolve({ status: "Pending" as const });
-    },
+    getTransactionReceipt: noRpcTransactionReceipt,
 
     icon: sanitizeIcon(GENERIC_POLKADOT_ICON),
     id: `injected:polkadot:${toKebab(extensionName)}`,
     name: displayName,
 
-    sendTx() {
-      // butr ships no RPC; building/broadcasting an extrinsic needs chain
-      // metadata. Consumers drive polkadot-api with getSigner() instead.
-      return Promise.reject(
-        new Error(
-          "Polkadot sendTx is unsupported — use getSigner() with polkadot-api to build and submit extrinsics",
-        ),
-      );
-    },
+    sendTx: noRpcSendTx,
 
-    sendTxToChain() {
-      return Promise.reject(
-        new Error(
-          "Polkadot sendTxToChain is unsupported — use getSigner() with polkadot-api to build and submit extrinsics",
-        ),
-      );
-    },
+    sendTxToChain: noRpcSendTxToChain,
 
     async signMessage(msg, account) {
       const ext = requireInjected();

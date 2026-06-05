@@ -15,6 +15,7 @@ import type {
 } from "@usebutr/wallet-standard-shared";
 
 import { resolveWalletStandardPolkadotCapabilities } from "./capabilities";
+import { noRpcBalance, noRpcSendTx, noRpcSendTxToChain, noRpcTransactionReceipt } from "./no-rpc";
 import type { PolkadotSignMessageFeature } from "./wallet-standard-types";
 
 const POLKADOT_PREFIX = "polkadot:";
@@ -113,37 +114,21 @@ const buildPolkadotWalletStandardAdapter = (
       return Promise.resolve(wallet.accounts.map((a) => buildWsAccount(a.address, chain)));
     },
 
-    getBalance() {
-      return Promise.resolve({ decimals: 10, formatted: "0", symbol: "DOT", value: 0n });
-    },
+    getBalance: noRpcBalance,
 
     getSigner() {
       return Promise.resolve(wallet);
     },
 
-    getTransactionReceipt() {
-      return Promise.resolve({ status: "Pending" as const });
-    },
+    getTransactionReceipt: noRpcTransactionReceipt,
 
     icon: sanitizeIcon(wallet.icon),
     id: slugify(wallet.name),
     name: wallet.name,
 
-    sendTx() {
-      return Promise.reject(
-        new Error(
-          "Polkadot sendTx is unsupported — use getSigner() with polkadot-api to build and submit extrinsics",
-        ),
-      );
-    },
+    sendTx: noRpcSendTx,
 
-    sendTxToChain() {
-      return Promise.reject(
-        new Error(
-          "Polkadot sendTxToChain is unsupported — use getSigner() with polkadot-api to build and submit extrinsics",
-        ),
-      );
-    },
+    sendTxToChain: noRpcSendTxToChain,
 
     async signMessage(msg, account) {
       if (!signMessage) {

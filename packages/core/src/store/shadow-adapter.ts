@@ -2,6 +2,7 @@ import type { StoredPoolEntry } from "../storage/persistence";
 import type {
   BitcoinAdapter,
   EvmAdapter,
+  PolkadotAdapter,
   SuiAdapter,
   SvmAdapter,
   WalletAdapter,
@@ -122,6 +123,9 @@ const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
     }
     case "svm": {
       return { ...base, chainPlatform: "svm" } as SvmAdapter;
+    }
+    case "polkadot": {
+      return { ...base, chainPlatform: "polkadot" } as PolkadotAdapter;
     }
     default: {
       // Exhaustive — TS errors if a ChainPlatform variant is added.

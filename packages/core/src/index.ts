@@ -17,6 +17,8 @@ export type {
   EvmWallet,
   HydrationOutcome,
   PlatformDiscoverer,
+  PolkadotAdapter,
+  PolkadotWallet,
   SignerForPlatform,
   SignerOf,
   SuiAdapter,

@@ -6,7 +6,7 @@ description: Every connector is evm, svm, sui, or bitcoin. Platforms are tracked
 ## ChainPlatform
 
 ```ts
-type ChainPlatform = "evm" | "svm" | "sui" | "bitcoin";
+type ChainPlatform = "evm" | "svm" | "sui" | "bitcoin" | "polkadot";
 ```
 
 Every connector carries a `chainPlatform`. butr tracks each platform
@@ -40,13 +40,14 @@ structural typing; butr passes the whole object through untouched.
 Static lists ship with the protocol packages. You don't have to use them — any
 `ChainBase`-shaped object works — but they cover the common networks.
 
-| Export                                  | Package            | Contents                                                                    |
-| --------------------------------------- | ------------------ | --------------------------------------------------------------------------- |
-| `EVM_CHAINS`, `EVM_CHAINS_LIST`         | `@usebutr/evm`     | Ethereum (+ Sepolia, Holesky), Polygon, Arbitrum, Optimism, Base, and more. |
-| `SVM_CHAINS`, `SVM_CHAINS_LIST`         | `@usebutr/svm`     | Solana mainnet / testnet / devnet.                                          |
-| `SUI_CHAINS`, `SUI_CHAINS_LIST`         | `@usebutr/sui`     | Sui mainnet / testnet / devnet.                                             |
-| `BITCOIN_CHAINS`, `BITCOIN_CHAINS_LIST` | `@usebutr/bitcoin` | Bitcoin mainnet / testnet / regtest.                                        |
-| `CHAINS`, `CHAINS_BY_PLATFORM`          | `@usebutr/wallets` | All four registries, keyed by platform.                                     |
+| Export                                    | Package             | Contents                                                                    |
+| ----------------------------------------- | ------------------- | --------------------------------------------------------------------------- |
+| `EVM_CHAINS`, `EVM_CHAINS_LIST`           | `@usebutr/evm`      | Ethereum (+ Sepolia, Holesky), Polygon, Arbitrum, Optimism, Base, and more. |
+| `SVM_CHAINS`, `SVM_CHAINS_LIST`           | `@usebutr/svm`      | Solana mainnet / testnet / devnet.                                          |
+| `SUI_CHAINS`, `SUI_CHAINS_LIST`           | `@usebutr/sui`      | Sui mainnet / testnet / devnet.                                             |
+| `BITCOIN_CHAINS`, `BITCOIN_CHAINS_LIST`   | `@usebutr/bitcoin`  | Bitcoin mainnet / testnet / regtest.                                        |
+| `POLKADOT_CHAINS`, `POLKADOT_CHAINS_LIST` | `@usebutr/polkadot` | Polkadot / Paseo testnet / Kusama.                                          |
+| `CHAINS`, `CHAINS_BY_PLATFORM`            | `@usebutr/wallets`  | All five registries, keyed by platform.                                     |
 
 `CHAINS_BY_PLATFORM[wallet.connector.chainPlatform]` is the idiomatic way to
 get the right chain list for a connected wallet — see
@@ -54,14 +55,14 @@ get the right chain list for a connected wallet — see
 
 ## Platform differences
 
-|                   | EVM                                     | SVM                                          | Sui                                      | Bitcoin                                          |
-| ----------------- | --------------------------------------- | -------------------------------------------- | ---------------------------------------- | ------------------------------------------------ |
-| Discovery         | EIP-6963 (+ injected fallback)          | Wallet Standard                              | Wallet Standard                          | Wallet Standard (+ injected fallback)            |
-| Accounts exposed  | one or many (MetaMask multi-account)    | all at once                                  | all at once                              | one or many (per address format)                 |
-| `requestAccounts` | prompts via `wallet_requestPermissions` | no picker — resolves as a refresh            | no picker                                | no picker                                        |
-| Chain switching   | real, via `wallet_switchEthereumChain`  | local state + per-call `chain` input         | local state + per-call `chain` input     | local state — switching network = re-connect     |
-| Signature format  | EIP-191 / 712, input echoed             | Solana format, may re-encode `signedMessage` | `sui:signPersonalMessage`, returns bytes | Bitcoin Signed Message — not interchangeable     |
-| Transaction shape | RLP-encoded; broadcast separately       | versioned/legacy tx bytes; signAndSend       | BCS-encoded `Transaction` blocks         | PSBT (BIP-174); consumer finalises and broadcast |
+|                   | EVM                                     | SVM                                          | Sui                                      | Bitcoin                                          | Polkadot                                             |
+| ----------------- | --------------------------------------- | -------------------------------------------- | ---------------------------------------- | ------------------------------------------------ | ---------------------------------------------------- |
+| Discovery         | EIP-6963 (+ injected fallback)          | Wallet Standard                              | Wallet Standard                          | Wallet Standard (+ injected fallback)            | injectedWeb3 (+ Wallet Standard)                     |
+| Accounts exposed  | one or many (MetaMask multi-account)    | all at once                                  | all at once                              | one or many (per address format)                 | all at once (SS58-encoded)                           |
+| `requestAccounts` | prompts via `wallet_requestPermissions` | no picker — resolves as a refresh            | no picker                                | no picker                                        | no picker — wallet lists all accounts                |
+| Chain switching   | real, via `wallet_switchEthereumChain`  | local state + per-call `chain` input         | local state + per-call `chain` input     | local state — switching network = re-connect     | local state + per-call `genesisHash` input           |
+| Signature format  | EIP-191 / 712, input echoed             | Solana format, may re-encode `signedMessage` | `sui:signPersonalMessage`, returns bytes | Bitcoin Signed Message — not interchangeable     | SCALE-encoded payload; `signRaw` for raw bytes       |
+| Transaction shape | RLP-encoded; broadcast separately       | versioned/legacy tx bytes; signAndSend       | BCS-encoded `Transaction` blocks         | PSBT (BIP-174); consumer finalises and broadcast | SCALE extrinsic bytes (PAPI); broadcast via RPC node |
 
 **Source:** `packages/core/src/types/chain.ts`,
-`packages/{evm,svm,sui,bitcoin,wallets}/src/chains.ts`.
+`packages/{evm,svm,sui,bitcoin,polkadot,wallets}/src/chains.ts`.

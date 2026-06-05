@@ -1,0 +1,85 @@
+---
+title: polkadot-api (PAPI)
+description: Read state with a typed API client, sign messages, and submit extrinsics through the wallet on Paseo testnet.
+---
+
+`polkadot-api` (PAPI) is the modern Polkadot TypeScript SDK. butr discovers and
+manages the wallet; PAPI owns the typed chain descriptor, the RPC client
+(`createClient`), and the extrinsic builder; the wallet's `injectedWeb3`
+interface supplies signing.
+
+## Connect a PAPI client to the chain
+
+PAPI uses a light-client or WebSocket provider. Point it at Paseo testnet and
+read balances without routing through the wallet:
+
+```ts
+import { createClient } from "polkadot-api";
+import { getWsProvider } from "polkadot-api/ws";
+import { paseo } from "@polkadot-api/descriptors";
+
+const client = createClient(getWsProvider("wss://paseo.rpc.amforc.com"));
+const api = client.getTypedApi(paseo);
+
+const { data } = await api.query.System.Account.getValue(wallet.account.walletAddress);
+// Paseo testnet uses PAS with 10 decimals
+const pas = `${Number(data.free) / 1e10} PAS`;
+```
+
+## Sign a message
+
+The Polkadot adapter wires `signMessage` for raw-bytes signing — call it on the
+connector and get the signature back:
+
+```ts
+const message = new TextEncoder().encode("Hello from butr + polkadot-api");
+const { signature } = await wallet.connector.signMessage(message);
+// `signature` is a Uint8Array — render as hex for display.
+```
+
+## Build and submit an extrinsic
+
+`getSigner()` returns a `PolkadotSignerHandle` (`{ extensionName, address }`), not a PAPI
+`PolkadotSigner` directly. Bridge it to one using `connectInjectedExtension` from
+`polkadot-api/pjs-signer`, then submit with `signSubmitAndWatch`:
+
+```ts
+import { MultiAddress } from "@polkadot-api/descriptors";
+import { connectInjectedExtension } from "polkadot-api/pjs-signer";
+import type { PolkadotSignerHandle } from "@usebutr/polkadot";
+
+// getSigner() returns { extensionName, address } — not a PAPI signer.
+const handle = (await wallet.connector.getSigner()) as PolkadotSignerHandle;
+
+// Bridge: pjs-signer reads the injected extension and produces a PolkadotSigner.
+const extension = await connectInjectedExtension(handle.extensionName);
+const account = extension.getAccounts().find((a) => a.address === handle.address);
+if (!account) throw new Error("Active account not found in the injected extension");
+
+// Self-transfer of 0.1 PAS (1_000_000_000 Planck; Paseo uses 10 decimals).
+const tx = api.tx.Balances.transfer_keep_alive({
+  // oxlint-disable-next-line new-cap -- MultiAddress.Id is a polkadot-api enum-variant constructor
+  dest: MultiAddress.Id(handle.address),
+  value: 1_000_000_000n,
+});
+
+tx.signSubmitAndWatch(account.polkadotSigner).subscribe({
+  next: (event) => console.log("Tx:", event.type),
+  error: (err) => console.error("Tx error:", err),
+  complete: () => console.log("Finalized"),
+});
+// Look up on https://paseo.subscan.io after "Finalized"
+```
+
+<Callout type="info">
+  Unlike EVM, Polkadot extrinsics are SCALE-encoded and include a mortal era (block expiry). PAPI
+  handles encoding. `getSigner()` returns a handle (`extensionName` + `address`); you bridge it to a
+  PAPI `PolkadotSigner` via `connectInjectedExtension`. Signing is always done in the wallet
+  extension — butr never touches the private key.
+</Callout>
+
+<Callout type="info">
+  **Source:** `apps/demo-with-polkadot/src/app.tsx` in the [butr
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-with-polkadot). Targets
+  Paseo testnet. Run `pnpm dev --filter=demo-with-polkadot` → `http://localhost:5185`.
+</Callout>

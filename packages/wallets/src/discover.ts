@@ -1,6 +1,7 @@
 import { bitcoinDiscoverer } from "@usebutr/bitcoin";
 import type { ChainPlatform, PlatformDiscoverer, WalletAdapter } from "@usebutr/core";
 import { evmDiscoverer } from "@usebutr/evm";
+import { polkadotDiscoverer } from "@usebutr/polkadot";
 import { suiDiscoverer } from "@usebutr/sui";
 import { svmDiscoverer } from "@usebutr/svm";
 
@@ -30,6 +31,11 @@ type DiscoverOptions = {
    *  `window.okxwallet.bitcoin`, `window.XverseProviders.BitcoinProvider`,
    *  `window.btc`). Meaningful only when `bitcoin` is also true. */
   injectedBitcoin?: boolean;
+  polkadot?: boolean;
+  /** Wallet Standard `polkadot:*` fallback. Meaningful only when
+   *  `polkadot` is also true. Defaults to `true` when polkadot is
+   *  enabled. */
+  polkadotWalletStandard?: boolean;
   sui?: boolean;
   svm?: boolean;
 };
@@ -40,6 +46,8 @@ type ResolvedDiscoverOptions = {
   evm: boolean;
   injected: boolean;
   injectedBitcoin: boolean;
+  polkadot: boolean;
+  polkadotWalletStandard: boolean;
   sui: boolean;
   svm: boolean;
 };
@@ -54,6 +62,7 @@ type ResolvedDiscoverOptions = {
 const KNOWN_DISCOVERERS: Readonly<Record<ChainPlatform, PlatformDiscoverer>> = {
   bitcoin: bitcoinDiscoverer,
   evm: evmDiscoverer,
+  polkadot: polkadotDiscoverer,
   sui: suiDiscoverer,
   svm: svmDiscoverer,
 };
@@ -84,6 +93,8 @@ const resolveDiscoverOptions = (
       evm: false,
       injected: false,
       injectedBitcoin: false,
+      polkadot: false,
+      polkadotWalletStandard: false,
       sui: false,
       svm: false,
     };
@@ -95,18 +106,23 @@ const resolveDiscoverOptions = (
       evm: true,
       injected: true,
       injectedBitcoin: true,
+      polkadot: true,
+      polkadotWalletStandard: true,
       sui: true,
       svm: true,
     };
   }
   const evm = auto.evm === true;
   const bitcoin = auto.bitcoin === true;
+  const polkadot = auto.polkadot === true;
   return {
     active: true,
     bitcoin,
     evm,
     injected: evm && auto.injected !== false,
     injectedBitcoin: bitcoin && auto.injectedBitcoin !== false,
+    polkadot,
+    polkadotWalletStandard: polkadot && auto.polkadotWalletStandard !== false,
     sui: auto.sui === true,
     svm: auto.svm === true,
   };
@@ -128,6 +144,12 @@ const collectActiveDiscoverers = (
   }
   if (resolved.bitcoin) {
     out.push({ discoverer: KNOWN_DISCOVERERS.bitcoin, useFallback: resolved.injectedBitcoin });
+  }
+  if (resolved.polkadot) {
+    out.push({
+      discoverer: KNOWN_DISCOVERERS.polkadot,
+      useFallback: resolved.polkadotWalletStandard,
+    });
   }
   return out;
 };

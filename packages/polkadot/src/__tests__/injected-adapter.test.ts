@@ -55,6 +55,38 @@ describe("buildInjectedPolkadotAdapter", () => {
     expect(signer.address).toBe(ADDRESS);
   });
 
+  it("getSigner throws when the connected wallet exposes no account", async () => {
+    // accounts.get() returns one account during connect (so connect
+    // succeeds), then empties — getSigner must reject, not hand back an
+    // empty-string address.
+    const provider: InjectedWindowProvider = {
+      enable: vi.fn().mockResolvedValue({
+        accounts: {
+          get: vi
+            .fn()
+            .mockResolvedValueOnce([{ address: ADDRESS, name: "Alice" }])
+            .mockResolvedValue([]),
+          subscribe: vi.fn().mockReturnValue(() => undefined),
+        },
+        signer: { signRaw: vi.fn() },
+      }),
+    };
+    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", provider);
+    await adapter.connect();
+    await expect(adapter.getSigner()).rejects.toThrow(/No connected account/v);
+  });
+
+  it("getBalance returns the neutral no-RPC placeholder", async () => {
+    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
+    await adapter.connect();
+    expect(await adapter.getBalance()).toEqual({
+      decimals: 0,
+      formatted: "0",
+      symbol: "",
+      value: 0n,
+    });
+  });
+
   it("switchChain accepts polkadot chains and rejects others", async () => {
     const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
     await adapter.connect();

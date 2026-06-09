@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack -p 4000",
+    "dev": "portless run --name usebutr.docs next dev --turbopack",
     "build": "next build",
     "start": "next start -p 4000",
     "postinstall": "fumadocs-mdx",

@@ -1,3 +1,7 @@
 *
 !.gitignore
 !package.json
+!dist/
+dist/*
+!dist/*.js
+!dist/*.d.ts

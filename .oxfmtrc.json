@@ -37,6 +37,7 @@
     ".output/**",
     ".vinxi/**",
     "**/routeTree.gen.ts",
-    "pnpm-lock.yaml"
+    "pnpm-lock.yaml",
+    "apps/demo-with-polkadot/.papi/**"
   ]
 }

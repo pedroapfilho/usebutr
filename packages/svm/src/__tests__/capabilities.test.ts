@@ -6,7 +6,9 @@ describe("resolveWalletStandardCapabilities", () => {
   const baseFeatures = {
     events: true,
     signAndSendTransaction: true,
+    signIn: true,
     signMessage: true,
+    signTransaction: true,
   };
 
   it("all-features wallet gets the expected SVM shape", () => {
@@ -19,7 +21,9 @@ describe("resolveWalletStandardCapabilities", () => {
       getTransactionReceipt: false,
       requestAccounts: false,
       sendTransaction: true,
+      signIn: true,
       signMessage: true,
+      signTransaction: true,
       subscribe: true,
       switchAccount: false,
       switchChain: false,

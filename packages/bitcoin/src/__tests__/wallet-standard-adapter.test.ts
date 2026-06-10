@@ -1,3 +1,8 @@
+import type {
+  StandardConnectFeature,
+  WalletStandardWallet,
+  WalletStandardWalletAccount,
+} from "@usebutr/wallet-standard-shared";
 import { describe, expect, it, vi } from "vitest";
 
 import { buildBitcoinAdapter, slugify } from "../wallet-standard-adapter";
@@ -5,9 +10,6 @@ import type {
   BitcoinSendTransferFeature,
   BitcoinSignMessageFeature,
   BitcoinSignPsbtFeature,
-  StandardConnectFeature,
-  WalletStandardWallet,
-  WalletStandardWalletAccount,
 } from "../wallet-standard-types";
 
 const MAINNET = "bip122:000000000019d6689c085ae165831e93";
@@ -181,9 +183,14 @@ describe("buildBitcoinAdapter", () => {
       "standard:connect": connectFeature,
     });
     const adapter = buildBitcoinAdapter(wallet);
+    // signTransaction only exists on the bitcoin variant of the
+    // WalletAdapter union — narrow on the discriminant before calling.
+    if (adapter?.chainPlatform !== "bitcoin") {
+      throw new Error("expected a bitcoin adapter");
+    }
 
     const psbt = new Uint8Array([1, 2, 3]);
-    const result = await adapter?.signTransaction?.(psbt);
+    const result = await adapter.signTransaction?.(psbt);
 
     expect(signFeature.signPsbt).toHaveBeenCalledWith({
       account,

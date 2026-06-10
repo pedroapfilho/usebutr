@@ -1,4 +1,9 @@
-import { render, renderHook, type RenderHookOptions } from "@testing-library/react";
+import {
+  render,
+  renderHook,
+  type RenderHookOptions,
+  type RenderResult,
+} from "@testing-library/react";
 import type { WalletAdapter, WalletManagerConfig, WalletPersistence } from "@usebutr/core";
 import { createFakePersistence } from "@usebutr/testing";
 import React, { type PropsWithChildren, type ReactElement } from "react";
@@ -41,12 +46,18 @@ const configToProps = (config: WalletManagerConfig) => ({
   storageKeyPrefix: config.storageKeyPrefix,
 });
 
-const renderWithProvider = (ui: ReactElement, opts: ConfigOpts = {}) => {
+// Explicit RenderResult annotations because the inferred type references
+// private pnpm paths and fails declaration-emit portability checks (TS2883).
+const renderWithProvider = (
+  ui: ReactElement,
+  opts: ConfigOpts = {},
+): RenderResult & { config: WalletManagerConfig } => {
   const config = buildConfig(opts);
   const wrapper = ({ children }: PropsWithChildren) => (
     <WalletManagerProvider {...configToProps(config)}>{children}</WalletManagerProvider>
   );
-  return { config, ...render(ui, { wrapper }) };
+  const view: RenderResult = render(ui, { wrapper });
+  return { config, ...view };
 };
 
 const renderHookWithProvider = <T,>(

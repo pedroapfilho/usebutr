@@ -9,8 +9,8 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "lib": ["ES2022", "DOM"]
+    "lib": ["ES2023", "DOM"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/**/*.test.ts", "src/__tests__"]
+  "exclude": ["node_modules", "dist"]
 }

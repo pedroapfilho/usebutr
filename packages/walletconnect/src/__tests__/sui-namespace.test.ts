@@ -1,7 +1,17 @@
+import type { SuiAdapter, WalletAdapter } from "@usebutr/core";
 import { describe, expect, it } from "vitest";
 
 import type { UniversalProviderLike } from "../adapter";
 import { suiNamespace } from "../namespaces/sui";
+
+/** signTransaction only exists on the sui variant of the
+ *  WalletAdapter union — narrow on the discriminant before calling. */
+const expectSuiAdapter = (adapter: WalletAdapter): SuiAdapter => {
+  if (adapter.chainPlatform !== "sui") {
+    throw new Error("expected a sui adapter");
+  }
+  return adapter;
+};
 
 type RequestArgs = Parameters<UniversalProviderLike["request"]>[0];
 type ConnectArgs = Parameters<UniversalProviderLike["connect"]>[0];
@@ -268,7 +278,7 @@ describe("suiNamespace", () => {
       provider,
     });
 
-    const out = await adapter.signTransaction?.(new Uint8Array([1, 2, 3]));
+    const out = await expectSuiAdapter(adapter).signTransaction?.(new Uint8Array([1, 2, 3]));
     expect(provider.requestCalls[0]?.method).toBe("sui_signTransaction");
     expect(provider.requestCalls[0]?.params).toMatchObject({
       address: "0xabc1234567890abcdef",
@@ -300,7 +310,7 @@ describe("suiNamespace", () => {
       provider,
     });
 
-    const out = await adapter.signTransaction?.(new Uint8Array([1, 2, 3]));
+    const out = await expectSuiAdapter(adapter).signTransaction?.(new Uint8Array([1, 2, 3]));
     expect(out).toEqual(signedBytes);
   });
 
@@ -327,7 +337,7 @@ describe("suiNamespace", () => {
       provider,
     });
 
-    const out = await adapter.signTransaction?.("AAEC");
+    const out = await expectSuiAdapter(adapter).signTransaction?.("AAEC");
     expect(provider.requestCalls[0]?.params).toMatchObject({ transaction: "AAEC" });
     expect(out).toEqual(signedBytes);
   });

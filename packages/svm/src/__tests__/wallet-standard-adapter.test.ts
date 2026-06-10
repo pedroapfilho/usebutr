@@ -1,16 +1,27 @@
-import { describe, expect, it, vi } from "vitest";
-
-import { buildSvmAdapter, slugify } from "../wallet-standard-adapter";
 import type {
   StandardConnectFeature,
   StandardDisconnectFeature,
   StandardEventsFeature,
   StandardEventsListener,
-  SolanaSignAndSendTransactionFeature,
-  SolanaSignMessageFeature,
   WalletStandardWallet,
   WalletStandardWalletAccount,
+} from "@usebutr/wallet-standard-shared";
+import { describe, expect, it, vi } from "vitest";
+
+import { buildSvmAdapter, slugify } from "../wallet-standard-adapter";
+import type {
+  SolanaSignAndSendTransactionFeature,
+  SolanaSignMessageFeature,
 } from "../wallet-standard-types";
+
+/** Narrows the WalletAdapter union the builder returns — signIn and
+ *  signTransaction only exist on the svm variant. */
+const expectSvmAdapter = (adapter: ReturnType<typeof buildSvmAdapter>) => {
+  if (adapter?.chainPlatform !== "svm") {
+    throw new Error("expected an svm adapter");
+  }
+  return adapter;
+};
 
 const buildAccount = (
   address: string,
@@ -256,12 +267,14 @@ describe("buildSvmAdapter", () => {
   });
 
   it("subscribe() bridges standard:events change → accountChanged", () => {
-    let registered: StandardEventsListener | null = null;
+    // Array because TS doesn't track assignments made inside the `on`
+    // callback on a plain `let`.
+    const registered: Array<StandardEventsListener> = [];
     const eventsFeature: StandardEventsFeature = {
       on: vi.fn((_event, listener) => {
-        registered = listener;
+        registered.push(listener);
         return () => {
-          registered = null;
+          registered.length = 0;
         };
       }),
     };
@@ -276,7 +289,7 @@ describe("buildSvmAdapter", () => {
     const listener = vi.fn();
     const unsub = adapter?.subscribe?.(listener);
 
-    registered?.({ accounts: [buildAccount("So1New")] });
+    registered[0]?.({ accounts: [buildAccount("So1New")] });
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
         account: expect.objectContaining({ walletAddress: "So1New" }),
@@ -284,7 +297,7 @@ describe("buildSvmAdapter", () => {
       }),
     );
 
-    registered?.({ accounts: [] });
+    registered[0]?.({ accounts: [] });
     expect(listener).toHaveBeenCalledWith({ type: "disconnected" });
 
     unsub?.();
@@ -539,10 +552,12 @@ describe("buildSvmAdapter edge cases", () => {
   });
 
   it("subscribe ignores `change` events with neither accounts nor chains", () => {
-    let captured: StandardEventsListener | null = null;
+    // Array because TS doesn't track assignments made inside the `on`
+    // callback on a plain `let`.
+    const captured: Array<StandardEventsListener> = [];
     const eventsFeature: StandardEventsFeature = {
       on: vi.fn((_event, listener) => {
-        captured = listener;
+        captured.push(listener);
         return () => {};
       }),
     };
@@ -554,15 +569,17 @@ describe("buildSvmAdapter edge cases", () => {
     );
     const fireListener = vi.fn();
     adapter?.subscribe?.(fireListener);
-    captured?.({ features: ["solana:signIn"] });
+    captured[0]?.({ features: ["solana:signIn"] });
     expect(fireListener).not.toHaveBeenCalled();
   });
 
   it("subscribe propagates a chain-only `change` (D5: cluster switch)", () => {
-    let captured: StandardEventsListener | null = null;
+    // Array because TS doesn't track assignments made inside the `on`
+    // callback on a plain `let`.
+    const captured: Array<StandardEventsListener> = [];
     const eventsFeature: StandardEventsFeature = {
       on: vi.fn((_event, listener) => {
-        captured = listener;
+        captured.push(listener);
         return () => {};
       }),
     };
@@ -574,7 +591,7 @@ describe("buildSvmAdapter edge cases", () => {
     );
     const fireListener = vi.fn();
     adapter?.subscribe?.(fireListener);
-    captured?.({ chains: ["solana:devnet"] });
+    captured[0]?.({ chains: ["solana:devnet"] });
     expect(fireListener).toHaveBeenCalledWith(
       expect.objectContaining({
         account: expect.objectContaining({
@@ -602,21 +619,23 @@ describe("buildSvmAdapter edge cases", () => {
     const signTxFeature = {
       signTransaction: vi.fn().mockResolvedValue([{ signedTransaction: new Uint8Array([9, 9]) }]),
     };
-    const adapter = buildSvmAdapter(
-      withFeatures(buildWallet(), {
-        "solana:signTransaction": signTxFeature,
-        "standard:connect": connectFeature,
-      }),
+    const adapter = expectSvmAdapter(
+      buildSvmAdapter(
+        withFeatures(buildWallet(), {
+          "solana:signTransaction": signTxFeature,
+          "standard:connect": connectFeature,
+        }),
+      ),
     );
-    expect(adapter?.capabilities.signTransaction).toBe(true);
-    const signed = await adapter?.signTransaction?.(new Uint8Array([1]));
+    expect(adapter.capabilities.signTransaction).toBe(true);
+    const signed = await adapter.signTransaction?.(new Uint8Array([1]));
     expect(signed).toEqual(new Uint8Array([9, 9]));
 
-    const without = buildSvmAdapter(
-      withFeatures(buildWallet(), { "standard:connect": connectFeature }),
+    const without = expectSvmAdapter(
+      buildSvmAdapter(withFeatures(buildWallet(), { "standard:connect": connectFeature })),
     );
-    expect(without?.capabilities.signTransaction).toBe(false);
-    expect(without?.signTransaction).toBeUndefined();
+    expect(without.capabilities.signTransaction).toBe(false);
+    expect(without.signTransaction).toBeUndefined();
   });
 
   it("exposes signIn + capability when solana:signIn is advertised (D4)", async () => {
@@ -629,35 +648,39 @@ describe("buildSvmAdapter edge cases", () => {
         },
       ]),
     };
-    const adapter = buildSvmAdapter(
-      withFeatures(buildWallet(), {
-        "solana:signIn": signInFeature,
-        "standard:connect": connectFeature,
-      }),
+    const adapter = expectSvmAdapter(
+      buildSvmAdapter(
+        withFeatures(buildWallet(), {
+          "solana:signIn": signInFeature,
+          "standard:connect": connectFeature,
+        }),
+      ),
     );
-    expect(adapter?.capabilities.signIn).toBe(true);
-    const out = await adapter?.signIn?.({ statement: "Sign in" });
+    expect(adapter.capabilities.signIn).toBe(true);
+    const out = await adapter.signIn?.({ statement: "Sign in" });
     expect(signInFeature.signIn).toHaveBeenCalledWith({ statement: "Sign in" });
     expect(out?.account.walletAddress).toBe("So1Address1");
 
-    const without = buildSvmAdapter(
-      withFeatures(buildWallet(), { "standard:connect": connectFeature }),
+    const without = expectSvmAdapter(
+      buildSvmAdapter(withFeatures(buildWallet(), { "standard:connect": connectFeature })),
     );
-    expect(without?.capabilities.signIn).toBe(false);
-    expect(without?.signIn).toBeUndefined();
+    expect(without.capabilities.signIn).toBe(false);
+    expect(without.signIn).toBeUndefined();
   });
 
   it("registerDisconnector emits a synthetic disconnected on invocation (D1)", () => {
-    let emit: (() => void) | null = null;
+    // Collected in an array because TS doesn't track assignments made
+    // inside the registerDisconnector callback on a plain `let`.
+    const emits: Array<() => void> = [];
     const adapter = buildSvmAdapter(
       withFeatures(buildWallet(), { "standard:connect": connectFeature }),
       (fn) => {
-        emit = fn;
+        emits.push(fn);
       },
     );
     const fireListener = vi.fn();
     adapter?.subscribe?.(fireListener);
-    emit?.();
+    emits[0]?.();
     expect(fireListener).toHaveBeenCalledWith({ type: "disconnected" });
   });
 });

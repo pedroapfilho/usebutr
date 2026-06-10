@@ -3,6 +3,11 @@ import awesomeness from "oxlint-config-awesomeness";
 
 export default defineConfig({
   extends: [awesomeness],
+  // polkadot-api generates descriptor bundles that must stay tracked in git
+  // (required by the runtime) but contain auto-generated, non-standard JS/TS
+  // that would fail every lint rule. Exclude them the same way we treat any
+  // other generated dist artefact.
+  ignorePatterns: ["apps/demo-with-polkadot/.papi/**"],
   overrides: [
     // `new-cap` enforces `new` for PascalCase callables, but several frameworks
     // expose factory functions whose names are PascalCase by convention:

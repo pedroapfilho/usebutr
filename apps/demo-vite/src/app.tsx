@@ -15,6 +15,8 @@ import {
 import { CHAINS_BY_PLATFORM } from "@usebutr/wallets";
 import { type ReactNode, useState } from "react";
 
+import { hasWalletConnectProjectId } from "./extra-connectors";
+import { PairingDialog } from "./pairing-dialog";
 import { WalletConnectDialog } from "./wallet-connect-dialog";
 
 type SignState =
@@ -382,6 +384,12 @@ const Content = () => {
       <StatusBar status={status} />
       {connected.length > 0 ? <ConnectedList wallets={connected} /> : null}
       <WalletPicker available={available} hasConnected={connected.length > 0} />
+      {hasWalletConnectProjectId ? null : (
+        <p className="text-xs text-neutral-400">
+          Set <code>VITE_WC_PROJECT_ID</code> in <code>.env.local</code> to enable WalletConnect.
+        </p>
+      )}
+      <PairingDialog />
       {/* Dialog-based connect UX — recommended pattern for modal wallet pickers */}
       {available.length > 0 ? (
         <section>
@@ -427,8 +435,9 @@ const App = () => (
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">butr · Vite</h1>
         <p className="mt-1 text-sm text-neutral-500">
-          Batteries-included install via <code>@usebutr/wallets</code>. EVM (EIP-6963) and SVM
-          (Wallet Standard) discovered in one provider; persisted in localStorage.
+          Batteries-included install via <code>@usebutr/wallets</code>. EVM, Solana, Sui, Bitcoin,
+          and Polkadot discovered in one provider, plus WalletConnect and Ledger; persisted in
+          localStorage.
         </p>
       </header>
       <Content />

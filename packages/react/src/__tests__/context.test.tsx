@@ -124,6 +124,7 @@ describe("WalletManagerProvider (unified)", () => {
           accounts: [deferredAccount],
           chainPlatform: "evm",
           connectorId: "deferred",
+          name: "Deferred Wallet",
         },
       },
     });

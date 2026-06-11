@@ -1,13 +1,15 @@
+import type {
+  StandardConnectFeature,
+  StandardDisconnectFeature,
+  WalletStandardWallet,
+  WalletStandardWalletAccount,
+} from "@usebutr/wallet-standard-shared";
 import { describe, expect, it, vi } from "vitest";
 
 import { buildSuiAdapter, slugify } from "../wallet-standard-adapter";
 import type {
-  StandardConnectFeature,
-  StandardDisconnectFeature,
   SuiSignAndExecuteTransactionFeature,
   SuiSignPersonalMessageFeature,
-  WalletStandardWallet,
-  WalletStandardWalletAccount,
 } from "../wallet-standard-types";
 
 const buildAccount = (

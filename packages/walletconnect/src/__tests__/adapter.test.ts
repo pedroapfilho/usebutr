@@ -6,14 +6,16 @@ import { createWalletConnectAdapters } from "../adapter";
 const EVM_ONLY = { evm: ["eip155:1"] } as const;
 
 type ConnectArgs = Parameters<UniversalProviderLike["connect"]>[0];
+type RequestArgs = Parameters<UniversalProviderLike["request"]>[0];
+type ProviderListener = (...args: ReadonlyArray<unknown>) => void;
 
 const createFakeProvider = (): UniversalProviderLike & {
   connectCalls: Array<ConnectArgs>;
   readonly disconnectCalls: number;
   emit: (event: string, ...args: ReadonlyArray<unknown>) => void;
 } => {
-  const listeners = new Map<string, Set<(...args: ReadonlyArray<unknown>) => void>>();
-  const requests: Array<{ method: string; params?: ReadonlyArray<unknown> | object }> = [];
+  const listeners = new Map<string, Set<ProviderListener>>();
+  const requests: Array<RequestArgs> = [];
   let session: unknown = null;
   const connectCalls: Array<ConnectArgs> = [];
   // Closure-held counter so the getter on the returned object always
@@ -22,7 +24,7 @@ const createFakeProvider = (): UniversalProviderLike & {
   const state = { disconnectCalls: 0 };
 
   return {
-    connect(opts) {
+    connect(opts: ConnectArgs) {
       connectCalls.push(opts);
       session = { topic: "fake-session" };
       return Promise.resolve();
@@ -36,7 +38,7 @@ const createFakeProvider = (): UniversalProviderLike & {
     get disconnectCalls() {
       return state.disconnectCalls;
     },
-    emit(event, ...args) {
+    emit(event: string, ...args: ReadonlyArray<unknown>) {
       const set = listeners.get(event);
       if (!set) {
         return;
@@ -45,15 +47,15 @@ const createFakeProvider = (): UniversalProviderLike & {
         fn(...args);
       }
     },
-    on(event, fn) {
+    on(event: string, fn: ProviderListener) {
       const set = listeners.get(event) ?? new Set();
       set.add(fn);
       listeners.set(event, set);
     },
-    removeListener(event, fn) {
+    removeListener(event: string, fn: ProviderListener) {
       listeners.get(event)?.delete(fn);
     },
-    request(args) {
+    request(args: RequestArgs) {
       requests.push(args);
       // Reasonable defaults so the EIP-6963 adapter's connect/getAccount
       // path can run end-to-end without crashing.
@@ -68,7 +70,7 @@ const createFakeProvider = (): UniversalProviderLike & {
     get session() {
       return session;
     },
-  } as never;
+  };
 };
 
 const stubUniversalProvider = (instance: UniversalProviderLike): UniversalProviderConstructor => ({

@@ -17,6 +17,7 @@ const buildEntry = (connectorId: string): StoredPoolEntry => ({
   accounts: [createMockAccount()],
   chainPlatform: "evm",
   connectorId,
+  name: "Mock Wallet",
 });
 
 const createFakeStorage = (init: FakeStorageInit = {}): WalletPersistence => {

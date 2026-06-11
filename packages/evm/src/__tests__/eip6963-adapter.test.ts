@@ -138,6 +138,11 @@ describe("buildEvmAdapter", () => {
     provider.setHandler("eth_chainId", () => "0x1");
 
     const adapter = buildEvmAdapter(INFO, provider);
+    // getAccounts is optional on the Connector contract; the EIP-6963
+    // builder always provides it, so a missing method is a test failure.
+    if (!adapter.getAccounts) {
+      throw new Error("expected getAccounts on the EIP-6963 adapter");
+    }
     const accounts = await adapter.getAccounts();
 
     expect(accounts).toHaveLength(2);
@@ -204,7 +209,7 @@ describe("buildEvmAdapter", () => {
     const switchCb = vi.fn();
 
     const adapter = buildEvmAdapter(INFO, provider);
-    await adapter.sendTxToChain({}, "137", switchCb);
+    await adapter.sendTxToChain({}, "137", undefined, switchCb);
 
     expect(switchCb).not.toHaveBeenCalled();
     expect(provider.requests.some((r) => r.method === "wallet_switchEthereumChain")).toBe(false);

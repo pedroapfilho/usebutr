@@ -1,7 +1,17 @@
+import type { BitcoinAdapter, WalletAdapter } from "@usebutr/core";
 import { describe, expect, it } from "vitest";
 
 import type { UniversalProviderLike } from "../adapter";
 import { bitcoinNamespace } from "../namespaces/bitcoin";
+
+/** signTransaction only exists on the bitcoin variant of the
+ *  WalletAdapter union — narrow on the discriminant before calling. */
+const expectBitcoinAdapter = (adapter: WalletAdapter): BitcoinAdapter => {
+  if (adapter.chainPlatform !== "bitcoin") {
+    throw new Error("expected a bitcoin adapter");
+  }
+  return adapter;
+};
 
 type RequestArgs = Parameters<UniversalProviderLike["request"]>[0];
 type ConnectArgs = Parameters<UniversalProviderLike["connect"]>[0];
@@ -278,7 +288,7 @@ describe("bitcoinNamespace", () => {
       provider,
     });
 
-    const out = await adapter.signTransaction?.(new Uint8Array([1, 2, 3]));
+    const out = await expectBitcoinAdapter(adapter).signTransaction?.(new Uint8Array([1, 2, 3]));
     expect(provider.requestCalls[0]?.method).toBe("signPsbt");
     expect(provider.requestCalls[0]?.params).toMatchObject({
       account: "bc1qabc123",
@@ -307,7 +317,7 @@ describe("bitcoinNamespace", () => {
       provider,
     });
 
-    const out = await adapter.signTransaction?.("cHNidA==");
+    const out = await expectBitcoinAdapter(adapter).signTransaction?.("cHNidA==");
     expect(provider.requestCalls[0]?.params).toMatchObject({ psbt: "cHNidA==" });
     expect(out).toEqual(signedBytes);
   });
@@ -535,6 +545,8 @@ describe("bitcoinNamespace", () => {
       provider,
     });
 
-    await expect(adapter.signTransaction?.(new Uint8Array([1]))).rejects.toThrow(/no psbt/v);
+    await expect(
+      expectBitcoinAdapter(adapter).signTransaction?.(new Uint8Array([1])),
+    ).rejects.toThrow(/no psbt/v);
   });
 });

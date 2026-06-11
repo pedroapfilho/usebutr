@@ -1,8 +1,31 @@
+import type { WalletSource } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
 import type { ReactNode } from "react";
 
-const discovery = autoDiscovery();
+import { registerExtraAdapters } from "./extra-connectors";
+
+const injected = autoDiscovery();
+
+// Merge injected auto-discovery with the explicit connectors (Ledger,
+// WalletConnect). Both feed the same `onAdapter` callback, so the
+// provider lists them all in one discovered set.
+const discovery: WalletSource = {
+  subscribe: (onAdapter) => {
+    let active = true;
+    const unsubscribe = injected.subscribe(onAdapter);
+    registerExtraAdapters((adapter) => {
+      // Async factories can resolve after unmount — drop late emissions.
+      if (active) {
+        onAdapter(adapter);
+      }
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  },
+};
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
   <WalletManagerProvider discovery={discovery} storageKeyPrefix="butr-demo">

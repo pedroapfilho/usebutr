@@ -12,13 +12,23 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
+    "@ledgerhq/hw-app-btc": "^11.0.0",
+    "@ledgerhq/hw-app-eth": "^7.8.4",
+    "@ledgerhq/hw-app-solana": "^7.10.2",
+    "@ledgerhq/hw-app-sui": "^1.11.0",
+    "@ledgerhq/hw-transport-webusb": "^6.34.2",
     "@tailwindcss/vite": "^4.3.0",
     "@usebutr/core": "workspace:*",
+    "@usebutr/ledger": "workspace:*",
     "@usebutr/react": "workspace:*",
+    "@usebutr/walletconnect": "workspace:*",
     "@usebutr/wallets": "workspace:*",
+    "@walletconnect/universal-provider": "^2.23.9",
+    "buffer": "^6.0.3",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "tailwindcss": "^4.3.0",
+    "uqr": "^0.1.3",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

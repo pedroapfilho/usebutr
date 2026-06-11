@@ -1,5 +1,15 @@
 # demo-wormhole-usdc
 
+## 0.0.3
+
+### Patch Changes
+
+- Updated dependencies [886ee1d]
+  - @usebutr/core@0.3.0
+  - @usebutr/evm@0.2.1
+  - @usebutr/react@0.1.4
+  - @usebutr/svm@0.2.3
+
 ## 0.0.2
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # demo-vite
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies [886ee1d]
+  - @usebutr/core@0.3.0
+  - @usebutr/wallets@0.2.0
+  - @usebutr/ledger@0.2.3
+  - @usebutr/react@0.1.4
+  - @usebutr/walletconnect@0.2.3
+
 ## 0.0.3
 
 ### Patch Changes

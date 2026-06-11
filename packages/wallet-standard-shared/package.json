@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/wallet-standard-shared",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Shared Wallet Standard discovery primitives used by @usebutr/svm, @usebutr/sui, @usebutr/bitcoin.",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",

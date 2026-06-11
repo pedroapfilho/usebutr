@@ -1,5 +1,13 @@
 # @usebutr/walletconnect
 
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies [886ee1d]
+  - @usebutr/core@0.3.0
+  - @usebutr/evm@0.2.1
+
 ## 0.2.2
 
 ### Patch Changes

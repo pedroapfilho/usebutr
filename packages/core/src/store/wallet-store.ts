@@ -348,11 +348,16 @@ const createWalletStore = (config: WalletManagerConfig) => {
         // is the post-hydrate snapshot; each id resolves
         // independently. Late-restore failures surface per-entry
         // inside `tryRestoreFromPending`.
-        // allSettled: one rejecting restore (e.g. a throwing
-        // `createConnector`) must not become an unhandled rejection.
-        void Promise.allSettled(
-          hydration.pendingIds().map((id) => get().tryRestoreFromPending(id)),
-        );
+        // Each restore is fire-and-forget with its own handler: one
+        // rejecting restore (e.g. a throwing `createConnector`) must
+        // not become an unhandled rejection, but it must still log —
+        // swallowing it would hide genuine restore failures.
+        for (const id of hydration.pendingIds()) {
+          void run(
+            () => get().tryRestoreFromPending(id),
+            (e) => logWarn(`[butr] late restore rejected for ${id}:`, e),
+          );
+        }
         // Surface the hydration outcome. Three buckets: restored,
         // pending (waiting for adapter announcement), dropped
         // (genuine restore failures). The default `console.warn`

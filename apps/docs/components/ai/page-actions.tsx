@@ -13,7 +13,7 @@ const cache = new Map<string, Promise<string>>();
 /**
  * see https://fumadocs.dev/docs/integrations/llms#page-actions to customize.
  */
-export function MarkdownCopyButton({
+const MarkdownCopyButton = ({
   markdownUrl,
   ...props
 }: ComponentProps<"button"> & {
@@ -21,26 +21,36 @@ export function MarkdownCopyButton({
    * A URL to fetch the raw Markdown/MDX content of page
    */
   markdownUrl: string;
-}) {
+}) => {
   const [isPending, startTransition] = useTransition();
   const [checked, onClick] = useCopyButton(() => {
     startTransition(async () => {
-      const cached = cache.get(markdownUrl);
-      if (cached) {
-        await navigator.clipboard.writeText(await cached);
-        return;
-      }
+      try {
+        const cached = cache.get(markdownUrl);
+        if (cached) {
+          await navigator.clipboard.writeText(await cached);
+          return;
+        }
 
-      const promise = (async () => {
-        const res = await fetch(markdownUrl);
-        return res.text();
-      })();
-      cache.set(markdownUrl, promise);
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          "text/plain": promise,
-        }),
-      ]);
+        const promise = (async () => {
+          const res = await fetch(markdownUrl);
+          if (!res.ok) {
+            throw new Error(`Failed to fetch ${markdownUrl}: ${res.status}`);
+          }
+          return res.text();
+        })();
+        cache.set(markdownUrl, promise);
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/plain": promise,
+          }),
+        ]);
+      } catch (error) {
+        // Evict so the next click refetches — otherwise a 404 body or a
+        // rejected promise stays in the module-level cache forever.
+        cache.delete(markdownUrl);
+        throw error;
+      }
     });
   });
 
@@ -63,12 +73,12 @@ export function MarkdownCopyButton({
       {props.children ?? "Copy Markdown"}
     </button>
   );
-}
+};
 
 /**
  * see https://fumadocs.dev/docs/integrations/llms#page-actions to customize.
  */
-export function ViewOptionsPopover({
+const ViewOptionsPopover = ({
   githubUrl,
   markdownUrl,
   ...props
@@ -82,7 +92,7 @@ export function ViewOptionsPopover({
    * A URL to the raw Markdown/MDX content of page
    */
   markdownUrl?: string;
-}) {
+}) => {
   const pathname = usePathname();
   const items = useMemo(() => {
     const pageUrl =
@@ -242,4 +252,6 @@ export function ViewOptionsPopover({
       </PopoverContent>
     </Popover>
   );
-}
+};
+
+export { MarkdownCopyButton, ViewOptionsPopover };

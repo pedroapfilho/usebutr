@@ -33,11 +33,18 @@ const MarkdownCopyButton = ({
         }
 
         const promise = (async () => {
-          const res = await fetch(markdownUrl);
-          if (!res.ok) {
-            throw new Error(`Failed to fetch ${markdownUrl}: ${res.status}`);
+          try {
+            const res = await fetch(markdownUrl);
+            if (!res.ok) {
+              throw new Error(`Failed to fetch ${markdownUrl}: ${res.status}`);
+            }
+            return await res.text();
+          } catch (error) {
+            // Evict on fetch failure only, so the next click refetches — a
+            // clipboard failure below must not discard markdown that fetched fine.
+            cache.delete(markdownUrl);
+            throw error;
           }
-          return res.text();
         })();
         cache.set(markdownUrl, promise);
         await navigator.clipboard.write([
@@ -46,10 +53,9 @@ const MarkdownCopyButton = ({
           }),
         ]);
       } catch (error) {
-        // Evict so the next click refetches — otherwise a 404 body or a
-        // rejected promise stays in the module-level cache forever.
-        cache.delete(markdownUrl);
-        throw error;
+        // apps/docs has no error boundary; rethrowing out of the transition
+        // would replace the whole page with Next's default error screen.
+        console.error(`Copy Markdown failed for ${markdownUrl}`, error);
       }
     });
   });

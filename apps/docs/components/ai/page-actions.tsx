@@ -13,7 +13,7 @@ const cache = new Map<string, Promise<string>>();
 /**
  * see https://fumadocs.dev/docs/integrations/llms#page-actions to customize.
  */
-export function MarkdownCopyButton({
+const MarkdownCopyButton = ({
   markdownUrl,
   ...props
 }: ComponentProps<"button"> & {
@@ -21,26 +21,42 @@ export function MarkdownCopyButton({
    * A URL to fetch the raw Markdown/MDX content of page
    */
   markdownUrl: string;
-}) {
+}) => {
   const [isPending, startTransition] = useTransition();
   const [checked, onClick] = useCopyButton(() => {
     startTransition(async () => {
-      const cached = cache.get(markdownUrl);
-      if (cached) {
-        await navigator.clipboard.writeText(await cached);
-        return;
-      }
+      try {
+        const cached = cache.get(markdownUrl);
+        if (cached) {
+          await navigator.clipboard.writeText(await cached);
+          return;
+        }
 
-      const promise = (async () => {
-        const res = await fetch(markdownUrl);
-        return res.text();
-      })();
-      cache.set(markdownUrl, promise);
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          "text/plain": promise,
-        }),
-      ]);
+        const promise = (async () => {
+          try {
+            const res = await fetch(markdownUrl);
+            if (!res.ok) {
+              throw new Error(`Failed to fetch ${markdownUrl}: ${res.status}`);
+            }
+            return await res.text();
+          } catch (error) {
+            // Evict on fetch failure only, so the next click refetches — a
+            // clipboard failure below must not discard markdown that fetched fine.
+            cache.delete(markdownUrl);
+            throw error;
+          }
+        })();
+        cache.set(markdownUrl, promise);
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/plain": promise,
+          }),
+        ]);
+      } catch (error) {
+        // apps/docs has no error boundary; rethrowing out of the transition
+        // would replace the whole page with Next's default error screen.
+        console.error(`Copy Markdown failed for ${markdownUrl}`, error);
+      }
     });
   });
 
@@ -63,12 +79,12 @@ export function MarkdownCopyButton({
       {props.children ?? "Copy Markdown"}
     </button>
   );
-}
+};
 
 /**
  * see https://fumadocs.dev/docs/integrations/llms#page-actions to customize.
  */
-export function ViewOptionsPopover({
+const ViewOptionsPopover = ({
   githubUrl,
   markdownUrl,
   ...props
@@ -82,7 +98,7 @@ export function ViewOptionsPopover({
    * A URL to the raw Markdown/MDX content of page
    */
   markdownUrl?: string;
-}) {
+}) => {
   const pathname = usePathname();
   const items = useMemo(() => {
     const pageUrl =
@@ -242,4 +258,6 @@ export function ViewOptionsPopover({
       </PopoverContent>
     </Popover>
   );
-}
+};
+
+export { MarkdownCopyButton, ViewOptionsPopover };

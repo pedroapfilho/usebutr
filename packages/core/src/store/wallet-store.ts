@@ -1,8 +1,8 @@
 import { createStore } from "zustand/vanilla";
 
 import { logError, logWarn } from "../logger";
-import { WalletStorage } from "../storage";
 import type { WalletPersistence, WalletSnapshot } from "../storage";
+import { WalletStorage } from "../storage/wallet-storage";
 import type {
   Account,
   ChainPlatform,
@@ -214,6 +214,11 @@ const createWalletStore = (config: WalletManagerConfig) => {
             }, slowThreshold)
           : null;
 
+        // Hoisted so `finally` can clear the connect-timeout timer —
+        // otherwise the timer and its reject closure outlive every
+        // settled connect by the full CONNECT_TIMEOUT_MS.
+        let connectTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
         try {
           const connectPromise = connector.connect();
           // oxlint-disable-next-line promise/prefer-await-to-then -- suppress unhandled rejection; we await via Promise.race below
@@ -221,7 +226,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
           await Promise.race([
             connectPromise,
             new Promise((_, reject) => {
-              setTimeout(() => {
+              connectTimeoutId = setTimeout(() => {
                 reject(new Error("Connection timeout"));
               }, CONNECT_TIMEOUT_MS);
             }),
@@ -268,6 +273,9 @@ const createWalletStore = (config: WalletManagerConfig) => {
           onError?.(error as Error);
           throw error;
         } finally {
+          if (connectTimeoutId) {
+            clearTimeout(connectTimeoutId);
+          }
           if (slowTimer) {
             clearTimeout(slowTimer);
           }
@@ -340,7 +348,16 @@ const createWalletStore = (config: WalletManagerConfig) => {
         // is the post-hydrate snapshot; each id resolves
         // independently. Late-restore failures surface per-entry
         // inside `tryRestoreFromPending`.
-        void Promise.all(hydration.pendingIds().map((id) => get().tryRestoreFromPending(id)));
+        // Each restore is fire-and-forget with its own handler: one
+        // rejecting restore (e.g. a throwing `createConnector`) must
+        // not become an unhandled rejection, but it must still log —
+        // swallowing it would hide genuine restore failures.
+        for (const id of hydration.pendingIds()) {
+          void run(
+            () => get().tryRestoreFromPending(id),
+            (e) => logWarn(`[butr] late restore rejected for ${id}:`, e),
+          );
+        }
         // Surface the hydration outcome. Three buckets: restored,
         // pending (waiting for adapter announcement), dropped
         // (genuine restore failures). The default `console.warn`

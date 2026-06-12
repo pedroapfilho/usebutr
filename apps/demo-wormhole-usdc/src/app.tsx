@@ -1,7 +1,7 @@
 import type { ConnectedWallet } from "@usebutr/core";
 import { useSelectedWallet } from "@usebutr/react";
 import { type Chain, type Network, Wormhole, amount } from "@wormhole-foundation/sdk-connect";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 
 import { type ChainSpec, CHAIN_LIST, USDC_DECIMALS, getChainSpec } from "./chains";
 import { PendingTransfers } from "./pending-transfers";
@@ -197,9 +197,9 @@ const App = () => {
   const [destChain, setDestChain] = useState<Chain>("Solana");
   const [amountInput, setAmountInput] = useState("1");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const [xfer, setXfer] = useState<Awaited<ReturnType<Wormhole<Network>["circleTransfer"]>> | null>(
-    null,
-  );
+  // A ref, not state: only the redeem handler reads the transfer object,
+  // so storing it in state would re-render the whole app for nothing.
+  const xferRef = useRef<Awaited<ReturnType<Wormhole<Network>["circleTransfer"]>> | null>(null);
 
   const srcSpec = getChainSpec(sourceChain);
   const dstSpec = getChainSpec(destChain);
@@ -218,7 +218,7 @@ const App = () => {
 
   const resetTransfer = () => {
     setStatus({ kind: "idle" });
-    setXfer(null);
+    xferRef.current = null;
   };
 
   const selectSource = (next: Chain) => {
@@ -257,7 +257,7 @@ const App = () => {
       return;
     }
     setStatus({ kind: "initiating" });
-    setXfer(null);
+    xferRef.current = null;
     try {
       const wh = getWormhole();
       const sourceAddress = Wormhole.chainAddress(srcSpec.chain, srcWallet.account.walletAddress);
@@ -268,7 +268,7 @@ const App = () => {
       // selects the manual CircleBridge route: the user signs the burn
       // here and the mint in a separate step (matching the two-wallet UX).
       const transfer = await wh.circleTransfer(units, sourceAddress, destAddress, false);
-      setXfer(transfer);
+      xferRef.current = transfer;
 
       const sourceSigner = await makeSigner(srcSpec, srcWallet);
       const srcTxids = await transfer.initiateTransfer(sourceSigner);
@@ -285,6 +285,7 @@ const App = () => {
   };
 
   const handleRedeem = async () => {
+    const xfer = xferRef.current;
     if (!dstWallet || !xfer || status.kind !== "ready-to-redeem") {
       return;
     }

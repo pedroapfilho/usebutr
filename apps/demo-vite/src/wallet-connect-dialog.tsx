@@ -4,7 +4,8 @@
  *
  * Uses the native <dialog> element via `dialog.showModal()` for built-in:
  *   - focus trap (browser-native)
- *   - Escape-to-close (browser-native)
+ *   - Escape-to-close (browser-native — `onClose` on the <dialog> syncs
+ *     React state back when that happens)
  *   - aria-modal semantics
  *   - top-layer stacking (no z-index wars)
  *
@@ -100,16 +101,6 @@ const WalletConnectDialog = ({
     }
   }, [open]);
 
-  // Sync React state when the dialog closes natively (Escape key)
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) {
-      return;
-    }
-    dialog.addEventListener("close", onClose);
-    return () => dialog.removeEventListener("close", onClose);
-  }, [onClose]);
-
   const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
     // Clicks on the dialog element itself (not its children) hit the backdrop
     if (e.target === dialogRef.current) {
@@ -126,6 +117,7 @@ const WalletConnectDialog = ({
       aria-modal="true"
       className="m-auto w-full max-w-sm rounded-xl border border-neutral-200 bg-white p-0 shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm open:flex open:flex-col"
       onClick={handleBackdropClick}
+      onClose={onClose}
       ref={dialogRef}
     >
       <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">

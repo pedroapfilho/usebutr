@@ -1,10 +1,13 @@
 import "./globals.css";
 
 import { readWalletSnapshot } from "@usebutr/core";
+import { Geist } from "next/font/google";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 import { STORAGE_KEY_PREFIX, WalletProvider } from "../wallet-provider";
+
+const geist = Geist({ subsets: ["latin"] });
 
 export const metadata = {
   title: "butr · Next.js",
@@ -26,7 +29,7 @@ const RootLayout = async ({ children }: { children: ReactNode }) => {
 
   return (
     <html lang="en" style={{ colorScheme: "light" }}>
-      <body>
+      <body className={geist.className}>
         <WalletProvider initialCookies={initialCookies} initialState={initialState}>
           {children}
         </WalletProvider>

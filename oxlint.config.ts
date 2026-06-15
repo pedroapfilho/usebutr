@@ -11,7 +11,7 @@ export default defineConfig({
   overrides: [
     // `new-cap` enforces `new` for PascalCase callables, but several frameworks
     // expose factory functions whose names are PascalCase by convention:
-    //   - `Inter` / `Roboto` / etc. from `next/font/google`
+    //   - `Inter` / `Geist` / etc. from `next/font/google`
     //   - `Scalar` from `@scalar/hono-api-reference`
     // The rule supports an exception list — keep it here (not in awesomeness)
     // because the set is repo-specific.
@@ -21,7 +21,7 @@ export default defineConfig({
         "new-cap": [
           "error",
           {
-            capIsNewExceptions: ["Inter", "Scalar"],
+            capIsNewExceptions: ["Geist", "Inter", "Scalar"],
           },
         ],
       },

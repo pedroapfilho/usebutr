@@ -1,4 +1,15 @@
 @import "tailwindcss";
+@import "@fontsource-variable/geist/index.css";
+
+@theme {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+  }
+}
 
 @layer base {
   button:not(:disabled),

@@ -74,3 +74,12 @@ export { logError, logWarn } from "./logger";
 
 // Icon normalization for wallet-announced metadata
 export { sanitizeIcon } from "./sanitize-icon";
+
+// Shared byte-encoding helpers used across the connector packages
+export {
+  base64ToBytes,
+  bytesToBase64,
+  bytesToHex,
+  bytesToHexPrefixed,
+  hexToBytes,
+} from "./encoding/bytes";

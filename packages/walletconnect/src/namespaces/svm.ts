@@ -1,5 +1,5 @@
 import type { Account, ChainBase, SvmAdapter, WalletCapabilities } from "@usebutr/core";
-import { logWarn } from "@usebutr/core";
+import { base64ToBytes, bytesToBase64, logWarn } from "@usebutr/core";
 
 import type { UniversalProviderLike } from "../loader";
 
@@ -49,27 +49,6 @@ const WALLETCONNECT_SVM_CAPABILITIES: WalletCapabilities = {
   subscribe: false,
   switchAccount: false,
   switchChain: true,
-};
-
-/** Cross-platform Uint8Array → base64. `btoa` is available everywhere
- *  butr runs (browsers, RN since Hermes, Node 16+, Bun, Deno). */
-const bytesToBase64 = (bytes: Uint8Array): string => {
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCodePoint(byte);
-  }
-  return btoa(binary);
-};
-
-/** Cross-platform base64 → Uint8Array (used to decode the signed
- *  transaction bytes returned by `solana_signTransaction`). */
-const base64ToBytes = (input: string): Uint8Array => {
-  const binary = atob(input);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    out[i] = binary.codePointAt(i) ?? 0;
-  }
-  return out;
 };
 
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";

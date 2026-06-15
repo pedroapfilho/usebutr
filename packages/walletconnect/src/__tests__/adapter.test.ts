@@ -9,15 +9,23 @@ type ConnectArgs = Parameters<UniversalProviderLike["connect"]>[0];
 type RequestArgs = Parameters<UniversalProviderLike["request"]>[0];
 type ProviderListener = (...args: ReadonlyArray<unknown>) => void;
 
-const createFakeProvider = (): UniversalProviderLike & {
+type ListenerCall = { event: string; fn: ProviderListener };
+
+const createFakeProvider = (
+  overrides: { disconnect?: () => Promise<void> } = {},
+): UniversalProviderLike & {
   connectCalls: Array<ConnectArgs>;
   readonly disconnectCalls: number;
   emit: (event: string, ...args: ReadonlyArray<unknown>) => void;
+  onCalls: Array<ListenerCall>;
+  removeListenerCalls: Array<ListenerCall>;
 } => {
   const listeners = new Map<string, Set<ProviderListener>>();
   const requests: Array<RequestArgs> = [];
   let session: unknown = null;
   const connectCalls: Array<ConnectArgs> = [];
+  const onCalls: Array<ListenerCall> = [];
+  const removeListenerCalls: Array<ListenerCall> = [];
   // Closure-held counter so the getter on the returned object always
   // reads the live value (a plain numeric property would snapshot at
   // creation time and never update).
@@ -33,7 +41,7 @@ const createFakeProvider = (): UniversalProviderLike & {
     disconnect() {
       state.disconnectCalls += 1;
       session = null;
-      return Promise.resolve();
+      return overrides.disconnect ? overrides.disconnect() : Promise.resolve();
     },
     get disconnectCalls() {
       return state.disconnectCalls;
@@ -48,13 +56,17 @@ const createFakeProvider = (): UniversalProviderLike & {
       }
     },
     on(event: string, fn: ProviderListener) {
+      onCalls.push({ event, fn });
       const set = listeners.get(event) ?? new Set();
       set.add(fn);
       listeners.set(event, set);
     },
+    onCalls,
     removeListener(event: string, fn: ProviderListener) {
+      removeListenerCalls.push({ event, fn });
       listeners.get(event)?.delete(fn);
     },
+    removeListenerCalls,
     request(args: RequestArgs) {
       requests.push(args);
       // Reasonable defaults so the EIP-6963 adapter's connect/getAccount
@@ -206,5 +218,107 @@ describe("createWalletConnectAdapters (single-namespace)", () => {
     expect(adapter.id).toBe("walletconnect:custom");
     expect(adapter.name).toBe("My Custom WC");
     expect(adapter.icon).toBe("data:image/svg+xml;base64,Zm9v");
+  });
+});
+
+const onPairingUri = () => {};
+const displayUriListeners = (calls: Array<ListenerCall>): Array<ListenerCall> =>
+  calls.filter((c) => c.event === "display_uri");
+
+describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
+  it("attaches exactly one display_uri listener on init", async () => {
+    const provider = createFakeProvider();
+    await createWalletConnectAdapters({
+      namespaces: EVM_ONLY,
+      onPairingUri,
+      projectId: "test",
+      universalProvider: stubUniversalProvider(provider),
+    });
+
+    expect(displayUriListeners(provider.onCalls)).toHaveLength(1);
+  });
+
+  it("removes the display_uri listener on disconnect (same handler reference)", async () => {
+    const provider = createFakeProvider();
+    const [adapter] = await createWalletConnectAdapters({
+      namespaces: EVM_ONLY,
+      onPairingUri,
+      projectId: "test",
+      universalProvider: stubUniversalProvider(provider),
+    });
+
+    if (!adapter) {
+      throw new Error("expected one adapter");
+    }
+    await adapter.connect();
+    await adapter.disconnect?.();
+
+    const removed = displayUriListeners(provider.removeListenerCalls);
+    expect(removed).toHaveLength(1);
+    // The removed handler is the same reference that was attached.
+    expect(removed[0]?.fn).toBe(displayUriListeners(provider.onCalls)[0]?.fn);
+  });
+
+  it("removes the listener even when no session was ever established", async () => {
+    const provider = createFakeProvider();
+    const [adapter] = await createWalletConnectAdapters({
+      namespaces: EVM_ONLY,
+      onPairingUri,
+      projectId: "test",
+      universalProvider: stubUniversalProvider(provider),
+    });
+
+    if (!adapter) {
+      throw new Error("expected one adapter");
+    }
+    // No connect() — namespace disconnect() returns early (no session),
+    // but cleanup still runs in the `finally`.
+    await adapter.disconnect?.();
+
+    expect(provider.disconnectCalls).toBe(0);
+    expect(displayUriListeners(provider.removeListenerCalls)).toHaveLength(1);
+  });
+
+  it("removes the listener when provider.disconnect rejects (cleanup in finally)", async () => {
+    const boom = new Error("relay error");
+    const provider = createFakeProvider({ disconnect: () => Promise.reject(boom) });
+    const [adapter] = await createWalletConnectAdapters({
+      namespaces: EVM_ONLY,
+      onPairingUri,
+      projectId: "test",
+      universalProvider: stubUniversalProvider(provider),
+    });
+
+    if (!adapter) {
+      throw new Error("expected one adapter");
+    }
+    await adapter.connect();
+
+    // The evm namespace's disconnect() swallows relay errors by design
+    // (logs a warning, marks disconnected locally). The wrapper's
+    // `finally` still runs cleanup despite the underlying rejection.
+    await expect(adapter.disconnect?.()).resolves.toBeUndefined();
+    expect(provider.disconnectCalls).toBe(1);
+    expect(displayUriListeners(provider.removeListenerCalls)).toHaveLength(1);
+  });
+
+  it("is idempotent — disconnecting twice does not throw or double-remove", async () => {
+    const provider = createFakeProvider();
+    const [adapter] = await createWalletConnectAdapters({
+      namespaces: EVM_ONLY,
+      onPairingUri,
+      projectId: "test",
+      universalProvider: stubUniversalProvider(provider),
+    });
+
+    if (!adapter) {
+      throw new Error("expected one adapter");
+    }
+    await adapter.connect();
+    await adapter.disconnect?.();
+    await expect(adapter.disconnect?.()).resolves.toBeUndefined();
+
+    // The guard makes the second cleanup a no-op.
+    expect(displayUriListeners(provider.removeListenerCalls)).toHaveLength(1);
   });
 });

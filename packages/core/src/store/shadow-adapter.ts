@@ -151,14 +151,12 @@ const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
  */
 const isShadowAdapter = (adapter: WalletAdapter): boolean => {
   const caps = adapter.capabilities;
-  return (
-    !caps.getBalance &&
-    !caps.getTransactionReceipt &&
-    !caps.requestAccounts &&
-    !caps.sendTransaction &&
-    !caps.signMessage &&
-    !caps.subscribe &&
-    !caps.switchChain
+  // Derive the check from the canonical all-false key set so a newly
+  // added capability can never be silently missed: adding a flag to
+  // `WalletCapabilities` forces it into `ALL_FALSE_CAPABILITIES` (the
+  // type annotation enforces that), and this guard then covers it.
+  return (Object.keys(ALL_FALSE_CAPABILITIES) as Array<keyof WalletCapabilities>).every(
+    (key) => caps[key] === false,
   );
 };
 

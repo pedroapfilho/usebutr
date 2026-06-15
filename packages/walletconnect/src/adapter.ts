@@ -65,7 +65,11 @@ type WalletConnectOptions = {
 const DEFAULT_ICON =
   "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzNiOTlmYyI+PHBhdGggZD0iTTQuOTEzIDcuNTE5YzMuOTI0LTMuODQyIDEwLjI1Mi0zLjg0MiAxNC4xNzYgMGwuNDcyLjQ2MmEuNDgzLjQ4MyAwIDAgMSAwIC42OWwtMS42MTUgMS41ODFhLjI1NC4yNTQgMCAwIDEtLjM1NCAwbC0uNjUtLjYzN2MtMi43MzgtMi42OC03LjE3Ny0yLjY4LTkuOTE1IDBsLS42OTYuNjgyYS4yNTQuMjU0IDAgMCAxLS4zNTQgMEw0LjM2MyA4LjcxNmEuNDgzLjQ4MyAwIDAgMSAwLS42OXptMTcuNTA0IDMuMjY1IDEuNDM3IDEuNDA2YS40ODMuNDgzIDAgMCAxIDAgLjY5bC02LjQ4MiA2LjM0OWEuNTA4LjUwOCAwIDAgMS0uNzA4IDBsLTQuNjAyLTQuNTA1YS4xMjcuMTI3IDAgMCAwLS4xNzcgMGwtNC42MDIgNC41MDVhLjUwOC41MDggMCAwIDEtLjcwOCAwTC4wOTMgMTIuODhhLjQ4My40ODMgMCAwIDEgMC0uNjlsMS40MzctMS40MDZhLjUwOC41MDggMCAwIDEgLjcwOCAwbDQuNjAyIDQuNTA1Yy4wNDkuMDQ4LjEyOC4wNDguMTc3IDBsNC42MDItNC41MDVhLjUwOC41MDggMCAwIDEgLjcwOCAwbDQuNjAyIDQuNTA1Yy4wNDkuMDQ4LjEyOC4wNDguMTc3IDBsNC42MDItNC41MDVhLjUwOC41MDggMCAwIDEgLjcwOCAweiIvPjwvc3ZnPg==";
 
-const initProvider = async (options: WalletConnectOptions): Promise<UniversalProviderLike> => {
+const NOOP_CLEANUP = (): void => {};
+
+const initProvider = async (
+  options: WalletConnectOptions,
+): Promise<{ cleanup: () => void; provider: UniversalProviderLike }> => {
   const UniversalProvider = options.universalProvider ?? (await loadUniversalProvider());
   const provider = await UniversalProvider.init({
     metadata: options.metadata
@@ -81,15 +85,27 @@ const initProvider = async (options: WalletConnectOptions): Promise<UniversalPro
 
   // Forward pairing URIs to the consumer so they can render a QR code
   // or deep-link the user's mobile wallet.
+  let cleanup = NOOP_CLEANUP;
   if (options.onPairingUri) {
-    provider.on("display_uri", ((uri: unknown) => {
+    const onDisplayUri = ((uri: unknown) => {
       if (typeof uri === "string") {
         options.onPairingUri?.(uri);
       }
-    }) as never);
+    }) as never;
+    provider.on("display_uri", onDisplayUri);
+    let removed = false;
+    cleanup = () => {
+      // Idempotent — calling removeListener twice (or after teardown) is
+      // a no-op, and the guard keeps it cheap.
+      if (removed) {
+        return;
+      }
+      removed = true;
+      provider.removeListener("display_uri", onDisplayUri);
+    };
   }
 
-  return provider;
+  return { cleanup, provider };
 };
 
 /**
@@ -162,7 +178,7 @@ const createWalletConnectAdapters = async (
     );
   }
 
-  const provider = await initProvider(options);
+  const { cleanup, provider } = await initProvider(options);
   const baseId = options.id ?? "walletconnect";
   const baseName = options.name ?? "WalletConnect";
   const icon = options.icon ?? DEFAULT_ICON;
@@ -173,7 +189,7 @@ const createWalletConnectAdapters = async (
     if (!builder) {
       throw new Error(`Unreachable: builder missing for ${platform}`);
     }
-    return builder.buildAdapter({
+    const adapter = builder.buildAdapter({
       chains: chains.length > 0 ? chains : builder.defaultChains,
       icon,
       // Suffix the id when more than one namespace is in play so each
@@ -181,6 +197,20 @@ const createWalletConnectAdapters = async (
       id: multiNamespace ? `${baseId}-${platform}` : baseId,
       name: multiNamespace ? `${baseName} (${platform.toUpperCase()})` : baseName,
       provider,
+    });
+    // The display_uri listener is attached at provider init (before any
+    // session), so cleanup must run on every teardown path — including
+    // the no-session and disconnect-error paths. Hence the `finally`.
+    // Override only `disconnect`; every other adapter method is untouched.
+    const innerDisconnect = adapter.disconnect?.bind(adapter);
+    return Object.assign(adapter, {
+      disconnect: async () => {
+        try {
+          await innerDisconnect?.();
+        } finally {
+          cleanup();
+        }
+      },
     });
   });
 };

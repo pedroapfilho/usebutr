@@ -1,5 +1,8 @@
 import type { Account, ChainBase, WalletAdapter } from "@usebutr/core";
-import { sanitizeIcon } from "@usebutr/core";
+// EVM uses 0x-prefixed hex; alias the shared prefixed variant to the
+// existing local name to keep the package's public `bytesToHex`/`hexToBytes`
+// contract (and the "0xdeadbeef" test) identical.
+import { bytesToHexPrefixed as bytesToHex, hexToBytes, sanitizeIcon } from "@usebutr/core";
 
 import { resolveEip6963Capabilities } from "./capabilities";
 import type { Eip1193Listener, Eip1193Provider, Eip6963ProviderInfo } from "./eip1193";
@@ -7,28 +10,6 @@ import type { Eip1193Listener, Eip1193Provider, Eip6963ProviderInfo } from "./ei
 const HEX_PREFIX = "0x";
 const ETH_DECIMALS = 18n;
 const ETH_UNIT = 10n ** ETH_DECIMALS;
-
-/**
- * Convert a hex string (with or without `0x` prefix) into a Uint8Array.
- * Odd-length strings are not supported; EIP-1193 returns canonical
- * even-length hex.
- */
-const hexToBytes = (hex: string): Uint8Array => {
-  const clean = hex.startsWith(HEX_PREFIX) ? hex.slice(2) : hex;
-  const out = new Uint8Array(clean.length / 2);
-  for (let i = 0; i < out.length; i += 1) {
-    out[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
-  }
-  return out;
-};
-
-const bytesToHex = (bytes: Uint8Array): string => {
-  let hex = HEX_PREFIX;
-  for (const byte of bytes) {
-    hex += byte.toString(16).padStart(2, "0");
-  }
-  return hex;
-};
 
 const chainIdHexToDecimal = (hex: string): string => BigInt(hex).toString(10);
 const chainIdDecimalToHex = (dec: string): string => `${HEX_PREFIX}${BigInt(dec).toString(16)}`;

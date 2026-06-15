@@ -1,3 +1,7 @@
+// Polkadot uses 0x-prefixed hex; alias the shared prefixed variant to the
+// existing local name so internal callers stay unchanged.
+import { bytesToHexPrefixed as bytesToHex, hexToBytes } from "@usebutr/core";
+
 /**
  * Minimal local types for the `@polkadot/extension-dapp` injectedWeb3
  * standard. Declared here (rather than depending on
@@ -57,23 +61,6 @@ const wrapBytes = (message: Uint8Array): Uint8Array => {
   out.set(BYTES_PREFIX, 0);
   out.set(message, BYTES_PREFIX.length);
   out.set(BYTES_SUFFIX, BYTES_PREFIX.length + message.length);
-  return out;
-};
-
-const bytesToHex = (bytes: Uint8Array): string => {
-  let hex = "0x";
-  for (const byte of bytes) {
-    hex += byte.toString(16).padStart(2, "0");
-  }
-  return hex;
-};
-
-const hexToBytes = (hex: string): Uint8Array => {
-  const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
-  const out = new Uint8Array(clean.length / 2);
-  for (let i = 0; i < out.length; i += 1) {
-    out[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
-  }
   return out;
 };
 

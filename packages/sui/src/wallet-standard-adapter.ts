@@ -1,5 +1,5 @@
 import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
-import { logWarn, sanitizeIcon } from "@usebutr/core";
+import { base64ToBytes, logWarn, sanitizeIcon } from "@usebutr/core";
 import {
   buildAccount,
   getFeature,
@@ -23,18 +23,6 @@ import type {
 
 const SUI_PREFIX = "sui:";
 const SUI_DECIMALS = 9;
-
-/** Cross-platform base64 → Uint8Array. Sui's Wallet Standard features
- *  return base64 strings (`bytes`, `signature`), while butr's
- *  `Wallet.signMessage` contract is Uint8Array. */
-const base64ToBytes = (b64: string): Uint8Array => {
-  const binary = atob(b64);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    out[i] = binary.codePointAt(i) ?? 0;
-  }
-  return out;
-};
 
 const slugify = (name: string): string => kitSlugify("sui", name);
 

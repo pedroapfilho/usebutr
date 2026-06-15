@@ -1,5 +1,5 @@
 import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
-import { logWarn, sanitizeIcon } from "@usebutr/core";
+import { bytesToBase64, logWarn, sanitizeIcon } from "@usebutr/core";
 import {
   buildAccount,
   getFeature,
@@ -24,18 +24,6 @@ import type {
 
 const SOLANA_PREFIX = "solana:";
 const SOLANA_DECIMALS = 9;
-
-/** Cross-platform Uint8Array → base64. `Buffer` would be Node-only and
- *  breaks the package in browsers without a polyfill. `btoa` is
- *  available everywhere butr runs (browsers, RN since Hermes, Node 16+,
- *  Bun, Deno). */
-const bytesToBase64 = (bytes: Uint8Array): string => {
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCodePoint(byte);
-  }
-  return btoa(binary);
-};
 
 const slugify = (name: string): string => kitSlugify("svm", name);
 

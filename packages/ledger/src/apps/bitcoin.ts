@@ -1,5 +1,5 @@
 import type { Account, ChainBase, WalletAdapter } from "@usebutr/core";
-import { logWarn } from "@usebutr/core";
+import { bytesToHex, hexToBytes, logWarn } from "@usebutr/core";
 
 import { LEDGER_CAPABILITIES } from "../capabilities";
 import type { TransportFactory, TransportLike } from "../transport";
@@ -184,27 +184,6 @@ const buildBitcoinAccount = (address: string, chain: ChainBase): Account => ({
   id: `${chain.id}:${address}`,
   walletAddress: address,
 });
-
-/** Convert a `Uint8Array` to lowercase hex. Bitcoin's `signMessage` requires
- *  a hex-encoded message string per the legacy Ledger Bitcoin app contract. */
-const bytesToHex = (bytes: Uint8Array): string => {
-  let hex = "";
-  for (const byte of bytes) {
-    hex += byte.toString(16).padStart(2, "0");
-  }
-  return hex;
-};
-
-/** Convert lowercase hex back to bytes. Used to materialise the `r||s||v`
- *  signature blob the Bitcoin app returns into the byte signature butr's
- *  `signMessage` surface expects. */
-const hexToBytes = (hex: string): Uint8Array => {
-  const out = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < out.length; i += 1) {
-    out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-  }
-  return out;
-};
 
 const SUBSCRIBE_NOT_AVAILABLE =
   "[butr/ledger] subscribe is not implemented — device emits no events";

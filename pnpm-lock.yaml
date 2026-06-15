@@ -203,6 +203,9 @@ importers:
       '@tanstack/devtools-vite':
         specifier: latest
         version: 0.7.0(@emnapi/core@1.11.0)(@emnapi/runtime@1.11.0)(bufferutil@4.1.0)(utf-8-validate@6.0.6)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
+      '@tanstack/router-cli':
+        specifier: ^1.167.17
+        version: 1.167.17
       '@testing-library/dom':
         specifier: ^10.4.1
         version: 10.4.1
@@ -1189,7 +1192,7 @@ importers:
         version: 11.0.0
       '@ledgerhq/hw-app-eth':
         specifier: ^7.8.4
-        version: 7.8.4(react@19.0.0)
+        version: 7.8.4
       '@ledgerhq/hw-app-solana':
         specifier: ^7.10.2
         version: 7.10.2
@@ -5550,6 +5553,11 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  '@tanstack/router-cli@1.167.17':
+    resolution: {integrity: sha512-kws9PNdspkHbeZG6aLDjjpgH/hg7Q565BdSW9hHrjKmXPq/at7OKxQnA76aw9dJiJqy9OmST2RdOKlMEog43+g==}
+    engines: {node: '>=20.19'}
+    hasBin: true
 
   '@tanstack/router-core@1.171.13':
     resolution: {integrity: sha512-+NOwEj1kO/6IGmpHRIZHasYxYWpyBQGNIZAST9aNrk9Q3YlU9SgqVnl1pbLa9qAKfeNdXQIRve0RQb/0kyDeDA==}
@@ -12574,6 +12582,15 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  '@ledgerhq/client-ids@0.10.0':
+    dependencies:
+      '@ledgerhq/live-env': 2.36.0
+      '@reduxjs/toolkit': 2.11.2(react@19.0.0)
+      uuid: 9.0.1
+    transitivePeerDependencies:
+      - react
+      - react-redux
+
   '@ledgerhq/client-ids@0.10.0(react@19.0.0)':
     dependencies:
       '@ledgerhq/live-env': 2.36.0
@@ -12638,7 +12655,7 @@ snapshots:
       invariant: 2.2.4
       semver: 7.7.3
 
-  '@ledgerhq/hw-app-eth@7.8.4(react@19.0.0)':
+  '@ledgerhq/hw-app-eth@7.8.4':
     dependencies:
       '@ethersproject/abi': 5.8.0
       '@ethersproject/rlp': 5.8.0
@@ -12649,7 +12666,7 @@ snapshots:
       '@ledgerhq/hw-transport': 6.35.2
       '@ledgerhq/hw-transport-mocker': 6.34.2
       '@ledgerhq/logs': 6.17.0
-      '@ledgerhq/types-live': 6.109.0(react@19.0.0)
+      '@ledgerhq/types-live': 6.109.0
       axios: 1.13.2
       bignumber.js: 9.3.1
       semver: 7.7.3
@@ -12755,6 +12772,15 @@ snapshots:
     dependencies:
       bitcoinjs-lib: 6.1.7
       varuint-bitcoin: 1.1.2
+
+  '@ledgerhq/types-live@6.109.0':
+    dependencies:
+      '@ledgerhq/client-ids': 0.10.0
+      bignumber.js: 9.3.1
+      rxjs: 7.8.2
+    transitivePeerDependencies:
+      - react
+      - react-redux
 
   '@ledgerhq/types-live@6.109.0(react@19.0.0)':
     dependencies:
@@ -15715,6 +15741,14 @@ snapshots:
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
       use-sync-external-store: 1.6.0(react@19.2.6)
+
+  '@tanstack/router-cli@1.167.17':
+    dependencies:
+      '@tanstack/router-generator': 1.167.17
+      chokidar: 5.0.0
+      yargs: 17.7.2
+    transitivePeerDependencies:
+      - supports-color
 
   '@tanstack/router-core@1.171.13':
     dependencies:

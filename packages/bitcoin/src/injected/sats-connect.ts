@@ -1,4 +1,5 @@
 import type { ChainBase, WalletAdapter, WalletCapabilities } from "@usebutr/core";
+import { base64ToBytes, bytesToBase64 } from "@usebutr/core";
 import { buildAccount } from "@usebutr/wallet-standard-shared";
 
 import { BITCOIN_CHAINS } from "../chains";
@@ -24,25 +25,6 @@ const CAPS_SATS_CONNECT: WalletCapabilities = {
   subscribe: false,
   switchAccount: false,
   switchChain: false,
-};
-
-// Encoding helpers — small enough to live next to their caller rather
-// than in a cross-cutting "shared" file.
-const base64ToBytes = (b64: string): Uint8Array => {
-  const binary = atob(b64);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    out[i] = binary.codePointAt(i) ?? 0;
-  }
-  return out;
-};
-
-const bytesToBase64 = (bytes: Uint8Array): string => {
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCodePoint(byte);
-  }
-  return btoa(binary);
 };
 
 /**

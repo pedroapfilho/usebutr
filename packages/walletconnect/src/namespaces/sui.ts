@@ -1,5 +1,5 @@
 import type { Account, ChainBase, SuiAdapter, WalletCapabilities } from "@usebutr/core";
-import { logWarn } from "@usebutr/core";
+import { base64ToBytes, bytesToBase64, logWarn } from "@usebutr/core";
 
 import type { UniversalProviderLike } from "../loader";
 
@@ -55,27 +55,6 @@ const WALLETCONNECT_SUI_CAPABILITIES: WalletCapabilities = {
   subscribe: false,
   switchAccount: false,
   switchChain: true,
-};
-
-/** Cross-platform Uint8Array → base64. `btoa` is available everywhere
- *  butr runs (browsers, RN since Hermes, Node 16+, Bun, Deno). */
-const bytesToBase64 = (bytes: Uint8Array): string => {
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCodePoint(byte);
-  }
-  return btoa(binary);
-};
-
-/** Cross-platform base64 → Uint8Array (used to decode the signed
- *  transaction bytes / signatures returned by Sui WC methods). */
-const base64ToBytes = (input: string): Uint8Array => {
-  const binary = atob(input);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    out[i] = binary.codePointAt(i) ?? 0;
-  }
-  return out;
 };
 
 /** Parse a CAIP-10 string (`sui:mainnet:0xabc...`) into the address
@@ -136,6 +115,21 @@ const buildSuiAccount = (address: string, chain: ChainBase): Account => ({
  * shouldn't own. Consumers wire native events themselves until we
  * land a follow-up.
  */
+/** Coerce butr's `unknown` tx into the base64 string the Sui WC methods
+ *  expect. Consumers pass either a base64 string (already BCS-serialized
+ *  by `@mysten/sui`) or a `Uint8Array` of BCS bytes. */
+const coerceTransactionToBase64 = (tx: unknown): string => {
+  if (typeof tx === "string") {
+    return tx;
+  }
+  if (tx instanceof Uint8Array) {
+    return bytesToBase64(tx);
+  }
+  throw new TypeError(
+    "Sui sendTx/signTransaction expects a base64-encoded string or Uint8Array of BCS bytes",
+  );
+};
+
 const suiNamespace: WalletConnectNamespaceBuilder = {
   buildAdapter({ chains, icon, id, name, provider }) {
     let currentChainId = chains[0] ?? DEFAULT_CHAINS[0] ?? "sui:mainnet";
@@ -159,21 +153,6 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
         throw new Error("No connected Sui account");
       }
       return first.walletAddress;
-    };
-
-    /** Coerce butr's `unknown` tx into the base64 string the Sui WC
-     *  methods expect. Consumers pass either a base64 string (already
-     *  BCS-serialized by `@mysten/sui`) or a `Uint8Array` of BCS bytes. */
-    const coerceTransactionToBase64 = (tx: unknown): string => {
-      if (typeof tx === "string") {
-        return tx;
-      }
-      if (tx instanceof Uint8Array) {
-        return bytesToBase64(tx);
-      }
-      throw new TypeError(
-        "Sui sendTx/signTransaction expects a base64-encoded string or Uint8Array of BCS bytes",
-      );
     };
 
     const adapter: SuiAdapter = {

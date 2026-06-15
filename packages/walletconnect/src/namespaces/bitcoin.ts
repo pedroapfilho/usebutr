@@ -1,5 +1,5 @@
 import type { Account, BitcoinAdapter, ChainBase, WalletCapabilities } from "@usebutr/core";
-import { logWarn } from "@usebutr/core";
+import { base64ToBytes, bytesToBase64, hexToBytes, logWarn } from "@usebutr/core";
 
 import type { UniversalProviderLike } from "../loader";
 
@@ -63,46 +63,6 @@ const WALLETCONNECT_BITCOIN_CAPABILITIES: WalletCapabilities = {
   subscribe: false,
   switchAccount: false,
   switchChain: true,
-};
-
-/** Cross-platform Uint8Array → base64. `btoa` is available everywhere
- *  butr runs (browsers, RN since Hermes, Node 16+, Bun, Deno). */
-const bytesToBase64 = (bytes: Uint8Array): string => {
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCodePoint(byte);
-  }
-  return btoa(binary);
-};
-
-/** Cross-platform base64 → Uint8Array (used to decode the signed PSBT
- *  bytes returned by `signPsbt`). */
-const base64ToBytes = (input: string): Uint8Array => {
-  const binary = atob(input);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    out[i] = binary.codePointAt(i) ?? 0;
-  }
-  return out;
-};
-
-/** Decode a hex string (with or without a leading `0x`) into raw bytes.
- *  Used to turn `signMessage`'s hex signature response into the
- *  `Uint8Array` butr's contract returns. */
-const hexToBytes = (input: string): Uint8Array => {
-  const clean = input.startsWith("0x") ? input.slice(2) : input;
-  if (clean.length % 2 !== 0) {
-    throw new TypeError("Invalid hex: odd length");
-  }
-  const out = new Uint8Array(clean.length / 2);
-  for (let i = 0; i < out.length; i += 1) {
-    const byte = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
-    if (Number.isNaN(byte)) {
-      throw new TypeError(`Invalid hex character at offset ${i * 2}`);
-    }
-    out[i] = byte;
-  }
-  return out;
 };
 
 /** Parse a CAIP-10 string (`bip122:<chain>:<address>`) into the address

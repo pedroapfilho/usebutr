@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { StoredPoolEntry } from "../../storage/persistence";
-import type { ChainPlatform } from "../../types";
+import type { ChainPlatform, WalletCapabilities } from "../../types";
 import { createShadowAdapter, isShadowAdapter, ShadowConnectorError } from "../shadow-adapter";
 
 const evmEntry = (overrides: Partial<StoredPoolEntry> = {}): StoredPoolEntry => ({
@@ -105,6 +105,30 @@ describe("isShadowAdapter", () => {
     const liveLooking = {
       ...shadow,
       capabilities: { ...shadow.capabilities, signMessage: true },
+    } as typeof shadow;
+    expect(isShadowAdapter(liveLooking)).toBe(false);
+  });
+
+  // The old guard checked only 7 of 10 flags, omitting signIn,
+  // signTransaction, and switchAccount. Each must now flip the result to
+  // false on its own.
+  it.each<keyof WalletCapabilities>(["signIn", "signTransaction", "switchAccount"])(
+    "returns false when only %s is advertised (previously-omitted flag)",
+    (flag) => {
+      const shadow = createShadowAdapter(evmEntry());
+      const liveLooking = {
+        ...shadow,
+        capabilities: { ...shadow.capabilities, [flag]: true },
+      } as typeof shadow;
+      expect(isShadowAdapter(liveLooking)).toBe(false);
+    },
+  );
+
+  it("returns false for a normal live-ish adapter", () => {
+    const shadow = createShadowAdapter(evmEntry());
+    const liveLooking = {
+      ...shadow,
+      capabilities: { ...shadow.capabilities, getBalance: true, signMessage: true },
     } as typeof shadow;
     expect(isShadowAdapter(liveLooking)).toBe(false);
   });

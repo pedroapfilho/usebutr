@@ -1044,6 +1044,9 @@ importers:
       '@web3icons/react':
         specifier: ^4.1.17
         version: 4.1.17(react@19.2.6)(typescript@6.0.3)
+      hast-util-to-jsx-runtime:
+        specifier: ^2.3.6
+        version: 2.3.6
       next:
         specifier: ^16.0.0
         version: 16.2.6(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)

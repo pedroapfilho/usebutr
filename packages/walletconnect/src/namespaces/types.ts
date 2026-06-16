@@ -23,11 +23,9 @@ import type { UniversalProviderLike } from "../loader";
  * a `WalletConnectNamespaceBuilder`. The factory iterates the registered
  * builders; no changes elsewhere.
  *
- * Today only the EVM builder is implemented. SVM / Sui / Bitcoin
- * builders are tracked follow-ups — each requires verifying the WC
- * method shapes against the mobile wallets that advertise the
- * namespace (Phantom mobile, Xverse, etc.). See
- * https://github.com/pedroapfilho/butr/issues for the open follow-ups.
+ * The EVM, SVM (Solana), Sui, and Bitcoin (bip122) builders all ship
+ * under `src/namespaces/`, each registered in the adapter's
+ * `KNOWN_NAMESPACES`.
  */
 type WalletConnectNamespaceBuilder = {
   /**

@@ -109,6 +109,18 @@ const initProvider = async (
 };
 
 /**
+ * Registry of known per-namespace builders. Adding a new namespace =
+ * import its builder + add the entry. Today EVM, SVM, Sui, and Bitcoin
+ * (bip122) all ship.
+ */
+const KNOWN_NAMESPACES: Readonly<Partial<Record<ChainPlatform, WalletConnectNamespaceBuilder>>> = {
+  bitcoin: bitcoinNamespace,
+  evm: evmNamespace,
+  sui: suiNamespace,
+  svm: solanaNamespace,
+};
+
+/**
  * WalletConnect v2 factory. Accepts a per-platform `chains` map and
  * returns one adapter per requested namespace from a single paired
  * session. Each returned adapter has its own id (with a platform suffix
@@ -143,18 +155,6 @@ const initProvider = async (
  * });
  * ```
  */
-/**
- * Registry of known per-namespace builders. Adding a new namespace =
- * import its builder + add the entry. Today EVM, SVM, Sui, and Bitcoin
- * (bip122) all ship.
- */
-const KNOWN_NAMESPACES: Readonly<Partial<Record<ChainPlatform, WalletConnectNamespaceBuilder>>> = {
-  bitcoin: bitcoinNamespace,
-  evm: evmNamespace,
-  sui: suiNamespace,
-  svm: solanaNamespace,
-};
-
 const createWalletConnectAdapters = async (
   options: WalletConnectOptions,
 ): Promise<Array<WalletAdapter>> => {

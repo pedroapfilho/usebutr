@@ -1,6 +1,6 @@
 import { ButtonLink } from "@/components/button-link";
 import { InstallCommand } from "@/components/install-command";
-import { GITHUB_URL, QUICKSTART_URL } from "@/lib/site";
+import { DEMO_URL, GITHUB_URL, QUICKSTART_URL } from "@/lib/site";
 
 const Hero = () => (
   <section className="relative overflow-hidden">
@@ -27,6 +27,9 @@ const Hero = () => (
       <div className="mt-9 flex flex-col items-center gap-4 sm:flex-row">
         <ButtonLink href={QUICKSTART_URL} variant="primary">
           Read the docs
+        </ButtonLink>
+        <ButtonLink href={DEMO_URL} variant="secondary">
+          Try the live demo
         </ButtonLink>
         <ButtonLink href={GITHUB_URL} variant="secondary">
           View on GitHub

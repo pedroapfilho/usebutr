@@ -1,4 +1,4 @@
-import type { Account, ConnectedWallet, WalletAdapter } from "@usebutr/core";
+import type { Account, ChainPlatform, ConnectedWallet, WalletAdapter } from "@usebutr/core";
 import {
   useActiveWallet,
   useBalance,
@@ -17,6 +17,7 @@ import { type ReactNode, useState } from "react";
 
 import { hasWalletConnectProjectId } from "./extra-connectors";
 import { PairingDialog } from "./pairing-dialog";
+import { SiteFooter, SiteHeader } from "./site-chrome";
 import { WalletConnectDialog } from "./wallet-connect-dialog";
 
 type SignState =
@@ -102,6 +103,26 @@ const AccountPicker = ({ wallet }: { wallet: ConnectedWallet }) => (
 const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
   const chains = CHAINS_BY_PLATFORM[wallet.connector.chainPlatform];
   const selectId = `chain-picker-${wallet.connector.id}`;
+  const [error, setError] = useState<string | null>(null);
+
+  // The full per-platform chain list can include networks a given wallet
+  // doesn't advertise (e.g. Phantom exposes Sui mainnet/testnet but not
+  // devnet), so switchChain may reject. Catch it instead of letting the
+  // rejection surface as an uncaught error; the controlled select reverts
+  // to the live chain on re-render since account.chain.id didn't change.
+  const handleChange = async (chainId: string) => {
+    const target = chains.find((c) => c.id === chainId);
+    if (!target) {
+      return;
+    }
+    setError(null);
+    try {
+      await wallet.connector.switchChain(target);
+    } catch (switchError) {
+      setError(switchError instanceof Error ? switchError.message : "Failed to switch chain");
+    }
+  };
+
   return (
     <div>
       <label className="sr-only" htmlFor={selectId}>
@@ -111,10 +132,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
         className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs"
         id={selectId}
         onChange={(e) => {
-          const target = chains.find((c) => c.id === e.target.value);
-          if (target) {
-            void wallet.connector.switchChain(target);
-          }
+          void handleChange(e.target.value);
         }}
         value={wallet.account.chain.id}
       >
@@ -127,6 +145,11 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
           </option>
         ))}
       </select>
+      {error ? (
+        <p className="mt-1 text-xs text-red-700" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 };
@@ -160,7 +183,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
           ) : null}
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold">{wallet.connector.name}</h3>
+              <h4 className="font-semibold">{wallet.connector.name}</h4>
               {isActive ? (
                 <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
                   active
@@ -220,21 +243,62 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
   );
 };
 
+const PLATFORM_LABELS: Record<ChainPlatform, string> = {
+  bitcoin: "Bitcoin",
+  evm: "EVM",
+  polkadot: "Polkadot",
+  sui: "Sui",
+  svm: "SVM",
+};
+
+const PLATFORM_ORDER: ReadonlyArray<ChainPlatform> = ["evm", "svm", "sui", "bitcoin", "polkadot"];
+
+type PlatformGroup = {
+  platform: ChainPlatform;
+  wallets: Array<ConnectedWallet>;
+};
+
+const groupByPlatform = (wallets: ReadonlyArray<ConnectedWallet>): Array<PlatformGroup> => {
+  const byPlatform = new Map<ChainPlatform, Array<ConnectedWallet>>();
+  for (const wallet of wallets) {
+    const platform = wallet.connector.chainPlatform;
+    const existing = byPlatform.get(platform);
+    if (existing) {
+      existing.push(wallet);
+    } else {
+      byPlatform.set(platform, [wallet]);
+    }
+  }
+  return PLATFORM_ORDER.flatMap((platform) => {
+    const group = byPlatform.get(platform);
+    return group ? [{ platform, wallets: group }] : [];
+  });
+};
+
 const ConnectedList = ({ wallets }: { wallets: ReadonlyArray<ConnectedWallet> }) => (
   <section>
-    <h2 className="mb-3 flex items-center gap-2 font-semibold">
+    <h2 className="mb-4 flex items-center gap-2 font-semibold">
       Connected
       <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-xs text-neutral-500">
         {wallets.length}
       </span>
     </h2>
-    <ul className="space-y-3">
-      {wallets.map((wallet) => (
-        <li key={wallet.connector.id}>
-          <ConnectedWalletCard wallet={wallet} />
-        </li>
+    <div className="space-y-6">
+      {groupByPlatform(wallets).map((group) => (
+        <div key={group.platform}>
+          <h3 className="mb-2 font-mono text-xs tracking-wide text-neutral-500 uppercase">
+            {PLATFORM_LABELS[group.platform]} · {group.wallets.length}
+          </h3>
+          <ul className="space-y-3">
+            {group.wallets.map((wallet) => (
+              <li key={wallet.connector.id}>
+                <ConnectedWalletCard wallet={wallet} />
+              </li>
+            ))}
+          </ul>
+        </div>
       ))}
-    </ul>
+    </div>
   </section>
 );
 
@@ -295,7 +359,7 @@ const WalletBrandRow = ({
               <button
                 aria-busy={isConnecting}
                 aria-label={`${brand.name} — ${adapter.chainPlatform}`}
-                className="min-h-[44px] rounded-md border border-neutral-300 px-2 py-1 font-mono text-xs uppercase hover:bg-neutral-50 disabled:opacity-50"
+                className="hover:border-brand hover:bg-brand/10 hover:text-brand-foreground min-h-[44px] rounded-md border border-neutral-300 px-2 py-1 font-mono text-xs uppercase transition-colors disabled:opacity-50 motion-reduce:transition-none"
                 disabled={isConnecting}
                 key={adapter.id}
                 onClick={() => connect(adapter.id)}
@@ -397,7 +461,7 @@ const Content = () => {
             Dialog pattern (recommended for modal UX)
           </h2>
           <button
-            className="rounded-md border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-50"
+            className="bg-brand text-brand-foreground rounded-md px-4 py-2 text-sm font-medium ring-1 ring-black/5 transition-[filter] ring-inset hover:brightness-95"
             onClick={() => setDialogOpen(true)}
             type="button"
           >
@@ -431,10 +495,14 @@ const App = () => (
     >
       Skip to content
     </a>
+    <SiteHeader />
     <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900" id="main">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">butr · Vite</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+      <header className="mb-10">
+        <p className="text-brand-foreground font-mono text-xs tracking-wide uppercase">Live demo</p>
+        <h1 className="mt-3 max-w-[24ch] text-4xl font-semibold tracking-tight text-balance">
+          Connect a wallet on any chain.
+        </h1>
+        <p className="mt-4 max-w-[60ch] text-base text-pretty text-neutral-600">
           Batteries-included install via <code>@usebutr/wallets</code>. EVM, Solana, Sui, Bitcoin,
           and Polkadot discovered in one provider, plus WalletConnect and Ledger; persisted in
           localStorage.
@@ -442,6 +510,7 @@ const App = () => (
       </header>
       <Content />
     </main>
+    <SiteFooter />
   </>
 );
 

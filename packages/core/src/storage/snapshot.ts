@@ -1,9 +1,10 @@
 import { logWarn } from "../logger";
+import { CHAIN_PLATFORMS } from "../types";
 import type { ChainPlatform } from "../types";
 
 import type { StoredPoolEntry, StoredPoolRecord, StoredSelectionRecord } from "./persistence";
 
-const VALID_CHAIN_PLATFORMS = new Set<ChainPlatform>(["evm", "svm", "sui", "bitcoin"]);
+const VALID_CHAIN_PLATFORMS = new Set<ChainPlatform>(CHAIN_PLATFORMS);
 
 /**
  * Server-safe view of a butr-persisted session — everything you can

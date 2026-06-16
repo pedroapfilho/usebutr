@@ -3,6 +3,8 @@
 
 @theme {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --color-brand: oklch(0.852 0.199 91.936);
+  --color-brand-foreground: oklch(0.421 0.095 57.708);
 }
 
 @layer base {
@@ -16,7 +18,7 @@
   }
 
   *:focus-visible {
-    outline: 2px solid oklch(0.5 0.2 250);
+    outline: 2px solid var(--color-brand);
     outline-offset: 2px;
   }
 }

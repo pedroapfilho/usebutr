@@ -1,4 +1,5 @@
 import { logWarn } from "../logger";
+import { CHAIN_PLATFORMS } from "../types";
 import type { ChainPlatform, ConnectedWallet } from "../types";
 
 import { createBrowserStorageDriver } from "./browser-storage-driver";
@@ -10,7 +11,7 @@ import type {
   WalletPersistence,
 } from "./persistence";
 
-const VALID_CHAIN_PLATFORMS = new Set<ChainPlatform>(["evm", "svm", "sui", "bitcoin"]);
+const VALID_CHAIN_PLATFORMS = new Set<ChainPlatform>(CHAIN_PLATFORMS);
 
 type StorageConfig = {
   keyPrefix: string;

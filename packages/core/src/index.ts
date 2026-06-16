@@ -32,7 +32,7 @@ export type {
   WalletCapabilities,
   WalletManagerConfig,
 } from "./types";
-export { buildChainsByPlatform, mapConnectionError } from "./types";
+export { buildChainsByPlatform, CHAIN_PLATFORMS, mapConnectionError } from "./types";
 
 // Discovery seam
 export type { WalletSource } from "./wallet-source";

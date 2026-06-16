@@ -148,7 +148,6 @@ const Connected = ({
     }
     setErrorMsg(null);
     try {
-      // Build the tx with @solana/web3.js
       const tx = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey: publicKey,

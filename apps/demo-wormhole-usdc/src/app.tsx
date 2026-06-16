@@ -40,8 +40,6 @@ const formatBalance = (b: UsdcBalance): string => {
   return `${b.uiAmountString ?? "0"} USDC`;
 };
 
-// ─── Subcomponents ─────────────────────────────────────────────────
-
 const ChainSelect = ({
   disabled,
   onChange,
@@ -186,8 +184,6 @@ const StatusPanel = ({
     </div>
   );
 };
-
-// ─── Main component ───────────────────────────────────────────────
 
 const App = () => {
   const evmWallet = useSelectedWallet("evm");

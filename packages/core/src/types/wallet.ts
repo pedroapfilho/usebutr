@@ -4,7 +4,16 @@ import type { WalletSnapshot } from "../storage/snapshot";
 import type { ChainBase } from "./chain";
 import type { ConnectionError } from "./errors";
 
-type ChainPlatform = "evm" | "svm" | "sui" | "bitcoin" | "polkadot";
+/**
+ * Canonical list of supported chain platforms. The single runtime source
+ * of truth: `ChainPlatform` is derived from it, and storage validators
+ * build their allowlists from it, so the type and the runtime checks can
+ * never drift (a missing platform here was why Polkadot connections failed
+ * to persist).
+ */
+const CHAIN_PLATFORMS = ["evm", "svm", "sui", "bitcoin", "polkadot"] as const;
+
+type ChainPlatform = (typeof CHAIN_PLATFORMS)[number];
 
 type Account = {
   chain: ChainBase;
@@ -444,6 +453,8 @@ type WalletManagerConfig = {
   /** Storage key prefix for localStorage */
   storageKeyPrefix?: string;
 };
+
+export { CHAIN_PLATFORMS };
 
 export type {
   Account,

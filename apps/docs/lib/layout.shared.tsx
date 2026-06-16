@@ -1,6 +1,7 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 
 const GITHUB_URL = "https://github.com/pedroapfilho/usebutr";
+const DEMO_URL = "https://demo.usebutr.com";
 
 /**
  * Layout options shared between the docs layout and the home layout.
@@ -10,6 +11,7 @@ const GITHUB_URL = "https://github.com/pedroapfilho/usebutr";
  */
 export const baseOptions = (): BaseLayoutProps => ({
   githubUrl: GITHUB_URL,
+  links: [{ external: true, text: "Demo", url: DEMO_URL }],
   nav: {
     title: (
       <picture>

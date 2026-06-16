@@ -169,6 +169,68 @@ describe("WalletStorage", () => {
       expect(stored).toEqual({});
     });
 
+    // Regression: `polkadot` was missing from the storage allowlist, so
+    // Polkadot entries were rejected on write and never reconnected.
+    it("persists every supported chain platform, including polkadot", async () => {
+      const { storage } = createStorage();
+      const account = createMockAccount();
+      const pool = new Map<string, ConnectedWallet>(
+        (["evm", "svm", "sui", "bitcoin", "polkadot"] as const).map((platform) => [
+          platform,
+          {
+            account,
+            accounts: [account],
+            connector: createMockConnector({ chainPlatform: platform, id: platform }),
+          },
+        ]),
+      );
+
+      await storage.setPool(pool);
+
+      // Round-trips through the read-side validator too.
+      const restored = await storage.getPool();
+      expect(Object.keys(restored).toSorted()).toEqual([
+        "bitcoin",
+        "evm",
+        "polkadot",
+        "sui",
+        "svm",
+      ]);
+      expect(restored.polkadot?.chainPlatform).toBe("polkadot");
+    });
+
+    // A pool mixing a polkadot entry with others must persist all of them —
+    // the invalid-polkadot rejection used to abort the whole write, dropping
+    // the valid svm sibling alongside it.
+    it("persists a polkadot + svm pool without dropping either", async () => {
+      const { storage } = createStorage();
+      const account = createMockAccount();
+      const pool = new Map<string, ConnectedWallet>([
+        [
+          "polkadot",
+          {
+            account,
+            accounts: [account],
+            connector: createMockConnector({ chainPlatform: "polkadot", id: "polkadot" }),
+          },
+        ],
+        [
+          "svm",
+          {
+            account,
+            accounts: [account],
+            connector: createMockConnector({ chainPlatform: "svm", id: "svm" }),
+          },
+        ],
+      ]);
+
+      await storage.setPool(pool);
+
+      const restored = await storage.getPool();
+      expect(restored.polkadot?.chainPlatform).toBe("polkadot");
+      expect(restored.svm?.chainPlatform).toBe("svm");
+    });
+
     it("refuses to persist a structurally invalid entry (write-side validation)", async () => {
       const { persistent, storage } = createStorage();
       const account = createMockAccount();

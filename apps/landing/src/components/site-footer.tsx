@@ -1,7 +1,14 @@
 import Link from "next/link";
 
 import { BrandLogo } from "@/components/brand-logo";
-import { DOCS_URL, GITHUB_URL, INSTALLATION_URL, NPM_URL, QUICKSTART_URL } from "@/lib/site";
+import {
+  DEMO_URL,
+  DOCS_URL,
+  GITHUB_URL,
+  INSTALLATION_URL,
+  NPM_URL,
+  QUICKSTART_URL,
+} from "@/lib/site";
 
 type FooterLink = {
   href: string;
@@ -17,6 +24,7 @@ const RESOURCE_LINKS: Array<FooterLink> = [
   { href: DOCS_URL, label: "Docs" },
   { href: INSTALLATION_URL, label: "Installation" },
   { href: QUICKSTART_URL, label: "Quickstart" },
+  { href: DEMO_URL, label: "Demo" },
 ];
 
 const PROJECT_LINKS: Array<FooterLink> = [

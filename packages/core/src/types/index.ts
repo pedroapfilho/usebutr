@@ -5,6 +5,7 @@ export type { PlatformDiscoverer } from "./discoverer";
 export type { ConnectionError, ConnectionErrorKind } from "./errors";
 export { mapConnectionError } from "./errors";
 export type { SignerForPlatform, SignerOf } from "./signer";
+export { CHAIN_PLATFORMS } from "./wallet";
 
 export type {
   Account,

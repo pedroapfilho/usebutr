@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { ButtonLink } from "@/components/button-link";
-import { DOCS_URL, GITHUB_URL } from "@/lib/site";
+import { DEMO_URL, DOCS_URL, GITHUB_URL } from "@/lib/site";
 
 const SiteHeader = () => (
   <header className="border-border/60 bg-background/80 sticky top-0 z-50 border-b backdrop-blur-md">
@@ -21,6 +21,12 @@ const SiteHeader = () => (
           href={DOCS_URL}
         >
           Docs
+        </a>
+        <a
+          className="text-muted-foreground hover:text-foreground focus-visible:outline-ring hidden rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:inline-flex"
+          href={DEMO_URL}
+        >
+          Demo
         </a>
         <a
           aria-label="butr on GitHub"

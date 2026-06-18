@@ -24,6 +24,8 @@ describe("discoverWalletStandard", () => {
 
     expect(warn).toHaveBeenCalledTimes(1);
     expect(String(warn.mock.calls[0]?.[0])).toContain("@wallet-standard/app");
+    // The underlying import error is forwarded so the cause is debuggable.
+    expect(warn.mock.calls[0]?.[1]).toBeInstanceOf(Error);
     expect(onAdapter).not.toHaveBeenCalled();
 
     unsubscribeA();

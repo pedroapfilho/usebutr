@@ -1,6 +1,11 @@
 import type { WalletAdapter } from "@usebutr/core";
+import { logWarn } from "@usebutr/core";
 
 import type { WalletStandardAppModule, WalletStandardWallet } from "./types";
+
+// Warn once per process: every platform calls this, so a missing optional peer
+// dep would otherwise log one identical line per chain.
+let warnedMissingApp = false;
 
 /**
  * Callback supplied by per-platform discovery to build a `WalletAdapter`
@@ -57,7 +62,14 @@ const discoverWalletStandard = (
     let mod: WalletStandardAppModule;
     try {
       mod = (await import("@wallet-standard/app")) as unknown as WalletStandardAppModule;
-    } catch {
+    } catch (error) {
+      if (!warnedMissingApp) {
+        warnedMissingApp = true;
+        logWarn(
+          "[butr] Wallet Standard wallet discovery is disabled: `@wallet-standard/app` could not be loaded. Install it (`npm i @wallet-standard/app`) to detect Wallet Standard wallets.",
+          error,
+        );
+      }
       return;
     }
     if (cancelled) {

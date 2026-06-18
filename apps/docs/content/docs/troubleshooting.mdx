@@ -33,6 +33,20 @@ all accounts at once and have no picker. The call resolves cleanly (it refreshes
 the list). Gate the button on `wallet.connector.capabilities.requestAccounts`
 so it doesn't render for SVM.
 
+## No Solana, Sui, Bitcoin, or Polkadot wallets show up
+
+Wallet Standard discovery (`@usebutr/svm`, `@usebutr/sui`, `@usebutr/bitcoin`,
+`@usebutr/polkadot`) lazily imports the optional peer dependency
+`@wallet-standard/app`. When it isn't installed, discovery is disabled and butr
+logs a single `console.warn` pointing at the missing install — no Wallet
+Standard wallets will be detected. Install it to fix:
+
+```bash
+npm install @wallet-standard/app
+```
+
+See [peer dependencies](/getting-started/installation#peer-dependencies).
+
 ## Ledger doesn't connect in Firefox/Safari
 
 `@usebutr/ledger` uses WebUSB, which only exists in Chromium browsers (Chrome,

@@ -1,6 +1,11 @@
 import type { WalletAdapter } from "@usebutr/core";
+import { logWarn } from "@usebutr/core";
 
 import type { WalletStandardAppModule, WalletStandardWallet } from "./types";
+
+// Warn once per process: every platform (SVM, Sui, Bitcoin) calls this, so a
+// missing optional peer dep would otherwise log three identical lines.
+let warnedMissingApp = false;
 
 /**
  * Callback supplied by per-platform discovery to build a `WalletAdapter`
@@ -58,6 +63,12 @@ const discoverWalletStandard = (
     try {
       mod = (await import("@wallet-standard/app")) as unknown as WalletStandardAppModule;
     } catch {
+      if (!warnedMissingApp) {
+        warnedMissingApp = true;
+        logWarn(
+          "[butr] @wallet-standard/app is not installed, so Solana, Sui and Bitcoin wallet discovery is disabled. Install it (`npm i @wallet-standard/app`) to detect Wallet Standard wallets.",
+        );
+      }
       return;
     }
     if (cancelled) {

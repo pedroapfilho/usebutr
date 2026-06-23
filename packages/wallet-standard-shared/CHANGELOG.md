@@ -1,5 +1,16 @@
 # @usebutr/wallet-standard-shared
 
+## 0.2.4
+
+### Patch Changes
+
+- a46eecd: Ship unminified ESM so downstream bundlers (Vite/esbuild dep pre-bundling) process the package correctly; fixes a ReferenceError in consumer dev servers. The consuming app minifies once at its own build.
+- 3f26776: Warn (once) when `@wallet-standard/app` can't be loaded instead of silently disabling discovery. Wallet Standard discovery (used by the SVM, Sui, Bitcoin and Polkadot connectors) dynamically imports the optional peer dep `@wallet-standard/app`; when the import failed it was swallowed, so no wallets appeared with no hint why. It now logs a single actionable warning, forwarding the underlying error.
+- Updated dependencies [b5322ae]
+- Updated dependencies [d5f32c7]
+- Updated dependencies [a46eecd]
+  - @usebutr/core@0.4.0
+
 ## 0.2.3
 
 ### Patch Changes

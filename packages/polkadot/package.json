@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/polkadot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "injectedWeb3 + Wallet Standard adapter for butr (Polkadot/Substrate).",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",

@@ -1,5 +1,21 @@
 # @usebutr/wallets
 
+## 0.2.1
+
+### Patch Changes
+
+- a46eecd: Ship unminified ESM so downstream bundlers (Vite/esbuild dep pre-bundling) process the package correctly; fixes a ReferenceError in consumer dev servers. The consuming app minifies once at its own build.
+- Updated dependencies [b5322ae]
+- Updated dependencies [d5f32c7]
+- Updated dependencies [a46eecd]
+  - @usebutr/core@0.4.0
+  - @usebutr/sui@0.2.4
+  - @usebutr/bitcoin@0.2.4
+  - @usebutr/svm@0.2.4
+  - @usebutr/evm@0.2.2
+  - @usebutr/react@0.1.5
+  - @usebutr/polkadot@0.1.1
+
 ## 0.2.0
 
 ### Minor Changes

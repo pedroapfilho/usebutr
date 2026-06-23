@@ -1,5 +1,18 @@
 # @usebutr/walletconnect
 
+## 0.2.4
+
+### Patch Changes
+
+- a46eecd: Ship unminified ESM so downstream bundlers (Vite/esbuild dep pre-bundling) process the package correctly; fixes a ReferenceError in consumer dev servers. The consuming app minifies once at its own build.
+- b5322ae: Remove the leaked `display_uri` listener on disconnect to prevent listener
+  accumulation and duplicate `onPairingUri` callbacks across reconnects.
+- Updated dependencies [b5322ae]
+- Updated dependencies [d5f32c7]
+- Updated dependencies [a46eecd]
+  - @usebutr/core@0.4.0
+  - @usebutr/evm@0.2.2
+
 ## 0.2.3
 
 ### Patch Changes

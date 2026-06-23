@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/testing",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Test helpers for butr: fake adapters, fake persistence, mock storage.",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",

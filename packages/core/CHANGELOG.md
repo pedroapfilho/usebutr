@@ -1,5 +1,25 @@
 # @usebutr/core
 
+## 0.4.0
+
+### Minor Changes
+
+- b5322ae: Add shared byte-encoding utilities (`bytesToHex`, `bytesToHexPrefixed`,
+  `hexToBytes`, `base64ToBytes`, `bytesToBase64`) and consolidate the per-connector
+  copies onto them. Behavior preserved: prefixed (`0x`) and bare hex are distinct
+  variants so each chain keeps its existing output.
+
+### Patch Changes
+
+- d5f32c7: Fix Polkadot wallet connections failing to persist and reconnect on reload.
+  The storage validators' chain-platform allowlist was missing `polkadot`, so
+  Polkadot pool entries were rejected on write — and because the write rejects
+  the whole batch, a co-connected sibling (e.g. Solana) could be dropped too.
+  The allowlist is now derived from a single `CHAIN_PLATFORMS` source of truth
+  shared with the `ChainPlatform` type, so the runtime checks can't drift from
+  the type again.
+- a46eecd: Ship unminified ESM so downstream bundlers (Vite/esbuild dep pre-bundling) process the package correctly; fixes a ReferenceError in consumer dev servers. The consuming app minifies once at its own build.
+
 ## 0.3.0
 
 ### Minor Changes

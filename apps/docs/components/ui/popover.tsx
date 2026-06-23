@@ -13,7 +13,8 @@ const Popover = ({ children }: { children: React.ReactNode }) => {
   const rawId = React.useId();
   // useId returns ":r0:" style strings — strip colons for a valid HTML id
   const popoverId = `fd-popover-${rawId.replaceAll(":", "")}`;
-  return <PopoverContext value={{ popoverId }}>{children}</PopoverContext>;
+  const contextValue = React.useMemo(() => ({ popoverId }), [popoverId]);
+  return <PopoverContext value={contextValue}>{children}</PopoverContext>;
 };
 
 type PopoverTriggerProps = React.ComponentPropsWithRef<"button">;

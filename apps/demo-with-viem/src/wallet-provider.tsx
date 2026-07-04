@@ -1,6 +1,6 @@
 import { createWalletSource } from "@usebutr/core";
 import { discoverEvmAdapters } from "@usebutr/evm";
-import { WalletManagerProvider, useDiscoveredWallets } from "@usebutr/react";
+import { WalletManagerProvider } from "@usebutr/react";
 import type { ReactNode } from "react";
 
 // EVM-only: @usebutr/react + @usebutr/evm. No @usebutr/svm / @usebutr/wallets in the
@@ -13,4 +13,5 @@ const WalletProvider = ({ children }: { children: ReactNode }) => (
   </WalletManagerProvider>
 );
 
-export { WalletProvider, useDiscoveredWallets };
+export { WalletProvider };
+export { useDiscoveredWallets } from "@usebutr/react";

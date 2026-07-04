@@ -26,9 +26,9 @@ import { loadTransport } from "../transport";
  *    what `signMessage` routes through.
  */
 type SolanaAppLike = {
-  getAddress(path: string, display?: boolean): Promise<{ address: Uint8Array }>;
-  signOffchainMessage(path: string, message: Uint8Array): Promise<{ signature: Uint8Array }>;
-  signTransaction(path: string, txBuffer: Uint8Array): Promise<{ signature: Uint8Array }>;
+  getAddress: (path: string, display?: boolean) => Promise<{ address: Uint8Array }>;
+  signOffchainMessage: (path: string, message: Uint8Array) => Promise<{ signature: Uint8Array }>;
+  signTransaction: (path: string, txBuffer: Uint8Array) => Promise<{ signature: Uint8Array }>;
 };
 
 type SolanaAppConstructor = new (transport: unknown) => SolanaAppLike;
@@ -232,7 +232,8 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
       for (let i = 0; i < accountCount; i += 1) {
         // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
         const { address } = await solana.getAddress(pathAt(i));
-        accounts.push(buildSolanaAccount(bytesToBase58(new Uint8Array(address)), chain));
+        const base58Address = bytesToBase58(new Uint8Array(address));
+        accounts.push(buildSolanaAccount(base58Address, chain));
       }
       return accounts;
     },

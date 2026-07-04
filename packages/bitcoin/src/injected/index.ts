@@ -1,6 +1,5 @@
 import type { WalletAdapter } from "@usebutr/core";
 
-import { GENERIC_BITCOIN_ICON } from "./icon";
 import type { SatsConnectProvider } from "./sats-connect";
 import { buildSatsConnectAdapter } from "./sats-connect";
 import type { UnisatProvider } from "./unisat";
@@ -107,4 +106,5 @@ const discoverInjectedBitcoinAdapter = (
 };
 
 export type { InjectedBitcoinDiscoveryOptions };
-export { GENERIC_BITCOIN_ICON, discoverInjectedBitcoinAdapter };
+export { GENERIC_BITCOIN_ICON } from "./icon";
+export { discoverInjectedBitcoinAdapter };

@@ -8,10 +8,10 @@ import { GENERIC_BITCOIN_ICON } from "./icon";
 
 /** sats-connect (Xverse) shape — a JSON-RPC-ish `request(method, params)`. */
 type SatsConnectProvider = {
-  request(
+  request: (
     method: string,
     params?: Record<string, unknown>,
-  ): Promise<{ error?: { message: string }; result?: unknown }>;
+  ) => Promise<{ error?: { message: string }; result?: unknown }>;
 };
 
 const CAPS_SATS_CONNECT: WalletCapabilities = {

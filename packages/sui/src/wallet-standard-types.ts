@@ -22,13 +22,15 @@ type SuiSignPersonalMessageOutput = {
 };
 
 type SuiSignPersonalMessageFeature = {
-  signPersonalMessage(input: SuiSignPersonalMessageInput): Promise<SuiSignPersonalMessageOutput>;
+  signPersonalMessage: (
+    input: SuiSignPersonalMessageInput,
+  ) => Promise<SuiSignPersonalMessageOutput>;
 };
 
 type SuiSignTransactionInput = {
   account: WalletStandardWalletAccount;
   chain: string;
-  transaction: { toJSON(): Promise<string> } | string;
+  transaction: { toJSON: () => Promise<string> } | string;
 };
 
 type SuiSignTransactionOutput = {
@@ -37,13 +39,13 @@ type SuiSignTransactionOutput = {
 };
 
 type SuiSignTransactionFeature = {
-  signTransaction(input: SuiSignTransactionInput): Promise<SuiSignTransactionOutput>;
+  signTransaction: (input: SuiSignTransactionInput) => Promise<SuiSignTransactionOutput>;
 };
 
 type SuiSignAndExecuteTransactionInput = {
   account: WalletStandardWalletAccount;
   chain: string;
-  transaction: { toJSON(): Promise<string> } | string;
+  transaction: { toJSON: () => Promise<string> } | string;
 };
 
 type SuiSignAndExecuteTransactionOutput = {
@@ -54,9 +56,9 @@ type SuiSignAndExecuteTransactionOutput = {
 };
 
 type SuiSignAndExecuteTransactionFeature = {
-  signAndExecuteTransaction(
+  signAndExecuteTransaction: (
     input: SuiSignAndExecuteTransactionInput,
-  ): Promise<SuiSignAndExecuteTransactionOutput>;
+  ) => Promise<SuiSignAndExecuteTransactionOutput>;
 };
 
 export type {

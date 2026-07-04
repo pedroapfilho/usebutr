@@ -10,21 +10,21 @@ import { GENERIC_BITCOIN_ICON } from "./icon";
  *  same four methods every UniSat-derivative wallet exposes (UniSat
  *  itself, OKX Wallet's Bitcoin path at `window.okxwallet.bitcoin`). */
 type UnisatProvider = {
-  getAccounts(): Promise<ReadonlyArray<string>>;
-  getNetwork?(): Promise<"livenet" | "mainnet" | "testnet" | "signet">;
-  on?(
+  getAccounts: () => Promise<ReadonlyArray<string>>;
+  getNetwork?: () => Promise<"livenet" | "mainnet" | "testnet" | "signet">;
+  on?: (
     event: "accountsChanged" | "networkChanged",
     listener: (...args: Array<unknown>) => void,
-  ): void;
-  pushPsbt?(psbtHex: string): Promise<string>;
-  removeListener?(
+  ) => void;
+  pushPsbt?: (psbtHex: string) => Promise<string>;
+  removeListener?: (
     event: "accountsChanged" | "networkChanged",
     listener: (...args: Array<unknown>) => void,
-  ): void;
-  requestAccounts(): Promise<ReadonlyArray<string>>;
-  sendBitcoin?(recipient: string, amount: number): Promise<string>;
-  signMessage(message: string, type?: "ecdsa" | "bip322-simple"): Promise<string>;
-  signPsbt(psbtHex: string, options?: Record<string, unknown>): Promise<string>;
+  ) => void;
+  requestAccounts: () => Promise<ReadonlyArray<string>>;
+  sendBitcoin?: (recipient: string, amount: number) => Promise<string>;
+  signMessage: (message: string, type?: "ecdsa" | "bip322-simple") => Promise<string>;
+  signPsbt: (psbtHex: string, options?: Record<string, unknown>) => Promise<string>;
 };
 
 const CAPS_UNISAT: WalletCapabilities = {

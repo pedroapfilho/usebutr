@@ -16,17 +16,17 @@ import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
  * to runtime-narrow.
  */
 type UnisatLike = {
-  getAccounts(): Promise<ReadonlyArray<string>>;
-  requestAccounts(): Promise<ReadonlyArray<string>>;
-  signMessage(message: string, type?: string): Promise<string>;
-  signPsbt(psbtHex: string, options?: Record<string, unknown>): Promise<string>;
+  getAccounts: () => Promise<ReadonlyArray<string>>;
+  requestAccounts: () => Promise<ReadonlyArray<string>>;
+  signMessage: (message: string, type?: string) => Promise<string>;
+  signPsbt: (psbtHex: string, options?: Record<string, unknown>) => Promise<string>;
 };
 
 type SatsConnectLike = {
-  request(
+  request: (
     method: string,
     params?: Record<string, unknown>,
-  ): Promise<{ error?: { message: string }; result?: unknown }>;
+  ) => Promise<{ error?: { message: string }; result?: unknown }>;
 };
 
 declare module "@usebutr/core" {

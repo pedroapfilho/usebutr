@@ -51,12 +51,12 @@ const buildSuiAccount = (address: string, chain: ChainBase): Account =>
  *  consumers pass a base64 string directly, we wrap it in a stub object so
  *  the feature contract stays satisfied without us depending on
  *  `@mysten/sui`. */
-const coerceSuiTransaction = (tx: unknown): { toJSON(): Promise<string> } | string => {
+const coerceSuiTransaction = (tx: unknown): { toJSON: () => Promise<string> } | string => {
   if (typeof tx === "string") {
     return tx;
   }
   if (tx && typeof tx === "object" && "toJSON" in tx && typeof tx.toJSON === "function") {
-    return tx as { toJSON(): Promise<string> };
+    return tx as { toJSON: () => Promise<string> };
   }
   throw new TypeError(
     "Sui sendTx/signTransaction expects a @mysten/sui Transaction (with toJSON()) or a base64-encoded string",

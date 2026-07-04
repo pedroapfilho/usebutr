@@ -1,7 +1,3 @@
-// Polkadot uses 0x-prefixed hex; alias the shared prefixed variant to the
-// existing local name so internal callers stay unchanged.
-import { bytesToHexPrefixed as bytesToHex, hexToBytes } from "@usebutr/core";
-
 /**
  * Minimal local types for the `@polkadot/extension-dapp` injectedWeb3
  * standard. Declared here (rather than depending on
@@ -72,4 +68,7 @@ const readInjectedWindow = (target?: InjectedWindow | null): InjectedWindow | nu
 };
 
 export type { Injected, InjectedAccount, InjectedSigner, InjectedWindow, InjectedWindowProvider };
-export { bytesToHex, hexToBytes, readInjectedWindow, wrapBytes };
+// Polkadot uses 0x-prefixed hex; alias the shared prefixed variant to the
+// existing local name so internal callers stay unchanged.
+export { bytesToHexPrefixed as bytesToHex, hexToBytes } from "@usebutr/core";
+export { readInjectedWindow, wrapBytes };

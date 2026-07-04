@@ -7,7 +7,7 @@ import type { WalletAdapter } from "./types";
  * implement this type without depending on `@usebutr/wallets`.
  */
 type WalletSource = {
-  subscribe(onAdapter: (adapter: WalletAdapter) => void): () => void;
+  subscribe: (onAdapter: (adapter: WalletAdapter) => void) => () => void;
 };
 
 /**

@@ -45,11 +45,12 @@ const fakeUniversalProvider = (provider: UniversalProviderLike): UniversalProvid
 
 describe("createWalletConnectAdapters", () => {
   it("rejects when no namespaces are passed", async () => {
+    const universalProvider = fakeUniversalProvider(createFakeProvider());
     await expect(
       createWalletConnectAdapters({
         namespaces: {},
         projectId: "test",
-        universalProvider: fakeUniversalProvider(createFakeProvider()),
+        universalProvider,
       }),
     ).rejects.toThrow(/at least one namespace/v);
   });
@@ -62,11 +63,12 @@ describe("createWalletConnectAdapters", () => {
     // catches it. Replace this cast when a future namespace lands
     // unimplemented before its builder.
     const forwardPlatform = "cosmos" as ChainPlatform;
+    const universalProvider = fakeUniversalProvider(createFakeProvider());
     await expect(
       createWalletConnectAdapters({
         namespaces: { [forwardPlatform]: ["cosmos:cosmoshub-4"] },
         projectId: "test",
-        universalProvider: fakeUniversalProvider(createFakeProvider()),
+        universalProvider,
       }),
     ).rejects.toThrow(/no namespace builder registered/v);
   });

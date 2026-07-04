@@ -16,7 +16,7 @@ const buildFakeEthCtor = (addresses: ReadonlyArray<string> = FAKE_ADDRESSES): Et
     }
     getAddress(path: string): Promise<{ address: string; publicKey: string }> {
       // Parse the trailing index off the path (e.g. "44'/60'/0'/0/2" → 2)
-      const idx = Number.parseInt(path.split("/").pop() ?? "0", 10);
+      const idx = Math.trunc(Number(path.split("/").pop() ?? "0"));
       const address = addresses[idx] ?? addresses[0];
       return Promise.resolve({ address: address ?? "0x0", publicKey: "0xpubkey" });
     }

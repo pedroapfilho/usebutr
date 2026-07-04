@@ -22,9 +22,9 @@ type SolanaSignMessageOutput = {
 };
 
 type SolanaSignMessageFeature = {
-  signMessage(
+  signMessage: (
     ...inputs: ReadonlyArray<SolanaSignMessageInput>
-  ): Promise<ReadonlyArray<SolanaSignMessageOutput>>;
+  ) => Promise<ReadonlyArray<SolanaSignMessageOutput>>;
 };
 
 type SolanaSignAndSendTransactionInput = {
@@ -38,9 +38,9 @@ type SolanaSignAndSendTransactionOutput = {
 };
 
 type SolanaSignAndSendTransactionFeature = {
-  signAndSendTransaction(
+  signAndSendTransaction: (
     ...inputs: ReadonlyArray<SolanaSignAndSendTransactionInput>
-  ): Promise<ReadonlyArray<SolanaSignAndSendTransactionOutput>>;
+  ) => Promise<ReadonlyArray<SolanaSignAndSendTransactionOutput>>;
 };
 
 type SolanaSignTransactionInput = {
@@ -54,9 +54,9 @@ type SolanaSignTransactionOutput = {
 };
 
 type SolanaSignTransactionFeature = {
-  signTransaction(
+  signTransaction: (
     ...inputs: ReadonlyArray<SolanaSignTransactionInput>
-  ): Promise<ReadonlyArray<SolanaSignTransactionOutput>>;
+  ) => Promise<ReadonlyArray<SolanaSignTransactionOutput>>;
 };
 
 /** SIWS message fields — all optional; the wallet fills defaults. */
@@ -69,7 +69,7 @@ type SolanaSignInOutput = {
 };
 
 type SolanaSignInFeature = {
-  signIn(input?: SolanaSignInInput): Promise<ReadonlyArray<SolanaSignInOutput>>;
+  signIn: (input?: SolanaSignInInput) => Promise<ReadonlyArray<SolanaSignInOutput>>;
 };
 
 export type {

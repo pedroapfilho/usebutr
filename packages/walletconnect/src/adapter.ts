@@ -1,4 +1,4 @@
-import type { Account, ChainPlatform, WalletAdapter } from "@usebutr/core";
+import type { ChainPlatform, WalletAdapter } from "@usebutr/core";
 
 import type { UniversalProviderConstructor, UniversalProviderLike } from "./loader";
 import { loadUniversalProvider } from "./loader";
@@ -215,20 +215,16 @@ const createWalletConnectAdapters = async (
   });
 };
 
-export type {
-  Account,
-  UniversalProviderConstructor,
-  UniversalProviderLike,
-  WalletConnectMetadata,
-  WalletConnectNamespaceBuilder,
-  WalletConnectOptions,
-};
+export type { Account } from "@usebutr/core";
+export type { UniversalProviderConstructor, UniversalProviderLike } from "./loader";
+export type { WalletConnectNamespaceBuilder } from "./namespaces/types";
+export type { WalletConnectMetadata, WalletConnectOptions };
+export { bitcoinNamespace } from "./namespaces/bitcoin";
+export { evmNamespace } from "./namespaces/evm";
+export { solanaNamespace } from "./namespaces/svm";
+export { suiNamespace } from "./namespaces/sui";
 export {
   DEFAULT_ICON as WALLETCONNECT_DEFAULT_ICON,
   KNOWN_NAMESPACES,
-  bitcoinNamespace,
   createWalletConnectAdapters,
-  evmNamespace,
-  solanaNamespace,
-  suiNamespace,
 };

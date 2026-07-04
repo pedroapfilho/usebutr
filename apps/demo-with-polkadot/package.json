@@ -14,24 +14,24 @@
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
     "@polkadot-api/descriptors": "file:.papi/descriptors",
-    "@tailwindcss/vite": "^4.3.0",
+    "@tailwindcss/vite": "^4.3.2",
     "@usebutr/core": "workspace:*",
     "@usebutr/polkadot": "workspace:*",
     "@usebutr/react": "workspace:*",
     "@usebutr/wallets": "workspace:*",
-    "@wallet-standard/app": "^1.1.0",
-    "polkadot-api": "^2.1.5",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
-    "tailwindcss": "^4.3.0",
+    "@wallet-standard/app": "^1.1.1",
+    "polkadot-api": "^2.1.7",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "tailwindcss": "^4.3.2",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",
-    "@types/react": "^19.2.15",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-react": "^6.0.3",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16"
+    "vite": "^8.1.3"
   }
 }

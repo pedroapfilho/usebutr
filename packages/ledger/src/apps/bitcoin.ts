@@ -63,15 +63,15 @@ type BitcoinSignPsbtOptions = {
  *    WalletConnect `bitcoin:signPsbt` contract).
  */
 type BtcAppLike = {
-  getWalletPublicKey(
+  getWalletPublicKey: (
     path: string,
     opts?: { format?: BitcoinAddressFormat; verify?: boolean },
-  ): Promise<{ bitcoinAddress: string; chainCode: string; publicKey: string }>;
-  signMessage(path: string, messageHex: string): Promise<{ r: string; s: string; v: number }>;
-  signPsbtBuffer(
+  ) => Promise<{ bitcoinAddress: string; chainCode: string; publicKey: string }>;
+  signMessage: (path: string, messageHex: string) => Promise<{ r: string; s: string; v: number }>;
+  signPsbtBuffer: (
     psbtBuffer: Uint8Array,
     options: BitcoinSignPsbtOptions,
-  ): Promise<{ psbt: Uint8Array; tx?: string }>;
+  ) => Promise<{ psbt: Uint8Array; tx?: string }>;
 };
 
 type BtcAppConstructor = new (args: { currency?: string; transport: unknown }) => BtcAppLike;

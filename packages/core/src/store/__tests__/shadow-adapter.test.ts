@@ -95,7 +95,8 @@ describe("createShadowAdapter", () => {
 
 describe("isShadowAdapter", () => {
   it("returns true for adapters created via createShadowAdapter", () => {
-    expect(isShadowAdapter(createShadowAdapter(evmEntry()))).toBe(true);
+    const shadow = createShadowAdapter(evmEntry());
+    expect(isShadowAdapter(shadow)).toBe(true);
   });
 
   it("returns false for an adapter advertising any real capability", () => {

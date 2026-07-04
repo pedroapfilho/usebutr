@@ -462,11 +462,5 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
   };
 };
 
-export {
-  buildEvmAdapter,
-  bytesToHex,
-  chainIdDecimalToHex,
-  chainIdHexToDecimal,
-  formatEther,
-  hexToBytes,
-};
+export { bytesToHexPrefixed as bytesToHex, hexToBytes } from "@usebutr/core";
+export { buildEvmAdapter, chainIdDecimalToHex, chainIdHexToDecimal, formatEther };

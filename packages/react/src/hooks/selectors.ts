@@ -1,6 +1,6 @@
 import type { Account, ChainPlatform, ConnectedWallet, WalletStoreState } from "@usebutr/core";
 import { walletEqual } from "@usebutr/core";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useStore } from "zustand";
 import { shallow } from "zustand/shallow";
 import { useStoreWithEqualityFn } from "zustand/traditional";
@@ -222,17 +222,20 @@ const useWalletEntry = (connectorId: string | null | undefined): ConnectedWallet
 /** Stable accessor: `(connectorId) => ConnectedWallet | undefined`. */
 const useGetWallet = () => {
   const store = useWalletStoreContext();
-  return (connectorId: string) => store.getState().pool.get(connectorId);
+  return useCallback((connectorId: string) => store.getState().pool.get(connectorId), [store]);
 };
 
 /** Stable accessor: `(platform) => ConnectedWallet | undefined`. */
 const useGetSelectedWallet = () => {
   const store = useWalletStoreContext();
-  return (chainPlatform: ChainPlatform) => {
-    const state = store.getState();
-    const id = state.selection.get(chainPlatform);
-    return id ? state.pool.get(id) : undefined;
-  };
+  return useCallback(
+    (chainPlatform: ChainPlatform) => {
+      const state = store.getState();
+      const id = state.selection.get(chainPlatform);
+      return id ? state.pool.get(id) : undefined;
+    },
+    [store],
+  );
 };
 
 /** Stable accessor for raw connector instances. */

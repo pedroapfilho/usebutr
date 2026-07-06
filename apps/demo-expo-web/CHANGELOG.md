@@ -1,5 +1,15 @@
 # demo-expo-web
 
+## 0.0.7
+
+### Patch Changes
+
+- Updated dependencies [937dfae]
+- Updated dependencies [8200f3e]
+  - @usebutr/core@0.4.1
+  - @usebutr/react@0.1.6
+  - @usebutr/wallets@0.2.2
+
 ## 0.0.6
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/core",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Core types, store, storage, and discovery seam for butr. No React, no protocols.",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",

@@ -1,5 +1,13 @@
 # @usebutr/react
 
+## 0.1.6
+
+### Patch Changes
+
+- 8200f3e: `useGetWallet` and `useGetSelectedWallet` now return referentially stable accessors (memoized on the store instance), as their docs already promised. Consumers using the returned function in effect dependencies no longer re-run the effect on every render.
+- Updated dependencies [937dfae]
+  - @usebutr/core@0.4.1
+
 ## 0.1.5
 
 ### Patch Changes

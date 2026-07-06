@@ -1,5 +1,15 @@
 # demo-with-bitcoin
 
+## 0.0.6
+
+### Patch Changes
+
+- Updated dependencies [937dfae]
+- Updated dependencies [8200f3e]
+  - @usebutr/bitcoin@0.2.5
+  - @usebutr/core@0.4.1
+  - @usebutr/react@0.1.6
+
 ## 0.0.5
 
 ### Patch Changes

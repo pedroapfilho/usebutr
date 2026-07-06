@@ -1,5 +1,5 @@
 import { createWalletSource } from "@usebutr/core";
-import { WalletManagerProvider, useDiscoveredWallets } from "@usebutr/react";
+import { WalletManagerProvider } from "@usebutr/react";
 import { discoverSuiAdapters } from "@usebutr/sui";
 import type { ReactNode } from "react";
 
@@ -12,4 +12,5 @@ const WalletProvider = ({ children }: { children: ReactNode }) => (
   </WalletManagerProvider>
 );
 
-export { WalletProvider, useDiscoveredWallets };
+export { WalletProvider };
+export { useDiscoveredWallets } from "@usebutr/react";

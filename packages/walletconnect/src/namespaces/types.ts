@@ -33,13 +33,13 @@ type WalletConnectNamespaceBuilder = {
    * after a successful pairing handshake; the provider is live and ready
    * to route requests in this namespace.
    */
-  buildAdapter(input: {
+  buildAdapter: (input: {
     chains: ReadonlyArray<string>;
     icon: string;
     id: string;
     name: string;
     provider: UniversalProviderLike;
-  }): WalletAdapter;
+  }) => WalletAdapter;
   /** CAIP-2 namespace prefix (`eip155`, `solana`, `sui`, `bip122`). */
   caipPrefix: string;
   /** butr's `ChainPlatform` for adapters this builder produces. */

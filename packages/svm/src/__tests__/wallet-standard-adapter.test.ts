@@ -592,11 +592,11 @@ describe("buildSvmAdapter edge cases", () => {
     const fireListener = vi.fn();
     adapter?.subscribe?.(fireListener);
     captured[0]?.({ chains: ["solana:devnet"] });
+    const expectedChain = expect.objectContaining({ id: "solana:devnet" });
+    const expectedAccount = expect.objectContaining({ chain: expectedChain });
     expect(fireListener).toHaveBeenCalledWith(
       expect.objectContaining({
-        account: expect.objectContaining({
-          chain: expect.objectContaining({ id: "solana:devnet" }),
-        }),
+        account: expectedAccount,
         type: "accountChanged",
       }),
     );
@@ -619,21 +619,17 @@ describe("buildSvmAdapter edge cases", () => {
     const signTxFeature = {
       signTransaction: vi.fn().mockResolvedValue([{ signedTransaction: new Uint8Array([9, 9]) }]),
     };
-    const adapter = expectSvmAdapter(
-      buildSvmAdapter(
-        withFeatures(buildWallet(), {
-          "solana:signTransaction": signTxFeature,
-          "standard:connect": connectFeature,
-        }),
-      ),
-    );
+    const walletWithSignTx = withFeatures(buildWallet(), {
+      "solana:signTransaction": signTxFeature,
+      "standard:connect": connectFeature,
+    });
+    const adapter = expectSvmAdapter(buildSvmAdapter(walletWithSignTx));
     expect(adapter.capabilities.signTransaction).toBe(true);
     const signed = await adapter.signTransaction?.(new Uint8Array([1]));
     expect(signed).toEqual(new Uint8Array([9, 9]));
 
-    const without = expectSvmAdapter(
-      buildSvmAdapter(withFeatures(buildWallet(), { "standard:connect": connectFeature })),
-    );
+    const bareWallet = withFeatures(buildWallet(), { "standard:connect": connectFeature });
+    const without = expectSvmAdapter(buildSvmAdapter(bareWallet));
     expect(without.capabilities.signTransaction).toBe(false);
     expect(without.signTransaction).toBeUndefined();
   });
@@ -648,22 +644,18 @@ describe("buildSvmAdapter edge cases", () => {
         },
       ]),
     };
-    const adapter = expectSvmAdapter(
-      buildSvmAdapter(
-        withFeatures(buildWallet(), {
-          "solana:signIn": signInFeature,
-          "standard:connect": connectFeature,
-        }),
-      ),
-    );
+    const walletWithSignIn = withFeatures(buildWallet(), {
+      "solana:signIn": signInFeature,
+      "standard:connect": connectFeature,
+    });
+    const adapter = expectSvmAdapter(buildSvmAdapter(walletWithSignIn));
     expect(adapter.capabilities.signIn).toBe(true);
     const out = await adapter.signIn?.({ statement: "Sign in" });
     expect(signInFeature.signIn).toHaveBeenCalledWith({ statement: "Sign in" });
     expect(out?.account.walletAddress).toBe("So1Address1");
 
-    const without = expectSvmAdapter(
-      buildSvmAdapter(withFeatures(buildWallet(), { "standard:connect": connectFeature })),
-    );
+    const bareWallet = withFeatures(buildWallet(), { "standard:connect": connectFeature });
+    const without = expectSvmAdapter(buildSvmAdapter(bareWallet));
     expect(without.capabilities.signIn).toBe(false);
     expect(without.signIn).toBeUndefined();
   });

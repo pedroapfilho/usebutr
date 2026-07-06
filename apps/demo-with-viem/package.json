@@ -13,22 +13,22 @@
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
-    "@tailwindcss/vite": "^4.3.0",
+    "@tailwindcss/vite": "^4.3.2",
     "@usebutr/core": "workspace:*",
     "@usebutr/evm": "workspace:*",
     "@usebutr/react": "workspace:*",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
-    "tailwindcss": "^4.3.0",
-    "viem": "^2.52.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "tailwindcss": "^4.3.2",
+    "viem": "^2.54.1",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",
-    "@types/react": "^19.2.15",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-react": "^6.0.3",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16"
+    "vite": "^8.1.3"
   }
 }

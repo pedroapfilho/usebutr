@@ -10,11 +10,11 @@
  */
 
 type TransportLike = {
-  close(): Promise<void>;
+  close: () => Promise<void>;
 };
 
 type TransportFactory = {
-  create(timeout?: number): Promise<TransportLike>;
+  create: (timeout?: number) => Promise<TransportLike>;
 };
 
 /**

@@ -18,38 +18,38 @@ import { createMemoryStorageDriver, WalletStorage } from "../../storage";
 import type { ConnectedWallet, WalletAdapter } from "../../types";
 import { createWalletStore } from "../wallet-store";
 
-const buildEvmAdapter = (): WalletAdapter =>
-  createMockConnector({
+const buildEvmAdapter = (): WalletAdapter => {
+  const evmAccount = createMockAccount({
+    chain: createMockChain({ id: "eip155:1", name: "Ethereum" }),
+    id: "eip155:1:0xevmaddress",
+    walletAddress: "0xevmaddress",
+  });
+  return createMockConnector({
     chainPlatform: "evm",
-    getAccount: vi.fn().mockResolvedValue(
-      createMockAccount({
-        chain: createMockChain({ id: "eip155:1", name: "Ethereum" }),
-        id: "eip155:1:0xevmaddress",
-        walletAddress: "0xevmaddress",
-      }),
-    ),
+    getAccount: vi.fn().mockResolvedValue(evmAccount),
     id: "io.metamask",
     name: "MetaMask",
   });
+};
 
-const buildSvmAdapter = (): WalletAdapter =>
-  createMockConnector({
+const buildSvmAdapter = (): WalletAdapter => {
+  const svmAccount = createMockAccount({
+    chain: createMockChain({
+      id: "solana:mainnet",
+      name: "Solana Mainnet",
+      namespace: "solana",
+      reference: "mainnet",
+    }),
+    id: "solana:mainnet:SoLaNaAdDrEsS",
+    walletAddress: "SoLaNaAdDrEsS",
+  });
+  return createMockConnector({
     chainPlatform: "svm",
-    getAccount: vi.fn().mockResolvedValue(
-      createMockAccount({
-        chain: createMockChain({
-          id: "solana:mainnet",
-          name: "Solana Mainnet",
-          namespace: "solana",
-          reference: "mainnet",
-        }),
-        id: "solana:mainnet:SoLaNaAdDrEsS",
-        walletAddress: "SoLaNaAdDrEsS",
-      }),
-    ),
+    getAccount: vi.fn().mockResolvedValue(svmAccount),
     id: "phantom",
     name: "Phantom",
   });
+};
 
 const buildSharedStorage = () => {
   const driver = createMemoryStorageDriver();

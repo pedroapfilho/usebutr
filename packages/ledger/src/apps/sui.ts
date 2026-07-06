@@ -28,11 +28,11 @@ import { loadTransport } from "../transport";
  *    adapter's `signMessage` method rejects.
  */
 type SuiAppLike = {
-  getPublicKey(
+  getPublicKey: (
     path: string,
     displayOnDevice?: boolean,
-  ): Promise<{ address: Uint8Array; publicKey: Uint8Array }>;
-  signTransaction(path: string, txn: Uint8Array): Promise<{ signature: Uint8Array }>;
+  ) => Promise<{ address: Uint8Array; publicKey: Uint8Array }>;
+  signTransaction: (path: string, txn: Uint8Array) => Promise<{ signature: Uint8Array }>;
 };
 
 type SuiAppConstructor = new (transport: unknown) => SuiAppLike;
@@ -234,7 +234,8 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
       for (let i = 0; i < accountCount; i += 1) {
         // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
         const { address } = await sui.getPublicKey(pathAt(i));
-        accounts.push(buildSuiAccount(bytesToSuiAddress(new Uint8Array(address)), chain));
+        const suiAddress = bytesToSuiAddress(new Uint8Array(address));
+        accounts.push(buildSuiAccount(suiAddress, chain));
       }
       return accounts;
     },

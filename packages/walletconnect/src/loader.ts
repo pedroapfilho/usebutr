@@ -7,7 +7,7 @@ import type { Eip1193Provider } from "@usebutr/evm";
  * provider instances satisfy this shape.
  */
 type UniversalProviderLike = Eip1193Provider & {
-  connect(opts: {
+  connect: (opts: {
     namespaces: Record<
       string,
       {
@@ -17,8 +17,8 @@ type UniversalProviderLike = Eip1193Provider & {
         rpcMap?: Record<string, string>;
       }
     >;
-  }): Promise<unknown>;
-  disconnect(): Promise<void>;
+  }) => Promise<unknown>;
+  disconnect: () => Promise<void>;
   session: unknown;
 };
 
@@ -33,7 +33,7 @@ type UniversalProviderInitOptions = {
 };
 
 type UniversalProviderConstructor = {
-  init(options: UniversalProviderInitOptions): Promise<UniversalProviderLike>;
+  init: (options: UniversalProviderInitOptions) => Promise<UniversalProviderLike>;
 };
 
 /**

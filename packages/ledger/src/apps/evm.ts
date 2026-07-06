@@ -11,20 +11,20 @@ import { loadTransport } from "../transport";
  * being installed. Real Ledger Eth app instances satisfy this shape.
  */
 type EthAppLike = {
-  getAddress(
+  getAddress: (
     path: string,
     boolDisplay?: boolean,
     boolChaincode?: boolean,
-  ): Promise<{ address: string; publicKey: string }>;
-  signPersonalMessage(
+  ) => Promise<{ address: string; publicKey: string }>;
+  signPersonalMessage: (
     path: string,
     messageHex: string,
-  ): Promise<{ r: string; s: string; v: number }>;
-  signTransaction(
+  ) => Promise<{ r: string; s: string; v: number }>;
+  signTransaction: (
     path: string,
     rawTxHex: string,
     resolution?: unknown,
-  ): Promise<{ r: string; s: string; v: string }>;
+  ) => Promise<{ r: string; s: string; v: string }>;
 };
 
 type EthAppConstructor = new (transport: unknown) => EthAppLike;
@@ -284,7 +284,7 @@ const createEvmLedgerAdapter = (options: EvmLedgerOptions): Promise<WalletAdapte
           ),
         );
       }
-      const next = Number.parseInt(chain.reference, 10);
+      const next = Math.trunc(Number(chain.reference));
       if (!Number.isFinite(next)) {
         return Promise.reject(
           new TypeError(`[butr/ledger] chain reference is not a number: ${chain.reference}`),

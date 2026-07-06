@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { WalletExtension } from "./types";
@@ -37,15 +37,16 @@ type WriteResult = {
  *                     reported via `result.skipped`) so partially-filled
  *                     registries don't block the rest.
  */
-const writeExternalExtensionsPrefs = (
+const writeExternalExtensionsPrefs = async (
   userDataDir: string,
   wallets: ReadonlyArray<WalletExtension>,
-): WriteResult => {
+): Promise<WriteResult> => {
   const dir = join(userDataDir, "External Extensions");
-  mkdirSync(dir, { recursive: true });
+  await mkdir(dir, { recursive: true });
 
   const manifestPaths: Array<string> = [];
   const skipped: Array<WalletExtension> = [];
+  const writes: Array<Promise<void>> = [];
 
   for (const wallet of wallets) {
     if (!wallet.chromeWebStoreId) {
@@ -53,9 +54,12 @@ const writeExternalExtensionsPrefs = (
       continue;
     }
     const manifestPath = join(dir, `${wallet.chromeWebStoreId}.json`);
-    writeFileSync(manifestPath, JSON.stringify({ external_update_url: WEB_STORE_UPDATE_URL }));
+    writes.push(
+      writeFile(manifestPath, JSON.stringify({ external_update_url: WEB_STORE_UPDATE_URL })),
+    );
     manifestPaths.push(manifestPath);
   }
+  await Promise.all(writes);
 
   return { manifestPaths, skipped };
 };

@@ -40,7 +40,7 @@ const buildFakeBtcCtor = (hooks: BtcCtorHooks = {}): BtcAppConstructor => {
       hooks.onGetWalletPublicKey?.(path, format);
       // Parse the trailing index off the path (e.g. "84'/0'/0'/0/2" → 2)
       const tail = path.split("/").pop() ?? "0";
-      const idx = Number.parseInt(tail.replace(/'$/v, ""), 10);
+      const idx = Math.trunc(Number(tail.replace(/'$/v, "")));
       return Promise.resolve({
         bitcoinAddress: buildFakeAddress(idx, format),
         chainCode: "aa".repeat(32),

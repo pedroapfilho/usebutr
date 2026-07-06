@@ -31,7 +31,7 @@ const buildFakeSolanaCtor = (onGetAddress?: (path: string) => void): SolanaAppCo
       onGetAddress?.(path);
       // Parse the trailing index off the path (e.g. "44'/501'/0'/2'" → 2)
       const tail = path.split("/").pop() ?? "0'";
-      const idx = Number.parseInt(tail.replace(/'$/v, ""), 10);
+      const idx = Math.trunc(Number(tail.replace(/'$/v, "")));
       return Promise.resolve({ address: buildFakePubkey(idx) });
     }
     signOffchainMessage(_path: string, message: Uint8Array): Promise<{ signature: Uint8Array }> {

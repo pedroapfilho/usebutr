@@ -22,7 +22,7 @@ const fakeDocument = (initial = ""): { cookie: string } => {
       const segments = cookie ? cookie.split("; ").filter(Boolean) : [];
       const filtered = segments.filter((s) => !s.startsWith(`${name}=`));
       // Honour Max-Age=0 as "delete this cookie".
-      if (/Max-Age=0(\b|$)/v.test(value)) {
+      if (/Max-Age=0(?:\b|$)/v.test(value)) {
         cookie = filtered.join("; ");
         return;
       }

@@ -34,7 +34,7 @@ const buildFakeSuiCtor = (onGetPublicKey?: (path: string) => void): SuiAppConstr
       onGetPublicKey?.(path);
       // Parse the trailing index off the path (e.g. "44'/784'/0'/0'/2'" → 2)
       const tail = path.split("/").pop() ?? "0'";
-      const idx = Number.parseInt(tail.replace(/'$/v, ""), 10);
+      const idx = Math.trunc(Number(tail.replace(/'$/v, "")));
       return Promise.resolve({
         address: buildFakeAddress(idx),
         publicKey: buildFakePubkey(idx),

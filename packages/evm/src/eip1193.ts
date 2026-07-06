@@ -17,9 +17,9 @@ type Eip1193RequestArgs = {
 type Eip1193Listener = (...args: ReadonlyArray<unknown>) => void;
 
 type Eip1193Provider = {
-  on(event: string, listener: Eip1193Listener): void;
-  removeListener(event: string, listener: Eip1193Listener): void;
-  request(args: Eip1193RequestArgs): Promise<unknown>;
+  on: (event: string, listener: Eip1193Listener) => void;
+  removeListener: (event: string, listener: Eip1193Listener) => void;
+  request: (args: Eip1193RequestArgs) => Promise<unknown>;
 };
 
 type Eip6963ProviderInfo = {

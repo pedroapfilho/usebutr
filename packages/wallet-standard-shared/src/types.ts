@@ -33,25 +33,25 @@ type WalletStandardWallet = {
 };
 
 type WalletsApp = {
-  get(): ReadonlyArray<WalletStandardWallet>;
-  on(
+  get: () => ReadonlyArray<WalletStandardWallet>;
+  on: (
     event: "register" | "unregister",
     listener: (...wallets: ReadonlyArray<WalletStandardWallet>) => void,
-  ): () => void;
+  ) => () => void;
 };
 
 type WalletStandardAppModule = {
-  getWallets(): WalletsApp;
+  getWallets: () => WalletsApp;
 };
 
 type StandardConnectFeature = {
-  connect(input?: { silent?: boolean }): Promise<{
+  connect: (input?: { silent?: boolean }) => Promise<{
     accounts: ReadonlyArray<WalletStandardWalletAccount>;
   }>;
 };
 
 type StandardDisconnectFeature = {
-  disconnect(): Promise<void>;
+  disconnect: () => Promise<void>;
 };
 
 type StandardEventsListener = (changes: {
@@ -61,7 +61,7 @@ type StandardEventsListener = (changes: {
 }) => void;
 
 type StandardEventsFeature = {
-  on(event: "change", listener: StandardEventsListener): () => void;
+  on: (event: "change", listener: StandardEventsListener) => () => void;
 };
 
 export type {

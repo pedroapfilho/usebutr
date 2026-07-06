@@ -8,7 +8,7 @@ import {
   createWalletSource,
 } from "@usebutr/core";
 import { discoverEvmAdapters } from "@usebutr/evm";
-import { WalletManagerProvider, useDiscoveredWallets } from "@usebutr/react";
+import { WalletManagerProvider } from "@usebutr/react";
 import { type ReactNode, useState } from "react";
 
 // EVM-only: @usebutr/react + @usebutr/evm. No @usebutr/svm / @usebutr/wallets in the
@@ -66,4 +66,5 @@ const WalletProvider = ({ children, initialCookies, initialState }: WalletProvid
   );
 };
 
-export { STORAGE_KEY_PREFIX, WalletProvider, useDiscoveredWallets };
+export { STORAGE_KEY_PREFIX, WalletProvider };
+export { useDiscoveredWallets } from "@usebutr/react";

@@ -145,16 +145,16 @@ type Connector<P extends ChainPlatform = ChainPlatform> = {
    *  EIP-1193). Adapters that can't reconnect without a prompt should
    *  reject when `silent` is set rather than show UI; hydration treats
    *  the rejection as a clean restore failure. */
-  connect(opts?: { silent?: boolean }): Promise<void>;
+  connect: (opts?: { silent?: boolean }) => Promise<void>;
   /** Optional teardown. butr calls this on disconnect, error recovery, and reset. */
-  disconnect?(): Promise<void>;
+  disconnect?: () => Promise<void>;
   /** Read the currently-active account. butr uses this to populate the pool
    *  after a successful `connect()` and during hydration. */
-  getAccount(): Promise<Account | null>;
+  getAccount: () => Promise<Account | null>;
   /** Optional. List every account the wallet exposes. Some browser wallets
    *  show many accounts at once (MetaMask with multiple imports). If
    *  omitted, butr defaults to `[await getAccount()]`. */
-  getAccounts?(): Promise<Array<Account>>;
+  getAccounts?: () => Promise<Array<Account>>;
   /** Optional. Wallet logo as a URL or data URI. Adapters built via butr's
    *  auto-discovery (EIP-6963, Wallet Standard) populate this from the
    *  wallet's announced metadata; hand-rolled adapters can leave it
@@ -172,14 +172,14 @@ type Connector<P extends ChainPlatform = ChainPlatform> = {
    *  new accounts — call `getAccounts()` (or use butr's
    *  `useRequestAccounts` hook, which refreshes the pool entry for
    *  you). */
-  requestAccounts?(): Promise<void>;
+  requestAccounts?: () => Promise<void>;
   /** Optional. Subscribe to wallet-side events (account swap, network swap,
    *  external disconnect). butr's runtime calls this after a successful
    *  `connect()`, and uses the returned function to unsubscribe on
    *  disconnect / reset. Bridges native wallet events into the reducer so
    *  consumers don't have to wire `accountsChanged` / `chainChanged`
    *  themselves. */
-  subscribe?(listener: (event: ConnectorEvent) => void): () => void;
+  subscribe?: (listener: (event: ConnectorEvent) => void) => () => void;
 };
 
 /**
@@ -191,13 +191,13 @@ type WalletBase = {
   /** Read a token balance. `mint` is optional; the connector decides
    *  what "no mint" means for its chain (native ETH on EVM, native SOL
    *  on Solana, etc.). */
-  getBalance(mint?: string): Promise<Balance>;
+  getBalance: (mint?: string) => Promise<Balance>;
   /** Returns a chain-specific signer. Consumers cast to the concrete
    *  type via the `SignerForPlatform` registry (or directly to the
    *  library shape they wrap — `WalletClient` on viem, etc.). */
-  getSigner(): Promise<unknown>;
+  getSigner: () => Promise<unknown>;
   /** Look up the status of a previously-submitted transaction. */
-  getTransactionReceipt(tx: string): Promise<{
+  getTransactionReceipt: (tx: string) => Promise<{
     status: "Success" | "Error" | "Pending";
   }>;
   /** Submit a transaction on the wallet's currently-active chain.
@@ -206,17 +206,17 @@ type WalletBase = {
    *  wallet's currently-active one. EVM wallets honour this via
    *  `tx.from`; Wallet Standard wallets via the feature's `account`
    *  input. Omit for "use whichever the wallet picks." */
-  sendTx(tx: unknown, account?: Account): Promise<string>;
+  sendTx: (tx: unknown, account?: Account) => Promise<string>;
   /** Submit a transaction targeting a specific chain. The optional
    *  callback fires after the connector has switched chain (consumers
    *  use this to re-enable UI). Pass an `account` to route through a
    *  specific exposed address (see `sendTx`). */
-  sendTxToChain(
+  sendTxToChain: (
     tx: unknown,
     targetChainId: string,
     account?: Account,
     cb?: () => void,
-  ): Promise<string>;
+  ) => Promise<string>;
   /**
    * Sign a message and return both the signature and the bytes the wallet
    * actually signed. Solana Wallet Standard wallets may prefix or re-encode
@@ -228,15 +228,15 @@ type WalletBase = {
    * uses the feature's `account` input. Both support per-call signing
    * without changing the wallet's active account.
    */
-  signMessage(
+  signMessage: (
     msg: Uint8Array,
     account?: Account,
-  ): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
+  ) => Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
   /** Switch to a different account on the same wallet (some wallets
    *  expose multiple accounts simultaneously). */
-  switchAccount?(address: string): Promise<void>;
+  switchAccount?: (address: string) => Promise<void>;
   /** Switch the wallet's active chain. */
-  switchChain(chain: ChainBase): Promise<void>;
+  switchChain: (chain: ChainBase) => Promise<void>;
 };
 
 /**
@@ -261,7 +261,7 @@ type SvmWallet = WalletBase & {
    *  consumer can verify server-side. `input` is the SIWS message fields
    *  (domain, statement, nonce, …) — pass `{}` or omit for wallet
    *  defaults. */
-  signIn?(input?: Record<string, unknown>): Promise<{
+  signIn?: (input?: Record<string, unknown>) => Promise<{
     account: Account;
     signature: Uint8Array;
     signedMessage: Uint8Array;
@@ -269,7 +269,7 @@ type SvmWallet = WalletBase & {
   /** Sign a Solana transaction WITHOUT broadcasting it. butr ships no
    *  RPC, so the consumer broadcasts the returned bytes via
    *  `@solana/kit` / `@solana/web3.js` / etc. */
-  signTransaction?(tx: unknown, account?: Account): Promise<Uint8Array>;
+  signTransaction?: (tx: unknown, account?: Account) => Promise<Uint8Array>;
 };
 
 /**
@@ -278,7 +278,7 @@ type SvmWallet = WalletBase & {
  * consumer via `@mysten/sui`'s SuiClient.
  */
 type SuiWallet = WalletBase & {
-  signTransaction?(tx: unknown, account?: Account): Promise<Uint8Array>;
+  signTransaction?: (tx: unknown, account?: Account) => Promise<Uint8Array>;
 };
 
 /**
@@ -288,7 +288,7 @@ type SuiWallet = WalletBase & {
  * broadcast through their own Esplora / Electrum client.
  */
 type BitcoinWallet = WalletBase & {
-  signTransaction?(tx: unknown, account?: Account): Promise<Uint8Array>;
+  signTransaction?: (tx: unknown, account?: Account) => Promise<Uint8Array>;
 };
 
 /**

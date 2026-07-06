@@ -1,5 +1,16 @@
 # demo-with-sui
 
+## 0.0.6
+
+### Patch Changes
+
+- Updated dependencies [937dfae]
+- Updated dependencies [8200f3e]
+  - @usebutr/core@0.4.1
+  - @usebutr/sui@0.2.5
+  - @usebutr/wallet-standard-shared@0.2.5
+  - @usebutr/react@0.1.6
+
 ## 0.0.5
 
 ### Patch Changes

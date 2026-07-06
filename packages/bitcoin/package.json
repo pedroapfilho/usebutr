@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/bitcoin",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Wallet Standard + injected (sats-connect / Unisat / OKX) wallet discovery and adapters for butr (Bitcoin).",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",

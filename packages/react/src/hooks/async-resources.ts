@@ -138,13 +138,12 @@ const useBalance = (connectorId?: string | null, mint?: string): UseBalanceResul
   const refetch = useCallback(() => {
     bumpCounter();
   }, []);
-  // `counter` participates in the closure identity, so calling
-  // `refetch()` produces a new `fn` and `useAsyncResource` re-runs.
-  const fn = useMemo(
-    () => (wallet ? () => wallet.connector.getBalance(mint) : null),
-    // oxlint-disable-next-line eslint-plugin-react-hooks/exhaustive-deps -- counter is the refetch trigger; not used inside the closure
-    [wallet, mint, counter],
-  );
+  const fn = useMemo(() => {
+    // `counter` participates in the closure identity, so calling
+    // `refetch()` produces a new `fn` and `useAsyncResource` re-runs.
+    void counter;
+    return wallet ? () => wallet.connector.getBalance(mint) : null;
+  }, [wallet, mint, counter]);
   const state = useAsyncResource(fn);
   return { ...state, refetch };
 };

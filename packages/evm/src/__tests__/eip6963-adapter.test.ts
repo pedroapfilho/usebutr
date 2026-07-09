@@ -67,7 +67,6 @@ const createMockProvider = (): MockProviderHandle => {
 describe("hex helpers", () => {
   it("round-trips bytes through hex", () => {
     // 0xde 0xad 0xbe 0xef in decimal; oxlint + oxfmt disagree on hex
-    // literal case, so use decimal here to keep both happy.
     const bytes = new Uint8Array([222, 173, 190, 239]);
     expect(bytesToHex(bytes)).toBe("0xdeadbeef");
     expect(hexToBytes("0xdeadbeef")).toEqual(bytes);
@@ -86,7 +85,6 @@ describe("hex helpers", () => {
     expect(formatEther(1_000_000_000_000_000_000n)).toBe("1");
     expect(formatEther(1_500_000_000_000_000_000n)).toBe("1.5");
     expect(formatEther(123_456_000_000_000_000_000n)).toBe("123.456");
-    // 1 wei = 0.000000000000000001 ETH
     expect(formatEther(1n)).toBe("0.000000000000000001");
   });
 });
@@ -139,7 +137,6 @@ describe("buildEvmAdapter", () => {
 
     const adapter = buildEvmAdapter(INFO, provider);
     // getAccounts is optional on the Connector contract; the EIP-6963
-    // builder always provides it, so a missing method is a test failure.
     if (!adapter.getAccounts) {
       throw new Error("expected getAccounts on the EIP-6963 adapter");
     }
@@ -260,15 +257,12 @@ describe("buildEvmAdapter", () => {
       }
       const selector = call.data.slice(0, 10);
       if (selector === "0x70a08231") {
-        // balanceOf — return 2.5 USDC at 6 decimals = 2_500_000
         return "0x00000000000000000000000000000000000000000000000000000000002625a0";
       }
       if (selector === "0x313ce567") {
-        // decimals() = 6
         return "0x0000000000000000000000000000000000000000000000000000000000000006";
       }
       if (selector === "0x95d89b41") {
-        // symbol() = "USDC" (ABI-encoded string: offset 0x20, length 4, bytes)
         return (
           "0x0000000000000000000000000000000000000000000000000000000000000020" +
           "0000000000000000000000000000000000000000000000000000000000000004" +
@@ -300,7 +294,6 @@ describe("buildEvmAdapter", () => {
         return "0x0000000000000000000000000000000000000000000000000000000000000012";
       }
       if (selector === "0x95d89b41") {
-        // bytes32 form: "MKR" zero-padded right, no length prefix
         return "0x4d4b520000000000000000000000000000000000000000000000000000000000";
       }
       throw new Error(`unexpected selector: ${selector ?? "?"}`);
@@ -331,7 +324,6 @@ describe("buildEvmAdapter", () => {
     const unsub = adapter.subscribe?.(listener);
 
     // Fire the wallet event and wait one microtask for the internal
-    // eth_chainId resolution.
     provider.emit("accountsChanged", ["0xNEW"]);
     await new Promise((resolve) => {
       setTimeout(resolve, 0);

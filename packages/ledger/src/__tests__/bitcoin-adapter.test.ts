@@ -17,8 +17,6 @@ const PREFIX_BY_FORMAT: Record<BitcoinAddressFormat, string> = {
 };
 
 const buildFakeAddress = (index: number, format: BitcoinAddressFormat): string => {
-  // Per-format prefix so tests can assert "format respected"; deterministic
-  // suffix from the index so each derivation path is distinguishable.
   return `${PREFIX_BY_FORMAT[format]}fakeaddr${index}`;
 };
 
@@ -38,7 +36,6 @@ const buildFakeBtcCtor = (hooks: BtcCtorHooks = {}): BtcAppConstructor => {
     ): Promise<{ bitcoinAddress: string; chainCode: string; publicKey: string }> {
       const format = opts?.format ?? "bech32";
       hooks.onGetWalletPublicKey?.(path, format);
-      // Parse the trailing index off the path (e.g. "84'/0'/0'/0/2" → 2)
       const tail = path.split("/").pop() ?? "0";
       const idx = Math.trunc(Number(tail.replace(/'$/v, "")));
       return Promise.resolve({
@@ -49,7 +46,6 @@ const buildFakeBtcCtor = (hooks: BtcCtorHooks = {}): BtcAppConstructor => {
     }
     signMessage(path: string, messageHex: string): Promise<{ r: string; s: string; v: number }> {
       hooks.onSignMessage?.(path, messageHex);
-      // 32-byte r/s + v=1 — gives a predictable 65-byte signature blob.
       return Promise.resolve({ r: "ab".repeat(32), s: "cd".repeat(32), v: 1 });
     }
     signPsbtBuffer(
@@ -57,7 +53,6 @@ const buildFakeBtcCtor = (hooks: BtcCtorHooks = {}): BtcAppConstructor => {
       options: { accountPath: string; addressFormat: BitcoinAddressFormat; finalizePsbt: boolean },
     ): Promise<{ psbt: Uint8Array; tx?: string }> {
       void options;
-      // Echo the input bytes with an extra tag so tests can confirm the
       // round-trip plumbing without depending on a real PSBT structure.
       const out = new Uint8Array(psbtBuffer.length + 1);
       out.set(psbtBuffer);
@@ -141,7 +136,6 @@ describe("createBitcoinLedgerAdapter", () => {
     await adapter.connect();
     const account = await adapter.getAccount();
     expect(account?.walletAddress.startsWith("1")).toBe(true);
-    // First call from connect() must use the overridden format.
     expect(formats[0]).toBe("legacy");
   });
 
@@ -212,7 +206,6 @@ describe("createBitcoinLedgerAdapter", () => {
     await adapter.connect();
     const message = new TextEncoder().encode("hi");
     const result = await adapter.signMessage(message);
-    // "hi" hex-encoded
     expect(messages[0]).toBe("6869");
     expect(result.signature).toBeInstanceOf(Uint8Array);
     expect(result.signature.length).toBe(65);
@@ -394,7 +387,6 @@ describe("createLedgerAdapter dispatch (bitcoin)", () => {
 
     await adapter.connect();
     await adapter.getAccounts!();
-    // First call is connect() at index 0; then getAccounts walks 0,1.
     expect(seen).toEqual(["84'/0'/0'/0/0", "84'/0'/0'/0/0", "84'/0'/0'/0/1"]);
   });
 

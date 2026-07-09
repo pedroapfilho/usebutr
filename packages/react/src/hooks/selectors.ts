@@ -45,10 +45,6 @@ const accountsEqual = (a: ReadonlyArray<Account>, b: ReadonlyArray<Account>) => 
   return true;
 };
 
-// ============================================================================
-// Connection state
-// ============================================================================
-
 /**
  * Connection status of the **active** wallet — wagmi-aligned vocabulary:
  *
@@ -118,10 +114,6 @@ const useIsUserDisconnected = () => {
   const store = useWalletStoreContext();
   return useStore(store, (state) => state.isUserDisconnected);
 };
-
-// ============================================================================
-// Pool / selection / accounts
-// ============================================================================
 
 /** Full pool of connected wallets, keyed by `connectorId`. Re-renders on any pool change. */
 const usePool = () => {
@@ -215,10 +207,6 @@ const useWalletEntry = (connectorId: string | null | undefined): ConnectedWallet
   );
 };
 
-// ============================================================================
-// Stable accessors (return functions; safe to use in callbacks)
-// ============================================================================
-
 /** Stable accessor: `(connectorId) => ConnectedWallet | undefined`. */
 const useGetWallet = () => {
   const store = useWalletStoreContext();
@@ -243,10 +231,6 @@ const useGetConnectorInstance = () => {
   const store = useWalletStoreContext();
   return useStore(store, (state) => state.getConnectorInstance);
 };
-
-// ============================================================================
-// Direct store access (escape hatch)
-// ============================================================================
 
 /**
  * Direct access to the Zustand store for custom selectors. Uses shallow

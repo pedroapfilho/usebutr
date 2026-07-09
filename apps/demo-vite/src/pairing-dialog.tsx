@@ -21,8 +21,6 @@ const PairingDialog = () => {
 
   const open = uri !== null;
 
-  // The URI is only useful while the connect attempt is in flight —
-  // once it settles (paired or failed) the dialog should go away.
   useEffect(() => {
     if (uri !== null && connectingId === null) {
       clearPairingUri();
@@ -41,7 +39,6 @@ const PairingDialog = () => {
     }
   }, [open]);
 
-  // Sync store state when the dialog closes natively (Escape key) and
   // reset copy feedback for the next pairing attempt.
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -57,7 +54,6 @@ const PairingDialog = () => {
   }, []);
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
-    // Clicks on the dialog element itself (not its children) hit the backdrop
     if (e.target === dialogRef.current) {
       clearPairingUri();
     }

@@ -8,12 +8,6 @@ type WalletStandardPolkadotCapabilityInput = {
   };
 };
 
-// butr ships no RPC: getBalance / getTransactionReceipt / sendTransaction
-// are always false on Polkadot. signTransaction is false too — building a
-// Substrate extrinsic needs chain metadata, so transaction signing goes
-// through getSigner() (consumer drives polkadot-api). requestAccounts is
-// false: extensions manage account exposure in their own UI.
-
 /**
  * injectedWeb3 capability profile. The injected `signer.signRaw` always
  * supports message signing; `accounts.subscribe` always supports events;

@@ -15,14 +15,11 @@ import {
 } from "./transfer-scan";
 import { getWormhole } from "./wormhole";
 
-// A burned-but-unminted CCTP transfer the user can still complete.
 type ResumableTransfer = {
   amount: string;
   destAddress: string;
   destChain: Chain;
-  // Solana CCTP mints into the recipient's own USDC ATA, baked into the burn.
   // The SDK can only create/complete it when the active wallet owns that ATA —
-  // false means the wrong Solana account is connected for this transfer.
   destOwnedByActive: boolean;
   destSupported: boolean;
   key: string;
@@ -39,7 +36,6 @@ type ScanSummary = {
   solanaSignatureLimit: number;
 };
 
-// Reconstructing + redemption-checking each candidate is 2-3 RPC calls; cap
 // concurrency so a large burn history doesn't trip public-RPC rate limits.
 const REDEMPTION_CHECK_CONCURRENCY = 6;
 
@@ -74,7 +70,6 @@ const usePendingTransfers = (
       const svmAddr = svmWallet?.account.walletAddress;
 
       // Scan only chains whose platform wallet is connected (we need its
-      // address to filter the burns, and to complete the mint later).
       const tasks: Array<ScanTask> = [];
       for (const spec of CHAIN_LIST) {
         const cctp = wh.getChain(spec.chain).config.contracts.cctp;
@@ -112,7 +107,6 @@ const usePendingTransfers = (
 
       // The active Solana wallet's USDC ATA (as a universal address) lets us
       // mark transfers whose baked-in recipient the active wallet doesn't own —
-      // i.e. the wrong Solana account is connected to complete them.
       const solanaUsdc = findChainSpec("Solana")?.usdc;
       const activeSvmAtaUniversal =
         svmAddr && solanaUsdc
@@ -150,7 +144,6 @@ const usePendingTransfers = (
           };
           return item;
         } catch {
-          // Not a parseable CCTP burn, or RPC hiccup — skip this candidate.
           return null;
         }
       });
@@ -169,7 +162,6 @@ const usePendingTransfers = (
     }
   }, [evmWallet, svmWallet]);
 
-  // Drop a row once its mint completes, without forcing a full rescan.
   const dismiss = useCallback((key: string) => {
     setItems((current) => current.filter((item) => item.key !== key));
   }, []);

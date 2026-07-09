@@ -193,8 +193,6 @@ const App = () => {
   const [destChain, setDestChain] = useState<Chain>("Solana");
   const [amountInput, setAmountInput] = useState("1");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  // A ref, not state: only the redeem handler reads the transfer object,
-  // so storing it in state would re-render the whole app for nothing.
   const xferRef = useRef<Awaited<ReturnType<Wormhole<Network>["circleTransfer"]>> | null>(null);
 
   const srcSpec = getChainSpec(sourceChain);
@@ -260,8 +258,6 @@ const App = () => {
       const destAddress = Wormhole.chainAddress(dstSpec.chain, dstWallet.account.walletAddress);
       const units = amount.units(amount.parse(amountInput, USDC_DECIMALS));
 
-      // CCTP moves only USDC, so no token argument. `automatic: false`
-      // selects the manual CircleBridge route: the user signs the burn
       // here and the mint in a separate step (matching the two-wallet UX).
       const transfer = await wh.circleTransfer(units, sourceAddress, destAddress, false);
       xferRef.current = transfer;
@@ -270,7 +266,6 @@ const App = () => {
       const srcTxids = await transfer.initiateTransfer(sourceSigner);
       const sourceTxHash = srcTxids.at(-1) ?? "";
       setStatus({ kind: "waiting-attestation", sourceTxHash });
-      // Burn confirmed → refresh source balance.
       srcBalance.refetch();
 
       await transfer.fetchAttestation(ATTESTATION_TIMEOUT_MS);
@@ -292,7 +287,6 @@ const App = () => {
       const destTxids = await xfer.completeTransfer(destSigner);
       const destTxHash = destTxids.at(-1) ?? "";
       setStatus({ destTxHash, kind: "complete", sourceTxHash });
-      // Mint confirmed → refresh destination balance.
       dstBalance.refetch();
     } catch (error) {
       setStatus({ kind: "error", message: formatError(error) });

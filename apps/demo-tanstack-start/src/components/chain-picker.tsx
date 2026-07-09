@@ -2,7 +2,6 @@ import type { ConnectedWallet } from "@usebutr/core";
 import { buildChainsByPlatform } from "@usebutr/core";
 import { EVM_CHAINS_LIST } from "@usebutr/evm";
 
-// EVM-only — only @usebutr/evm's chain table enters the bundle.
 const CHAINS_BY_PLATFORM = buildChainsByPlatform({ evm: EVM_CHAINS_LIST });
 
 const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {

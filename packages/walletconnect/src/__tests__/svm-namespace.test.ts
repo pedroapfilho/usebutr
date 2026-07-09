@@ -172,7 +172,6 @@ describe("solanaNamespace", () => {
       message: btoa(String.fromCodePoint(1, 2, 3)),
       pubkey: "Bg9LkP1234567890abcdefghijkmnopqrstuvwxy",
     });
-    // Three leading zeros from "111".
     expect(result.signature).toEqual(new Uint8Array([0, 0, 0]));
     expect(result.signedMessage).toEqual(new Uint8Array([1, 2, 3]));
   });

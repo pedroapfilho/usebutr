@@ -40,8 +40,6 @@ const MarkdownCopyButton = ({
             }
             return await res.text();
           } catch (error) {
-            // Evict on fetch failure only, so the next click refetches — a
-            // clipboard failure below must not discard markdown that fetched fine.
             cache.delete(markdownUrl);
             throw error;
           }
@@ -53,8 +51,6 @@ const MarkdownCopyButton = ({
           }),
         ]);
       } catch (error) {
-        // apps/docs has no error boundary; rethrowing out of the transition
-        // would replace the whole page with Next's default error screen.
         console.error(`Copy Markdown failed for ${markdownUrl}`, error);
       }
     });

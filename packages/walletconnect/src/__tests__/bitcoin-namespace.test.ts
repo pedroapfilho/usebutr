@@ -209,7 +209,6 @@ describe("bitcoinNamespace", () => {
     const provider = createFakeProvider({
       request: (args) => {
         if (args.method === "signMessage") {
-          // Hex "deadbeef" → [0xde, 0xad, 0xbe, 0xef]
           return Promise.resolve({ address: "bc1qabc123", signature: "deadbeef" });
         }
         return Promise.resolve(null);

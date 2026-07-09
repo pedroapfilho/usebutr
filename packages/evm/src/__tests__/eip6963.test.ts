@@ -121,8 +121,6 @@ describe("discoverEvmAdapters", () => {
 
   it("returns a noop in environments without a window", () => {
     const callback = vi.fn();
-    // No `target` passed; `globalThis.window` is undefined in this
-    // node test environment, so discovery short-circuits.
     const unsub = discoverEvmAdapters(callback);
     unsub();
     expect(callback).not.toHaveBeenCalled();

@@ -9,11 +9,9 @@ const SUI_PREFIX = "sui:";
 const SUI_DECIMALS = 9;
 
 // Sui Wallet Standard wallets advertise chains as the short
-// `sui:mainnet` / `sui:testnet` / `sui:devnet` rather than the strict
 // CAIP-2 form (genesis-checkpoint hash). Phantom (Sui), Sui Wallet,
 // Suiet and the WC Dappkit reference all exchange these names; we
 // follow suit here so the pairing handshake matches what wallets
-// expect.
 const DEFAULT_CHAINS: ReadonlyArray<string> = ["sui:mainnet"];
 
 const DEFAULT_METHODS: ReadonlyArray<string> = [
@@ -78,7 +76,6 @@ const readSessionAccounts = (provider: UniversalProviderLike): ReadonlyArray<str
 const buildSuiChain = (chainId: string, walletName: string): ChainBase => ({
   id: chainId,
   // Same posture as the EVM / SVM sides: butr doesn't ship a chain-id
-  // → name table. Consumers overlay via structural typing.
   name: walletName,
   namespace: "sui",
   reference: chainId.slice(SUI_PREFIX.length),
@@ -188,7 +185,6 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
           // The relay may already have dropped the session (mobile
           // wallet uninstalled, etc.). Don't propagate — butr's
           // reducer marks the wallet disconnected on its side
-          // regardless.
           logWarn("[butr/walletconnect] disconnect threw:", error);
         }
       },
@@ -203,8 +199,6 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
       },
 
       getBalance() {
-        // No RPC — return a typed placeholder so the contract holds.
-        // Consumers wrap their own `SuiClient` for real balances.
         return Promise.resolve({
           decimals: SUI_DECIMALS,
           formatted: "0",
@@ -214,12 +208,10 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
       },
 
       getSigner() {
-        // Hand back the raw provider; consumers narrow at use sites.
         return Promise.resolve(provider);
       },
 
       getTransactionReceipt() {
-        // No RPC. Mirror the wallet-standard Sui adapter's stance.
         return Promise.resolve({ status: "Pending" as const });
       },
 
@@ -235,7 +227,6 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
           params: { address, transaction },
         })) as { digest?: string } | string;
         // Spec says `{ digest }`. Tolerate a bare string too — some
-        // wallets short-circuit to the digest directly.
         const digest = typeof result === "string" ? result : result?.digest;
         if (!digest) {
           throw new Error("sui_signAndExecuteTransaction returned no digest");
@@ -246,8 +237,6 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
       sendTxToChain(tx, _targetChainId, account, cb) {
         // WC Sui's signAndExecute doesn't take a per-call chain
         // parameter — the cluster is baked into the pairing. Honour
-        // the current chain and let consumers route per-chain higher
-        // up if they need multi-cluster support.
         cb?.();
         return this.sendTx(tx, account);
       },
@@ -263,11 +252,9 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
         if (!signatureB64) {
           throw new Error("sui_signPersonalMessage returned no signature");
         }
-        // Wallets are inconsistent: some echo the signed bytes back
         // (Wallet Standard's `signPersonalMessage` does); WC's reference
         // spec lists only `signature`. Prefer the wallet's `bytes` if
         // present (lets verifiers check against what the wallet actually
-        // signed), otherwise fall through to the original input.
         const echoed =
           typeof result === "object" && result?.bytes ? base64ToBytes(result.bytes) : msg;
         return { signature: base64ToBytes(signatureB64), signedMessage: echoed };
@@ -285,9 +272,7 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
         if (typeof result === "object") {
           // The Reown docs spell the key `transactionBytes`. The older
           // Mysten Dappkit reference (and some wallets) use
-          // `transactionBlockBytes`. Accept either — both are the
           // base64-encoded signed transaction bytes butr's
-          // `SuiWallet.signTransaction` contract returns.
           const bytesB64 = result?.transactionBytes ?? result?.transactionBlockBytes;
           if (bytesB64) {
             return base64ToBytes(bytesB64);
@@ -298,8 +283,6 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
           throw new Error("sui_signTransaction returned no transaction or signature");
         }
         // Fallback: a few wallets return just the signature. That's not
-        // the signed transaction, but it's all we got — pass it through
-        // as bytes and let the consumer reconcile.
         return base64ToBytes(signatureB64);
       },
 
@@ -316,7 +299,6 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
           );
         }
         // Local state only — the WC session's chain list is fixed at
-        // pair time, so this updates butr's view of "active cluster"
         // without re-negotiating with the wallet.
         currentChainId = chain.id;
         return Promise.resolve();

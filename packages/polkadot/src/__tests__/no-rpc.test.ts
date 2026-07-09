@@ -4,7 +4,6 @@ import { noRpcBalance, noRpcSendTx, noRpcSendTxToChain, noRpcTransactionReceipt 
 
 describe("no-rpc placeholders", () => {
   it("getBalance returns a neutral, chain-agnostic placeholder", async () => {
-    // No hardcoded symbol/decimals: the registry spans DOT/KSM/WND/PAS.
     expect(await noRpcBalance()).toEqual({ decimals: 0, formatted: "0", symbol: "", value: 0n });
   });
 

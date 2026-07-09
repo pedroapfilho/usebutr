@@ -1,7 +1,3 @@
-// NOTE: Expo target uses React Native's StyleSheet with design tokens
-// that mirror Tailwind's neutral palette and spacing. NativeWind v5
-// (the Tailwind v4 port) is still in preview and has compatibility
-// gaps with react-native-web 0.21; revisit once it stabilises.
 import { ScrollView, Text, View } from "react-native";
 
 import { Content } from "./_components";

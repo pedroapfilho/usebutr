@@ -26,9 +26,6 @@ const createFakeProvider = (
   const connectCalls: Array<ConnectArgs> = [];
   const onCalls: Array<ListenerCall> = [];
   const removeListenerCalls: Array<ListenerCall> = [];
-  // Closure-held counter so the getter on the returned object always
-  // reads the live value (a plain numeric property would snapshot at
-  // creation time and never update).
   const state = { disconnectCalls: 0 };
 
   return {
@@ -70,7 +67,6 @@ const createFakeProvider = (
     request(args: RequestArgs) {
       requests.push(args);
       // Reasonable defaults so the EIP-6963 adapter's connect/getAccount
-      // path can run end-to-end without crashing.
       if (args.method === "eth_accounts" || args.method === "eth_requestAccounts") {
         return Promise.resolve(["0x53d120cf09b21c2fcc67814cdf10c8ca9bcc7670"]);
       }
@@ -171,11 +167,9 @@ describe("createWalletConnectAdapters (single-namespace)", () => {
     if (!adapter) {
       throw new Error("expected one adapter");
     }
-    // First connect establishes the session.
     await adapter.connect();
     expect(provider.connectCalls).toHaveLength(1);
 
-    // Second connect should be a no-op — session is live.
     await adapter.connect();
     expect(provider.connectCalls).toHaveLength(1);
   });
@@ -191,11 +185,9 @@ describe("createWalletConnectAdapters (single-namespace)", () => {
     if (!adapter) {
       throw new Error("expected one adapter");
     }
-    // No session yet — disconnect is a no-op.
     await adapter.disconnect?.();
     expect(provider.disconnectCalls).toBe(0);
 
-    // After connect, disconnect tears down the session.
     await adapter.connect();
     await adapter.disconnect?.();
     expect(provider.disconnectCalls).toBe(1);
@@ -255,7 +247,6 @@ describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
 
     const removed = displayUriListeners(provider.removeListenerCalls);
     expect(removed).toHaveLength(1);
-    // The removed handler is the same reference that was attached.
     expect(removed[0]?.fn).toBe(displayUriListeners(provider.onCalls)[0]?.fn);
   });
 
@@ -272,7 +263,6 @@ describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
       throw new Error("expected one adapter");
     }
     // No connect() — namespace disconnect() returns early (no session),
-    // but cleanup still runs in the `finally`.
     await adapter.disconnect?.();
 
     expect(provider.disconnectCalls).toBe(0);
@@ -295,8 +285,6 @@ describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
     await adapter.connect();
 
     // The evm namespace's disconnect() swallows relay errors by design
-    // (logs a warning, marks disconnected locally). The wrapper's
-    // `finally` still runs cleanup despite the underlying rejection.
     await expect(adapter.disconnect?.()).resolves.toBeUndefined();
     expect(provider.disconnectCalls).toBe(1);
     expect(displayUriListeners(provider.removeListenerCalls)).toHaveLength(1);
@@ -318,7 +306,6 @@ describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
     await adapter.disconnect?.();
     await expect(adapter.disconnect?.()).resolves.toBeUndefined();
 
-    // The guard makes the second cleanup a no-op.
     expect(displayUriListeners(provider.removeListenerCalls)).toHaveLength(1);
   });
 });

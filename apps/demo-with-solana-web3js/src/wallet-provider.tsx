@@ -3,7 +3,6 @@ import { WalletManagerProvider } from "@usebutr/react";
 import { discoverSvmAdapters } from "@usebutr/svm";
 import type { ReactNode } from "react";
 
-// SVM-only: @usebutr/react + @usebutr/svm.
 const svmDiscovery = createWalletSource(discoverSvmAdapters);
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (

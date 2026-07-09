@@ -17,9 +17,6 @@ describe("useIsConnecting", () => {
     act(() => {
       store.config.createConnector("noop");
     });
-    // No-op: the action would need a real connect dispatch to mutate
-    // status. Coverage of state="connecting" is exercised in the integration
-    // tests; this hook test just guards the selector mapping.
     expect(hook.result.current).toBe(false);
   });
 });

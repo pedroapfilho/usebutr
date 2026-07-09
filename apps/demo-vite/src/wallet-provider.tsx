@@ -8,14 +8,11 @@ import { registerExtraAdapters } from "./extra-connectors";
 const injected = autoDiscovery();
 
 // Merge injected auto-discovery with the explicit connectors (Ledger,
-// WalletConnect). Both feed the same `onAdapter` callback, so the
-// provider lists them all in one discovered set.
 const discovery: WalletSource = {
   subscribe: (onAdapter) => {
     let active = true;
     const unsubscribe = injected.subscribe(onAdapter);
     registerExtraAdapters((adapter) => {
-      // Async factories can resolve after unmount — drop late emissions.
       if (active) {
         onAdapter(adapter);
       }

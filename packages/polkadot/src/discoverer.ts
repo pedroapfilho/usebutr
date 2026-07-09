@@ -17,7 +17,6 @@ import { discoverPolkadotWalletStandardAdapters } from "./wallet-standard";
 const polkadotDiscoverer: PlatformDiscoverer = {
   fallback: {
     subscribe: (onAdapter, opts) => {
-      // Defer entirely when injected discovery has already surfaced a
       // wallet — no Polkadot wallet is Wallet-Standard-only today.
       if (opts.hasAnyPrimaryAdapter()) {
         return () => undefined;

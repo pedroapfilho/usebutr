@@ -54,14 +54,14 @@ const createWebStorageDriver = (kind: WebStorageKind): StorageDriver => {
       try {
         storage.removeItem(key);
       } catch {
-        // ignore
+        void 0;
       }
     },
     setItem(key, value) {
       try {
         storage.setItem(key, value);
       } catch {
-        // ignore quota/security errors
+        void 0;
       }
     },
   };

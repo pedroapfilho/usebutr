@@ -178,7 +178,6 @@ describe("createConnectorLifecycle", () => {
 
     emit({ type: "disconnected" });
 
-    // unsubscribe must have been called BEFORE the handler ran.
     expect(unsubAtCallTime).toBe(1);
   });
 });

@@ -102,7 +102,6 @@ describe("isShadowAdapter", () => {
   it("returns false for an adapter advertising any real capability", () => {
     const shadow = createShadowAdapter(evmEntry());
     // Mutate a capability flag — would be impossible on a real shadow
-    // (capabilities object is frozen at module scope), so make a copy.
     const liveLooking = {
       ...shadow,
       capabilities: { ...shadow.capabilities, signMessage: true },
@@ -110,9 +109,6 @@ describe("isShadowAdapter", () => {
     expect(isShadowAdapter(liveLooking)).toBe(false);
   });
 
-  // The old guard checked only 7 of 10 flags, omitting signIn,
-  // signTransaction, and switchAccount. Each must now flip the result to
-  // false on its own.
   it.each<keyof WalletCapabilities>(["signIn", "signTransaction", "switchAccount"])(
     "returns false when only %s is advertised (previously-omitted flag)",
     (flag) => {

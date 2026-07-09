@@ -14,9 +14,6 @@ const POLKADOT_SEND_TX_HINT =
 const POLKADOT_SEND_TX_TO_CHAIN_HINT =
   "Polkadot sendTxToChain is unsupported — use getSigner() with polkadot-api to build and submit extrinsics";
 
-// Neutral, chain-agnostic placeholder. The registry spans DOT/KSM/WND/PAS
-// with different symbols and decimals, so a hardcoded "DOT"/10 would be
-// wrong for most of them. Consumers read real balances via polkadot-api.
 const noRpcBalance = (): Promise<Balance> =>
   Promise.resolve({ decimals: 0, formatted: "0", symbol: "", value: 0n });
 

@@ -100,9 +100,6 @@ const createWalletStore = (config: WalletManagerConfig) => {
   const storageKeyPrefix = config.storageKeyPrefix || "butr";
   const storage = config.storage || new WalletStorage({ keyPrefix: storageKeyPrefix });
 
-  // Storage-error handler. Default: `console.warn` (preserves the
-  // pre-`onStorageError` behaviour). Consumer-provided callback routes
-  // failures through their telemetry pipeline.
   const reportStorageError = (context: string) => (error: unknown) => {
     if (config.onStorageError) {
       try {
@@ -115,10 +112,6 @@ const createWalletStore = (config: WalletManagerConfig) => {
     logWarn(`[butr] ${context}:`, error);
   };
 
-  // Owns the full restore lifecycle: read storage, instantiate adapters,
-  // restore in parallel, park entries whose adapter wasn't registered
-  // yet, drain parked entries when discovery announces a matching id.
-  // `pendingRestores` lives inside the coordinator — the runtime no
   // longer manages the queue directly.
   const hydration = createHydrationCoordinator(storage, config.createConnector);
 
@@ -127,8 +120,6 @@ const createWalletStore = (config: WalletManagerConfig) => {
       set((prev) => reducer(prev, event), false);
     };
 
-    // Returns the write Promise so connect/disconnect can await durability;
-    // `WalletStorage` serializes pool mutations internally so fire-and-forget callers are safe.
     const persistPool = (): Promise<void> =>
       run(() => storage.setPool(get().pool), reportStorageError("failed to persist pool"));
 
@@ -144,12 +135,8 @@ const createWalletStore = (config: WalletManagerConfig) => {
         reportStorageError("failed to persist active connector"),
       );
 
-    // Single entry point for "the pool entry's exposed accounts
     // changed." Three call sites use it: the wallet-event bridge
-    // (`accountChanged`), the consumer-facing `updateWalletAccount`
-    // action, and the `requestAccounts` action. `active` is set when
     // the caller knows which address is now active (wallet event,
-    // manual update); omitted when the caller just refreshed the
     // list and wants the reducer's preserve-or-fallback logic.
     const refreshPoolEntry = (connectorId: string, accounts: Array<Account>, active?: Account) => {
       dispatch({ accounts, active, connectorId, type: "ACCOUNTS_REFRESHED" });
@@ -157,27 +144,16 @@ const createWalletStore = (config: WalletManagerConfig) => {
     };
 
     // Owns the "exactly one subscription per connector" invariant,
-    // the event-to-handler choreography, and the unsubscribers Map.
     // Attach is idempotent: the runtime calls it after every
-    // restore / connect without first checking whether a prior
-    // subscription exists.
     const lifecycle = createConnectorLifecycle({
       onAccountChanged: (connectorId, accounts, active) => {
         // Full-replace so the pool mirrors the wallet's current exposure; the wallet picks `active`.
         refreshPoolEntry(connectorId, [...accounts], active);
       },
       onDisconnected: (connectorId, chainPlatform) => {
-        // Mirror an external disconnect into the reducer so the UI
         // hides the wallet, but DON'T touch storage — EIP-1193 emits
-        // `accountsChanged: []` (which we forward as a `disconnected`
-        // event) both when the user revokes permissions AND when
         // MetaMask simply auto-locks. The two are indistinguishable
-        // from our side, so persisting the empty pool would erase the
         // saved connection on every wallet lock. Keeping storage
-        // intact lets the next hydrate retry — the user-locked case
-        // self-heals once they unlock and reload, and a genuine
-        // revocation gets cleaned up by the next call to
-        // `disconnectWallet` (or just lingers as dead bytes).
         dispatch({ connectorId, type: "DISCONNECTED" });
         config.onDisconnect?.(chainPlatform);
       },
@@ -202,7 +178,6 @@ const createWalletStore = (config: WalletManagerConfig) => {
         dispatch({ connectorId, type: "CONNECT_STARTED" });
 
         // Slow-connect telemetry. Fires once if the wallet doesn't
-        // resolve within the configured threshold. Cleared in finally.
         const slowThreshold = config.slowConnectThresholdMs ?? DEFAULT_SLOW_CONNECT_THRESHOLD_MS;
         const slowTimer = config.onSlowConnect
           ? setTimeout(() => {
@@ -214,9 +189,6 @@ const createWalletStore = (config: WalletManagerConfig) => {
             }, slowThreshold)
           : null;
 
-        // Hoisted so `finally` can clear the connect-timeout timer —
-        // otherwise the timer and its reject closure outlive every
-        // settled connect by the full CONNECT_TIMEOUT_MS.
         let connectTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
         try {
@@ -237,7 +209,6 @@ const createWalletStore = (config: WalletManagerConfig) => {
             throw new Error("Failed to get account");
           }
 
-          // Pull all known accounts when the connector supports it.
           const fetchedAccounts = connector.getAccounts
             ? await connector.getAccounts().catch(() => null)
             : null;
@@ -249,10 +220,6 @@ const createWalletStore = (config: WalletManagerConfig) => {
 
           lifecycle.attach(connectorId, connector);
 
-          // Await so callers can `await connectWallet(id)` and trust
-          // that storage reflects the new connection on the very next
-          // line — load `useConnectedWallets` snapshots, expect
-          // localStorage to contain the entry, etc.
           await Promise.all([persistPool(), persistSelection(), persistActive()]);
 
           config.onConnect?.(entry);
@@ -307,8 +274,6 @@ const createWalletStore = (config: WalletManagerConfig) => {
           // Explicit eviction so storage doesn't keep retrying the
           // disconnected wallet on the next load. `persistPool` is
           // additive (see `WalletStorage.setPool`), so we can't rely
-          // on it to remove entries — that's what `removePoolEntry`
-          // is for.
           void run(
             () => storage.removePoolEntry(connectorId),
             reportStorageError("failed to remove pool entry"),
@@ -332,37 +297,20 @@ const createWalletStore = (config: WalletManagerConfig) => {
           type: "HYDRATED",
         });
         // Wire up wallet-side event subscriptions for every restored
-        // connector so account/chain swaps after a refresh keep the
-        // reducer in sync without consumer effort.
         for (const [connectorId, wallet] of result.pool) {
           lifecycle.attach(connectorId, wallet.connector);
         }
-        // Persist any reconciled values back so future loads stay consistent.
         await Promise.all([persistSelection(), persistActive()]);
         // Drain: catch the race where a Wallet Standard adapter
         // announced BEFORE hydration finished populating its queue.
-        // Without this, the discovery callback's
-        // `tryRestoreFromPending(adapter.id)` would have hit the
         // empty queue and silently returned, leaving SVM wallets
-        // un-restored on reload. The coordinator's `pendingIds()`
-        // is the post-hydrate snapshot; each id resolves
-        // independently. Late-restore failures surface per-entry
-        // inside `tryRestoreFromPending`.
-        // Each restore is fire-and-forget with its own handler: one
-        // rejecting restore (e.g. a throwing `createConnector`) must
         // not become an unhandled rejection, but it must still log —
-        // swallowing it would hide genuine restore failures.
         for (const id of hydration.pendingIds()) {
           void run(
             () => get().tryRestoreFromPending(id),
             (e) => logWarn(`[butr] late restore rejected for ${id}:`, e),
           );
         }
-        // Surface the hydration outcome. Three buckets: restored,
-        // pending (waiting for adapter announcement), dropped
-        // (genuine restore failures). The default `console.warn`
-        // for dropped entries is replaced by this callback when
-        // set — consumers route to telemetry / UX hints.
         if (config.onHydrated) {
           try {
             config.onHydrated({
@@ -374,7 +322,6 @@ const createWalletStore = (config: WalletManagerConfig) => {
             logWarn("[butr] onHydrated threw:", cbError);
           }
         } else if (result.dropped.length > 0) {
-          // Preserve the pre-`onHydrated` console.warn behaviour
           // when no callback is set, so silent drops still log.
           for (const { connectorId, reason } of result.dropped) {
             logWarn(`[butr] failed to restore connector ${connectorId}:`, reason);
@@ -391,10 +338,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
           return;
         }
         // Ask the wallet to open its picker (if supported). EVM
-        // wallets honour this via `wallet_requestPermissions`;
         // Wallet Standard wallets typically have no equivalent
-        // RPC, so the call resolves immediately and the refresh
-        // below simply re-reads the current list.
         await entry.connector.requestAccounts?.();
         const fresh = entry.connector.getAccounts
           ? await entry.connector.getAccounts().catch(() => null)
@@ -402,8 +346,6 @@ const createWalletStore = (config: WalletManagerConfig) => {
         if (!fresh || fresh.length === 0) {
           return;
         }
-        // No `active` — the reducer preserves the current active
-        // if it's still in the refreshed list, else picks [0].
         refreshPoolEntry(connectorId, fresh);
       },
 
@@ -458,11 +400,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
       },
 
       tryRestoreFromPending: async (connectorId) => {
-        // Note: deliberately NOT gating on `isUserDisconnected`.
         // The eager hydration path doesn't check that flag either —
-        // stored entries restore on reload regardless of whether
-        // the user's most recent action was a disconnect. The
-        // late-restore path mirrors that policy for symmetry.
         const outcome = await hydration.drainPending(connectorId);
         if (!outcome) {
           return;
@@ -471,8 +409,6 @@ const createWalletStore = (config: WalletManagerConfig) => {
           logWarn(`[butr] late restore failed for ${connectorId}:`, outcome.error);
           return;
         }
-        // Reuse the reducer's connect-success path so selection /
-        // active reconciliation matches a normal connect flow.
         dispatch({ connectorId, entry: outcome.entry, type: "CONNECT_SUCCEEDED" });
         lifecycle.attach(connectorId, outcome.entry.connector);
         await Promise.all([persistPool(), persistSelection(), persistActive()]);

@@ -46,8 +46,6 @@ const configToProps = (config: WalletManagerConfig) => ({
   storageKeyPrefix: config.storageKeyPrefix,
 });
 
-// Explicit RenderResult annotations because the inferred type references
-// private pnpm paths and fails declaration-emit portability checks (TS2883).
 const renderWithProvider = (
   ui: ReactElement,
   opts: ConfigOpts = {},

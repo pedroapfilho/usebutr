@@ -128,7 +128,6 @@ const bytesToBase58 = (bytes: Uint8Array): string => {
 
 const buildSolanaChain = (cluster: SolanaCluster, walletName: string): ChainBase => ({
   id: `solana:${cluster}`,
-  // Same stance as the EVM builder — no chain-id → name table in butr;
   // we surface the wallet name and let consumers overlay structurally.
   name: walletName,
   namespace: "solana",
@@ -180,8 +179,6 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
   let solana: SolanaAppLike | null = null;
   let currentAddress: string | null = null;
 
-  // Solana paths are fully-hardened by convention — every segment ends
-  // in `'`, including the account index.
   const pathAt = (index: number): string => `${derivationPathPrefix}/${index}'`;
 
   const adapter: WalletAdapter = {
@@ -228,7 +225,6 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
       const chain = buildSolanaChain(cluster, name);
       const accounts: Array<Account> = [];
       // Sequential walk — the device serialises USB requests; parallel
-      // calls would deadlock the transport. Slow but correct.
       for (let i = 0; i < accountCount; i += 1) {
         // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
         const { address } = await solana.getAddress(pathAt(i));
@@ -239,7 +235,6 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
     },
 
     getBalance() {
-      // Capabilities flag is `false`; this throw is defence-in-depth.
       return Promise.reject(
         new Error(
           "[butr/ledger] getBalance not supported — Ledger has no RPC. Use @solana/kit or @solana/web3.js with your own RPC URL.",
@@ -248,7 +243,6 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
     },
 
     getSigner() {
-      // Hands the raw Solana app to consumers who want to wrap it.
       return Promise.resolve(solana);
     },
 

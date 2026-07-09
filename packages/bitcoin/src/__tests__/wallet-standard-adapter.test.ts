@@ -183,8 +183,6 @@ describe("buildBitcoinAdapter", () => {
       "standard:connect": connectFeature,
     });
     const adapter = buildBitcoinAdapter(wallet);
-    // signTransaction only exists on the bitcoin variant of the
-    // WalletAdapter union — narrow on the discriminant before calling.
     if (adapter?.chainPlatform !== "bitcoin") {
       throw new Error("expected a bitcoin adapter");
     }

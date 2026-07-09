@@ -66,8 +66,6 @@ const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry
   if (typeof entry.name !== "string" || entry.name.length === 0) {
     return false;
   }
-  // `icon` is optional (some adapters announce no icon); reject only
-  // when present-but-wrong-typed.
   if (entry.icon !== undefined && typeof entry.icon !== "string") {
     return false;
   }
@@ -117,8 +115,6 @@ class WalletStorage implements WalletPersistence {
   private async serializePoolMutation<T>(fn: () => Promise<T>): Promise<T> {
     // Capture and advance the queue synchronously so concurrent
     // callers serialize against the same head — awaiting the queue
-    // first would let two callers both observe the pre-advance head
-    // and run in parallel.
     const previous = this.poolMutationQueue;
     // oxlint-disable-next-line unicorn/consistent-function-scoping -- assigned by Promise constructor below
     let resolve: () => void = () => {};
@@ -129,7 +125,6 @@ class WalletStorage implements WalletPersistence {
       await previous;
     } catch {
       // Previous mutation's failure shouldn't jam the queue — each
-      // call site already observes its own rejection.
     }
     try {
       return await fn();
@@ -137,8 +132,6 @@ class WalletStorage implements WalletPersistence {
       resolve();
     }
   }
-
-  // ---- Pool ----
 
   async getPool(): Promise<StoredPoolRecord> {
     try {
@@ -193,10 +186,8 @@ class WalletStorage implements WalletPersistence {
           };
           // The runtime's reducer state is the source of truth — a
           // malformed entry here means a programming error inside butr,
-          // not data drift. Throw loudly so the bug surfaces at the
           // write site rather than silently corrupting storage and
           // re-emerging as a "wallet didn't restore" puzzle on the next
-          // page load.
           if (!isValidPoolEntry(connectorId, entry)) {
             throw new Error(`[butr] refusing to persist invalid pool entry for ${connectorId}`);
           }
@@ -228,8 +219,6 @@ class WalletStorage implements WalletPersistence {
       await this.persistent.removeItem(this.poolKey);
     });
   }
-
-  // ---- Selection ----
 
   async getSelection(): Promise<StoredSelectionRecord> {
     try {
@@ -270,8 +259,6 @@ class WalletStorage implements WalletPersistence {
     }
   }
 
-  // ---- Active connector ----
-
   async getActiveConnectorId(): Promise<string | null> {
     try {
       const value = await this.persistent.getItem(this.activeKey);
@@ -291,21 +278,14 @@ class WalletStorage implements WalletPersistence {
     }
   }
 
-  // ---- Bulk clear ----
-
   async clearAll(): Promise<void> {
     // Pool removal goes through the mutation queue so it can't race
-    // with an in-flight `setPool` / `removePoolEntry`. The selection
-    // and active keys have no read-modify-write writers, so they can
-    // remove concurrently.
     await Promise.all([
       this.clearPool(),
       this.persistent.removeItem(this.selectionKey),
       this.persistent.removeItem(this.activeKey),
     ]);
   }
-
-  // ---- Disconnect intent ----
 
   /**
    * Disconnect-intent tracking.
@@ -330,7 +310,7 @@ class WalletStorage implements WalletPersistence {
         ? this.session.setItem(this.userDisconnectedKey, "true")
         : this.session.removeItem(this.userDisconnectedKey));
     } catch {
-      // ignore
+      void 0;
     }
   }
 }

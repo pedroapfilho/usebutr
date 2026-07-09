@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { getLLMText } from "@/lib/get-llm-text";
 import { source } from "@/lib/source";
 
-// Statically pre-rendered for every docs page.
 export const revalidate = false;
 
 /**
@@ -25,5 +24,4 @@ export const GET = async (
   });
 };
 
-// fallow-ignore-next-line unused-export
 export const generateStaticParams = () => source.generateParams();

@@ -19,10 +19,6 @@ const resolveTarget = (target?: EventTarget): EventTarget | null => {
   if (target) {
     return target;
   }
-  // Use globalThis.window when present and EventTarget-shaped. Some
-  // test environments inject a `window` stub that isn't a real
-  // EventTarget; in that case fall back to null so callers short-circuit
-  // rather than throw on `.addEventListener`.
   const candidate = (globalThis as { window?: unknown }).window;
   if (
     !candidate ||

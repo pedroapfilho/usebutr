@@ -57,11 +57,7 @@ describe("createWalletConnectAdapters", () => {
 
   it("rejects an unimplemented namespace with a clear message", async () => {
     // EVM, SVM, Sui, and Bitcoin (bip122) all ship today, so the
-    // ChainPlatform union has no truly-unsupported member. Simulate
-    // a forward-compat "future platform" by casting a synthetic key
-    // through the typed surface; the runtime registry lookup still
     // catches it. Replace this cast when a future namespace lands
-    // unimplemented before its builder.
     const forwardPlatform = "cosmos" as ChainPlatform;
     const universalProvider = fakeUniversalProvider(createFakeProvider());
     await expect(

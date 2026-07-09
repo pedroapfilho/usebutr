@@ -32,8 +32,6 @@ const PROJECT_LINKS: Array<FooterLink> = [
   { href: NPM_URL, label: "npm" },
 ];
 
-// Resolved once at module load (server-side for this static page) so the year
-// is a constant by render time, never a non-deterministic value reached from JSX.
 const CURRENT_YEAR = new Date().getFullYear();
 
 const FooterColumn = ({ links, title }: FooterColumnProps) => (

@@ -86,7 +86,6 @@ const Connected = ({
     try {
       const message = new TextEncoder().encode("Hello from butr + @mysten/sui");
       const result = await wallet.connector.signMessage(message);
-      // butr returns the signature bytes; render as hex for the UI.
       let hex = "";
       for (const byte of result.signature) {
         hex += byte.toString(16).padStart(2, "0");
@@ -100,9 +99,6 @@ const Connected = ({
   const handleSendTx = async () => {
     setErrorMsg(null);
     try {
-      // Build a no-op transaction that splits 0 MIST off the gas coin
-      // and transfers it back to the sender — a safe roundtrip on
-      // testnet that proves end-to-end signing + execution.
       const tx = new Transaction();
       tx.setSender(addr);
       const [coin] = tx.splitCoins(tx.gas, [0]);

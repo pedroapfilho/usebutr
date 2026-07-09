@@ -79,7 +79,6 @@ describe("createDiscoveryBus", () => {
     const bus = createDiscoveryBus(onAdapter);
     bus.register(pathThatEmits("eip6963-wallet").path);
 
-    // The injected path consults bus.hasAny() at emit time.
     const injectedEmits = vi.fn();
     bus.register((emit) => {
       if (!bus.hasAny()) {

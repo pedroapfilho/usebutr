@@ -14,11 +14,6 @@ import {
 } from "@solana/kit";
 import { useEffect, useMemo, useState } from "react";
 
-// Hand-rolled System Program transfer instruction — saves a dep
-// (@solana-program/system) whose codec imports drift between
-// @solana/kit versions. The on-chain System Program encoding is:
-//   bytes 0..4   : u32 little-endian variant index (2 = Transfer)
-//   bytes 4..12  : u64 little-endian lamports
 const SYSTEM_PROGRAM = address("11111111111111111111111111111111");
 const buildTransferInstruction = (from: Address, to: Address, lamports: bigint): Instruction => {
   const data = new Uint8Array(12);
@@ -41,7 +36,6 @@ import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 import { useDiscoveredWallets } from "./wallet-provider";
 
 const DEVNET = "https://api.devnet.solana.com";
-// System program (also doubles as a safe burn destination on devnet).
 const BURN_ADDRESS = address("11111111111111111111111111111111");
 
 const rpc = createSolanaRpc(DEVNET);
@@ -183,7 +177,6 @@ const Connected = ({
     }
     setErrorMsg(null);
     try {
-      // 1. Build the transaction MESSAGE with kit's functional pipeline.
       const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
       const message = pipe(
         createTransactionMessage({ version: 0 }),

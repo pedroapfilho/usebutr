@@ -13,8 +13,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useDiscoveredWallets } from "./wallet-provider";
 
 const DEVNET = "https://api.devnet.solana.com";
-// SOL burn-equivalent: System Program address. Sending 0 lamports here
-// is harmless and proves the signer + connection are wired.
 const BURN_ADDRESS = new PublicKey("11111111111111111111111111111111");
 
 const connection = new Connection(DEVNET, "confirmed");
@@ -22,7 +20,6 @@ const connection = new Connection(DEVNET, "confirmed");
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const bytesToBase58 = (bytes: Uint8Array): string => {
   // Tiny base58 encoder so the demo doesn't pull bs58 just for one display.
-  // Not for production use — Solana provides bs58 in its tooling.
   let intVal = 0n;
   for (const byte of bytes) {
     intVal = (intVal << 8n) | BigInt(byte);

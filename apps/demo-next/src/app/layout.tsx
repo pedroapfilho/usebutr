@@ -14,12 +14,7 @@ export const metadata = {
 };
 
 const RootLayout = async ({ children }: { children: ReactNode }) => {
-  // Read cookies once on the server and feed both channels:
   //  - `initialCookies`: powers the cookie storage driver's SSR reads
-  //    so the storage layer is consistent across server and client.
-  //  - `initialSnapshot`: a typed view of the persisted pool, ready
-  //    for `useWalletSnapshot()` to render a connected shell during
-  //    the first paint — no client-side hydration flicker.
   const cookieStore = await cookies();
   const initialCookies: Record<string, string> = {};
   for (const { name, value } of cookieStore.getAll()) {

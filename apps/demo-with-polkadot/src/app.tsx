@@ -8,9 +8,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useDiscoveredWallets } from "./wallet-provider";
 
-// butr owns discovery + connection state; polkadot-api owns the RPC and
 // the transaction builder. The connected wallet's injected signer is
-// bridged to a PAPI PolkadotSigner via pjs-signer's connectInjectedExtension.
 const PASEO_WS = "wss://paseo.rpc.amforc.com";
 const PASEO_DECIMALS = 10;
 
@@ -64,7 +62,6 @@ const Connected = ({
 
   const addr = wallet.account.walletAddress;
 
-  // Tear down any in-flight transaction watch when the component unmounts,
   // so its callbacks don't update state after we're gone.
   useEffect(() => () => txSubRef.current?.unsubscribe(), []);
 
@@ -106,8 +103,6 @@ const Connected = ({
     setErrorMsg(null);
     setTxStatus("Bridging signer…");
     try {
-      // butr hands us the injected extension name + active address; PAPI's
-      // pjs-signer turns that into a PolkadotSigner.
       const handle = (await wallet.connector.getSigner()) as PolkadotSignerHandle;
       const extension = await connectInjectedExtension(handle.extensionName);
       const account = extension.getAccounts().find((a) => a.address === handle.address);
@@ -117,7 +112,6 @@ const Connected = ({
         return;
       }
       setTxStatus("Awaiting signature…");
-      // Self-transfer of 0.1 PAS so the demo needs no second address.
       const tx = api.tx.Balances.transfer_keep_alive({
         // oxlint-disable-next-line new-cap -- MultiAddress.Id is a polkadot-api enum-variant constructor
         dest: MultiAddress.Id(handle.address),

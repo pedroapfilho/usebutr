@@ -1,4 +1,3 @@
-// Provider
 export type { WalletManagerProviderProps } from "./context";
 export {
   WalletManagerProvider,
@@ -7,7 +6,6 @@ export {
   useWalletStoreContext,
 } from "./context";
 
-// Selectors — reactive reads of the wallet store.
 export {
   useAccounts,
   useActiveConnectorId,
@@ -31,7 +29,6 @@ export {
   useWalletStore,
 } from "./hooks/selectors";
 
-// Actions — dispatchers / mutations.
 export {
   useConnectWallet,
   useDisconnectWallet,
@@ -45,6 +42,5 @@ export {
   useUpdateWalletAccount,
 } from "./hooks/actions";
 
-// Async resources — hooks returning AsyncState<T>.
 export type { AsyncState, UseBalanceResult } from "./hooks/async-resources";
 export { useBalance, useSigner } from "./hooks/async-resources";

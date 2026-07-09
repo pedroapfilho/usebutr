@@ -27,7 +27,6 @@ describe("useConnectWallet", () => {
       () => ({ connect: useConnectWallet(), pool: usePool() }),
       { adapters: [adapter] },
     );
-    // Wait for hydration to settle.
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();

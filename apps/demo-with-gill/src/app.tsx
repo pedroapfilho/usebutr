@@ -15,11 +15,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useDiscoveredWallets } from "./wallet-provider";
 
-// System program (also doubles as a safe burn destination on devnet).
 const BURN_ADDRESS = address("11111111111111111111111111111111");
 
-// gill wraps @solana/kit: createSolanaClient resolves the moniker to an RPC
-// endpoint and hands back a typed kit RPC client.
 const { rpc } = createSolanaClient({ urlOrMoniker: "devnet" });
 
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -160,8 +157,6 @@ const Connected = ({
     setErrorMsg(null);
     try {
       // 1. Build the transaction with gill. The wallet — not gill — signs, so
-      //    the fee payer is a no-op signer over butr's connected address;
-      //    gill's program helpers stay fully typed.
       const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
       const feePayer = createNoopSigner(addr);
       const tx = createTransaction({

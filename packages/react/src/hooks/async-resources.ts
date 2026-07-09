@@ -45,8 +45,6 @@ const asyncReducer = <T>(_state: AsyncState<T>, action: AsyncAction<T>): AsyncSt
       return { data: null, error: action.error, status: "error" };
     }
     default: {
-      // Exhaustiveness check — TS errors here if `AsyncAction` grows
-      // a variant without a case.
       const exhaustiveCheck: never = action;
       void exhaustiveCheck;
       return { data: null, error: null, status: "idle" };
@@ -116,7 +114,6 @@ const useAsyncResource = <T>(fn: (() => Promise<T>) | null): AsyncState<T> => {
  */
 const useSigner = (connectorId?: string | null): AsyncState<unknown> => {
   const wallet = useWalletEntry(connectorId);
-  // Stabilise the request closure so `useAsyncResource` only re-runs
   // when the resolved wallet identity changes (not on every render).
   const fn = useMemo(() => (wallet ? () => wallet.connector.getSigner() : null), [wallet]);
   return useAsyncResource(fn);
@@ -139,8 +136,6 @@ const useBalance = (connectorId?: string | null, mint?: string): UseBalanceResul
     bumpCounter();
   }, []);
   const fn = useMemo(() => {
-    // `counter` participates in the closure identity, so calling
-    // `refetch()` produces a new `fn` and `useAsyncResource` re-runs.
     void counter;
     return wallet ? () => wallet.connector.getBalance(mint) : null;
   }, [wallet, mint, counter]);

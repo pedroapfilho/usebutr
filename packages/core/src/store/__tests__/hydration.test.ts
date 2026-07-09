@@ -31,6 +31,7 @@ const createFakeStorage = (init: FakeStorageInit = {}): WalletPersistence => {
     getSelection: () => Promise.resolve(init.selection ?? {}),
     isUserDisconnected: () => Promise.resolve(init.userDisconnected ?? false),
     markUserDisconnected: vi.fn().mockResolvedValue(undefined),
+    removed,
     removePoolEntry: vi.fn().mockImplementation((id: string) => {
       removed.push(id);
       const { [id]: _drop, ...rest } = pool;
@@ -41,8 +42,6 @@ const createFakeStorage = (init: FakeStorageInit = {}): WalletPersistence => {
     setActiveConnectorId: vi.fn().mockResolvedValue(undefined),
     setPool: vi.fn().mockResolvedValue(undefined),
     setSelection: vi.fn().mockResolvedValue(undefined),
-    // Helper not on the interface — call via cast in tests.
-    removed,
   } as unknown as WalletPersistence;
 };
 
@@ -108,7 +107,6 @@ describe("createHydrationCoordinator", () => {
 
     const outcome = await coordinator.drainPending("wallet-late");
     expect(outcome).toBeNull();
-    // Still parked — a future drain after the adapter arrives should work.
     expect(coordinator.pendingIds()).toEqual(["wallet-late"]);
   });
 
@@ -143,8 +141,6 @@ describe("createHydrationCoordinator", () => {
 
     expect(result.pool.size).toBe(0);
     expect(result.dropped).toEqual([{ connectorId: "broken-wallet", reason: expect.any(Error) }]);
-    // Storage stays intact — an EIP-1193 `eth_accounts: []` from a
-    // locked wallet would otherwise erase the connection permanently.
     expect(getRemoved(storage)).toEqual([]);
   });
 
@@ -160,7 +156,6 @@ describe("createHydrationCoordinator", () => {
 
     const result = await coordinator.hydrate();
 
-    // svm selection drops because ghost-svm failed to restore.
     expect(result.selection.get("evm")).toBe("evm-a");
     expect(result.selection.has("svm")).toBe(false);
   });
@@ -192,8 +187,6 @@ describe("createHydrationCoordinator", () => {
     await coordinator.hydrate();
     expect(coordinator.pendingIds()).toEqual(["wallet-a"]);
 
-    // Second hydrate with a fresh storage shape — prior pending should
-    // not leak into the new run.
     const storage2 = createFakeStorage({ pool: { "wallet-b": buildEntry("wallet-b") } });
     const coordinator2 = createHydrationCoordinator(storage2, () => null);
     await coordinator2.hydrate();

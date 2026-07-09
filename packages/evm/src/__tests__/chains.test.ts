@@ -24,6 +24,6 @@ describe("EVM_CHAINS_LIST", () => {
   it("flattens the registry into an array indexed by chain order", () => {
     expect(EVM_CHAINS_LIST.length).toBe(Object.keys(EVM_CHAINS).length);
     const ids = EVM_CHAINS_LIST.map((c) => c.id);
-    expect(new Set(ids).size).toBe(EVM_CHAINS_LIST.length); // unique
+    expect(new Set(ids).size).toBe(EVM_CHAINS_LIST.length);
   });
 });

@@ -2,7 +2,6 @@ import { llms } from "fumadocs-core/source";
 
 import { source } from "@/lib/source";
 
-// Statically cached forever — no server runtime needed.
 export const revalidate = false;
 
 /**

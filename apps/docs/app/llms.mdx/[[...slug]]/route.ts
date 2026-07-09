@@ -24,4 +24,5 @@ export const GET = async (
   });
 };
 
+// fallow-ignore-next-line unused-export
 export const generateStaticParams = () => source.generateParams();

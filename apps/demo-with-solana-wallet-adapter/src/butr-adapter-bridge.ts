@@ -46,7 +46,9 @@ const bytesToBase58 = (bytes: Uint8Array): string => {
  * autoConnect + UI work out of the box.
  */
 class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
+  // fallow-ignore-next-line unused-class-member
   readonly supportedTransactionVersions = new Set<0>([0]);
+  // fallow-ignore-next-line unused-class-member
   readonly url = "https://github.com/pedroapfilho/usebutr";
 
   private _connecting = false;
@@ -63,22 +65,27 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     this._publicKey = new PublicKey(address);
   }
 
+  // fallow-ignore-next-line unused-class-member
   get name(): WalletName {
     return this.butr.name as WalletName;
   }
 
+  // fallow-ignore-next-line unused-class-member
   get icon(): string {
     return this.butr.icon ?? "";
   }
 
+  // fallow-ignore-next-line unused-class-member
   get readyState(): WalletReadyState {
     return WalletReadyState.Installed;
   }
 
+  // fallow-ignore-next-line unused-class-member
   get publicKey(): PublicKey | null {
     return this._publicKey;
   }
 
+  // fallow-ignore-next-line unused-class-member
   get connecting(): boolean {
     return this._connecting;
   }
@@ -87,6 +94,7 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     return this._publicKey !== null;
   }
 
+  // fallow-ignore-next-line unused-class-member
   connect(): Promise<void> {
     if (this.connected) {
       return Promise.resolve();
@@ -104,12 +112,14 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     }
   }
 
+  // fallow-ignore-next-line unused-class-member
   disconnect(): Promise<void> {
     this._publicKey = null;
     this.emit("disconnect");
     return Promise.resolve();
   }
 
+  // fallow-ignore-next-line unused-class-member
   async signMessage(message: Uint8Array): Promise<Uint8Array> {
     const feature = this._wallet.features["solana:signMessage"] as
       | SolanaSignMessageFeature
@@ -128,6 +138,7 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     return output.signature;
   }
 
+  // fallow-ignore-next-line unused-class-member
   signTransaction<T extends Transaction | VersionedTransaction>(_transaction: T): Promise<T> {
     // The Wallet Standard `solana:signTransaction` feature isn't
     // advertised uniformly across wallets — Phantom does, MetaMask Snap
@@ -140,6 +151,7 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     );
   }
 
+  // fallow-ignore-next-line unused-class-member
   async sendTransaction(
     transaction: Transaction | VersionedTransaction,
     _connection: Connection,

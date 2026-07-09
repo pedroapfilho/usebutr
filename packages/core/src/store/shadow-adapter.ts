@@ -27,7 +27,7 @@ import type {
  * on whether `connectorId` is in `state.reconnectingIds`.
  */
 class ShadowConnectorError extends Error {
-  // static analysis can't trace.
+  // fallow-ignore-next-line unused-class-member
   readonly code = "BUTR_RECONNECTING";
   readonly connectorId: string;
   readonly method: string;

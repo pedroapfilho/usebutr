@@ -20,7 +20,6 @@ const makeProvider = (): InjectedWindowProvider => ({
 describe("buildInjectedPolkadotAdapter", () => {
   it("reports the injected capability profile and a stable id", () => {
     const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
-    // toKebab("Polkadot{.js}") strips non-alphanumeric → "polkadot-js"
     expect(adapter.id).toBe("injected:polkadot:polkadot-js");
     expect(adapter.chainPlatform).toBe("polkadot");
     expect(adapter.capabilities.signMessage).toBe(true);
@@ -56,9 +55,6 @@ describe("buildInjectedPolkadotAdapter", () => {
   });
 
   it("getSigner throws when the connected wallet exposes no account", async () => {
-    // accounts.get() returns one account during connect (so connect
-    // succeeds), then empties — getSigner must reject, not hand back an
-    // empty-string address.
     const provider: InjectedWindowProvider = {
       enable: vi.fn().mockResolvedValue({
         accounts: {

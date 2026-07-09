@@ -15,7 +15,6 @@ const buildFakeEthCtor = (addresses: ReadonlyArray<string> = FAKE_ADDRESSES): Et
       void _transport;
     }
     getAddress(path: string): Promise<{ address: string; publicKey: string }> {
-      // Parse the trailing index off the path (e.g. "44'/60'/0'/0/2" → 2)
       const idx = Math.trunc(Number(path.split("/").pop() ?? "0"));
       const address = addresses[idx] ?? addresses[0];
       return Promise.resolve({ address: address ?? "0x0", publicKey: "0xpubkey" });
@@ -167,7 +166,6 @@ describe("createLedgerAdapter", () => {
     const result = await adapter.signMessage(new TextEncoder().encode("hello"));
     expect(result.signature).toBeInstanceOf(Uint8Array);
     expect(result.signature.length).toBe(65);
-    // First 32 bytes are r (0xaa repeated), next 32 are s (0xbb), last byte is v (0x1b = 27)
     expect(result.signature[0]).toBe(0xaa);
     expect(result.signature[32]).toBe(0xbb);
     expect(result.signature[64]).toBe(0x1b);

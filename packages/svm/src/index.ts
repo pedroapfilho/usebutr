@@ -1,4 +1,3 @@
-// Solana-specific feature shapes.
 export type {
   SolanaSignAndSendTransactionFeature,
   SolanaSignAndSendTransactionInput,
@@ -16,8 +15,6 @@ export { SVM_CHAINS, SVM_CHAINS_LIST } from "./chains";
 export type { WalletStandardCapabilityInput } from "./capabilities";
 export { resolveWalletStandardCapabilities } from "./capabilities";
 
-// PlatformDiscoverer descriptor (Wallet Standard, no fallback)
 export { svmDiscoverer } from "./discoverer";
 
-// Augment @usebutr/core's SignerForPlatform registry. Side-effect import.
 import "./signer-augmentation";

@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 import { useDiscoveredWallets } from "./wallet-provider";
 
 // Map CAIP-2 chain references to their bitcoinjs-lib network config so
-// we can derive the expected address prefix from the connected chain.
 const NETWORK_BY_CHAIN_REF: Record<string, typeof networks.bitcoin> = {
   "000000000019d6689c085ae165831e93": networks.bitcoin,
   "000000000933ea01ad0ee984209779ba": networks.testnet,
@@ -50,8 +49,6 @@ const Connected = ({
   const addr = useMemo(() => wallet.account.walletAddress, [wallet.account.walletAddress]);
   const chainId = useMemo(() => wallet.account.chain.id, [wallet.account.chain.id]);
 
-  // Derive the expected native-SegWit address prefix (bech32) from the
-  // connected chain using bitcoinjs-lib's network definitions.
   const bech32Prefix = useMemo(() => {
     const ref = chainId.split(":")[1] ?? "";
     return NETWORK_BY_CHAIN_REF[ref]?.bech32 ?? "unknown";
@@ -71,11 +68,7 @@ const Connected = ({
   const handleSignPsbt = async () => {
     setErrorMsg(null);
     try {
-      // Narrow on chainPlatform so TypeScript knows `signTransaction`
-      // can exist on this connector. `WalletAdapter`'s EVM variant
       // doesn't have signTransaction at all; the discriminant teaches
-      // TS that. The runtime feature-presence check (`signTransaction`
-      // being optional even on Bitcoin / Sui / SVM) still applies.
       const connector = wallet.connector;
       if (connector.chainPlatform !== "bitcoin" || !connector.signTransaction) {
         throw new Error(
@@ -83,11 +76,8 @@ const Connected = ({
         );
       }
       // Hand-built minimal PSBT (empty global tx, no inputs/outputs) —
-      // proves the round-trip without depending on an Esplora server for
       // UTXOs. Bytes: PSBT magic `psbt\xff`, then a single unsigned tx
-      // of version 2, 0 inputs, 0 outputs, locktime 0, then the global-
       // map terminator. Built via hex parsing to dodge oxfmt's
-      // lower-case hex normalisation versus oxlint's uppercase rule.
       const psbtHex = "70736274FF010A02000000000000000000";
       const psbt = new Uint8Array(psbtHex.length / 2);
       for (let i = 0; i < psbt.length; i += 1) {

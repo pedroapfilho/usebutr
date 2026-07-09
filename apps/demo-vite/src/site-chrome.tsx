@@ -4,7 +4,6 @@ const DOCS_URL = "https://docs.usebutr.com";
 const GITHUB_URL = "https://github.com/pedroapfilho/usebutr";
 const NPM_URL = "https://www.npmjs.com/org/usebutr";
 
-// Resolved once at module load so the footer year is a constant by render time.
 const CURRENT_YEAR = new Date().getFullYear();
 
 const GitHubIcon = () => (

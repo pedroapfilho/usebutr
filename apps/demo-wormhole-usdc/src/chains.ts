@@ -12,11 +12,8 @@ type ChainSpec = {
   usdc: string;
 };
 
-// USDC is 6 decimals on every supported chain.
 const USDC_DECIMALS = 6;
 
-// Authoritative USDC token/mint address per chain on Testnet, read from
-// the SDK's Circle config (keyed by Wormhole chain name).
 const usdcFor = (chain: Chain): string => {
   const address = circle.usdcContract.get("Testnet", chain);
   if (!address) {
@@ -30,7 +27,6 @@ const evmExplorer =
   (hash: string): string =>
     `${base}/tx/${hash}`;
 
-// Curated CCTP V1 testnets. Ordered EVM-first, Solana last.
 const CHAIN_LIST: ReadonlyArray<ChainSpec> = [
   {
     chain: "Sepolia",
@@ -108,9 +104,7 @@ const getChainSpec = (chain: Chain): ChainSpec => {
   return spec;
 };
 
-// Non-throwing lookup: a discovered burn's destination may be a chain the
 // demo doesn't list, in which case the recovery UI shows it as unsupported
-// rather than crashing.
 const findChainSpec = (chain: Chain): ChainSpec | undefined => CHAINS[chain];
 
 export type { ChainSpec };

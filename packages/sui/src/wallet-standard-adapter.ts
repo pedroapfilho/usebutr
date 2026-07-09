@@ -36,8 +36,6 @@ const pickSuiChain = (wallet: WalletStandardWallet): string | null => {
 
 const buildSuiChain = (chainId: string, walletName: string): ChainBase => ({
   id: chainId,
-  // Same posture as SVM: butr ships no chain-id → name table. Consumers
-  // overlay via structural typing.
   name: walletName,
   namespace: "sui",
   reference: chainId.slice(SUI_PREFIX.length),

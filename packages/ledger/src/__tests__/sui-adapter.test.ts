@@ -3,8 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { SuiAppConstructor, SuiAppLike, TransportFactory, TransportLike } from "../adapter";
 import { createLedgerAdapter, createSuiLedgerAdapter } from "../adapter";
 
-// 32-byte ed25519 pubkey + 32-byte address filled with the index so
-// each derivation path produces a distinguishable hex address.
 const buildFakePubkey = (index: number): Uint8Array => {
   const buf = new Uint8Array(32);
   buf.fill(index + 1);
@@ -14,7 +12,6 @@ const buildFakePubkey = (index: number): Uint8Array => {
 const buildFakeAddress = (index: number): Uint8Array => {
   const buf = new Uint8Array(32);
   // Distinguish address bytes from pubkey bytes so we don't accidentally
-  // verify against the wrong field.
   buf.fill((index + 1) << 4);
   return buf;
 };
@@ -32,7 +29,6 @@ const buildFakeSuiCtor = (onGetPublicKey?: (path: string) => void): SuiAppConstr
     }
     getPublicKey(path: string): Promise<{ address: Uint8Array; publicKey: Uint8Array }> {
       onGetPublicKey?.(path);
-      // Parse the trailing index off the path (e.g. "44'/784'/0'/0'/2'" → 2)
       const tail = path.split("/").pop() ?? "0'";
       const idx = Math.trunc(Number(tail.replace(/'$/v, "")));
       return Promise.resolve({
@@ -82,7 +78,6 @@ describe("createSuiLedgerAdapter", () => {
     expect(adapter.name).toBe("Ledger");
     expect(adapter.chainPlatform).toBe("sui");
     // Sui's Ledger app exposes no off-chain message signing, so
-    // signMessage capability is false (unlike EVM/SVM).
     expect(adapter.capabilities.signMessage).toBe(false);
     expect(adapter.capabilities.sendTransaction).toBe(false);
     expect(adapter.capabilities.getBalance).toBe(false);
@@ -137,7 +132,6 @@ describe("createSuiLedgerAdapter", () => {
     await adapter.connect();
     const accounts = await adapter.getAccounts!();
     expect(accounts).toHaveLength(3);
-    // Each path produces a unique address.
     const addresses = accounts.map((a) => a.walletAddress);
     expect(new Set(addresses).size).toBe(3);
     for (const account of accounts) {
@@ -349,7 +343,6 @@ describe("createLedgerAdapter dispatch (sui)", () => {
 
     await adapter.connect();
     await adapter.getAccounts!();
-    // First call is connect() at index 0; then getAccounts walks 0,1.
     expect(seen).toEqual(["44'/784'/0'/0'/0'", "44'/784'/0'/0'/0'", "44'/784'/0'/0'/1'"]);
   });
 });

@@ -44,11 +44,6 @@ type InjectedWindow = {
   injectedWeb3?: Record<string, InjectedWindowProvider>;
 };
 
-// `<Bytes>` / `</Bytes>` wrapper polkadot-js, Talisman, and SubWallet add
-// around raw messages before signing (prevents signed messages from being
-// replayed as transaction payloads). Verifiers must check signatures
-// against the wrapped bytes, which is why butr returns them as
-// `signedMessage`.
 const BYTES_PREFIX = new TextEncoder().encode("<Bytes>");
 const BYTES_SUFFIX = new TextEncoder().encode("</Bytes>");
 
@@ -68,7 +63,5 @@ const readInjectedWindow = (target?: InjectedWindow | null): InjectedWindow | nu
 };
 
 export type { Injected, InjectedAccount, InjectedSigner, InjectedWindow, InjectedWindowProvider };
-// Polkadot uses 0x-prefixed hex; alias the shared prefixed variant to the
-// existing local name so internal callers stay unchanged.
 export { bytesToHexPrefixed as bytesToHex, hexToBytes } from "@usebutr/core";
 export { readInjectedWindow, wrapBytes };

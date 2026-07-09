@@ -1,7 +1,6 @@
 import { getLLMText } from "@/lib/get-llm-text";
 import { source } from "@/lib/source";
 
-// Statically cached forever — no server runtime needed.
 export const revalidate = false;
 
 /**

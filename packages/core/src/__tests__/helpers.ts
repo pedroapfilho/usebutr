@@ -95,9 +95,6 @@ const createMockStoragePair = () => ({
 
 const createMockConfig = (overrides?: Partial<WalletManagerConfig>): WalletManagerConfig => ({
   connectors: [],
-  // Honor the requested connector id so the pool keys (entry.connector.id) match
-  // the argument passed to connectWallet. Tests that need a specific connector
-  // shape pass `createConnector` in `overrides`.
   createConnector: vi.fn((id: string) => createMockConnector({ id })),
   ...overrides,
 });

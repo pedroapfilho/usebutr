@@ -37,7 +37,6 @@ const pickBitcoinChain = (wallet: WalletStandardWallet): string | null => {
 
 const buildBitcoinChain = (chainId: string, walletName: string): ChainBase => ({
   id: chainId,
-  // Same posture as EVM/SVM/Sui: butr ships no chain-id → name table.
   name: walletName,
   namespace: "bip122",
   reference: chainId.slice(BITCOIN_PREFIX.length),
@@ -168,8 +167,6 @@ const buildBitcoinAdapter = (
     },
 
     getSigner() {
-      // Consumers cast to whatever Bitcoin signing wrapper they use
-      // (bitcoinjs-lib's Signer, scure-btc-signer's HDWallet, etc.) or
       // call butr's adapter directly for PSBT / send-transfer.
       return Promise.resolve(wallet);
     },

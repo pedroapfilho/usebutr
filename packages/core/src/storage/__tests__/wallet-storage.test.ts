@@ -67,8 +67,6 @@ describe("WalletStorage", () => {
         id: "acc-1",
         walletAddress: "0x123",
       };
-      // Entry without `accounts` is invalid by the current schema and
-      // gets warned + dropped on read.
       const invalid = {
         metamask: {
           account,
@@ -169,8 +167,6 @@ describe("WalletStorage", () => {
       expect(stored).toEqual({});
     });
 
-    // Regression: `polkadot` was missing from the storage allowlist, so
-    // Polkadot entries were rejected on write and never reconnected.
     it("persists every supported chain platform, including polkadot", async () => {
       const { storage } = createStorage();
       const account = createMockAccount();
@@ -187,7 +183,6 @@ describe("WalletStorage", () => {
 
       await storage.setPool(pool);
 
-      // Round-trips through the read-side validator too.
       const restored = await storage.getPool();
       expect(Object.keys(restored).toSorted()).toEqual([
         "bitcoin",
@@ -199,9 +194,6 @@ describe("WalletStorage", () => {
       expect(restored.polkadot?.chainPlatform).toBe("polkadot");
     });
 
-    // A pool mixing a polkadot entry with others must persist all of them —
-    // the invalid-polkadot rejection used to abort the whole write, dropping
-    // the valid svm sibling alongside it.
     it("persists a polkadot + svm pool without dropping either", async () => {
       const { storage } = createStorage();
       const account = createMockAccount();
@@ -235,9 +227,6 @@ describe("WalletStorage", () => {
       const { persistent, storage } = createStorage();
       const account = createMockAccount();
       const connector = createMockConnector({ chainPlatform: "evm", id: "metamask" });
-      // Force an invalid entry by mutating the connector's chainPlatform
-      // out of band — simulates a programming bug inside butr's reducer
-      // that produces a corrupted ConnectedWallet.
       const brokenConnector = {
         ...connector,
         chainPlatform: "cosmos" as unknown as "evm",
@@ -248,7 +237,6 @@ describe("WalletStorage", () => {
 
       await storage.setPool(pool);
 
-      // Validator catches the invalid platform; nothing is persisted.
       expect(await persistent.getItem("test-pool")).toBeNull();
     });
   });

@@ -102,7 +102,6 @@ const WalletConnectDialog = ({
   }, [open]);
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
-    // Clicks on the dialog element itself (not its children) hit the backdrop
     if (e.target === dialogRef.current) {
       onClose();
     }

@@ -40,7 +40,6 @@ describe("createFakeAdapter", () => {
     const a = createFakeAdapter({ capabilities: { requestAccounts: false, switchAccount: false } });
     expect(a.capabilities.requestAccounts).toBe(false);
     expect(a.capabilities.switchAccount).toBe(false);
-    // Untouched capabilities keep their defaults.
     expect(a.capabilities.getBalance).toBe(true);
     expect(a.capabilities.signMessage).toBe(true);
   });

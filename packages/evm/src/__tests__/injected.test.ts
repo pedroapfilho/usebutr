@@ -47,7 +47,6 @@ describe("discoverInjectedAdapter", () => {
       target: { ethereum: fakeProvider },
     });
 
-    // EIP-6963 fired before the settle timer
     seenEip6963 = true;
     vi.advanceTimersByTime(50);
 

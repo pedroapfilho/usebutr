@@ -95,21 +95,14 @@ const buildInitialConfig = (
 const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
   const { children, discovery: discoveryProp } = props;
 
-  // `adapters` is mutated in-place by the discovery subscription so the
-  // store's `createConnector` closure always sees the latest discovered set.
   const [adapters] = useState<Map<string, WalletAdapter>>(() => new Map());
   const [discoveredList, setDiscoveredList] =
     useState<ReadonlyArray<WalletAdapter>>(EMPTY_DISCOVERED);
 
-  // Store is created once; `buildInitialConfig` closes over `props` at first
-  // render and `adapters` (the stable Map). Subsequent re-renders do not
-  // re-run this initializer.
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- captured once on mount
   const [store] = useState<WalletStore>(() =>
     createWalletStore(buildInitialConfig(adapters, props)),
   );
 
-  // Discovery subscription ref is also locked to the first render value.
   // eslint-disable-next-line react-hooks/exhaustive-deps -- captured once on mount
   const [discovery] = useState<WalletSource | undefined>(() => discoveryProp);
 

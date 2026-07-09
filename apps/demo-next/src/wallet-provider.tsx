@@ -11,8 +11,6 @@ import { discoverEvmAdapters } from "@usebutr/evm";
 import { WalletManagerProvider } from "@usebutr/react";
 import { type ReactNode, useState } from "react";
 
-// EVM-only: @usebutr/react + @usebutr/evm. No @usebutr/svm / @usebutr/wallets in the
-// bundle — discovery is a WalletSource built from the EVM discoverer.
 const evmDiscovery = createWalletSource(discoverEvmAdapters);
 
 const STORAGE_KEY_PREFIX = "butr-demo";
@@ -36,9 +34,6 @@ type WalletProviderProps = {
 };
 
 const WalletProvider = ({ children, initialCookies, initialState }: WalletProviderProps) => {
-  // Build the storage once at mount. The cookie driver covers the
-  // persistent slot (pool / selection / active connector) so the same
-  // values are reachable on the server; the session slot stays on
   // sessionStorage (cookies can't model "until tab closes" cleanly).
   const [storage] = useState(
     () =>
@@ -46,8 +41,6 @@ const WalletProvider = ({ children, initialCookies, initialState }: WalletProvid
         keyPrefix: STORAGE_KEY_PREFIX,
         persistent: createCookieStorageDriver({
           initialCookies,
-          // Local dev runs on http://localhost — opt out of Secure so
-          // the browser actually stores the cookie.
           secure: process.env.NODE_ENV === "production",
         }),
         session: createBrowserStorageDriver().session,

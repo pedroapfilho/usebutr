@@ -7,9 +7,6 @@ import type {
 } from "@wormhole-foundation/sdk-connect";
 import { BrowserProvider, type Eip1193Provider } from "ethers";
 
-// Wormhole's EVM `UnsignedTransaction` carries an ethers-shaped
-// `TransactionRequest` under `.transaction` plus a human-readable
-// `.description`.
 type EvmUnsignedTx<N extends Network, C extends Chain> = UnsignedTransaction<N, C> & {
   description: string;
   transaction: {

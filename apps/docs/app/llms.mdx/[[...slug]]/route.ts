@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { getLLMText } from "@/lib/get-llm-text";
 import { source } from "@/lib/source";
 
-// Statically pre-rendered for every docs page.
 export const revalidate = false;
 
 /**

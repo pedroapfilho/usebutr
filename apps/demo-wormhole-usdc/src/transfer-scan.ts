@@ -11,9 +11,6 @@ import { Interface, JsonRpcProvider, zeroPadValue } from "ethers";
 
 import type { ChainSpec } from "./chains";
 
-// A burn tx located on-chain. Discovery only needs the source chain + tx
-// hash; the Wormhole SDK's `parseTransactionDetails` decodes the route,
-// amount, and message from there.
 type DiscoveredBurn = { sourceChain: Chain; txid: string };
 
 type EvmScanResult = {
@@ -28,27 +25,19 @@ type SolanaScanResult = {
   scannedSignatures: number;
 };
 
-// CCTP V1 TokenMessenger burn event. `depositor` is indexed (topic 3), so
 // the RPC filters to exactly this wallet's burns server-side.
 const burnInterface = new Interface([
   "event DepositForBurn(uint64 indexed nonce, address indexed burnToken, uint256 amount, address indexed depositor, bytes32 mintRecipient, uint32 destinationDomain, bytes32 destinationTokenMessenger, bytes32 destinationCaller)",
 ]);
 const DEPOSIT_FOR_BURN_TOPIC = burnInterface.getEvent("DepositForBurn")?.topicHash ?? "";
 
-// Public testnet RPCs cap `eth_getLogs` block ranges, so walk the window in
-// chunks. The wall-clock coverage of a fixed block count varies by chain
-// block time — surfaced to the user via `EVM_LOOKBACK_BLOCKS`.
 const EVM_LOOKBACK_BLOCKS = 100_000;
 const EVM_CHUNK_BLOCKS = 9000;
 
-// Solana has no "burns by address" primitive, so we page recent signatures
-// and inspect each tx for a CCTP program. Bounded + disclosed in the UI.
 const SOLANA_SIGNATURE_LIMIT = 300;
 const SOLANA_PAGE_SIZE = 100;
 const SOLANA_TX_CONCURRENCY = 6;
 
-// Run `fn` over `items` with at most `limit` in flight — keeps the per-tx
-// Solana lookups fast without hammering a public RPC into rate limits.
 const mapPool = async <T, R>(
   items: ReadonlyArray<T>,
   limit: number,
@@ -68,10 +57,7 @@ const mapPool = async <T, R>(
   return results;
 };
 
-// Classic SPL token + associated-token program ids. USDC on Solana devnet
-// uses the classic Token program, so we derive the owner's USDC ATA — the
 // account CCTP mints into — to tell whether the active wallet is the
-// recipient of a given transfer.
 const ASSOCIATED_TOKEN_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
@@ -89,7 +75,6 @@ const deriveUsdcAta = async (owner: string, mint: string): Promise<string> => {
 };
 
 // Find this wallet's CCTP burns on an EVM source chain via a `depositor`-
-// filtered `DepositForBurn` log query, chunked across the lookback window.
 const scanEvmBurns = async (
   spec: ChainSpec,
   tokenMessenger: string,
@@ -119,7 +104,6 @@ const scanEvmBurns = async (
         }
       }
     } catch {
-      // A single bad chunk (rate limit / range cap) shouldn't drop the rest.
       partial = true;
     }
   }
@@ -129,7 +113,6 @@ const scanEvmBurns = async (
 type ParsedTx = { transaction?: { message?: { accountKeys?: Array<{ pubkey: string }> } } };
 
 // Find this wallet's CCTP burns on a Solana source chain by scanning recent
-// signatures and keeping those whose tx invokes a CCTP program.
 const scanSolanaBurns = async (
   spec: ChainSpec,
   programIds: ReadonlyArray<string>,
@@ -139,9 +122,7 @@ const scanSolanaBurns = async (
   const ownerAddress = toAddress(owner) as Address;
   const programSet = new Set(programIds);
 
-  // Page back through signatures (newest-first) up to the cap, so an active
   // wallet's older burns aren't missed by a single window. `reachedEnd`
-  // distinguishes "scanned all history" from "stopped at the cap".
   const candidates: Array<Signature> = [];
   let before: Signature | undefined;
   let totalFetched = 0;
@@ -191,8 +172,6 @@ const scanSolanaBurns = async (
       burns.push({ sourceChain: spec.chain, txid: signature });
     }
   });
-  // `partial` when we stopped at the cap with more history behind us — the
-  // user's burn could be older than what we scanned.
   return { burns, partial: !reachedEnd, scannedSignatures: scanned.length };
 };
 

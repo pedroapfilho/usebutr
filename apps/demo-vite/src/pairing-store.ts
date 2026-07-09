@@ -5,8 +5,6 @@ type PairingState = {
   uri: string | null;
 };
 
-// Module-level store: `onPairingUri` is wired at adapter-creation time,
-// outside the React tree, so the URI has to flow through shared state.
 const pairingStore = createStore<PairingState>(() => ({ uri: null }));
 
 const setPairingUri = (uri: string): void => {

@@ -234,8 +234,6 @@ describe("buildSvmAdapter", () => {
       chain: "solana:mainnet",
       transaction: txBytes,
     });
-    // `btoa(String.fromCharCode(...))` matches butr's cross-platform
-    // `bytesToBase64` helper (no Node `Buffer` dependency).
     const expectedBase64 = btoa(String.fromCodePoint(...signatureBytes));
     expect(sig).toBe(expectedBase64);
   });
@@ -268,7 +266,6 @@ describe("buildSvmAdapter", () => {
 
   it("subscribe() bridges standard:events change → accountChanged", () => {
     // Array because TS doesn't track assignments made inside the `on`
-    // callback on a plain `let`.
     const registered: Array<StandardEventsListener> = [];
     const eventsFeature: StandardEventsFeature = {
       on: vi.fn((_event, listener) => {
@@ -326,7 +323,6 @@ describe("buildSvmAdapter", () => {
     );
     const adapter = buildSvmAdapter(wallet);
     expect(adapter).not.toBeNull();
-    // The active chain leaks through via the account's chain.id
     void adapter
       ?.getAccount()
       // oxlint-disable-next-line promise/prefer-await-to-then -- one-off assertion in sync test
@@ -340,10 +336,8 @@ describe("buildSvmAdapter", () => {
 // Per-wallet SVM fixtures. Wallet Standard is a stricter protocol
 // than EIP-1193, so the wallets above behave uniformly along most
 // axes — there are fewer per-wallet quirks to test than on EVM. The
-// asserts below pin the protocol-level invariants across every
 // wallet we ship support for, so a wallet that ever drifts (e.g.
 // Wallet Standard spec change) surfaces as a test failure rather
-// than a runtime bug.
 
 describe("SVM wallet fixtures — protocol-level uniformity", () => {
   const buildWalletWithFullFeatures = (name: string): WalletStandardWallet => {
@@ -553,7 +547,6 @@ describe("buildSvmAdapter edge cases", () => {
 
   it("subscribe ignores `change` events with neither accounts nor chains", () => {
     // Array because TS doesn't track assignments made inside the `on`
-    // callback on a plain `let`.
     const captured: Array<StandardEventsListener> = [];
     const eventsFeature: StandardEventsFeature = {
       on: vi.fn((_event, listener) => {
@@ -575,7 +568,6 @@ describe("buildSvmAdapter edge cases", () => {
 
   it("subscribe propagates a chain-only `change` (D5: cluster switch)", () => {
     // Array because TS doesn't track assignments made inside the `on`
-    // callback on a plain `let`.
     const captured: Array<StandardEventsListener> = [];
     const eventsFeature: StandardEventsFeature = {
       on: vi.fn((_event, listener) => {
@@ -662,7 +654,6 @@ describe("buildSvmAdapter edge cases", () => {
 
   it("registerDisconnector emits a synthetic disconnected on invocation (D1)", () => {
     // Collected in an array because TS doesn't track assignments made
-    // inside the registerDisconnector callback on a plain `let`.
     const emits: Array<() => void> = [];
     const adapter = buildSvmAdapter(
       withFeatures(buildWallet(), { "standard:connect": connectFeature }),

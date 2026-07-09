@@ -46,7 +46,6 @@ type ConnectorLifecycle = {
 };
 
 const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecycle => {
-  // Private to the bridge — the runtime never reads or writes this Map.
   const unsubscribers = new Map<string, () => void>();
 
   const detach = (connectorId: string) => {
@@ -78,9 +77,7 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
               break;
             }
             case "disconnected": {
-              // Clear the subscription before notifying so the handler
               // sees a clean state and can't re-enter via dispatch
-              // chains.
               detach(connectorId);
               handlers.onDisconnected(connectorId, connector.chainPlatform);
               break;
@@ -100,7 +97,6 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
     detach,
 
     detachAll: () => {
-      // Snapshot keys before iterating because `detach` mutates the Map.
       const ids: Array<string> = [];
       for (const id of unsubscribers.keys()) {
         ids.push(id);

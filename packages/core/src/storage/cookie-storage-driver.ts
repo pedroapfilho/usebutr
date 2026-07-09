@@ -73,7 +73,7 @@ const readCookies = (): Map<string, string> => {
     try {
       out.set(name, decode(raw));
     } catch {
-      // Malformed entry; skip rather than crash hydration.
+      void 0;
     }
   }
   return out;
@@ -145,24 +145,16 @@ const createCookieStorageDriver = (options: CookieDriverOptions = {}): StorageDr
         getItem() {
           return null;
         },
-        removeItem() {
-          // server-side no-op
-        },
-        setItem() {
-          // server-side no-op
-        },
+        removeItem() {},
+        setItem() {},
       };
     }
     return {
       getItem(key) {
         return seeded.get(key) ?? null;
       },
-      removeItem() {
-        // server-side no-op — framework owns Set-Cookie
-      },
-      setItem() {
-        // server-side no-op — framework owns Set-Cookie
-      },
+      removeItem() {},
+      setItem() {},
     };
   }
   return {

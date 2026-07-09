@@ -19,14 +19,10 @@ const sleep = (ms: number): Promise<void> =>
   });
 
 // butr's SVM adapter returns the signature base64-encoded (its
-// cross-platform `bytesToBase64`). Solana explorers and RPCs speak
 // base58, so re-encode to the canonical signature string.
 const toBase58Signature = (base64: string): string =>
   getBase58Decoder().decode(getBase64Encoder().encode(base64));
 
-// Poll until the signature confirms. `completeTransfer` resolving means
-// "minted on-chain" — so the demo's balance refetch sees the funds and
-// the CreateATA tx is confirmed before the dependent Redeem is sent.
 const confirmSignature = async (rpc: SolanaRpc, sig: string): Promise<void> => {
   const deadline = Date.now() + CONFIRM_TIMEOUT_MS;
   while (Date.now() < deadline) {
@@ -47,12 +43,9 @@ const confirmSignature = async (rpc: SolanaRpc, sig: string): Promise<void> => {
   throw new Error(`Solana tx ${sig} not confirmed within ${CONFIRM_TIMEOUT_MS}ms`);
 };
 
-// A web3.js v1 `Keypair`-shaped signer the SDK may hand us for
-// program-derived accounts that need their own signature.
 type Web3Signer = { publicKey: unknown; secretKey: Uint8Array };
 
 // Legacy `Transaction`: `recentBlockhash` is a mutable base58 string and
-// the unsigned tx serializes only with `requireAllSignatures: false`.
 type LegacyTx = {
   partialSign: (...signers: Array<Web3Signer>) => void;
   recentBlockhash?: string;
@@ -62,17 +55,12 @@ type LegacyTx = {
   }) => Uint8Array;
 };
 
-// `VersionedTransaction`: the blockhash lives on the compiled message and
-// `sign` takes an array of signers.
 type VersionedTx = {
   message: { recentBlockhash: string };
   serialize: () => Uint8Array;
   sign: (signers: Array<Web3Signer>) => void;
 };
 
-// Wormhole's Solana `UnsignedTransaction` wraps a web3.js `Transaction`
-// (or `VersionedTransaction`) plus any extra program signers under
-// `.transaction`.
 type SolanaUnsignedTx<N extends Network, C extends Chain> = UnsignedTransaction<N, C> & {
   description: string;
   transaction: {
@@ -140,7 +128,6 @@ class ButrSvmWormholeSigner<N extends Network, C extends Chain> implements SignA
           transaction.partialSign(...signers);
         }
         // The wallet adds the fee-payer signature, so don't require a
-        // fully-signed tx here.
         serialized = transaction.serialize({
           requireAllSignatures: false,
           verifySignatures: false,

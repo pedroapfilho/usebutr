@@ -3,7 +3,6 @@ import { WalletManagerProvider } from "@usebutr/react";
 import { discoverSuiAdapters } from "@usebutr/sui";
 import type { ReactNode } from "react";
 
-// Sui-only: @usebutr/react + @usebutr/sui.
 const suiDiscovery = createWalletSource(discoverSuiAdapters);
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (

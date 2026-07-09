@@ -30,11 +30,9 @@ describe("discoverSvmAdapters", () => {
       getWallets: () => fakeApp,
     }));
 
-    // Re-import after mocking so the module picks up our mock.
     const { discoverSvmAdapters: subject } = await import("../wallet-standard");
     const seen: Array<string> = [];
     const unsubscribe = subject((adapter) => seen.push(adapter.id));
-    // Yield for the dynamic import inside the IIFE.
     await new Promise<void>((resolve) => {
       setTimeout(resolve, 0);
     });

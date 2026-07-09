@@ -9,9 +9,7 @@ import ReactDOM from "react-dom/client";
 import { App } from "./app";
 import { WalletProvider } from "./wallet-provider";
 
-// @ledgerhq/* transports expect Node's Buffer global, which Vite
 // doesn't polyfill. Assign it before the Ledger libs load (they're
-// dynamic-imported at connect time, so this always runs first).
 if (!("Buffer" in globalThis)) {
   Object.assign(globalThis, { Buffer });
 }

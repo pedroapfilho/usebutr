@@ -15,7 +15,6 @@ const nodeConfig = defineConfig({
       include: ["src/**/*.{ts,tsx}"],
       provider: "v8",
       reporter: ["text", "html", "json-summary"],
-      // Floor only; packages ratchet up via mergeConfig in their own vitest.config.ts.
       thresholds: {
         branches: 60,
         functions: 70,

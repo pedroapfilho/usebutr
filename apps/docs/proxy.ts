@@ -19,9 +19,6 @@ const proxy = (request: NextRequest) => {
   return NextResponse.next();
 };
 
-// Negotiation now lives at the site root, so scope it to rendered doc pages
-// only: skip the Markdown/llms endpoints (else they'd be rewritten onto
-// themselves), the search API, and any file-extension asset.
 export const config = {
   matcher: ["/((?!api|llms\\.mdx|llms\\.txt|llms-full\\.txt|_next|.*\\.).*)"],
 };

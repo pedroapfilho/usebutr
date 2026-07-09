@@ -45,7 +45,6 @@ const bytesToBase58 = (bytes: Uint8Array): string => {
  * `connected` flag is wired to butr's pool, so the adapter library's
  * autoConnect + UI work out of the box.
  */
-// All class members below implement BaseMessageSignerWalletAdapter (interface contract).
 class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
   // fallow-ignore-next-line unused-class-member
   readonly supportedTransactionVersions = new Set<0>([0]);
@@ -97,8 +96,6 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
 
   // fallow-ignore-next-line unused-class-member
   connect(): Promise<void> {
-    // butr already handled the actual connect handshake; this is the
-    // adapter-library lifecycle hook that signals "we're ready".
     if (this.connected) {
       return Promise.resolve();
     }
@@ -147,8 +144,6 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     // advertised uniformly across wallets — Phantom does, MetaMask Snap
     // (Solana) doesn't. Real dapps that need raw signing without sending
     // would feature-detect here and either implement the wallet-specific
-    // path or fall back to signAndSendTransaction. This demo focuses on
-    // signAndSendTransaction, so signTransaction stays unimplemented.
     return Promise.reject(
       new Error(
         "signTransaction is not implemented in this demo; use sendTransaction (which wraps signAndSendTransaction).",

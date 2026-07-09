@@ -53,9 +53,6 @@ const mapConnectionError = (raw: unknown): ConnectionError => {
     if (code === -32_002) {
       return { kind: "RequestPending", message };
     }
-    // EIP-1193: 4100 unauthorized, 4900 disconnected (all chains),
-    // 4901 disconnected (requested chain). All mean "no usable session"
-    // from butr's perspective → NotConnected.
     if (code === 4100 || code === 4900 || code === 4901) {
       return { kind: "NotConnected", message };
     }

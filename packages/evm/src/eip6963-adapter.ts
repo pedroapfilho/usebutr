@@ -1,7 +1,4 @@
 import type { Account, ChainBase, WalletAdapter } from "@usebutr/core";
-// EVM uses 0x-prefixed hex; alias the shared prefixed variant to the
-// existing local name to keep the package's public `bytesToHex`/`hexToBytes`
-// contract (and the "0xdeadbeef" test) identical.
 import { bytesToHexPrefixed as bytesToHex, hexToBytes, sanitizeIcon } from "@usebutr/core";
 
 import { resolveEip6963Capabilities } from "./capabilities";
@@ -42,8 +39,6 @@ const formatTokenUnits = (raw: bigint, decimals: number): string => {
   return fraction.length > 0 ? `${integer}.${fraction}` : integer.toString();
 };
 
-// ERC20 function selectors (first 4 bytes of keccak256 of the
-// signature). Hard-coding avoids pulling in an ABI encoder.
 const ERC20_BALANCE_OF_SELECTOR = "0x70a08231";
 const ERC20_DECIMALS_SELECTOR = "0x313ce567";
 const ERC20_SYMBOL_SELECTOR = "0x95d89b41";
@@ -66,7 +61,6 @@ const decodeAbiString = (hex: string): string => {
   if (clean.length === 0) {
     return "";
   }
-  // Length-prefixed string (standard ERC20)
   if (clean.length >= 128) {
     const lengthHex = clean.slice(64, 128);
     const length = Number(BigInt(`0x${lengthHex}`));
@@ -138,10 +132,6 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
 
     async connect(opts) {
       if (opts?.silent) {
-        // EIP-1193 has no silent variant of `eth_requestAccounts`. The
-        // closest non-interactive probe is `eth_accounts`, which returns
-        // the already-authorized set without a prompt. Empty → reject so
-        // hydration drops the stale entry instead of restoring nothing.
         const accounts = (await provider.request({
           method: "eth_accounts",
         })) as Array<string>;
@@ -161,7 +151,6 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         });
       } catch {
         // Many wallets don't implement wallet_revokePermissions yet —
-        // not a failure.
       }
     },
 
@@ -196,7 +185,6 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         throw new Error("No connected account");
       }
       if (!mint) {
-        // Native ETH path.
         const balanceHex = (await provider.request({
           method: "eth_getBalance",
           params: [first, "latest"],
@@ -209,8 +197,6 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
           value,
         };
       }
-      // ERC20 path. Three `eth_call`s in parallel — the wallet's RPC
-      // handles them locally so we don't need an external provider.
       const balanceCallData = `${ERC20_BALANCE_OF_SELECTOR}${padAddressForCall(first)}`;
       const [balanceHex, decimalsHex, symbolHex] = (await Promise.all([
         provider.request({
@@ -238,8 +224,6 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     },
 
     getSigner() {
-      // Consumers cast this to a viem WalletClient / ethers
-      // BrowserProvider / their preferred wrapper.
       return Promise.resolve(provider);
     },
 
@@ -265,16 +249,10 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       // that actually surfaces a fresh picker — Rabby / OKX / Binance
       // / Backpack silently return existing accounts; Phantom EVM and
       // Coinbase Wallet reject with `method not supported`. The
-      // `capabilities` layer (`EIP6963_RDNS_WITH_REQUEST_ACCOUNTS` in
-      // `capabilities.ts`) gates the
-      // demo button so users only see it where it'll do something
-      // visible; this method stays callable for consumers with
       // wallet-specific flows.
-      //
       // Fallback: rejecting wallets get routed through
       // `eth_requestAccounts`, which at least doesn't throw. It won't
       // reopen the picker but surfaces newly-added accounts on the
-      // next read.
       try {
         await provider.request({
           method: "wallet_requestPermissions",
@@ -333,8 +311,6 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     async signMessage(msg, account) {
       // Default to the first exposed account when the caller doesn't
       // specify one. MetaMask requires the address to be one currently
-      // exposed via `eth_requestAccounts`; pass any address from
-      // `ConnectedWallet.accounts` to sign with a non-active one.
       let signer = account?.walletAddress;
       if (!signer) {
         const accounts = (await provider.request({ method: "eth_accounts" })) as Array<string>;
@@ -357,11 +333,8 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
           listener({ type: "disconnected" });
           return;
         }
-        // Forward the FULL accounts array — `accountsChanged` reflects
         // the wallet's current exposure set, not an incremental add.
-        // The runtime mirrors this list verbatim into the pool entry,
         // so single-account-exposure wallets (Phantom EVM) don't end
-        // up with stale, non-signable addresses lingering in the array.
         void provider
           .request({ method: "eth_chainId" })
           // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async
@@ -410,10 +383,6 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         listener({ type: "disconnected" });
       };
 
-      // EIP-1193 `connect` fires when the provider (re)connects to a
-      // chain — e.g. the wallet comes back after being unreachable.
-      // Re-read accounts + chain and resync the pool entry; state is
-      // otherwise only derived from `accountsChanged`/`chainChanged`.
       const onConnect: Eip1193Listener = () => {
         void Promise.all([
           provider.request({ method: "eth_accounts" }),

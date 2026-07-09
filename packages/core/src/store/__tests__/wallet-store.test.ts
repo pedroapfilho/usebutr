@@ -339,7 +339,6 @@ describe("createWalletStore", () => {
       });
 
       await store.getState().connectWallet("test");
-      // intentionally NOT hydrating
       store.getState().disconnectWallet("test");
       expect(store.getState().pool.size).toBe(1);
     });
@@ -406,7 +405,6 @@ describe("createWalletStore", () => {
 
       await store.getState().connectWallet("metamask");
       await store.getState().connectWallet("rabby");
-      // Default: most-recently-connected wins
       expect(store.getState().selection.get("evm")).toBe("rabby");
 
       store.getState().setSelection("evm", "metamask");
@@ -454,8 +452,6 @@ describe("createWalletStore", () => {
       expect(subscribe).toHaveBeenCalledTimes(1);
 
       // Single-account-exposure wallet (Phantom EVM, MetaMask Snap):
-      // accountsChanged carries just the new active. Pool entry's
-      // `accounts` array drops the previous address.
       const next = createMockAccount({ walletAddress: "0xNEXT" });
       listener!({ account: next, accounts: [next], type: "accountChanged" });
 
@@ -464,7 +460,6 @@ describe("createWalletStore", () => {
       expect(wallet?.accounts.map((a) => a.walletAddress)).toEqual(["0xNEXT"]);
 
       // Multi-account-exposure wallet (MetaMask EVM): accountsChanged
-      // carries the full authorized set. Pool entry mirrors it verbatim.
       const alt = createMockAccount({ walletAddress: "0xALT" });
       listener!({ account: next, accounts: [next, alt], type: "accountChanged" });
       wallet = store.getState().pool.get("metamask");
@@ -715,9 +710,6 @@ describe("createWalletStore", () => {
 
       expect(store.getState().pool.size).toBe(0);
       expect(store.getState().isHydrated).toBe(true);
-      // Storage stays intact so a transient EIP-1193 `eth_accounts: []`
-      // (locked wallet, slow MetaMask init) doesn't erase the saved
-      // connection — the next hydrate retries.
       expect(removeSpy).not.toHaveBeenCalled();
     });
 
@@ -726,7 +718,6 @@ describe("createWalletStore", () => {
       const { storage, store } = createTestStore({
         createConnector: vi.fn().mockReturnValue(connector),
       });
-      // Store has a selection pointing at an id that's not in the pool.
       await storage.setSelection(new Map([["evm", "deleted-connector"]]));
 
       await hydrateStore(store);
@@ -787,8 +778,6 @@ describe("createWalletStore", () => {
 
     it("resetConnectionStatus clears connecting + error", () => {
       const { store } = createTestStore();
-      // Drive the store into an "error" state via the public API, then
-      // verify reset clears it back to idle.
       store.getState().setConnectionError({ kind: "UserRejected", message: "user rejected" });
       expect(store.getState().connectionStatus).toBe("error");
       store.getState().resetConnectionStatus();

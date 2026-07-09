@@ -185,8 +185,6 @@ const buildInjectedPolkadotAdapter = (
           ),
         );
       }
-      // Substrate accounts are chain-agnostic; switching is local state
-      // that tells consumers which chain context to target.
       chain = target;
       return Promise.resolve();
     },

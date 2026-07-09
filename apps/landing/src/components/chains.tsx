@@ -16,8 +16,6 @@ type Chain = {
   name: string;
 };
 
-// Every chain here is registered in the library's discovery: EVM chains via
-// @usebutr/evm, plus the Solana, Sui, Bitcoin, and Polkadot connectors.
 const CHAINS: Array<Chain> = [
   { Icon: NetworkEthereum, name: "Ethereum" },
   { Icon: NetworkSolana, name: "Solana" },

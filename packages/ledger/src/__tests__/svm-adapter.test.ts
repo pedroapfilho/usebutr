@@ -8,7 +8,6 @@ import type {
 } from "../adapter";
 import { createLedgerAdapter, createSvmLedgerAdapter } from "../adapter";
 
-// Three distinct 32-byte ed25519 pubkeys filled with the index so each
 // derivation path produces a distinguishable base58 address.
 const buildFakePubkey = (index: number): Uint8Array => {
   const buf = new Uint8Array(32);
@@ -29,13 +28,11 @@ const buildFakeSolanaCtor = (onGetAddress?: (path: string) => void): SolanaAppCo
     }
     getAddress(path: string): Promise<{ address: Uint8Array }> {
       onGetAddress?.(path);
-      // Parse the trailing index off the path (e.g. "44'/501'/0'/2'" → 2)
       const tail = path.split("/").pop() ?? "0'";
       const idx = Math.trunc(Number(tail.replace(/'$/v, "")));
       return Promise.resolve({ address: buildFakePubkey(idx) });
     }
     signOffchainMessage(_path: string, message: Uint8Array): Promise<{ signature: Uint8Array }> {
-      // Echo a deterministic 64-byte signature so tests can assert shape.
       void message;
       return Promise.resolve({ signature: buildFakeSig(0xab) });
     }
@@ -299,7 +296,6 @@ describe("createLedgerAdapter dispatch (svm)", () => {
 
     await adapter.connect();
     await adapter.getAccounts!();
-    // First call is connect() at index 0; then getAccounts walks 0,1.
     expect(seen).toEqual(["44'/501'/0'/0'", "44'/501'/0'/0'", "44'/501'/0'/1'"]);
   });
 });

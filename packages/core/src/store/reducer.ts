@@ -127,14 +127,6 @@ const findConnectorForPlatform = (
 const reducer = (state: State, event: Event): State => {
   switch (event.type) {
     case "HYDRATED": {
-      // Merge instead of replace. CONNECT_SUCCEEDED can fire during the
-      // late-restore window — discovery announces an adapter, the runtime
-      // calls tryRestoreFromPending, drainPending succeeds, the reducer
-      // adds the entry to state.pool — all BEFORE hydrate's outer await
-      // resolves and HYDRATED dispatches. A wholesale replace at that
-      // point wipes the freshly-restored late entry. Merging keeps both
-      // the eager-restored entries (event.pool) and the late-restored
-      // entries (state.pool).
       const pool = new Map<string, ConnectedWallet>(state.pool);
       for (const [id, entry] of event.pool) {
         pool.set(id, entry);
@@ -143,9 +135,6 @@ const reducer = (state: State, event: Event): State => {
       for (const [platform, id] of event.selection) {
         selection.set(platform, id);
       }
-      // Prefer hydrate's activeConnectorId when valid in the merged
-      // pool (matches the pre-reload selection). Fall back to any late-
-      // restore-driven active if hydrate's choice didn't restore eagerly.
       let activeConnectorId: string | null = null;
       if (event.activeConnectorId && pool.has(event.activeConnectorId)) {
         activeConnectorId = event.activeConnectorId;
@@ -154,11 +143,6 @@ const reducer = (state: State, event: Event): State => {
       } else if (pool.size > 0) {
         activeConnectorId = pool.keys().next().value ?? null;
       }
-      // Clear reconnectingIds for every entry that came back via the
-      // event's live-pool. Shadows that weren't upgraded (adapter not
-      // yet announced) stay in `state.pool` and stay in
-      // `reconnectingIds`; they'll be cleared individually by
-      // CONNECT_SUCCEEDED when discovery's late-restore path resolves.
       let nextReconnecting: ReadonlySet<string> = state.reconnectingIds;
       if (state.reconnectingIds.size > 0 && event.pool.size > 0) {
         const next = new Set(state.reconnectingIds);
@@ -197,15 +181,10 @@ const reducer = (state: State, event: Event): State => {
       const { connectorId, entry } = event;
       const existing = state.pool.get(connectorId);
 
-      // Drop the id from reconnectingIds when present. Covers both the
-      // late-restore path (discovery announced after the initial seed)
-      // and ordinary connects — the latter typically have an empty set
-      // so this is a no-op for them.
       const nextReconnecting: ReadonlySet<string> = state.reconnectingIds.has(connectorId)
         ? new Set([...state.reconnectingIds].filter((id) => id !== connectorId))
         : state.reconnectingIds;
 
-      // Same connector + same address: only flip the status, keep object refs stable
       // so reactive selectors don't churn.
       if (
         existing &&
@@ -218,9 +197,7 @@ const reducer = (state: State, event: Event): State => {
           connectionStatus: "success",
           pool:
             // When the existing entry was a shadow, the address may
-            // match but the connector reference is the placeholder.
             // Swap in the live entry so subsequent calls don't throw
-            // ShadowConnectorError.
             existing.connector === entry.connector
               ? state.pool
               : new Map([...state.pool, [connectorId, entry] as const]),
@@ -297,10 +274,7 @@ const reducer = (state: State, event: Event): State => {
       if (!wallet) {
         return state;
       }
-      // Pick the new active address. Three policies in priority order:
       //  1. Explicit `event.active` (wallet event or manual update knows
-      //     what should be active).
-      //  2. Preserve current active if it's still in the new list.
       //  3. Fall back to `accounts[0]` so the pool entry doesn't end up
       //     pointing at an address the wallet no longer exposes.
       let nextAccount: Account;
@@ -315,10 +289,7 @@ const reducer = (state: State, event: Event): State => {
         nextAccount = stillHasCurrent ? wallet.account : (event.accounts[0] ?? wallet.account);
       }
       // No-op short-circuit: when the wallet event echoes the current
-      // active and the accounts array hasn't changed shape, skip the
       // Map clone so `useSyncExternalStore` subscribers don't re-render.
-      // (Cheap heuristic — equality by reference for `accounts` would
-      // miss content changes; we compare by length + address set.)
       const sameAccount =
         nextAccount.walletAddress === wallet.account.walletAddress &&
         nextAccount.chain.id === wallet.account.chain.id;
@@ -387,7 +358,6 @@ const reducer = (state: State, event: Event): State => {
     }
 
     default: {
-      // Exhaustiveness check — TS errors if a new event type is added without a case.
       const exhaustiveCheck: never = event;
       void exhaustiveCheck;
       return state;

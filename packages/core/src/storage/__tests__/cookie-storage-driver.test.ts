@@ -9,8 +9,6 @@ const fakeDocument = (initial = ""): { cookie: string } => {
       return cookie;
     },
     set cookie(value: string) {
-      // Only append the name=value portion to mimic how browsers
-      // accumulate cookies in document.cookie reads.
       const head = value.split(";")[0]?.trim() ?? "";
       if (!head) {
         return;
@@ -21,7 +19,6 @@ const fakeDocument = (initial = ""): { cookie: string } => {
       }
       const segments = cookie ? cookie.split("; ").filter(Boolean) : [];
       const filtered = segments.filter((s) => !s.startsWith(`${name}=`));
-      // Honour Max-Age=0 as "delete this cookie".
       if (/Max-Age=0(?:\b|$)/v.test(value)) {
         cookie = filtered.join("; ");
         return;
@@ -196,7 +193,6 @@ describe("createCookieStorageDriver — server context (no document)", () => {
     });
     expect(() => driver.setItem("butr-active", "phantom")).not.toThrow();
     // Snapshot is the source of truth on the server — setItem doesn't
-    // mutate it, so subsequent reads still return the original value.
     expect(driver.getItem("butr-active")).toBe("metamask");
     expect(() => driver.removeItem("butr-active")).not.toThrow();
     expect(driver.getItem("butr-active")).toBe("metamask");

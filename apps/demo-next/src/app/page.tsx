@@ -20,9 +20,6 @@ import { type ReactNode, useState } from "react";
 
 import { useDiscoveredWallets } from "../wallet-provider";
 
-// EVM-only demo: only @usebutr/evm's chain table enters the bundle.
-// `buildChainsByPlatform` fills the other platforms with empty lists so
-// the indexed access by chainPlatform stays type-safe.
 const CHAINS_BY_PLATFORM = buildChainsByPlatform({ evm: EVM_CHAINS_LIST });
 
 type SignState =

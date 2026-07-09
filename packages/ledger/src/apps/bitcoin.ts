@@ -166,7 +166,6 @@ const DEFAULT_ICON =
 
 const buildBitcoinChain = (chainId: string, walletName: string): ChainBase => {
   // Reference is the part after the `bip122:` (or other) namespace prefix.
-  // Falls back to the full id when no `:` is present so malformed inputs
   // don't crash the chain builder.
   const colonIndex = chainId.indexOf(":");
   const namespace = colonIndex === -1 ? "bip122" : chainId.slice(0, colonIndex);
@@ -239,13 +238,7 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
   let btc: BtcAppLike | null = null;
   let currentAddress: string | null = null;
 
-  // BIP-84 / -44 / -49 / -86 paths all share the shape
-  // `purpose'/coin'/account'/change/address` — the prefix configures the
-  // first four segments and the index becomes the last (non-hardened) one.
   const pathAt = (index: number): string => `${derivationPathPrefix}/${index}`;
-  // Account-level path for signPsbtBuffer's `accountPath` option — strips
-  // the trailing `/change` segment off the prefix. e.g.
-  // `"84'/0'/0'/0"` → `"84'/0'/0'"`.
   const accountPath = (): string => {
     const lastSlash = derivationPathPrefix.lastIndexOf("/");
     return lastSlash === -1 ? derivationPathPrefix : derivationPathPrefix.slice(0, lastSlash);
@@ -259,7 +252,6 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
       if (opts?.silent) {
         // Ledger connect always shows the browser's WebUSB device picker —
         // there is no silent reconnect. Reject so eager hydration doesn't
-        // pop the chooser on page load.
         throw new Error("Ledger requires an interactive connect");
       }
       const TransportFactoryImpl = options.transport ?? (await loadTransport());
@@ -297,7 +289,6 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
       const chain = buildBitcoinChain(chainId, name);
       const accounts: Array<Account> = [];
       // Sequential walk — the device serialises USB requests; parallel
-      // calls would deadlock the transport. Slow but correct.
       for (let i = 0; i < accountCount; i += 1) {
         // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
         const { bitcoinAddress } = await btc.getWalletPublicKey(pathAt(i), {
@@ -309,7 +300,6 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
     },
 
     getBalance() {
-      // Capabilities flag is `false`; this throw is defence-in-depth.
       return Promise.reject(
         new Error(
           "[butr/ledger] getBalance not supported — Ledger has no RPC. Use bitcoinjs-lib with an Esplora / Electrum client.",
@@ -318,7 +308,6 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
     },
 
     getSigner() {
-      // Hands the raw Btc app to consumers who want to wrap it.
       return Promise.resolve(btc);
     },
 
@@ -373,9 +362,6 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
           );
         }
       }
-      // Bitcoin's signMessage takes a hex-encoded message and returns
-      // (v, r, s) as hex. Repack into `r||s||v` to match butr's byte-array
-      // signature surface (mirrors how EVM signMessage packs the result).
       const messageHex = bytesToHex(message);
       const { r, s, v } = await btc.signMessage(path, messageHex);
       const sigHex = `${r.padStart(64, "0")}${s.padStart(64, "0")}${v.toString(16).padStart(2, "0")}`;

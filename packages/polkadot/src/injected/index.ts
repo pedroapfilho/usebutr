@@ -4,8 +4,6 @@ import { buildInjectedPolkadotAdapter } from "./adapter";
 import type { InjectedWindow } from "./injected-web3";
 import { readInjectedWindow } from "./injected-web3";
 
-// Display-name overrides for known registry keys. Unknown keys fall back
-// to a title-cased version of the key.
 const KNOWN_NAMES: Readonly<Record<string, string>> = {
   enkrypt: "Enkrypt",
   "nova-wallet": "Nova Wallet",
@@ -68,7 +66,6 @@ const discoverInjectedPolkadotAdapters = (
   };
 
   // Always do one synchronous read so tests (and fast extensions) don't
-  // wait for a timer.
   scan();
   for (const offset of polls) {
     if (offset === 0) {

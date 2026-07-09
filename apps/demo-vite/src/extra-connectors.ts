@@ -17,7 +17,6 @@ const createLedgerSafe = async (
 ): Promise<Array<WalletAdapter>> => {
   try {
     // Default id is "ledger" for every platform — unique ids keep all
-    // four adapters in the pool at once.
     return [await createLedgerAdapter({ id: `ledger-${platform}`, platform })];
   } catch (error) {
     console.error(`[demo] failed to create Ledger ${platform} adapter:`, error);
@@ -52,8 +51,6 @@ const emitWhenReady = async (
   }
 };
 
-// Factories run once per page load — repeat provider subscriptions
-// (React StrictMode's double effect in dev) reuse the same promises
 // instead of re-initializing the WalletConnect relay.
 let extraSources: Array<Promise<Array<WalletAdapter>>> | null = null;
 

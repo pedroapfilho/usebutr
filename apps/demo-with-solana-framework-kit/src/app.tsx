@@ -21,10 +21,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useDiscoveredWallets } from "./wallet-provider";
 
 const DEVNET = "https://api.devnet.solana.com";
-// System program (also doubles as a safe burn destination on devnet).
 const BURN_ADDRESS = address("11111111111111111111111111111111");
 
-// Transaction building rides on @solana/kit (the substrate framework-kit is
 // built on); the wallet — managed by butr — signs and submits.
 const SYSTEM_PROGRAM = address("11111111111111111111111111111111");
 const rpc = createSolanaRpc(DEVNET);
@@ -107,8 +105,6 @@ const Connected = ({
     [wallet.account.walletAddress],
   );
 
-  // framework-kit reactive read: auto-fetches and watches the balance for
-  // butr's connected address — no manual refetch wiring.
   const { error: balanceError, fetching, lamports } = useBalance(wallet.account.walletAddress);
   const balance = useMemo(() => {
     if (lamports !== null) {

@@ -92,11 +92,7 @@ const restoreOneEntry = async (
     // Eager restore: ask the wallet to reconnect to already-authorized
     // accounts without prompting (Wallet Standard `silent`, EIP-1193
     // `eth_accounts`). A wallet that can't do this silently rejects;
-    // the entry stays out of the pool for this session but storage is
-    // preserved so the next load (e.g. once the user unlocks their
     // wallet) can retry. EIP-1193 `eth_accounts: []` is ambiguous
-    // between "locked" and "deauthorized" — dropping the storage entry
-    // on a transient `[]` was the cause of the reload-disconnect race.
     await connector.connect({ silent: true });
     const freshAccount = await connector.getAccount();
     const accountToUse = freshAccount || entry.account;
@@ -119,15 +115,6 @@ const createHydrationCoordinator = (
   storage: WalletPersistence,
   createConnector: WalletManagerConfig["createConnector"],
 ): HydrationCoordinator => {
-  // Storage entries only leave on explicit `disconnectWallet`. Failed
-  // restores stay parked / reported as `dropped` — they re-attempt on
-  // the next hydrate, so a transient `eth_accounts: []` from a locked
-  // wallet doesn't permanently erase the connection.
-  //
-  // Private to the coordinator — the runtime never touches the queue
-  // directly. Storing the raw `StoredPoolEntry` is enough; the entry
-  // gets re-restored through the same `restoreOneEntry` path used by
-  // the eager pass, so the two code paths can't drift.
   const pending = new Map<string, StoredPoolEntry>();
 
   return {
@@ -138,7 +125,6 @@ const createHydrationCoordinator = (
       }
       const connector = createConnector(connectorId);
       if (!connector) {
-        // Adapter still not available — leave the entry parked.
         return null;
       }
       const outcome = await restoreOneEntry(connectorId, entry, connector);
@@ -157,15 +143,8 @@ const createHydrationCoordinator = (
       const pool = new Map<string, ConnectedWallet>();
       const dropped: Array<{ connectorId: string; reason: unknown }> = [];
 
-      // Clear pending from any prior hydrate() in the same coordinator
-      // instance (e.g. tests that rehydrate). The runtime only calls
-      // hydrate() once per provider mount, but defending against the
-      // multi-call case is cheap.
       pending.clear();
 
-      // Build the restore-task list eagerly. A null factory result
-      // parks the entry; an instantiated connector enters the parallel
-      // restore pool.
       const tasks: Array<Promise<RestoreOutcome>> = [];
       for (const [connectorId, entry] of Object.entries(storedPool)) {
         if (!entry) {
@@ -188,8 +167,6 @@ const createHydrationCoordinator = (
         dropped.push({ connectorId: outcome.connectorId, reason: outcome.error });
       }
 
-      // Reconcile selection: drop stale entries, fill platforms with
-      // a pool member but no stored selection.
       const selection = new Map<ChainPlatform, string>();
       for (const [platform, connectorId] of Object.entries(storedSelection)) {
         if (connectorId && pool.has(connectorId)) {

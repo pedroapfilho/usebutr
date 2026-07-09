@@ -44,8 +44,6 @@ const EMPTY_SNAPSHOT: WalletSnapshot = Object.freeze({
 });
 
 const toCookieMap = (input: CookieSource): Map<string, string> => {
-  // Plain record: `{ name: "value", ... }`. Distinguished from
-  // iterables by the absence of a `Symbol.iterator` callable.
   const maybeIterator = (input as { [Symbol.iterator]?: unknown })[Symbol.iterator];
   if (typeof maybeIterator !== "function") {
     return new Map(Object.entries(input as Readonly<Record<string, string>>));
@@ -209,8 +207,6 @@ const readWalletSnapshot = (
     activeConnectorId = rawActive;
   } else {
     // Mirror `HydrationCoordinator.hydrate` selection-fallback: when no
-    // explicit active is stored, surface any pool member so the render
-    // shell can still show "connected" instead of "disconnected".
     const firstKey = Object.keys(pool)[0];
     if (firstKey) {
       activeConnectorId = firstKey;

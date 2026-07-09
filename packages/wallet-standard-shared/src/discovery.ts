@@ -3,8 +3,6 @@ import { logWarn } from "@usebutr/core";
 
 import type { WalletStandardAppModule, WalletStandardWallet } from "./types";
 
-// Warn once per process: every platform calls this, so a missing optional peer
-// dep would otherwise log one identical line per chain.
 let warnedMissingApp = false;
 
 /**
@@ -79,7 +77,6 @@ const discoverWalletStandard = (
     const seenIds = new Set<string>();
     // wallet object → emitter that pushes synthetic `disconnected` to
     // this wallet's adapter's subscribers. Identity-keyed so the
-    // unregister handler can find the right emitter cheaply.
     const disconnectors = new Map<WalletStandardWallet, () => void>();
 
     const tryAdd = (wallet: WalletStandardWallet) => {

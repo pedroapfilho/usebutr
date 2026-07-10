@@ -55,8 +55,7 @@ Build with `@solana/web3.js`, submit through
 
 ```ts
 const feature = walletStd.features["solana:signAndSendTransaction"] as
-  | SolanaSignAndSendTransactionFeature
-  | undefined;
+  SolanaSignAndSendTransactionFeature | undefined;
 if (!feature) throw new Error("Wallet does not advertise solana:signAndSendTransaction");
 const account = walletStd.accounts[0];
 

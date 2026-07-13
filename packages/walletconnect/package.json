@@ -44,7 +44,7 @@
     "@repo/typescript-config": "workspace:*",
     "@walletconnect/universal-provider": "^2.23.10",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   },
   "peerDependencies": {
     "@walletconnect/universal-provider": "^2.0.0"

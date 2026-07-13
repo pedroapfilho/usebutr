@@ -42,15 +42,18 @@ const formatBalance = (b: UsdcBalance): string => {
 
 const ChainSelect = ({
   disabled,
+  label,
   onChange,
   value,
 }: {
   disabled: boolean;
+  label: string;
   onChange: (chain: Chain) => void;
   value: Chain;
 }) => (
   <select
-    className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs text-neutral-700 focus:outline-none disabled:opacity-50"
+    aria-label={label}
+    className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs text-neutral-700 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:outline-none disabled:opacity-50"
     disabled={disabled}
     onChange={(e) => onChange(e.target.value as Chain)}
     value={value}
@@ -86,8 +89,8 @@ const TokenIO = ({
     <div className="mt-2 flex items-baseline justify-between gap-3">
       {onAmountChange ? (
         <input
-          aria-label="Amount to send"
-          className="w-full bg-transparent text-2xl font-semibold text-neutral-900 placeholder-neutral-300 focus:outline-none"
+          aria-label="USDC amount to send"
+          className="w-full rounded-sm bg-transparent text-2xl font-semibold text-neutral-900 placeholder-neutral-300 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:outline-none"
           inputMode="decimal"
           onChange={(e) => onAmountChange(e.target.value)}
           placeholder="0"
@@ -318,7 +321,12 @@ const App = () => {
           balance={formatBalance(srcBalance)}
           direction="out"
           networkSlot={
-            <ChainSelect disabled={isWorking} onChange={selectSource} value={sourceChain} />
+            <ChainSelect
+              disabled={isWorking}
+              label="Source chain"
+              onChange={selectSource}
+              value={sourceChain}
+            />
           }
           onAmountChange={isWorking ? undefined : setAmountInput}
         />
@@ -337,7 +345,14 @@ const App = () => {
           amountValue={amountInput}
           balance={formatBalance(dstBalance)}
           direction="in"
-          networkSlot={<ChainSelect disabled={isWorking} onChange={selectDest} value={destChain} />}
+          networkSlot={
+            <ChainSelect
+              disabled={isWorking}
+              label="Destination chain"
+              onChange={selectDest}
+              value={destChain}
+            />
+          }
         />
       </section>
 

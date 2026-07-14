@@ -69,7 +69,7 @@ const decodeAbiString = (hex: string): string => {
       return new TextDecoder().decode(hexToBytes(dataHex));
     }
   }
-  // bytes32 fallback — trim trailing zero bytes.
+  // bytes32 fallback; trim trailing zero bytes.
   const buf = hexToBytes(clean.slice(0, 64));
   let end = buf.length;
   while (end > 0 && buf[end - 1] === 0) {
@@ -120,8 +120,8 @@ const buildEvmAccount = (address: string, chain: ChainBase): Account => ({
  *    account on the currently-connected chain. The token's own
  *    `decimals()` and `symbol()` are queried for accurate formatting;
  *    if `symbol()` is non-standard (bytes32) it's decoded as best-
- *    effort. Routed through `eth_call` on the wallet's own provider
- *    — the demo doesn't ship a separate RPC.
+ *    effort. Routed through `eth_call` on the wallet's own provider;
+ *    the demo doesn't ship a separate RPC.
  *  - `getSigner` returns the raw EIP-1193 provider. Wrap it in viem's
  *    `createWalletClient` or ethers' `BrowserProvider` at the call site.
  */
@@ -150,7 +150,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
           params: [{ eth_accounts: {} }],
         });
       } catch {
-        // Many wallets don't implement wallet_revokePermissions yet —
+        // Many wallets don't implement wallet_revokePermissions yet;
       }
     },
 
@@ -246,7 +246,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       // Preferred path: EIP-2255 `wallet_requestPermissions` reopens
       // the wallet's account-picker UI so the user can grant new
       // accounts. In practice, MetaMask is the only major EVM wallet
-      // that actually surfaces a fresh picker — Rabby / OKX / Binance
+      // that actually surfaces a fresh picker; Rabby / OKX / Binance
       // / Backpack silently return existing accounts; Phantom EVM and
       // Coinbase Wallet reject with `method not supported`. The
       // wallet-specific flows.
@@ -350,7 +350,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
           })
           // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async
           .catch(() => {
-            // Drop silently — next event will retry the read.
+            // Drop silently; next event will retry the read.
           });
       };
 
@@ -405,7 +405,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
           })
           // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async
           .catch(() => {
-            // Drop silently — a later event will resync.
+            // Drop silently; a later event will resync.
           });
       };
 

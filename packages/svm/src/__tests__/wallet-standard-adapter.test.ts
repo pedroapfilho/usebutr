@@ -14,7 +14,7 @@ import type {
   SolanaSignMessageFeature,
 } from "../wallet-standard-types";
 
-/** Narrows the WalletAdapter union the builder returns — signIn and
+/** Narrows the WalletAdapter union the builder returns; signIn and
  *  signTransaction only exist on the svm variant. */
 const expectSvmAdapter = (adapter: ReturnType<typeof buildSvmAdapter>) => {
   if (adapter?.chainPlatform !== "svm") {
@@ -335,7 +335,7 @@ describe("buildSvmAdapter", () => {
 
 // Per-wallet SVM fixtures. Wallet Standard is a stricter protocol
 // than EIP-1193, so the wallets above behave uniformly along most
-// axes — there are fewer per-wallet quirks to test than on EVM. The
+// axes; there are fewer per-wallet quirks to test than on EVM. The
 // wallet we ship support for, so a wallet that ever drifts (e.g.
 // Wallet Standard spec change) surfaces as a test failure rather
 

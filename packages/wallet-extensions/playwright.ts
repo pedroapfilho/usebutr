@@ -45,7 +45,7 @@ type ResolvedPaths = {
  * the registry into the subset that has been unpacked on disk and the
  * subset that hasn't. Pair with `buildLoadExtensionArgs(paths.map(p => p.path))`.
  *
- * The actual `.crx`-fetching step lives outside this package — the
+ * The actual `.crx`-fetching step lives outside this package; the
  * registry is the source of truth, the resolver is whatever the test
  * infrastructure uses (a CLI, a fixture, a Docker volume mount).
  */

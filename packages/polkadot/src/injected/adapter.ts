@@ -33,8 +33,8 @@ type PolkadotSignerHandle = {
  * digit (turning "Polkadot{.js}" → "polkadot-js"), then prepends the
  * injected Polkadot channel prefix.
  *
- * This is intentionally NOT the wallet-standard-shared `slugify` helper
- * — that helper embeds the `wallet-standard:` scheme which is wrong for
+ * This is intentionally NOT the wallet-standard-shared `slugify` helper;
+ * that helper embeds the `wallet-standard:` scheme which is wrong for
  * the injected channel. The ID convention for injected adapters is
  * `injected:polkadot:<slug>`.
  */
@@ -53,7 +53,7 @@ const buildPolkadotAccount = (address: string, chain: ChainBase): Account => ({
 
 /**
  * Wrap a `window.injectedWeb3[name]` provider into a butr
- * `PolkadotAdapter`. The provider is NOT enabled at construction —
+ * `PolkadotAdapter`. The provider is NOT enabled at construction;
  * `enable()` triggers the authorization prompt, so it runs lazily in
  * `connect()`. Before connect, `getAccount` returns null.
  *

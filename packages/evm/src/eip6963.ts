@@ -40,7 +40,7 @@ const resolveTarget = (target?: EventTarget): EventTarget | null => {
  *  3. Wallets that load later still dispatch their own announcement
  *     when they boot, so the listener stays attached for the lifetime
  *     of the discovery session.
- *  4. Dedup by `info.rdns` — wallets occasionally re-announce, and
+ *  4. Dedup by `info.rdns`; wallets occasionally re-announce, and
  *     `info.uuid` is regenerated per page load so it's not stable.
  *
  * Returns an unsubscribe function that removes the listener.

@@ -40,13 +40,13 @@ const isValidAccount = (value: unknown): boolean => {
  *
  * Used in two directions:
  *  - On read (`getPool`): malformed entries from storage are warned
- *    and dropped — legacy / cross-tab corruption shouldn't crash the
+ *    and dropped; legacy / cross-tab corruption shouldn't crash the
  *    consumer.
  *  - On write (`setPool`): the runtime's reducer state is the source
  *    of truth, and a malformed write would indicate a programming
  *    error inside butr. Throw rather than silently corrupt storage.
  *
- * Same validator either way — keeping the two paths symmetric means
+ * Same validator either way; keeping the two paths symmetric means
  * "what's storable" is a single fact.
  */
 const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry => {
@@ -91,7 +91,7 @@ class WalletStorage implements WalletPersistence {
    * this, two simultaneous `setPool` calls both read the pre-write
    * state, each merge their own entries, and whichever finishes last
    * overwrites the other's additions. Reads (`getPool`) don't enter
-   * the queue — they observe whatever's currently in the driver.
+   * the queue; they observe whatever's currently in the driver.
    */
   private poolMutationQueue: Promise<unknown> = Promise.resolve();
 
@@ -114,7 +114,7 @@ class WalletStorage implements WalletPersistence {
   /** Chain `fn` after the in-flight pool mutation. */
   private async serializePoolMutation<T>(fn: () => Promise<T>): Promise<T> {
     // Capture and advance the queue synchronously so concurrent
-    // callers serialize against the same head — awaiting the queue
+    // callers serialize against the same head; awaiting the queue
     const previous = this.poolMutationQueue;
     // oxlint-disable-next-line unicorn/consistent-function-scoping -- assigned by Promise constructor below
     let resolve: () => void = () => {};
@@ -124,7 +124,7 @@ class WalletStorage implements WalletPersistence {
     try {
       await previous;
     } catch {
-      // Previous mutation's failure shouldn't jam the queue — each
+      // Previous mutation's failure shouldn't jam the queue; each
     }
     try {
       return await fn();
@@ -164,7 +164,7 @@ class WalletStorage implements WalletPersistence {
    * Upsert the in-memory pool into storage. Additive: entries in
    * `pool` are written; entries already in storage that aren't in
    * `pool` are kept. The in-memory pool reflects "what's live right
-   * now", not "the complete list of remembered connections" — a
+   * now", not "the complete list of remembered connections"; a
    * silent reconnect that fails on reload leaves the entry out of
    * the pool but the saved entry stays so the next load can retry.
    * Use `removePoolEntry` for explicit eviction (the user clicked
@@ -184,7 +184,7 @@ class WalletStorage implements WalletPersistence {
             icon: wallet.connector.icon,
             name: wallet.connector.name,
           };
-          // The runtime's reducer state is the source of truth — a
+          // The runtime's reducer state is the source of truth; a
           // malformed entry here means a programming error inside butr,
           // write site rather than silently corrupting storage and
           // re-emerging as a "wallet didn't restore" puzzle on the next

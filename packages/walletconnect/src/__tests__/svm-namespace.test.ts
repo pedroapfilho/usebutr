@@ -144,7 +144,7 @@ describe("solanaNamespace", () => {
     const provider = createFakeProvider({
       request: (args) => {
         if (args.method === "solana_signMessage") {
-          // "111" base58 = 3 leading-zero bytes — easy to verify.
+          // "111" base58 = 3 leading-zero bytes; easy to verify.
           return Promise.resolve({ signature: "111" });
         }
         return Promise.resolve(null);

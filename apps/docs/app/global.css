@@ -24,7 +24,7 @@
 @source "../node_modules/fumadocs-ui/dist/**/*.js";
 
 /*
- * butr brand theme — generated via shadcn (amber primary).
+ * butr brand theme; generated via shadcn (amber primary).
  * Fumadocs' shadcn preset maps these tokens onto its own
  * `--color-fd-*` variables, so the whole UI inherits them.
  */

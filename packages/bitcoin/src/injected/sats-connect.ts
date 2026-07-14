@@ -6,7 +6,7 @@ import { BITCOIN_CHAINS } from "../chains";
 
 import { GENERIC_BITCOIN_ICON } from "./icon";
 
-/** sats-connect (Xverse) shape — a JSON-RPC-ish `request(method, params)`. */
+/** sats-connect (Xverse) shape; a JSON-RPC-ish `request(method, params)`. */
 type SatsConnectProvider = {
   request: (
     method: string,

@@ -5,7 +5,7 @@
  *
  * Spec: https://github.com/anza-xyz/wallet-standard (Solana features)
  *
- * These shapes intentionally narrow the spec — they describe only the
+ * These shapes intentionally narrow the spec; they describe only the
  * fields butr's adapter actually reads.
  */
 
@@ -59,7 +59,7 @@ type SolanaSignTransactionFeature = {
   ) => Promise<ReadonlyArray<SolanaSignTransactionOutput>>;
 };
 
-/** SIWS message fields — all optional; the wallet fills defaults. */
+/** SIWS message fields, all optional; the wallet fills defaults. */
 type SolanaSignInInput = Record<string, unknown>;
 
 type SolanaSignInOutput = {

@@ -1,8 +1,8 @@
 /**
  * WebUSB transport loading + minimal type surface.
  *
- * Every Ledger app — the Ethereum app, the Solana app, the Sui app, the
- * Bitcoin app — talks to the device through one of these transports.
+ * Every Ledger app (the Ethereum app, the Solana app, the Sui app, the
+ * Bitcoin app) talks to the device through one of these transports.
  * Only the per-app instructions (`@ledgerhq/hw-app-eth`, `hw-app-solana`,
  * `hw-app-sui`, `hw-app-btc`) differ. Pulling the transport out of the
  * monolithic adapter lets each per-platform builder share the same
@@ -19,7 +19,7 @@ type TransportFactory = {
 
 /**
  * Dynamic-import `@ledgerhq/hw-transport-webusb`. Kept dynamic so the
- * peer dep stays optional — consumers who don't ship Ledger support
+ * peer dep stays optional; consumers who don't ship Ledger support
  * pay no bundle cost.
  *
  * Browser support: Chromium-based (Chrome, Edge, Brave, Arc). Firefox

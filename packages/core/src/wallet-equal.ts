@@ -7,8 +7,8 @@ import type { ConnectedWallet } from "./types";
  * selected-wallet, useWalletEntry) to suppress spurious re-renders
  * when the underlying Map churns but the resolved entry hasn't changed.
  *
- * Hoisted to its own module so the equivalence rule lives in one place
- * — if we ever extend the snapshot (e.g. to consider `accounts.length`),
+ * Hoisted to its own module so the equivalence rule lives in one place;
+ * if we ever extend the snapshot (e.g. to consider `accounts.length`),
  * every selector hook picks up the new rule for free.
  */
 const walletEqual = (a: ConnectedWallet | undefined, b: ConnectedWallet | undefined): boolean => {

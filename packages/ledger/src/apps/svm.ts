@@ -21,7 +21,7 @@ import { loadTransport } from "../transport";
  *  - `signTransaction` signs a pre-serialized transaction message. The
  *    device returns ONLY the signature; assembling the final signed tx
  *    (slotting the signature into the transaction's signatures array) is
- *    on the consumer — same as Ledger Live and most Solana wallets.
+ *    on the consumer; same as Ledger Live and most Solana wallets.
  *  - `signOffchainMessage` is the off-chain message signing path; it's
  *    what `signMessage` routes through.
  */
@@ -55,7 +55,7 @@ const loadSolana = async (): Promise<SolanaAppConstructor> => {
 
 /**
  * SVM-specific Ledger adapter options. Each option is **fully typed
- * for the Solana platform** — no opaque DI bag, no `unknown` chain hints.
+ * for the Solana platform**; no opaque DI bag, no `unknown` chain hints.
  */
 type SvmLedgerOptions = {
   /**
@@ -65,7 +65,7 @@ type SvmLedgerOptions = {
    */
   accountCount?: number;
   /**
-   * Solana cluster shortname. Stored locally — Ledger has no internal
+   * Solana cluster shortname. Stored locally; Ledger has no internal
    * "current cluster" concept; the cluster only affects the ChainBase
    * id butr surfaces to consumers. `switchChain` updates this value.
    * Default: `"mainnet"`.
@@ -145,7 +145,7 @@ const SUBSCRIBE_NOT_AVAILABLE =
 
 /**
  * Build a Ledger hardware-wallet adapter wired to the **Solana app**.
- * The returned adapter is fully-formed but UN-paired — pairing happens
+ * The returned adapter is fully-formed but UN-paired; pairing happens
  * when butr's runtime calls `adapter.connect()`, at which point the
  * browser shows the WebUSB permission prompt and the user unlocks
  * their Ledger and opens the Solana app.
@@ -156,14 +156,14 @@ const SUBSCRIBE_NOT_AVAILABLE =
  * **Signing model.** `signMessage` routes through Solana's off-chain
  * message signing (`signOffchainMessage`) and returns
  * `{ signature, signedMessage }` as butr expects. `signTransaction`
- * returns ONLY the 64-byte ed25519 signature bytes — the consumer
+ * returns ONLY the 64-byte ed25519 signature bytes; the consumer
  * assembles the final signed transaction by slotting that signature
  * into the transaction's `signatures` array (use `@solana/kit`'s
  * `partiallySignTransaction` or the legacy `Transaction.addSignature`
  * on `@solana/web3.js`). This matches how Ledger Live and most Solana
  * wallets work.
  *
- * **No broadcast.** `sendTx` rejects — Ledger has no RPC. The consumer
+ * **No broadcast.** `sendTx` rejects; Ledger has no RPC. The consumer
  * broadcasts the assembled transaction through their own Solana RPC
  * client.
  */
@@ -188,7 +188,7 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
     async connect(opts) {
       if (opts?.silent) {
         // Ledger connect always shows the browser's WebUSB device
-        // picker — there is no silent reconnect. Reject so eager
+        // picker; there is no silent reconnect. Reject so eager
         // hydration doesn't pop the chooser on page load.
         throw new Error("Ledger requires an interactive connect");
       }
@@ -224,7 +224,7 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
       }
       const chain = buildSolanaChain(cluster, name);
       const accounts: Array<Account> = [];
-      // Sequential walk — the device serialises USB requests; parallel
+      // Sequential walk; the device serialises USB requests; parallel
       for (let i = 0; i < accountCount; i += 1) {
         // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
         const { address } = await solana.getAddress(pathAt(i));
@@ -304,7 +304,7 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
      * Sign a serialized Solana transaction. Returns the raw 64-byte
      * ed25519 signature. The consumer is responsible for assembling
      * the final signed transaction by slotting this signature into
-     * the transaction's signatures array — `@solana/kit`'s
+     * the transaction's signatures array: `@solana/kit`'s
      * `partiallySignTransaction(...)` or `@solana/web3.js`'s
      * `Transaction.addSignature` both do this. Mirrors how Ledger
      * Live + every Solana wallet ships this surface.
@@ -343,7 +343,7 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
     },
 
     subscribe() {
-      // No-op — Ledger emits no events. Capabilities flag is `false`.
+      // No-op; Ledger emits no events. Capabilities flag is `false`.
       void SUBSCRIBE_NOT_AVAILABLE;
       return () => {};
     },

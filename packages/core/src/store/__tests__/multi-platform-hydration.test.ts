@@ -196,7 +196,7 @@ describe("multi-platform hydration (EVM + SVM)", () => {
   });
 
   it("restores EVM wallet via tryRestoreFromPending when its adapter arrives late (inverse race)", async () => {
-    // Less common — usually EIP-6963 is fast — but provable in principle.
+    // Less common (usually EIP-6963 is fast) but provable in principle.
     const storage = buildSharedStorage();
     const evmAdapter = buildEvmAdapter();
     const svmAdapter = buildSvmAdapter();

@@ -1,7 +1,7 @@
 /**
  * Normalize a wallet-announced icon string.
  *
- * Wallets announce their icon through external metadata — EIP-6963
+ * Wallets announce their icon through external metadata; EIP-6963
  * `providerInfo.icon`, Wallet Standard `wallet.icon`. That value is
  * not under butr's control, and some wallets ship data-URI icons with
  * surrounding whitespace (a newline left over from a pretty-printed
@@ -10,7 +10,7 @@
  *
  * Trims surrounding whitespace and treats an all-whitespace (or empty)
  * icon as absent, so consumers get either a usable string or
- * `undefined` — never a blank or malformed one. `undefined` passes
+ * `undefined`: never a blank or malformed one. `undefined` passes
  * through untouched.
  */
 const sanitizeIcon = (icon: string | undefined): string | undefined => {

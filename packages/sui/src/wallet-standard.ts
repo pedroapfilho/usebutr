@@ -10,7 +10,7 @@ import { buildSuiAdapter } from "./wallet-standard-adapter";
  * Runtime requires the `@wallet-standard/app` package, which is an
  * **optional peer dependency** of butr.
  *
- * Sui wallets share the same `getWallets()` bus as SVM wallets — Phantom
+ * Sui wallets share the same `getWallets()` bus as SVM wallets; Phantom
  * advertises features for SVM, Sui, and Bitcoin from a single Wallet
  * Standard wallet object. `buildSuiAdapter` returns `null` for wallets
  * that don't advertise any `sui:*` features, so we cleanly end up with

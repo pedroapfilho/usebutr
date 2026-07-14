@@ -61,10 +61,10 @@ const buildBitcoinAccount = (address: string, chain: ChainBase): Account =>
  *    butr's scope.
  *  - `getTransactionReceipt` returns `"Pending"` for the same reason.
  *  - `sendTx` expects the consumer to pass `{ amount: bigint, recipient: string }`
- *    via butr's `unknown` tx parameter — the simplest mental model that
+ *    via butr's `unknown` tx parameter; the simplest mental model that
  *    maps onto `bitcoin:sendTransfer`. PSBT-shaped flows go through
  *    `signTransaction`.
- *  - `signTransaction` expects a `Uint8Array` PSBT (raw bytes) — the
+ *  - `signTransaction` expects a `Uint8Array` PSBT (raw bytes); the
  *    same shape `bitcoin:signPsbt` accepts. Consumers building with
  *    `bitcoinjs-lib` get bytes via `psbt.toBuffer()`.
  *  - `switchChain` is local-state-only; the capability flag is `false`

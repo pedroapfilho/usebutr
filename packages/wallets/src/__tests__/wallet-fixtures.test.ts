@@ -1,7 +1,7 @@
 // Per-wallet fixture tests: each describe block pins behaviour we've
 // verified against the real wallet at the date shown. These tests
 // simulate the wallet's responses (error codes, picker behaviour)
-// rather than driving a real extension — that's Strategy A in the
+// rather than driving a real extension; that's Strategy A in the
 // testing matrix. Real-wallet Playwright coverage (Strategy C) would
 // When a wallet changes its behaviour upstream (new error code,
 // different fallback path), update the test AND
@@ -171,7 +171,7 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
           Promise.reject(Object.assign(new Error("User rejected the request"), { code: 4001 })),
       });
       // Use MetaMask info so the capability flag is true and the
-      // wallet — this is testing the rejection handling, not the
+      // wallet; this is testing the rejection handling, not the
       const adapter = buildEvmAdapter(baseInfo("io.metamask", "MetaMask"), provider);
       await expect(adapter.requestAccounts?.()).rejects.toMatchObject({ code: 4001 });
       expect(provider.requests.map((r) => r.method)).toEqual(["wallet_requestPermissions"]);

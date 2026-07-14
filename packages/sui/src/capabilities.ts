@@ -20,7 +20,7 @@ type WalletStandardCapabilityInput = {
  *   broadcast with their own RPC client (`@mysten/sui`'s SuiClient).
  * - `signMessage = sui:signPersonalMessage present`.
  * - `signIn = false`. Sui has no SIWS-equivalent feature in Wallet Standard.
- * - `switchChain = chainCount > 1`. Same posture as SVM — local re-routing
+ * - `switchChain = chainCount > 1`. Same posture as SVM; local re-routing
  *   for `signAndExecuteTransaction`'s per-call `chain` input.
  */
 const resolveSuiCapabilities = (input: WalletStandardCapabilityInput): WalletCapabilities => ({

@@ -102,7 +102,7 @@ describe("createWalletStore — initialState seeding", () => {
     const snapshot: WalletSnapshot = {
       activeConnectorId: "metamask",
       pool: { metamask: evmEntry() },
-      // Phantom is selected for SVM but not in pool — should be dropped.
+      // Phantom is selected for SVM but not in pool; should be dropped.
       selection: { evm: "metamask", svm: "phantom" },
     };
     const store = createWalletStore(createMockConfig({ initialState: snapshot }));

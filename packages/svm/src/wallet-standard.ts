@@ -9,7 +9,7 @@ import { buildSvmAdapter } from "./wallet-standard-adapter";
  *
  * Runtime requires the `@wallet-standard/app` package, which is an
  * **optional peer dependency** of butr. EVM-only consumers don't need
- * to install it — discovery will silently skip the SVM side if the
+ * to install it; discovery will silently skip the SVM side if the
  * module isn't resolvable.
  *
  * Install for SVM auto-discovery:

@@ -43,7 +43,7 @@ type WalletConnectOptions = {
   /**
    * Called with the WalletConnect pairing URI whenever the provider
    * needs the user to scan a QR code (or open a mobile deep link).
-   * butr ships no QR renderer by design — consumers wire their own
+   * butr ships no QR renderer by design; consumers wire their own
    * (`@walletconnect/modal`, `qrcode`, hand-rolled). On mobile,
    * forward the URI to `window.location` to trigger the OS's wallet
    * selection sheet.
@@ -95,7 +95,7 @@ const initProvider = async (
     provider.on("display_uri", onDisplayUri);
     let removed = false;
     cleanup = () => {
-      // Idempotent — calling removeListener twice (or after teardown) is
+      // Idempotent: calling removeListener twice (or after teardown) is
       if (removed) {
         return;
       }
@@ -166,7 +166,7 @@ const createWalletConnectAdapters = async (
     );
   }
   // Validate every requested namespace has a registered builder before
-  // we open a WC session — fail loudly upfront rather than after the
+  // we open a WC session; fail loudly upfront rather than after the
   const unsupported = requested.filter(([platform]) => !KNOWN_NAMESPACES[platform]);
   if (unsupported.length > 0) {
     throw new Error(

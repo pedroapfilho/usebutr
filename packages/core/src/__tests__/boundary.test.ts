@@ -6,7 +6,7 @@ const require = createRequire(import.meta.url);
 
 /**
  * Walk the workspace dependency graph starting from `packageName`,
- * following each package's `dependencies` (not devDependencies — peer
+ * following each package's `dependencies` (not devDependencies; peer
  * deps and dev deps are consumer-side concerns).
  */
 const collectDeps = (packageName: string): Set<string> => {

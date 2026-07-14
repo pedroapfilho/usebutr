@@ -11,7 +11,7 @@ import type { ChainBase } from "@usebutr/core";
  * - Signet:   `bip122:00000008819873e925422c1ff0f99f7c`
  *
  * Bitcoin has no per-call "switch chain" RPC across the major wallets,
- * so butr's adapter treats chain as a wallet-side configuration —
+ * so butr's adapter treats chain as a wallet-side configuration;
  * `switchChain` updates local state to influence subsequent calls (same
  * posture as SVM). Bitcoin's `switchChain` capability is `false` by
  * default; consumers building on top can opt in if their wallet exposes

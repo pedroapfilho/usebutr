@@ -24,7 +24,7 @@ type StoredPoolEntry = {
   icon?: string;
   /** Human-facing wallet name (e.g. "MetaMask") captured at persist
    *  time. Required so the shadow adapter renders the same identity
-   *  the live adapter will — no "metamask" → "MetaMask" swap at the
+   *  the live adapter will; no "metamask" → "MetaMask" swap at the
    *  hydration boundary. */
   name: string;
 };

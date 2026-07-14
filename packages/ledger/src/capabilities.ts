@@ -1,6 +1,6 @@
 import type { WalletCapabilities } from "@usebutr/core";
 
-/** Hardware-only — no RPC, no events, no broadcast. */
+/** Hardware-only: no RPC, no events, no broadcast. */
 const LEDGER_CAPABILITIES: WalletCapabilities = {
   getBalance: false,
   getTransactionReceipt: false,

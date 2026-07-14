@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useReducer } from "react";
 import { useWalletEntry } from "./selectors";
 
 /**
- * Async-resource hooks — return `AsyncState<T>` and run lifecycle
+ * Async-resource hooks: return `AsyncState<T>` and run lifecycle
  * effects under the hood. Each composes `useAsyncResource` (defined
  * below) with a selector from `./selectors.ts` (`useWalletEntry`) plus
  * a stable closure that calls the connector.
@@ -28,7 +28,7 @@ type AsyncAction<T> =
   | { error: unknown; type: "error" };
 
 /** Pure async-lifecycle reducer. One dispatch per state transition
- *  keeps `useEffect` clear of cascading setState calls — each effect
+ *  keeps `useEffect` clear of cascading setState calls; each effect
  *  branch invokes the reducer exactly once. */
 const asyncReducer = <T>(_state: AsyncState<T>, action: AsyncAction<T>): AsyncState<T> => {
   switch (action.type) {
@@ -59,7 +59,7 @@ const IDLE: AsyncState<never> = { data: null, error: null, status: "idle" };
  * on-deps-change → dispatch-result lifecycle that every async wallet
  * read needs. `fn` is the request closure; pass `null` to stay idle.
  *
- * Invalidation is keyed on the identity of `fn` itself — callers
+ * Invalidation is keyed on the identity of `fn` itself; callers
  * stabilise via `useMemo` and re-create the closure when they want a
  * refetch. This keeps the React-hooks exhaustive-deps lint rule happy
  * (the effect's deps list is the literal `[fn]`).
@@ -67,7 +67,7 @@ const IDLE: AsyncState<never> = { data: null, error: null, status: "idle" };
  * Why factored out: every consumer (`useSigner`, `useBalance`, future
  * `useTokenBalance`, `useTransactionReceipt`, …) needs the exact same
  * cancellation discipline. Centralising it keeps the fragile parts
- * (`cancelled` flag, dispatch order) in one place — adding a new
+ * (`cancelled` flag, dispatch order) in one place; adding a new
  * async hook becomes a 3-line definition.
  */
 const useAsyncResource = <T>(fn: (() => Promise<T>) | null): AsyncState<T> => {
@@ -102,7 +102,7 @@ const useAsyncResource = <T>(fn: (() => Promise<T>) | null): AsyncState<T> => {
 
 /**
  * Cached signer for a connector. Invalidates when `connectorId`, account
- * address, or chain id changes — so a chain switch or account switch in the
+ * address, or chain id changes, so a chain switch or account switch in the
  * wallet invalidates the cached signer automatically.
  *
  * If `connectorId` is omitted (or `null`/`undefined`), the active wallet's
@@ -127,7 +127,7 @@ type UseBalanceResult = AsyncState<Balance> & { refetch: () => void };
  * handle for poll-on-demand or after-action refreshes.
  *
  * If `connectorId` is omitted, the active wallet's balance is returned.
- * `mint` is forwarded to the connector — semantics depend on the chain.
+ * `mint` is forwarded to the connector; semantics depend on the chain.
  */
 const useBalance = (connectorId?: string | null, mint?: string): UseBalanceResult => {
   const wallet = useWalletEntry(connectorId);

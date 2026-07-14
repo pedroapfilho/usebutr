@@ -451,7 +451,7 @@ const Content = () => {
         </p>
       )}
       <PairingDialog />
-      {/* Dialog-based connect UX — recommended pattern for modal wallet pickers */}
+      {/* Dialog-based connect UX; recommended pattern for modal wallet pickers */}
       {available.length > 0 ? (
         <section>
           <h2 className="mb-3 text-sm font-semibold text-neutral-500">

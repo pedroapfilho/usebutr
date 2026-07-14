@@ -1,7 +1,7 @@
 import "./index.css";
 
 // uses Node's `Buffer` API. Browsers don't expose it, and Vite/rolldown
-// doesn't auto-polyfill — so we attach the `buffer` shim to
+// doesn't auto-polyfill, so we attach the `buffer` shim to
 // `wallet-provider` / `app` import any Solana modules.
 // oxlint-disable-next-line unicorn/prefer-node-protocol -- intentionally the npm browser polyfill, not the Node built-in
 import { Buffer } from "buffer";

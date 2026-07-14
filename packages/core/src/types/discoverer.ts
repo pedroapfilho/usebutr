@@ -6,16 +6,16 @@ import type { ChainPlatform, WalletAdapter } from "./wallet";
  * Each platform package (`@usebutr/evm`, `@usebutr/svm`, `@usebutr/sui`,
  * `@usebutr/bitcoin`) exports one of these. The aggregator package
  * (`@usebutr/wallets`) composes them into `autoDiscovery()` without
- * needing to know per-platform defaults — the descriptor owns them.
+ * needing to know per-platform defaults; the descriptor owns them.
  *
  * Adding a new chain platform means writing a `PlatformDiscoverer`
  * inside the new package and adding one import to the aggregator's
  * registry. The aggregator's logic doesn't need to grow.
  *
  * Two parts:
- *  - `subscribe` — the primary discovery channel (EIP-6963 / Wallet
+ *  - `subscribe`: the primary discovery channel (EIP-6963 / Wallet
  *    Standard / etc).
- *  - `fallback` — optional. The legacy-injected channel that should
+ *  - `fallback`: optional. The legacy-injected channel that should
  *    only emit if the primary channel hasn't produced an adapter for
  *    the same browser session by the settle deadline. `@usebutr/evm`
  *    has one (window.ethereum); `@usebutr/bitcoin` has one

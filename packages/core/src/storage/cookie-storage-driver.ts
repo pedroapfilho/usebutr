@@ -10,20 +10,20 @@ type CookieDriverOptions = {
    */
   domain?: string;
   /**
-   * Snapshot of cookies for the SSR pass — typically the result of
+   * Snapshot of cookies for the SSR pass; typically the result of
    * Next.js' `cookies()` (from `next/headers`) or a parsed
    * `req.headers.cookie`. Used only when `document` is unavailable.
    *
    * When provided, `getItem` reads from this snapshot during the
    * server render so the store sees the same persisted state the
    * client will see after hydration. Writes remain no-ops on the
-   * server — emitting `Set-Cookie` has to be done by the framework
+   * server: emitting `Set-Cookie` has to be done by the framework
    * layer that owns the response.
    */
   initialCookies?: InitialCookies;
   /**
    * Lifetime in seconds. Defaults to 30 days. Pass `undefined`
-   * (the default) for "until the session ends" — but note that
+   * (the default) for "until the session ends", but note that
    * butr persists wallet state across sessions, so a finite
    * max-age is usually what consumers want.
    */
@@ -33,7 +33,7 @@ type CookieDriverOptions = {
    */
   path?: string;
   /**
-   * `SameSite` attribute. Defaults to `"lax"` — restrictive enough
+   * `SameSite` attribute. Defaults to `"lax"`; restrictive enough
    * to avoid CSRF on cross-origin POSTs, permissive enough for
    * top-level navigations.
    */
@@ -113,7 +113,7 @@ const toCookieMap = (input: InitialCookies | undefined): Map<string, string> | n
 };
 
 /**
- * Cookie-backed storage driver. Reads/writes `document.cookie` —
+ * Cookie-backed storage driver. Reads/writes `document.cookie`;
  * server-readable, survives reloads, scoped per `domain`/`path`.
  *
  * **When to use this:** SSR apps that need to know who's connected
@@ -127,13 +127,13 @@ const toCookieMap = (input: InitialCookies | undefined): Map<string, string> | n
  * **Trade-offs vs `localStorage`:** cookies travel with every
  * request, so they cost bytes on the wire. Keep the storage key
  * prefix short, and prefer this driver for the `persistent` slot
- * only — the `session` slot can stay in `sessionStorage` (which
+ * only: the `session` slot can stay in `sessionStorage` (which
  * cookies can't natively model anyway).
  *
  * **Server-side writes are no-ops.** Emitting `Set-Cookie` requires
  * access to the framework's response object, which a storage driver
  * shouldn't reach into. The store doesn't mutate persisted state
- * during the SSR pass anyway — writes only fire after client mount,
+ * during the SSR pass anyway; writes only fire after client mount,
  * once `document.cookie` is reachable.
  */
 const createCookieStorageDriver = (options: CookieDriverOptions = {}): StorageDriver => {

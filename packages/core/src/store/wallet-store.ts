@@ -25,7 +25,7 @@ import { run } from "./wallet-store-helpers";
  * shadow adapter; every connector id enters `reconnectingIds` so
  * consumers can branch on "is this connection verified" without
  * waiting for the async silent reconnect. `isHydrated` flips true
- * synchronously — the consumer's first render sees the persisted
+ * synchronously: the consumer's first render sees the persisted
  * state in the live store, not undefined.
  */
 const seedStateFromSnapshot = (snapshot: WalletSnapshot): State => {
@@ -151,7 +151,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
         refreshPoolEntry(connectorId, [...accounts], active);
       },
       onDisconnected: (connectorId, chainPlatform) => {
-        // hides the wallet, but DON'T touch storage — EIP-1193 emits
+        // hides the wallet, but DON'T touch storage; EIP-1193 emits
         // MetaMask simply auto-locks. The two are indistinguishable
         // saved connection on every wallet lock. Keeping storage
         dispatch({ connectorId, type: "DISCONNECTED" });
@@ -304,7 +304,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
         // Drain: catch the race where a Wallet Standard adapter
         // announced BEFORE hydration finished populating its queue.
         // empty queue and silently returned, leaving SVM wallets
-        // not become an unhandled rejection, but it must still log —
+        // not become an unhandled rejection, but it must still log;
         for (const id of hydration.pendingIds()) {
           void run(
             () => get().tryRestoreFromPending(id),
@@ -400,7 +400,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
       },
 
       tryRestoreFromPending: async (connectorId) => {
-        // The eager hydration path doesn't check that flag either —
+        // The eager hydration path doesn't check that flag either;
         const outcome = await hydration.drainPending(connectorId);
         if (!outcome) {
           return;

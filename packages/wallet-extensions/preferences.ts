@@ -22,8 +22,8 @@ type WriteResult = {
  * Background:
  * https://developer.chrome.com/docs/extensions/how-to/distribute/install-extensions#preferences
  *
- * IMPORTANT: this method only works with **Google Chrome**. Chromium —
- * which Playwright bundles by default — does not honour
+ * IMPORTANT: this method only works with **Google Chrome**. Chromium,
+ * which Playwright bundles by default, does not honour
  * `external_update_url` pointing at `clients2.google.com`. To exercise
  * this strategy from Playwright, launch with `channel: 'chrome'`. For
  * Chromium-based runs, use the alternative `buildLoadExtensionArgs`

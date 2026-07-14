@@ -3,7 +3,7 @@
  * Follows the CAIP-2 chain identifier standard.
  *
  * Consumers extend this with app-specific fields (logos, block explorers, etc.)
- * via structural typing — butr never inspects beyond these 4 fields.
+ * via structural typing; butr never inspects beyond these 4 fields.
  */
 type ChainBase = {
   /** CAIP-2 identifier, e.g. "eip155:1", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" */

@@ -27,7 +27,7 @@ type WalletProviderProps = {
   /**
    * Typed view of the persisted pool, parsed via `readWalletSnapshot`
    * in the Server Component layout. Synchronously seeds the wallet
-   * store so `useActiveWallet` etc. return values from render zero —
+   * store so `useActiveWallet` etc. return values from render zero;
    * no flash, no `isHydrated` gate.
    */
   initialState?: WalletSnapshot;

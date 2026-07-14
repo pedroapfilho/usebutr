@@ -5,7 +5,7 @@ import type { UniversalProviderLike } from "../adapter";
 import { bitcoinNamespace } from "../namespaces/bitcoin";
 
 /** signTransaction only exists on the bitcoin variant of the
- *  WalletAdapter union — narrow on the discriminant before calling. */
+ *  WalletAdapter union; narrow on the discriminant before calling. */
 const expectBitcoinAdapter = (adapter: WalletAdapter): BitcoinAdapter => {
   if (adapter.chainPlatform !== "bitcoin") {
     throw new Error("expected a bitcoin adapter");

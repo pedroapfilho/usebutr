@@ -1,7 +1,7 @@
 /**
  * Minimal local types for the `@polkadot/extension-dapp` injectedWeb3
  * standard. Declared here (rather than depending on
- * `@polkadot/extension-inject`) so the connector stays lean — same
+ * `@polkadot/extension-inject`) so the connector stays lean; same
  * posture as `@usebutr/bitcoin`'s `UnisatProvider`. These narrow the
  * spec to only the fields butr reads.
  */

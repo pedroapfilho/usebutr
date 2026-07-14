@@ -49,7 +49,7 @@ const buildSolanaAccount = (address: string, chain: ChainBase): Account =>
 /**
  * Adapt a Solana Wallet Standard `Wallet` object into a butr
  * `WalletAdapter`. Returns `null` if the wallet doesn't advertise any
- * Solana chain or doesn't expose `standard:connect` — both required
+ * Solana chain or doesn't expose `standard:connect`; both required
  * for butr to do anything useful with it.
  *
  * **Capability gating**
@@ -68,7 +68,7 @@ const buildSolanaAccount = (address: string, chain: ChainBase): Account =>
  *    balance reads require an RPC connection that's outside butr's
  *    scope; consumers wrap their own RPC client.
  *  - `getTransactionReceipt` returns `{ status: "Pending" }`. Same
- *    reason — needs an RPC.
+ *    reason; needs an RPC.
  *  - `switchChain` updates butr's view of the current Solana cluster
  *    locally and routes subsequent `signAndSendTransaction` calls
  *    through the new chain. Wallet Standard has no "tell the wallet
@@ -81,7 +81,7 @@ const buildSolanaAccount = (address: string, chain: ChainBase): Account =>
  *    authorisations) silently return the existing accounts. butr
  *    refreshes the pool entry's `accounts` array either way.
  *  - `switchAccount` is intentionally unimplemented. Wallet Standard
- *    has no silent "use address X" feature — the user picks the active
+ *    has no silent "use address X" feature; the user picks the active
  *    account through the wallet's own UI. `signAndSendTransaction`
  *    accepts an `account` input, so consumers needing per-tx address
  *    selection can pick one from `accounts` at call time.
@@ -323,7 +323,7 @@ const buildSvmAdapter = (
               listener({ type: "disconnected" });
               return;
             }
-            // Forward the FULL accounts list — Wallet Standard's
+            // Forward the FULL accounts list; Wallet Standard's
             // change.accounts reflects the wallet's current exposure
             // sync with what the wallet actually allows us to sign with,
             // so single-account-exposure wallets (Phantom Solana,
@@ -356,14 +356,14 @@ const buildSvmAdapter = (
           `SVM adapter received non-Solana chain "${chain.id}". Pass a chain with namespace "solana".`,
         );
       }
-      // The wallet must advertise this cluster — otherwise
+      // The wallet must advertise this cluster; otherwise
       if (!wallet.chains.includes(chain.id)) {
         throw new Error(
           `Wallet ${wallet.name} does not advertise chain "${chain.id}". Available: ${wallet.chains.join(", ")}`,
         );
       }
       currentChainId = chain.id;
-      // pool entry's chain — the wallet itself has no event to fire here.
+      // pool entry's chain; the wallet itself has no event to fire here.
       notifyAccountChanged();
       return Promise.resolve();
     },

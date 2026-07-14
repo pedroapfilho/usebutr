@@ -11,7 +11,7 @@ import type { StorageDriver } from "@usebutr/core";
  * SQLite) and iOS (native serialization). Session storage has no true
  * AsyncStorage equivalent, so we namespace session keys under
  * `butr-session::` and rely on a startup sweep to purge them. For this
- * demo we just back both drivers with the same store — session entries
+ * demo we just back both drivers with the same store; session entries
  * will outlive the session but that's harmless given butr's session
  * storage only holds the active-connector id which gets overwritten
  * on the next connect anyway.

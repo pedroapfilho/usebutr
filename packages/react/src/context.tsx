@@ -18,7 +18,7 @@ const DiscoveredWalletsContext: React.Context<ReadonlyArray<WalletAdapter>> =
   createContext<ReadonlyArray<WalletAdapter>>(EMPTY_DISCOVERED);
 
 /**
- * All props — especially `on*` lifecycle callbacks, `storage`, and `discovery` —
+ * All props (especially `on*` lifecycle callbacks, `storage`, and `discovery`)
  * are captured once at mount via `useState` lazy initializers and are authoritative
  * for the provider's lifetime. Later prop changes are silently ignored, so consumers
  * must pass stable references: module-level values, `useRef`, or `useCallback`.
@@ -33,7 +33,7 @@ type WalletManagerProviderProps = {
    *  protocol code enters the bundle. */
   discovery?: WalletSource;
   /**
-   * Seed the store synchronously with persisted wallet state — typically
+   * Seed the store synchronously with persisted wallet state; typically
    * the return value of `readWalletSnapshot(cookies, { keyPrefix })`
    * called from a Server Component. With `initialState`, the store
    * starts with `isHydrated: true`, the pool populated with shadow

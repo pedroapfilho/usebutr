@@ -16,7 +16,7 @@ const createLedgerSafe = async (
   platform: (typeof LEDGER_PLATFORMS)[number],
 ): Promise<Array<WalletAdapter>> => {
   try {
-    // Default id is "ledger" for every platform — unique ids keep all
+    // Default id is "ledger" for every platform; unique ids keep all
     return [await createLedgerAdapter({ id: `ledger-${platform}`, platform })];
   } catch (error) {
     console.error(`[demo] failed to create Ledger ${platform} adapter:`, error);
@@ -55,8 +55,8 @@ const emitWhenReady = async (
 let extraSources: Array<Promise<Array<WalletAdapter>>> | null = null;
 
 /**
- * Create the explicit (non-injected) connectors — Ledger and
- * WalletConnect — and emit each through `onAdapter` as it becomes
+ * Create the explicit (non-injected) connectors, Ledger and
+ * WalletConnect, and emit each through `onAdapter` as it becomes
  * ready. Fire-and-forget: failures are logged, the wallet simply
  * doesn't appear in the picker.
  */

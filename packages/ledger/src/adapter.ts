@@ -11,7 +11,7 @@ import { createSvmLedgerAdapter } from "./apps/svm";
 
 /**
  * Discriminated-union options for the unified `createLedgerAdapter`
- * factory. Each variant is **fully typed for its platform** — no
+ * factory. Each variant is **fully typed for its platform**; no
  * opaque DI bag.
  *
  * All four supported platforms ship today: EVM, SVM, Sui, Bitcoin.

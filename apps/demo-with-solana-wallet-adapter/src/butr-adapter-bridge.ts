@@ -141,7 +141,7 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
   // fallow-ignore-next-line unused-class-member
   signTransaction<T extends Transaction | VersionedTransaction>(_transaction: T): Promise<T> {
     // The Wallet Standard `solana:signTransaction` feature isn't
-    // advertised uniformly across wallets — Phantom does, MetaMask Snap
+    // advertised uniformly across wallets; Phantom does, MetaMask Snap
     // (Solana) doesn't. Real dapps that need raw signing without sending
     // would feature-detect here and either implement the wallet-specific
     return Promise.reject(

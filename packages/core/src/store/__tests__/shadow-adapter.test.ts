@@ -101,7 +101,7 @@ describe("isShadowAdapter", () => {
 
   it("returns false for an adapter advertising any real capability", () => {
     const shadow = createShadowAdapter(evmEntry());
-    // Mutate a capability flag — would be impossible on a real shadow
+    // Mutate a capability flag; would be impossible on a real shadow
     const liveLooking = {
       ...shadow,
       capabilities: { ...shadow.capabilities, signMessage: true },

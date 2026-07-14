@@ -97,7 +97,7 @@ describe("createSvmLedgerAdapter", () => {
     expect(account).not.toBeNull();
     expect(account?.chain.id).toBe("solana:mainnet");
     expect(account?.chain.namespace).toBe("solana");
-    // Base58 of 32 bytes filled with 1 — known constant we can sanity-check.
+    // Base58 of 32 bytes filled with 1; known constant we can sanity-check.
     expect(account?.walletAddress).toMatch(/^[1-9A-HJ-NP-Za-km-z]+$/v);
   });
 

@@ -5,7 +5,7 @@ import type { UniversalProviderLike } from "../adapter";
 import { suiNamespace } from "../namespaces/sui";
 
 /** signTransaction only exists on the sui variant of the
- *  WalletAdapter union — narrow on the discriminant before calling. */
+ *  WalletAdapter union; narrow on the discriminant before calling. */
 const expectSuiAdapter = (adapter: WalletAdapter): SuiAdapter => {
   if (adapter.chainPlatform !== "sui") {
     throw new Error("expected a sui adapter");

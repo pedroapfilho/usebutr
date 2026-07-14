@@ -3,12 +3,12 @@ import { useStore } from "zustand";
 import { useWalletStoreContext } from "../context";
 
 /**
- * Action hooks — dispatchers that mutate the wallet store. Each
+ * Action hooks: dispatchers that mutate the wallet store. Each
  * returns a stable function reference (Zustand's `useStore` against
  * action selectors is identity-stable across renders), safe to pass
  * to event handlers or effects without `useCallback`.
  *
- * No reactive subscription beyond identity stability — these don't
+ * No reactive subscription beyond identity stability; these don't
  * re-render the component when store state changes. For reactive
  * reads, see `./selectors.ts`.
  */
@@ -59,7 +59,7 @@ const useRefreshWallet = () => {
  * Wallet Standard wallets that don't expose a picker just refresh.
  *
  * Consumers should hide the trigger when
- * `wallet.connector.requestAccounts` is undefined — the action still
+ * `wallet.connector.requestAccounts` is undefined; the action still
  * resolves cleanly, but no picker will open.
  */
 const useRequestAccounts = () => {

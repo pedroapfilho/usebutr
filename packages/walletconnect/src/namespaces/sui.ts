@@ -25,22 +25,22 @@ const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged"
 /**
  * Runtime capability flags for a Sui adapter speaking WalletConnect v2.
  *
- *  - `sendTransaction` / `signMessage` / `signTransaction`: true — all
+ *  - `sendTransaction` / `signMessage` / `signTransaction`: true; all
  *    three sui_* methods are advertised at pairing time. Per-wallet
  *    method support varies (mobile wallets are inconsistent); callers
  *    that hit a wallet without the method will get a JSON-RPC error
  *    back from the request.
- *  - `signIn`: false — there is no Sign-In-With-Sui RPC method on
+ *  - `signIn`: false; there is no Sign-In-With-Sui RPC method on
  *    WalletConnect today.
- *  - `subscribe`: false — wallet-side events over WC are mediated by
+ *  - `subscribe`: false; wallet-side events over WC are mediated by
  *    the universal provider rather than this adapter; we leave the
  *    method a no-op for v0 and let consumers wire native events later.
- *  - `switchChain`: true — the active chain is encoded in `chains` at
+ *  - `switchChain`: true; the active chain is encoded in `chains` at
  *    pair time and we update local state for subsequent calls; the
  *    wallet itself can't "switch" inside an existing session.
- *  - `switchAccount`: false — no RPC for it.
- *  - `getBalance` / `getTransactionReceipt`: false — butr ships no RPC.
- *  - `requestAccounts`: false — accounts come from the pairing only.
+ *  - `switchAccount`: false; no RPC for it.
+ *  - `getBalance` / `getTransactionReceipt`: false; butr ships no RPC.
+ *  - `requestAccounts`: false; accounts come from the pairing only.
  */
 const WALLETCONNECT_SUI_CAPABILITIES: WalletCapabilities = {
   getBalance: false,
@@ -107,7 +107,7 @@ const buildSuiAccount = (address: string, chain: ChainBase): Account => ({
  * butr ships no Sui RPC, so the consumer broadcasts those bytes through
  * `@mysten/sui`'s `SuiClient`.
  *
- * `subscribe` is a no-op for v0 — wallet events over WC are mediated by
+ * `subscribe` is a no-op for v0; wallet events over WC are mediated by
  * the provider and need per-wallet quirks the namespace builder
  * shouldn't own. Consumers wire native events themselves until we
  * land a follow-up.
@@ -183,7 +183,7 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
           await provider.disconnect();
         } catch (error) {
           // The relay may already have dropped the session (mobile
-          // wallet uninstalled, etc.). Don't propagate — butr's
+          // wallet uninstalled, etc.). Don't propagate; butr's
           // reducer marks the wallet disconnected on its side
           logWarn("[butr/walletconnect] disconnect threw:", error);
         }
@@ -226,7 +226,7 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
           method: "sui_signAndExecuteTransaction",
           params: { address, transaction },
         })) as { digest?: string } | string;
-        // Spec says `{ digest }`. Tolerate a bare string too — some
+        // Spec says `{ digest }`. Tolerate a bare string too; some
         const digest = typeof result === "string" ? result : result?.digest;
         if (!digest) {
           throw new Error("sui_signAndExecuteTransaction returned no digest");
@@ -236,7 +236,7 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
 
       sendTxToChain(tx, _targetChainId, account, cb) {
         // WC Sui's signAndExecute doesn't take a per-call chain
-        // parameter — the cluster is baked into the pairing. Honour
+        // parameter; the cluster is baked into the pairing. Honour
         cb?.();
         return this.sendTx(tx, account);
       },
@@ -298,7 +298,7 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
             `Sui WC adapter received non-Sui chain "${chain.id}". Pass a chain with namespace "sui".`,
           );
         }
-        // Local state only — the WC session's chain list is fixed at
+        // Local state only; the WC session's chain list is fixed at
         // without re-negotiating with the wallet.
         currentChainId = chain.id;
         return Promise.resolve();

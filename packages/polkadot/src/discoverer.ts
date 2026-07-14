@@ -5,7 +5,7 @@ import { discoverPolkadotWalletStandardAdapters } from "./wallet-standard";
 
 /**
  * Polkadot's `PlatformDiscoverer`. Inverts the Bitcoin layout:
- *  - PRIMARY (`subscribe`) is injectedWeb3 — the dominant, broadest
+ *  - PRIMARY (`subscribe`) is injectedWeb3; the dominant, broadest
  *    Polkadot standard (polkadot-js, Talisman, SubWallet, Nova, Enkrypt).
  *  - FALLBACK is Wallet Standard `polkadot:*`. It defers when the primary
  *    channel already produced an adapter for the session
@@ -17,7 +17,7 @@ import { discoverPolkadotWalletStandardAdapters } from "./wallet-standard";
 const polkadotDiscoverer: PlatformDiscoverer = {
   fallback: {
     subscribe: (onAdapter, opts) => {
-      // wallet — no Polkadot wallet is Wallet-Standard-only today.
+      // wallet; no Polkadot wallet is Wallet-Standard-only today.
       if (opts.hasAnyPrimaryAdapter()) {
         return () => undefined;
       }

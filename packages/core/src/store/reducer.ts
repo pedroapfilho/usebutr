@@ -4,7 +4,7 @@ import type { ConnectionError } from "../types/errors";
 /**
  * Public connection-status enum. `state.connectionStatus` in the
  * reducer only takes the first four values ("idle" | "connecting" |
- * "success" | "error") — those track the user-initiated connect
+ * "success" | "error"); those track the user-initiated connect
  * attempt. The fifth value, `"reconnecting"`, is *derived* by
  * `useConnectionStatus` when the active wallet is still backed by a
  * shadow adapter (its id is in `state.reconnectingIds`). The
@@ -24,7 +24,7 @@ type State = {
   pool: Map<string, ConnectedWallet>;
   /**
    * Connector IDs whose pool entry is currently backed by a shadow
-   * adapter — created from `WalletManagerConfig.initialState` and
+   * adapter: created from `WalletManagerConfig.initialState` and
    * waiting for the live adapter to be announced (via discovery) and
    * the silent reconnect to succeed. The set shrinks as entries
    * upgrade (`HYDRATED` / `CONNECT_SUCCEEDED` clear matching ids) or
@@ -52,7 +52,7 @@ type LifecycleEvent =
 
 /**
  * Connection status events: the transitions of the in-flight connect
- * attempt — start, success/failure, status/error reset. None of these
+ * attempt: start, success/failure, status/error reset. None of these
  * mutate the pool directly; `CONNECT_SUCCEEDED` is the bridge to
  * `PoolMutationEvent`.
  */
@@ -84,7 +84,7 @@ type PoolMutationEvent =
 
 /**
  * Selection events: which connector is active, and which connector
- * serves each chain platform. Pure pointer updates — no pool mutation.
+ * serves each chain platform. Pure pointer updates; no pool mutation.
  */
 type SelectionEvent =
   | { chainPlatform: ChainPlatform; connectorId: string | null; type: "SELECTION_CHANGED" }
@@ -92,7 +92,7 @@ type SelectionEvent =
 
 /**
  * The single event type the reducer dispatches on. Grouped above by
- * concern so a reader sees the map before the cases — adding an event
+ * concern so a reader sees the map before the cases; adding an event
  * means picking the group it belongs to.
  */
 type Event = ConnectionStatusEvent | LifecycleEvent | PoolMutationEvent | SelectionEvent;

@@ -19,7 +19,7 @@ const BITCOIN_MAINNET = "bip122:000000000019d6689c085ae165831e93";
 const DEFAULT_CHAINS: ReadonlyArray<string> = [BITCOIN_MAINNET];
 
 // Reown's bip122 methods are unprefixed camelCase (`signMessage`,
-// `signPsbt`, `sendTransfer`, `getAccountAddresses`) — verified against
+// `signPsbt`, `sendTransfer`, `getAccountAddresses`); verified against
 // https://docs.reown.com/advanced/multichain/rpc-reference/bitcoin-rpc.
 const DEFAULT_METHODS: ReadonlyArray<string> = [
   "signMessage",
@@ -33,21 +33,21 @@ const DEFAULT_EVENTS: ReadonlyArray<string> = ["bip122_addressesChanged"];
 /**
  * Runtime capability flags for a Bitcoin adapter speaking WalletConnect v2.
  *
- *  - `sendTransaction` / `signMessage` / `signTransaction`: true — all
+ *  - `sendTransaction` / `signMessage` / `signTransaction`: true; all
  *    three bip122 methods are advertised at pairing time. Per-wallet
  *    method support varies; callers that hit a wallet without the method
  *    will get a JSON-RPC error back from the request.
- *  - `signIn`: false — no Sign-In-With-Bitcoin RPC method on
+ *  - `signIn`: false; no Sign-In-With-Bitcoin RPC method on
  *    WalletConnect today.
- *  - `subscribe`: false — wallet-side events over WC are mediated by
+ *  - `subscribe`: false; wallet-side events over WC are mediated by
  *    the universal provider rather than this adapter; we leave the
  *    method a no-op for v0 and let consumers wire native events later.
- *  - `switchChain`: true — the active chain is encoded in `chains` at
+ *  - `switchChain`: true; the active chain is encoded in `chains` at
  *    pair time and we update local state for subsequent calls; the
  *    wallet itself can't "switch" inside an existing session.
- *  - `switchAccount`: false — no RPC for it.
- *  - `getBalance` / `getTransactionReceipt`: false — butr ships no RPC.
- *  - `requestAccounts`: false — accounts come from the pairing only.
+ *  - `switchAccount`: false; no RPC for it.
+ *  - `getBalance` / `getTransactionReceipt`: false; butr ships no RPC.
+ *  - `requestAccounts`: false; accounts come from the pairing only.
  */
 const WALLETCONNECT_BITCOIN_CAPABILITIES: WalletCapabilities = {
   getBalance: false,
@@ -131,13 +131,13 @@ const coercePsbtToBase64 = (tx: unknown): string => {
  * those bytes through their own Esplora / Electrum client.
  *
  * `sendTx` is mapped to `signPsbt` with `broadcast: true` rather than
- * `sendTransfer` — `sendTransfer` is a high-level "build + send N sats
+ * `sendTransfer`: `sendTransfer` is a high-level "build + send N sats
  * to address" UX flow that takes recipient/amount, not a raw tx the
  * consumer has already built. `signPsbt` with broadcast preserves
  * butr's `sendTx(tx: unknown) → txid` contract for consumers that
  * built the PSBT themselves.
  *
- * `subscribe` is a no-op for v0 — wallet events over WC are mediated by
+ * `subscribe` is a no-op for v0; wallet events over WC are mediated by
  * the provider and need per-wallet quirks the namespace builder
  * shouldn't own. Consumers wire native events themselves until we
  * land a follow-up.
@@ -203,7 +203,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
           await provider.disconnect();
         } catch (error) {
           // The relay may already have dropped the session (mobile
-          // wallet uninstalled, etc.). Don't propagate — butr's
+          // wallet uninstalled, etc.). Don't propagate; butr's
           // reducer marks the wallet disconnected on its side
           logWarn("[butr/walletconnect] disconnect threw:", error);
         }
@@ -249,7 +249,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
           method: "signPsbt",
           params: { account: address, broadcast: true, psbt, signInputs: [] },
         })) as { psbt?: string; txid?: string } | string;
-        // Spec says `{ psbt, txid? }`. Tolerate a bare string too —
+        // Spec says `{ psbt, txid? }`. Tolerate a bare string too;
         const txid = typeof result === "string" ? result : result?.txid;
         if (!txid) {
           throw new Error("signPsbt with broadcast:true returned no txid");
@@ -259,7 +259,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
 
       sendTxToChain(tx, _targetChainId, account, cb) {
         // WC Bitcoin's signPsbt doesn't take a per-call chain
-        // parameter — the network is baked into the pairing. Honour
+        // parameter; the network is baked into the pairing. Honour
         cb?.();
         return this.sendTx(tx, account);
       },
@@ -313,7 +313,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
             `Bitcoin WC adapter received non-Bitcoin chain "${chain.id}". Pass a chain with namespace "bip122".`,
           );
         }
-        // Local state only — the WC session's chain list is fixed at
+        // Local state only; the WC session's chain list is fixed at
         // without re-negotiating with the wallet.
         currentChainId = chain.id;
         return Promise.resolve();

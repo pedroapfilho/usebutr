@@ -16,7 +16,7 @@ type WalletStandardCapabilityInput = {
  *
  * - `getBalance` / `getTransactionReceipt`: Wallet Standard exposes no
  *   balance/receipt RPC.
- * - `requestAccounts`: no programmatic equivalent of EIP-2255 — re-running
+ * - `requestAccounts`: no programmatic equivalent of EIP-2255; re-running
  *   `standard:connect` doesn't produce new accounts on any major Wallet
  *   Standard wallet in practice (Phantom Solana, MetaMask Snap, Solflare,
  *   Backpack).

@@ -17,14 +17,14 @@ type RestoreOutcome =
   | { connectorId: string; error: unknown; kind: "fail" };
 
 /**
- * Snapshot returned by `HydrationCoordinator.hydrate()` — everything
+ * Snapshot returned by `HydrationCoordinator.hydrate()`; everything
  * the reducer needs to compose a `HYDRATED` event plus the metadata the
  * runtime uses to wire subscriptions and surface the outcome.
  */
 type HydrateResult = {
   activeConnectorId: string | null;
   /** Entries whose restore failed (connect() rejected, the connector
-   *  threw mid-flight). Reported for telemetry only — storage is
+   *  threw mid-flight). Reported for telemetry only; storage is
    *  preserved so the next load can retry. The most common cause is
    *  EIP-1193 `eth_accounts: []` from a locked wallet, which clears as
    *  soon as the user unlocks and reloads. */

@@ -6,7 +6,7 @@ import type { ChainPlatform } from "./wallet";
  * to expose to its UI (chain switcher, picker, etc).
  *
  * The platform key set is fixed by `ChainPlatform`. The value is the
- * chain list — empty when the consumer doesn't want to support that
+ * chain list; empty when the consumer doesn't want to support that
  * platform's chains in this view. This is the only type that callers
  * write down; the values come from per-platform packages
  * (`EVM_CHAINS_LIST`, `SVM_CHAINS_LIST`, etc).
@@ -17,7 +17,7 @@ type ChainsByPlatform = Readonly<Record<ChainPlatform, ReadonlyArray<ChainBase>>
  * Build a fully-populated `ChainsByPlatform` from a partial. Platforms
  * the consumer doesn't specify default to an empty list.
  *
- * Use this in apps that target one or two chain platforms — importing
+ * Use this in apps that target one or two chain platforms; importing
  * only those packages keeps unused chain registries out of the bundle.
  * Apps that want every chain reach for `CHAINS_BY_PLATFORM` from
  * `@usebutr/wallets` instead.

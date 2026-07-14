@@ -10,12 +10,12 @@ import type {
 } from "../types";
 
 /**
- * Error thrown when a method is called on a shadow adapter — the
+ * Error thrown when a method is called on a shadow adapter; the
  * placeholder `WalletAdapter` that the store seeds into the pool when
  * an `initialState` is provided (e.g. from a server-rendered cookie
  * snapshot). Shadow adapters carry the identity and account data of a
  * previously-connected wallet, but the live wallet extension hasn't
- * been verified yet — the silent reconnect happens asynchronously
+ * been verified yet; the silent reconnect happens asynchronously
  * after mount.
  *
  * UI code that gates affordances on `wallet.connector.capabilities.*`
@@ -61,7 +61,7 @@ const ALL_FALSE_CAPABILITIES: WalletCapabilities = Object.freeze({
  * is provided: each stored entry becomes a `ConnectedWallet` whose
  * `connector` is one of these. The store flips `isHydrated` true
  * synchronously and exposes the data through the usual hooks
- * (`useActiveWallet`, `useConnectedWallets`, …) — but the connector
+ * (`useActiveWallet`, `useConnectedWallets`, …), but the connector
  * can't actually talk to a wallet yet, so its capabilities are all
  * `false` and its methods throw `ShadowConnectorError` if called.
  *
@@ -84,7 +84,7 @@ const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
   const reject = (method: string): Promise<never> =>
     Promise.reject(new ShadowConnectorError(method, id));
 
-  // `signTransaction`) are intentionally omitted — they don't exist on
+  // `signTransaction`) are intentionally omitted; they don't exist on
   // a shadow, and their absence is a valid runtime state for the
   const base = {
     capabilities: ALL_FALSE_CAPABILITIES,

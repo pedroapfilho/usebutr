@@ -156,7 +156,7 @@ const Connected = ({
     }
     setErrorMsg(null);
     try {
-      // 1. Build the transaction with gill. The wallet — not gill — signs, so
+      // 1. Build the transaction with gill. The wallet (not gill) signs, so
       const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
       const feePayer = createNoopSigner(addr);
       const tx = createTransaction({

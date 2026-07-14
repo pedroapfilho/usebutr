@@ -77,7 +77,7 @@ const isVersioned = (tx: LegacyTx | VersionedTx): tx is VersionedTx =>
  * which signs and broadcasts via Wallet Standard's
  * `solana:signAndSendTransaction`. The adapter expects serialized bytes.
  *
- * The SDK builds redeem transactions WITHOUT a `recentBlockhash` — it
+ * The SDK builds redeem transactions WITHOUT a `recentBlockhash`; it
  * expects the signer to attach a fresh one at send time (a stale
  * blockhash would expire before the user approves). So we fetch the
  * latest blockhash from the destination chain's RPC, set it, apply any

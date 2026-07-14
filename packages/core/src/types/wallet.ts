@@ -35,10 +35,10 @@ type Balance = {
 /**
  * Whether a wallet is currently usable from the user's environment.
  *
- * - `installed` — the wallet is available and `connect()` can be called.
- * - `loadable` — the wallet's SDK can be loaded on demand (e.g. WalletConnect
+ * - `installed`: the wallet is available and `connect()` can be called.
+ * - `loadable`: the wallet's SDK can be loaded on demand (e.g. WalletConnect
  *   modal that pops a QR code without requiring a browser extension).
- * - `not-installed` — the wallet isn't reachable. Consumers typically render
+ * - `not-installed`: the wallet isn't reachable. Consumers typically render
  *   a "download" affordance pointing at `meta.url`.
  */
 type WalletAvailability = "installed" | "loadable" | "not-installed";
@@ -58,7 +58,7 @@ type WalletAvailability = "installed" | "loadable" | "not-installed";
  *     - Single-account-exposure wallets (Phantom EVM/SVM, MetaMask Snap):
  *       only the active account is ever in `accounts`; switching swaps it
  *       in place rather than appending.
- *   Also covers chain switches — the new chain lives inside `account.chain`.
+ *   Also covers chain switches; the new chain lives inside `account.chain`.
  * - `disconnected` → `DISCONNECTED` (wallet has gone away externally:
  *   user locked it, removed the extension, etc.).
  */
@@ -91,13 +91,13 @@ type WalletCapabilities = {
   getBalance: boolean;
   /** `getTransactionReceipt` returns a real RPC response. */
   getTransactionReceipt: boolean;
-  /** Calling `requestAccounts` will actually do something — either
+  /** Calling `requestAccounts` will actually do something: either
    *  prompt the user (EIP-2255) or refresh the exposed list. */
   requestAccounts: boolean;
   /** `sendTx` / `sendTxToChain` will work. False for SVM wallets that
    *  don't advertise `solana:signAndSendTransaction`. */
   sendTransaction: boolean;
-  /** `signIn` works — Sign In With Solana (`solana:signIn`). True only
+  /** `signIn` works: Sign In With Solana (`solana:signIn`). True only
    *  for SVM wallets advertising the feature. */
   signIn: boolean;
   /** `signMessage` will work. False for SVM wallets that don't
@@ -111,8 +111,8 @@ type WalletCapabilities = {
   signTransaction: boolean;
   /** Wallet emits account/chain change events that butr can bridge. */
   subscribe: boolean;
-  /** `switchAccount` is real. Almost always `false` for auto adapters
-   *  — neither protocol exposes silent account switch. Hand-rolled
+  /** `switchAccount` is real. Almost always `false` for auto adapters;
+   *  neither protocol exposes silent account switch. Hand-rolled
    *  adapters with custom transports may set it `true`. */
   switchAccount: boolean;
   /** `switchChain` routes subsequent calls through the new chain. EVM:
@@ -122,12 +122,12 @@ type WalletCapabilities = {
 };
 
 /**
- * Orchestration interface — what `butr` actually calls during the
+ * Orchestration interface: what `butr` actually calls during the
  * connect / disconnect / hydrate flow. This is the contract `butr`
  * cares about; everything else on `WalletAdapter` is consumer-facing.
  */
 type Connector<P extends ChainPlatform = ChainPlatform> = {
-  /** Runtime capability flags — see `WalletCapabilities`. Read these
+  /** Runtime capability flags; see `WalletCapabilities`. Read these
    *  to gate UI affordances rather than probing for method existence. */
   capabilities: WalletCapabilities;
   /** Discriminant: which chain platform this adapter speaks. Generic
@@ -139,7 +139,7 @@ type Connector<P extends ChainPlatform = ChainPlatform> = {
    *  rejects on user cancellation or other error.
    *
    *  `opts.silent` requests a non-interactive reconnect to
-   *  already-authorized accounts — butr's mount-time hydration passes it
+   *  already-authorized accounts; butr's mount-time hydration passes it
    *  so a reload restores wallets without re-prompting (Wallet Standard
    *  `standard:connect`'s `silent` input; the `eth_accounts` read on
    *  EIP-1193). Adapters that can't reconnect without a prompt should
@@ -169,7 +169,7 @@ type Connector<P extends ChainPlatform = ChainPlatform> = {
    *  EIP-6963 wallets via `wallet_requestPermissions`; Wallet Standard
    *  wallets generally leave this unset because the user enables more
    *  accounts directly in the extension. Resolution doesn't include the
-   *  new accounts — call `getAccounts()` (or use butr's
+   *  new accounts; call `getAccounts()` (or use butr's
    *  `useRequestAccounts` hook, which refreshes the pool entry for
    *  you). */
   requestAccounts?: () => Promise<void>;
@@ -194,7 +194,7 @@ type WalletBase = {
   getBalance: (mint?: string) => Promise<Balance>;
   /** Returns a chain-specific signer. Consumers cast to the concrete
    *  type via the `SignerForPlatform` registry (or directly to the
-   *  library shape they wrap — `WalletClient` on viem, etc.). */
+   *  library shape they wrap: `WalletClient` on viem, etc.). */
   getSigner: () => Promise<unknown>;
   /** Look up the status of a previously-submitted transaction. */
   getTransactionReceipt: (tx: string) => Promise<{
@@ -241,17 +241,17 @@ type WalletBase = {
 
 /**
  * EVM wallet surface. No `signIn` (Sign-In-With-Ethereum is an app-level
- * concern in this library, not a protocol method). No `signTransaction`
- * — EVM wallets sign-and-send via `eth_sendTransaction`; sign-only EVM
+ * concern in this library, not a protocol method). No `signTransaction`:
+ * EVM wallets sign-and-send via `eth_sendTransaction`; sign-only EVM
  * flows aren't exposed through this surface.
  */
 type EvmWallet = WalletBase;
 
 /**
  * Solana wallet surface. Adds:
- *  - `signIn` — Sign-In-With-Solana (`solana:signIn`). Optional;
+ *  - `signIn`: Sign-In-With-Solana (`solana:signIn`). Optional;
  *    `capabilities.signIn` gates availability at runtime.
- *  - `signTransaction` — sign-only path for wallets that advertise
+ *  - `signTransaction`: sign-only path for wallets that advertise
  *    `solana:signTransaction` but not `solana:signAndSendTransaction`.
  *    Optional; `capabilities.signTransaction` gates availability.
  */
@@ -259,7 +259,7 @@ type SvmWallet = WalletBase & {
   /** Sign In With Solana (SIWS, `solana:signIn`). Authenticates the user
    *  and returns the connected account plus the signed statement so the
    *  consumer can verify server-side. `input` is the SIWS message fields
-   *  (domain, statement, nonce, …) — pass `{}` or omit for wallet
+   *  (domain, statement, nonce, …); pass `{}` or omit for wallet
    *  defaults. */
   signIn?: (input?: Record<string, unknown>) => Promise<{
     account: Account;
@@ -295,13 +295,13 @@ type BitcoinWallet = WalletBase & {
  * Polkadot/Substrate wallet surface. No standalone `signTransaction`:
  * building an extrinsic needs chain metadata (an RPC round-trip butr
  * doesn't ship), so transaction signing happens through the
- * `getSigner()` handoff — the consumer builds and submits with the
+ * `getSigner()` handoff; the consumer builds and submits with the
  * wallet's signer (e.g. polkadot-api). Message signing works via the
  * injected `signer.signRaw`. Same shape as `EvmWallet`.
  */
 type PolkadotWallet = WalletBase;
 
-/** Per-platform full adapter shapes — `Connector` + the platform's
+/** Per-platform full adapter shapes: `Connector` + the platform's
  *  `Wallet` surface. These are the discriminated-union variants of
  *  `WalletAdapter`. */
 type EvmAdapter = Connector<"evm"> & EvmWallet;
@@ -311,12 +311,12 @@ type BitcoinAdapter = Connector<"bitcoin"> & BitcoinWallet;
 type PolkadotAdapter = Connector<"polkadot"> & PolkadotWallet;
 
 /**
- * Full adapter interface — discriminated union by `chainPlatform`.
+ * Full adapter interface; discriminated union by `chainPlatform`.
  *
  * Narrow on `wallet.connector.chainPlatform === "svm"` (etc.) to gain
  * access to platform-specific methods like `signIn` (SVM) or
  * `signTransaction` (SVM / Sui / Bitcoin). Calling those methods on a
- * non-narrowed `WalletAdapter` is a TypeScript error — that's the
+ * non-narrowed `WalletAdapter` is a TypeScript error; that's the
  * point. The discriminant carries the type-level fact "this method
  * doesn't exist on EVM" so consumers can't accidentally branch on
  * `capabilities.signIn` and call a method that EVM adapters don't
@@ -363,15 +363,15 @@ type ConnectorMeta = {
  * Outcome of butr's mount-time hydration pass. Passed to
  * `WalletManagerConfig.onHydrated`. Three buckets:
  *
- *  - `restoredIds` — wallets that came back fully. Their pool entries
+ *  - `restoredIds`: wallets that came back fully. Their pool entries
  *    are live and consumers can use them immediately.
- *  - `pendingIds` — wallets whose adapter wasn't registered yet
+ *  - `pendingIds`: wallets whose adapter wasn't registered yet
  *    (auto-discovery's async warmup). The runtime retries each one
  *    when discovery announces a matching id, so most of these will
  *    restore within a few hundred ms of mount.
- *  - `dropped` — wallets whose restore actually failed (connector
+ *  - `dropped`: wallets whose restore actually failed (connector
  *    threw mid-flight). These have been removed from storage; consumer
- *    UX can surface "Couldn't reconnect Phantom — connect again."
+ *    UX can surface "Couldn't reconnect Phantom; connect again."
  */
 type HydrationOutcome = {
   dropped: Array<{ connectorId: string; reason: unknown }>;
@@ -385,7 +385,7 @@ type WalletManagerConfig = {
   /** Function to instantiate a connector by ID */
   createConnector: (id: string) => WalletAdapter | null;
   /**
-   * Seed the store synchronously with persisted wallet state — typically
+   * Seed the store synchronously with persisted wallet state; typically
    * the return value of `readWalletSnapshot(cookies, { keyPrefix })`
    * called from a Server Component. When provided:
    *  - `pool` is populated with `ConnectedWallet` entries whose
@@ -402,7 +402,7 @@ type WalletManagerConfig = {
    * Pre-hydration UI renders from the snapshot's data (address,
    * accounts, chain, name, icon) without a flash. Action affordances
    * (sign, send) are naturally gated by the shadow's all-false
-   * capabilities — or consumers can branch on `reconnectingIds`.
+   * capabilities, or consumers can branch on `reconnectingIds`.
    */
   initialState?: WalletSnapshot;
   /** Called after a wallet is successfully connected */
@@ -422,7 +422,7 @@ type WalletManagerConfig = {
    * Called once after butr's mount-time hydration finishes. Receives a
    * `HydrationOutcome` summarising which stored wallets were restored,
    * which are pending an adapter announcement, and which failed.
-   * Useful for surfacing "Phantom couldn't be reconnected — try
+   * Useful for surfacing "Phantom couldn't be reconnected; try
    * again" UX or piping a metric to telemetry.
    */
   onHydrated?: (outcome: HydrationOutcome) => void;
@@ -432,7 +432,7 @@ type WalletManagerConfig = {
    * Called when a connect attempt takes longer than
    * `slowConnectThresholdMs` (default 5_000) but hasn't yet resolved
    * or rejected. Fires at most once per connect attempt. Useful for
-   * surfacing a "still trying — check your wallet" hint in the UI or
+   * surfacing a "still trying, check your wallet" hint in the UI or
    * piping a slow-path metric to telemetry.
    */
   onSlowConnect?: (connectorId: string) => void;
@@ -440,7 +440,7 @@ type WalletManagerConfig = {
    * Called when a storage write fails. butr's persistence layer is
    * fire-and-forget by design (any individual write can fail without
    * breaking butr's reducer state), but the consumer might still want
-   * to know — quota-exceeded errors, IndexedDB shutdown, cross-tab
+   * to know; quota-exceeded errors, IndexedDB shutdown, cross-tab
    * conflicts, cookie size limits. `context` is a short string
    * describing which write failed (e.g. `"failed to persist pool"`).
    * The default behaviour when no callback is set is `console.warn`.

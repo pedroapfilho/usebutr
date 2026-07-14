@@ -20,10 +20,10 @@ import { loadTransport } from "../transport";
  *  - `signTransaction` signs the BCS-serialized transaction message and
  *    returns ONLY the signature bytes; assembling the final signed
  *    transaction (wrapping signature + pubkey into the Sui transaction
- *    signature envelope) is on the consumer — same as Suiet, Sui Wallet,
+ *    signature envelope) is on the consumer; same as Suiet, Sui Wallet,
  *    and `@mysten/sui`'s own flows.
  *  - There is **no `signPersonalMessage`** on the Ledger Sui app at this
- *    version — Ledger's Sui app supports transaction signing only.
+ *    version; Ledger's Sui app supports transaction signing only.
  *    Capabilities reflect this with `signMessage: false`, and the
  *    adapter's `signMessage` method rejects.
  */
@@ -63,7 +63,7 @@ const loadSui = async (): Promise<SuiAppConstructor> => {
 
 /**
  * Sui-specific Ledger adapter options. Each option is **fully typed for
- * the Sui platform** — no opaque DI bag, no `unknown` chain hints.
+ * the Sui platform**; no opaque DI bag, no `unknown` chain hints.
  */
 type SuiLedgerOptions = {
   /**
@@ -73,7 +73,7 @@ type SuiLedgerOptions = {
    */
   accountCount?: number;
   /**
-   * Sui cluster shortname. Stored locally — Ledger has no internal
+   * Sui cluster shortname. Stored locally; Ledger has no internal
    * "current cluster" concept; the cluster only affects the ChainBase
    * id butr surfaces to consumers. `switchChain` updates this value.
    * Default: `"mainnet"`.
@@ -111,7 +111,7 @@ const DEFAULT_ICON =
 /**
  * Hex-encode the 32 address bytes returned by the device into a Sui
  * address string. Sui addresses are 32-byte values displayed as
- * `0x`-prefixed lowercase hex — the same format `@mysten/sui` and
+ * `0x`-prefixed lowercase hex; the same format `@mysten/sui` and
  * explorers exchange.
  */
 const bytesToSuiAddress = (bytes: Uint8Array): string => {
@@ -141,7 +141,7 @@ const SUBSCRIBE_NOT_AVAILABLE =
 
 /**
  * Build a Ledger hardware-wallet adapter wired to the **Sui app**. The
- * returned adapter is fully-formed but UN-paired — pairing happens when
+ * returned adapter is fully-formed but UN-paired; pairing happens when
  * butr's runtime calls `adapter.connect()`, at which point the browser
  * shows the WebUSB permission prompt and the user unlocks their Ledger
  * and opens the Sui app.
@@ -150,7 +150,7 @@ const SUBSCRIBE_NOT_AVAILABLE =
  * which dispatches by `platform` field.
  *
  * **Signing model.** `signTransaction` signs BCS-serialized Sui
- * transaction bytes and returns ONLY the 64-byte ed25519 signature —
+ * transaction bytes and returns ONLY the 64-byte ed25519 signature;
  * the consumer assembles the final signed transaction by wrapping that
  * signature with the public key into Sui's signature envelope (use
  * `@mysten/sui`'s `Ed25519PublicKey.toSuiBytes()` / signature helpers).
@@ -162,7 +162,7 @@ const SUBSCRIBE_NOT_AVAILABLE =
  * rejects. Off-chain auth flows should fall back to a non-hardware
  * wallet.
  *
- * **No broadcast.** `sendTx` rejects — Ledger has no RPC. The consumer
+ * **No broadcast.** `sendTx` rejects; Ledger has no RPC. The consumer
  * broadcasts the assembled transaction through their own Sui RPC client.
  */
 const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapter> => {
@@ -172,7 +172,7 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
   const derivationPathPrefix = options.derivationPathPrefix ?? DEFAULT_DERIVATION_PATH_PREFIX;
   const accountCount = Math.max(1, options.accountCount ?? 1);
 
-  // Sui's signMessage capability differs from EVM/SVM — the Ledger
+  // Sui's signMessage capability differs from EVM/SVM; the Ledger
   // Sui app doesn't expose an off-chain message signing instruction.
   const capabilities = { ...LEDGER_CAPABILITIES, signMessage: false };
 
@@ -181,7 +181,7 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
   let sui: SuiAppLike | null = null;
   let currentAddress: string | null = null;
 
-  // Sui paths are fully-hardened per Sui Wallet convention — every
+  // Sui paths are fully-hardened per Sui Wallet convention; every
   const pathAt = (index: number): string => `${derivationPathPrefix}/${index}'`;
 
   const adapter: WalletAdapter = {
@@ -191,7 +191,7 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
     async connect(opts) {
       if (opts?.silent) {
         // Ledger connect always shows the browser's WebUSB device
-        // picker — there is no silent reconnect. Reject so eager
+        // picker; there is no silent reconnect. Reject so eager
         // hydration doesn't pop the chooser on page load.
         throw new Error("Ledger requires an interactive connect");
       }
@@ -227,7 +227,7 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
       }
       const chain = buildSuiChain(cluster, name);
       const accounts: Array<Account> = [];
-      // Sequential walk — the device serialises USB requests; parallel
+      // Sequential walk; the device serialises USB requests; parallel
       for (let i = 0; i < accountCount; i += 1) {
         // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
         const { address } = await sui.getPublicKey(pathAt(i));
@@ -288,7 +288,7 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
      * Sign a serialized Sui transaction. Returns the raw 64-byte ed25519
      * signature. The consumer is responsible for assembling the final
      * signed transaction by wrapping this signature with the public key
-     * into Sui's signature envelope — use `@mysten/sui`'s signature
+     * into Sui's signature envelope; use `@mysten/sui`'s signature
      * helpers. Mirrors how Suiet + every Sui wallet ships this surface.
      */
     async signTransaction(tx, account) {
@@ -325,7 +325,7 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
     },
 
     subscribe() {
-      // No-op — Ledger emits no events. Capabilities flag is `false`.
+      // No-op; Ledger emits no events. Capabilities flag is `false`.
       void SUBSCRIBE_NOT_AVAILABLE;
       return () => {};
     },

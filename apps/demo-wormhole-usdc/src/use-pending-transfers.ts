@@ -19,7 +19,7 @@ type ResumableTransfer = {
   amount: string;
   destAddress: string;
   destChain: Chain;
-  // The SDK can only create/complete it when the active wallet owns that ATA —
+  // The SDK can only create/complete it when the active wallet owns that ATA;
   destOwnedByActive: boolean;
   destSupported: boolean;
   key: string;
@@ -48,7 +48,7 @@ type ScanTask = {
  * Discovers incomplete CCTP transfers for the connected wallets: scans each
  * supported chain for this wallet's burns, reconstructs them through the
  * Wormhole SDK, and keeps only those not yet minted on their destination.
- * Triggered manually (`rescan`) — scanning every chain on render would
+ * Triggered manually (`rescan`); scanning every chain on render would
  * hammer testnet RPCs.
  */
 const usePendingTransfers = (
@@ -106,7 +106,7 @@ const usePendingTransfers = (
       });
 
       // The active Solana wallet's USDC ATA (as a universal address) lets us
-      // mark transfers whose baked-in recipient the active wallet doesn't own —
+      // mark transfers whose baked-in recipient the active wallet doesn't own;
       const solanaUsdc = findChainSpec("Solana")?.usdc;
       const activeSvmAtaUniversal =
         svmAddr && solanaUsdc

@@ -2,7 +2,7 @@
 
 // oxlint-disable-next-line typescript/consistent-type-definitions -- must declaration-merge with Vite's ImportMetaEnv from vite/client
 interface ImportMetaEnv {
-  /** WalletConnect Cloud project id (https://cloud.reown.com). Optional —
+  /** WalletConnect Cloud project id (https://cloud.reown.com). Optional;
    *  when unset the demo skips the WalletConnect connector. */
   readonly VITE_WC_PROJECT_ID?: string;
 }

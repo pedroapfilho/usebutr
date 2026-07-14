@@ -71,7 +71,7 @@ const evmNamespace: WalletConnectNamespaceBuilder = {
           await provider.disconnect();
         } catch (error) {
           // The relay may already have dropped the session (mobile
-          // wallet uninstalled, etc.). Don't propagate — butr's
+          // wallet uninstalled, etc.). Don't propagate; butr's
           // reducer marks the wallet disconnected on its side
           logWarn("[butr/walletconnect] disconnect threw:", error);
         }

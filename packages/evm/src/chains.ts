@@ -2,7 +2,7 @@ import type { ChainBase } from "@usebutr/core";
 
 /**
  * Common EVM chain registry keyed by CAIP-2 id. Useful for chain-
- * switcher UIs. butr itself doesn't read this — `Connector.switchChain`
+ * switcher UIs. butr itself doesn't read this: `Connector.switchChain`
  * accepts any `ChainBase`.
  */
 const EVM_CHAINS = {

@@ -15,7 +15,7 @@
  * - {@link hexToBytes} tolerantly strips an optional `0x` (all callers).
  */
 
-/** Bare lowercase hex — no `0x` prefix (Bitcoin, Ledger). */
+/** Bare lowercase hex, no `0x` prefix (Bitcoin, Ledger). */
 const bytesToHex = (bytes: Uint8Array): string => {
   let hex = "";
   for (const byte of bytes) {

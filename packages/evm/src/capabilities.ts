@@ -5,10 +5,10 @@ import type { WalletCapabilities } from "@usebutr/core";
 // Every other tested wallet either rejects the method (Phantom EVM,
 // Coinbase Wallet) or silently returns the existing accounts (Rabby,
 // Listed by EIP-6963 `rdns`. Add a wallet here only after verifying
-// picker. The capability flag gates UI affordances — `requestAccounts`
+// picker. The capability flag gates UI affordances: `requestAccounts`
 // stays callable on every adapter for consumers with wallet-specific
 const EIP6963_RDNS_WITH_REQUEST_ACCOUNTS = new Set<string>([
-  "io.metamask", // MetaMask — verified May 2026
+  "io.metamask", // MetaMask: verified May 2026
 ]);
 
 type Eip6963CapabilityInput = { rdns: string };

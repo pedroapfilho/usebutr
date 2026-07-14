@@ -57,7 +57,7 @@ const mapPool = async <T, R>(
   return results;
 };
 
-// account CCTP mints into — to tell whether the active wallet is the
+// account CCTP mints into, to tell whether the active wallet is the
 const ASSOCIATED_TOKEN_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 

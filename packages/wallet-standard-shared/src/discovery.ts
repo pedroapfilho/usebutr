@@ -9,7 +9,7 @@ let warnedMissingApp = false;
  * Callback supplied by per-platform discovery to build a `WalletAdapter`
  * out of a Wallet Standard wallet announcement.
  *
- * Returns `null` when the wallet doesn't advertise this platform — that
+ * Returns `null` when the wallet doesn't advertise this platform; that
  * lets a multi-chain wallet (e.g. Phantom: SVM + EVM + Sui + Bitcoin)
  * produce one adapter per platform without each builder needing to know
  * about the others.
@@ -29,7 +29,7 @@ type WalletStandardAdapterBuilder = (
  * into butr `WalletAdapter`s using a per-platform `build` callback.
  *
  * **Shared machinery** every platform package needs:
- *  - Dynamic import of `@wallet-standard/app` (optional peer dep —
+ *  - Dynamic import of `@wallet-standard/app` (optional peer dep;
  *    failure to resolve quietly disables discovery so consumers who
  *    don't install it pay nothing).
  *  - Cancellation: the returned unsubscribe is safe to call before the
@@ -46,7 +46,7 @@ type WalletStandardAdapterBuilder = (
  *  - The capability resolver, the feature decoding, the chain coercion.
  *
  * Disconnectors are keyed by the wallet object itself (identity equality),
- * not by adapter id — Wallet Standard's `register` / `unregister` emit
+ * not by adapter id; Wallet Standard's `register` / `unregister` emit
  * the same wallet object, so identity is the cheapest stable key.
  */
 const discoverWalletStandard = (

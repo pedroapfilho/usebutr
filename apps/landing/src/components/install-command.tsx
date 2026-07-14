@@ -15,7 +15,7 @@ const InstallCommand = () => {
       setCopied(true);
       setTimeout(() => setCopied(false), RESET_DELAY_MS);
     } catch {
-      // Clipboard unavailable (insecure context or denied permission) — no-op.
+      // Clipboard unavailable (insecure context or denied permission); no-op.
     }
   };
 

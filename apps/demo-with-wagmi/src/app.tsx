@@ -84,7 +84,7 @@ const Connected = ({
         const cfg = buildWagmiConfig(provider, wallet.connector.name, wallet.connector.id);
         const connector = cfg.connectors[0];
         // @wagmi/core actions know which connector to call. The wallet has
-        // already authorised the dapp via butr, so this resolves silently — no
+        // already authorised the dapp via butr, so this resolves silently; no
         if (connector) {
           await connect(cfg, { connector });
         }

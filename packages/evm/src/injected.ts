@@ -15,7 +15,7 @@ const DEFAULT_SETTLE_MS = 150;
 
 type InjectedDiscoveryOptions = {
   /**
-   * Predicate the fallback consults before emitting — if any EIP-6963
+   * Predicate the fallback consults before emitting; if any EIP-6963
    * adapter has been registered by the time the settle timer fires,
    * the injected fallback is skipped (the wallet is already covered
    * via the standards path; we don't want a duplicate).
@@ -62,7 +62,7 @@ const readEthereum = (target: InjectedDiscoveryOptions["target"]): Eip1193Provid
  * **Coordination**: the fallback waits `settleMs` (default 150ms)
  * after subscription, then consults `hasAnyEip6963Adapter` if
  * provided. If any EIP-6963 adapter has already been registered, we
- * skip emission — assume the same wallet is also speaking standards
+ * skip emission; assume the same wallet is also speaking standards
  * and we'd just be duplicating. If no EIP-6963 adapter showed up but
  * `window.ethereum` does, we emit a generic adapter.
  *

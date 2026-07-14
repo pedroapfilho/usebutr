@@ -75,7 +75,7 @@ const Connected = ({
           "This wallet does not advertise PSBT signing (bitcoin:signPsbt). Try Phantom, Magic Eden, or Leather.",
         );
       }
-      // Hand-built minimal PSBT (empty global tx, no inputs/outputs) —
+      // Hand-built minimal PSBT (empty global tx, no inputs/outputs);
       // UTXOs. Bytes: PSBT magic `psbt\xff`, then a single unsigned tx
       // map terminator. Built via hex parsing to dodge oxfmt's
       const psbtHex = "70736274FF010A02000000000000000000";

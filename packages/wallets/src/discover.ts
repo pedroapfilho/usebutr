@@ -9,7 +9,7 @@ import { createDiscoveryBus } from "./discovery-bus";
 
 /**
  * Which platforms to discover. Omitting a flag (or setting it to
- * `false`) skips that platform entirely — useful for apps that target
+ * `false`) skips that platform entirely; useful for apps that target
  * only one chain so unused listeners don't fire and unused adapters
  * don't appear in the provider's `discovery` source.
  *
@@ -56,7 +56,7 @@ type ResolvedDiscoverOptions = {
  * Registry of known `PlatformDiscoverer`s keyed by `ChainPlatform`.
  * Adding a new platform = one import + one registry entry.
  *
- * The aggregator no longer carries per-platform discovery logic —
+ * The aggregator no longer carries per-platform discovery logic;
  * each entry self-describes its primary + fallback subscription.
  */
 const KNOWN_DISCOVERERS: Readonly<Record<ChainPlatform, PlatformDiscoverer>> = {

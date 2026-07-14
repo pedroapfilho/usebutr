@@ -2,7 +2,7 @@
  * Minimal type surface for the Wallet Standard protocol that every
  * platform-specific package (`@usebutr/svm`, `@usebutr/sui`,
  * `@usebutr/bitcoin`) shares. Declared inline so butr stays
- * self-contained at the type level — the actual `@wallet-standard/app`
+ * self-contained at the type level; the actual `@wallet-standard/app`
  * package is dynamic-imported at runtime, and apps that don't enable
  * Wallet Standard discovery never resolve it.
  *
@@ -17,7 +17,7 @@ type WalletStandardWalletAccount = {
   address: string;
   chains: ReadonlyArray<string>;
   features: ReadonlyArray<string>;
-  /** Public key bytes — Wallet Standard ships these as Uint8Array. */
+  /** Public key bytes; Wallet Standard ships these as Uint8Array. */
   publicKey?: Uint8Array;
 };
 

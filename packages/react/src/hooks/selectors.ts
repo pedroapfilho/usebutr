@@ -8,7 +8,7 @@ import { useStoreWithEqualityFn } from "zustand/traditional";
 import { useWalletStoreContext } from "../context";
 
 /**
- * Selector hooks — pure reactive reads of the wallet store. Each
+ * Selector hooks: pure reactive reads of the wallet store. Each
  * subscribes via `useSyncExternalStore` (through Zustand's `useStore`)
  * and returns the value directly; no `AsyncState` wrapper, no
  * mutation side effects.
@@ -46,12 +46,12 @@ const accountsEqual = (a: ReadonlyArray<Account>, b: ReadonlyArray<Account>) => 
 };
 
 /**
- * Connection status of the **active** wallet — wagmi-aligned vocabulary:
+ * Connection status of the **active** wallet; wagmi-aligned vocabulary:
  *
- * - `"idle"` / `"connecting"` / `"success"` / `"error"` — the
+ * - `"idle"` / `"connecting"` / `"success"` / `"error"`: the
  *   user-initiated connect attempt's state, as written by the
  *   reducer.
- * - `"reconnecting"` — derived. Returned when the active wallet is
+ * - `"reconnecting"`: derived. Returned when the active wallet is
  *   still backed by a shadow adapter (its connector id appears in
  *   `state.reconnectingIds`). Indicates "we have the data, the
  *   silent reconnect hasn't verified the live wallet yet."
@@ -235,7 +235,7 @@ const useGetConnectorInstance = () => {
 /**
  * Direct access to the Zustand store for custom selectors. Uses shallow
  * equality on the selector result, so returning an inline object or array
- * is safe — no infinite re-render loop. Primitive selectors are
+ * is safe; no infinite re-render loop. Primitive selectors are
  * unaffected (shallow falls back to `Object.is`).
  *
  * @example

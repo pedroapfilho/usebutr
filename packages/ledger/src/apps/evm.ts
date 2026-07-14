@@ -48,7 +48,7 @@ const loadEth = async (): Promise<EthAppConstructor> => {
 
 /**
  * EVM-specific Ledger adapter options. Each option is **fully typed
- * for the EVM platform** — no opaque DI bag, no `unknown` chain hints.
+ * for the EVM platform**; no opaque DI bag, no `unknown` chain hints.
  * Other platforms (`createSvmLedgerAdapter`, etc., as they're added)
  * will have their own option types.
  */
@@ -60,7 +60,7 @@ type EvmLedgerOptions = {
    */
   accountCount?: number;
   /**
-   * EIP-155 chain id the adapter signs against. Stored locally —
+   * EIP-155 chain id the adapter signs against. Stored locally;
    * Ledger has no internal "current chain" concept; `chainId` enters
    * the signing pipeline per-tx. `switchChain` updates this value.
    * Default: 1 (Ethereum mainnet).
@@ -96,7 +96,7 @@ const DEFAULT_ICON =
 
 const buildEvmChain = (chainId: number, walletName: string): ChainBase => ({
   id: `eip155:${chainId}`,
-  // Same stance as the EIP-6963 adapter — butr doesn't ship a chain
+  // Same stance as the EIP-6963 adapter; butr doesn't ship a chain
   name: walletName,
   namespace: "eip155",
   reference: chainId.toString(),
@@ -113,7 +113,7 @@ const SUBSCRIBE_NOT_AVAILABLE =
 
 /**
  * Build a Ledger hardware-wallet adapter wired to the **EVM Ethereum
- * app**. The returned adapter is fully-formed but UN-paired — pairing
+ * app**. The returned adapter is fully-formed but UN-paired; pairing
  * happens when butr's runtime calls `adapter.connect()`, at which point
  * the browser shows the WebUSB permission prompt and the user unlocks
  * their Ledger.
@@ -142,7 +142,7 @@ const createEvmLedgerAdapter = (options: EvmLedgerOptions): Promise<WalletAdapte
     async connect(opts) {
       if (opts?.silent) {
         // Ledger connect always shows the browser's WebUSB device
-        // picker — there is no silent reconnect. Reject so eager
+        // picker; there is no silent reconnect. Reject so eager
         // hydration doesn't pop the chooser on page load.
         throw new Error("Ledger requires an interactive connect");
       }
@@ -178,7 +178,7 @@ const createEvmLedgerAdapter = (options: EvmLedgerOptions): Promise<WalletAdapte
       }
       const chain = buildEvmChain(chainId, name);
       const accounts: Array<Account> = [];
-      // Sequential walk — the device serialises USB requests; parallel
+      // Sequential walk; the device serialises USB requests; parallel
       for (let i = 0; i < accountCount; i += 1) {
         // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
         const { address } = await eth.getAddress(pathAt(i));
@@ -259,7 +259,7 @@ const createEvmLedgerAdapter = (options: EvmLedgerOptions): Promise<WalletAdapte
     },
 
     subscribe() {
-      // No-op — Ledger emits no events. Capabilities flag is `false`.
+      // No-op; Ledger emits no events. Capabilities flag is `false`.
       void SUBSCRIBE_NOT_AVAILABLE;
       return () => {};
     },

@@ -22,7 +22,7 @@ type WalletExtension = {
    */
   platforms: ReadonlyArray<ChainPlatform>;
   /**
-   * Lowercase kebab-case identifier — stable across Web Store renames.
+   * Lowercase kebab-case identifier; stable across Web Store renames.
    * Use this for directory names, test IDs, and registry lookups.
    */
   slug: string;

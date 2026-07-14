@@ -28,7 +28,7 @@ type ConnectionErrorKind = ConnectionError["kind"];
  *  - butr's own `Error("Connection timeout")` (from the 90s connect timeout)
  *  - butr's own `Error("Failed to get account")` (from the connect flow)
  *  - EIP-1193 numeric `code` properties (`4001` → UserRejected,
- *    `-32002` → RequestPending, `4100`/`4900`/`4901` → NotConnected —
+ *    `-32002` → RequestPending, `4100`/`4900`/`4901` → NotConnected:
  *    unauthorized / disconnected from all-or-one chains)
  *  - common message substrings: "user rejected" / "user denied",
  *    "locked", "chain", etc.

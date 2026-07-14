@@ -1,10 +1,10 @@
 /**
- * WalletConnectDialog — recommended modal connect pattern for apps that
+ * WalletConnectDialog: recommended modal connect pattern for apps that
  * want a dialog overlay UX rather than an inline list.
  *
  * Uses the native <dialog> element via `dialog.showModal()` for built-in:
  *   - focus trap (browser-native)
- *   - Escape-to-close (browser-native — `onClose` on the <dialog> syncs
+ *   - Escape-to-close (browser-native: `onClose` on the <dialog> syncs
  *     React state back when that happens)
  *   - aria-modal semantics
  *   - top-layer stacking (no z-index wars)

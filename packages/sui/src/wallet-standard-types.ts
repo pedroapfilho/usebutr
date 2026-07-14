@@ -5,7 +5,7 @@
  *
  * Spec: https://docs.sui.io/standards/wallet-standard
  *
- * These shapes intentionally narrow the spec — they describe only the
+ * These shapes intentionally narrow the spec; they describe only the
  * fields butr's adapter actually reads.
  */
 

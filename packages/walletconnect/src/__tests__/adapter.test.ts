@@ -262,7 +262,7 @@ describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
     if (!adapter) {
       throw new Error("expected one adapter");
     }
-    // No connect() — namespace disconnect() returns early (no session),
+    // No connect(); namespace disconnect() returns early (no session),
     await adapter.disconnect?.();
 
     expect(provider.disconnectCalls).toBe(0);

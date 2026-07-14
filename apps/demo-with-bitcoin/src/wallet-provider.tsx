@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
  * Compose Bitcoin's Wallet Standard discovery with the injected
  * fallback (sats-connect / Unisat / OKX / window.btc). The fallback
  * only emits if the Wallet Standard path hasn't already produced an
- * adapter for the same browser session — same posture as the EVM
+ * adapter for the same browser session; same posture as the EVM
  * package's `injected` fallback.
  *
  * Inline `createWalletSource` so the demo doesn't depend on

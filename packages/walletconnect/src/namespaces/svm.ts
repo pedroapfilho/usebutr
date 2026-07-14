@@ -21,22 +21,22 @@ const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged"
 /**
  * Runtime capability flags for an SVM adapter speaking WalletConnect v2.
  *
- *  - `sendTransaction` / `signMessage` / `signTransaction`: true — all
+ *  - `sendTransaction` / `signMessage` / `signTransaction`: true; all
  *    three solana_* methods are advertised at pairing time. Per-wallet
  *    method support varies (mobile wallets are inconsistent); callers
  *    that hit a wallet without the method will get a JSON-RPC error
  *    back from the request.
- *  - `signIn`: false — there is no Sign-In-With-Solana RPC method on
+ *  - `signIn`: false; there is no Sign-In-With-Solana RPC method on
  *    WalletConnect today.
- *  - `subscribe`: false — wallet-side events over WC are mediated by
+ *  - `subscribe`: false; wallet-side events over WC are mediated by
  *    the universal provider rather than this adapter; we leave the
  *    method a no-op for v0 and let consumers wire native events later.
- *  - `switchChain`: true — the active chain is encoded in `chains` at
+ *  - `switchChain`: true; the active chain is encoded in `chains` at
  *    pair time and we update local state for subsequent calls; the
  *    wallet itself can't "switch" inside an existing session.
- *  - `switchAccount`: false — no RPC for it.
- *  - `getBalance` / `getTransactionReceipt`: false — butr ships no RPC.
- *  - `requestAccounts`: false — accounts come from the pairing only.
+ *  - `switchAccount`: false; no RPC for it.
+ *  - `getBalance` / `getTransactionReceipt`: false; butr ships no RPC.
+ *  - `requestAccounts`: false; accounts come from the pairing only.
  */
 const WALLETCONNECT_SVM_CAPABILITIES: WalletCapabilities = {
   getBalance: false,
@@ -129,14 +129,14 @@ const buildSolanaAccount = (address: string, chain: ChainBase): Account => ({
  *  - `solana_signTransaction`        → `signTransaction`
  *  - `solana_signAndSendTransaction` → `sendTx` / `sendTxToChain`
  *
- * **Caveats.** Mobile-wallet support for these methods varies — Phantom
+ * **Caveats.** Mobile-wallet support for these methods varies; Phantom
  * and Solflare advertise them today, but the response shapes (base58
  * signatures vs. base64 transactions) drift between releases. Verify
  * end-to-end against your target wallets before relying on this in
  * production. There is no Sign-In-With-Solana over WC today, so
  * `capabilities.signIn` is `false`.
  *
- * `subscribe` is a no-op for v0 — wallet events over WC are mediated by
+ * `subscribe` is a no-op for v0; wallet events over WC are mediated by
  * the provider and need per-wallet quirks the namespace builder
  * shouldn't own. Consumers wire native events themselves until we
  * land a follow-up.
@@ -197,7 +197,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
           await provider.disconnect();
         } catch (error) {
           // The relay may already have dropped the session (mobile
-          // wallet uninstalled, etc.). Don't propagate — butr's
+          // wallet uninstalled, etc.). Don't propagate; butr's
           // reducer marks the wallet disconnected on its side
           logWarn("[butr/walletconnect] disconnect threw:", error);
         }
@@ -254,7 +254,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
 
       sendTxToChain(tx, _targetChainId, account, cb) {
         // WC Solana's signAndSendTransaction doesn't take a chain
-        // parameter — the cluster is baked into the pairing. Honour the
+        // parameter; the cluster is baked into the pairing. Honour the
         cb?.();
         return this.sendTx(tx, account);
       },
@@ -291,7 +291,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
         })) as { signature?: string; transaction?: string } | string;
         // The Solana WC spec leaves room for two return shapes: a base64
         // `transaction` (the fully-signed bytes) or a base58 `signature`
-        // alone. Prefer the base64 transaction — that's the contract
+        // alone. Prefer the base64 transaction; that's the contract
         if (typeof result === "object" && result?.transaction) {
           return base64ToBytes(result.transaction);
         }
@@ -315,7 +315,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
             `SVM WC adapter received non-Solana chain "${chain.id}". Pass a chain with namespace "solana".`,
           );
         }
-        // Local state only — the WC session's chain list is fixed at
+        // Local state only; the WC session's chain list is fixed at
         // without re-negotiating with the wallet.
         currentChainId = chain.id;
         return Promise.resolve();

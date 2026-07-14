@@ -106,7 +106,7 @@ const loadBtc = async (): Promise<BtcAppConstructor> => {
 
 /**
  * Bitcoin-specific Ledger adapter options. Each option is **fully typed for
- * the Bitcoin platform** — no opaque DI bag, no `unknown` chain hints.
+ * the Bitcoin platform**; no opaque DI bag, no `unknown` chain hints.
  */
 type BitcoinLedgerOptions = {
   /**
@@ -119,7 +119,7 @@ type BitcoinLedgerOptions = {
    * pairs with BIP-84 `84'/0'` paths). Use `"legacy"` for BIP-44 `44'/0'`,
    * `"p2sh"` for BIP-49 `49'/0'`, or `"bech32m"` for Taproot BIP-86
    * `86'/0'`. The format and the derivation path prefix should agree per
-   * BIP convention, but the adapter doesn't police that — the device will.
+   * BIP convention, but the adapter doesn't police that; the device will.
    */
   addressFormat?: BitcoinAddressFormat;
   /**
@@ -128,7 +128,7 @@ type BitcoinLedgerOptions = {
    */
   btc?: BtcAppConstructor;
   /**
-   * CAIP-2 chain id this adapter signs against. Stored locally — Ledger has
+   * CAIP-2 chain id this adapter signs against. Stored locally; Ledger has
    * no internal "current chain" concept; the chain only affects the
    * ChainBase id butr surfaces. `switchChain` updates this value. Default:
    * mainnet (`"bip122:000000000019d6689c085ae165831e93"`).
@@ -189,7 +189,7 @@ const SUBSCRIBE_NOT_AVAILABLE =
 
 /**
  * Build a Ledger hardware-wallet adapter wired to the **Bitcoin app**. The
- * returned adapter is fully-formed but UN-paired — pairing happens when
+ * returned adapter is fully-formed but UN-paired; pairing happens when
  * butr's runtime calls `adapter.connect()`, at which point the browser shows
  * the WebUSB permission prompt and the user unlocks their Ledger and opens
  * the Bitcoin app.
@@ -198,13 +198,13 @@ const SUBSCRIBE_NOT_AVAILABLE =
  * dispatches by `platform` field.
  *
  * **Signing model.** `signMessage` routes through the Bitcoin app's
- * `signMessage` instruction (the message is hex-encoded internally — Ledger's
+ * `signMessage` instruction (the message is hex-encoded internally; Ledger's
  * Bitcoin app pre-dates the canonical "signMessage takes bytes" convention).
  * The returned `{ v, r, s }` is repacked into a 65-byte `r||s||v` signature
  * blob to match butr's `signMessage` surface.
  *
  * `signTransaction` routes through `signPsbtBuffer` (Bitcoin app v2.1+) and
- * returns the signed PSBT bytes — the consumer finalises + broadcasts
+ * returns the signed PSBT bytes; the consumer finalises + broadcasts
  * through their own Esplora / Electrum client. `finalizePsbt: false` so the
  * round-trip mirrors the WalletConnect `bitcoin:signPsbt` contract. The PSBT
  * itself must carry the necessary BIP-32 derivation paths
@@ -214,7 +214,7 @@ const SUBSCRIBE_NOT_AVAILABLE =
  * can populate `loadKnownAddressDerivations` via the Btc app directly (out
  * of scope for this factory).
  *
- * **No broadcast.** `sendTx` rejects — Ledger has no RPC. The consumer
+ * **No broadcast.** `sendTx` rejects; Ledger has no RPC. The consumer
  * broadcasts the signed PSBT (or finalised tx) through their own Bitcoin
  * client.
  *
@@ -222,7 +222,7 @@ const SUBSCRIBE_NOT_AVAILABLE =
  *  - `signTransaction` does not back-fill `knownAddressDerivations` for the
  *    consumer. PSBTs without derivation hints will reject at the device.
  *  - The address format and derivation prefix must agree per BIP convention.
- *    The adapter doesn't police that — the device will produce an error if
+ *    The adapter doesn't police that; the device will produce an error if
  *    they disagree.
  */
 const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<WalletAdapter> => {
@@ -250,7 +250,7 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
 
     async connect(opts) {
       if (opts?.silent) {
-        // Ledger connect always shows the browser's WebUSB device picker —
+        // Ledger connect always shows the browser's WebUSB device picker;
         // there is no silent reconnect. Reject so eager hydration doesn't
         throw new Error("Ledger requires an interactive connect");
       }
@@ -288,7 +288,7 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
       }
       const chain = buildBitcoinChain(chainId, name);
       const accounts: Array<Account> = [];
-      // Sequential walk — the device serialises USB requests; parallel
+      // Sequential walk; the device serialises USB requests; parallel
       for (let i = 0; i < accountCount; i += 1) {
         // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
         const { bitcoinAddress } = await btc.getWalletPublicKey(pathAt(i), {
@@ -370,7 +370,7 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
     },
 
     /**
-     * Sign a serialized PSBT (v0 or v2). Returns the signed PSBT bytes —
+     * Sign a serialized PSBT (v0 or v2). Returns the signed PSBT bytes;
      * `finalizePsbt: false`, so the consumer finalises + broadcasts via
      * their own Bitcoin client. Mirrors the WalletConnect
      * `bitcoin:signPsbt` contract.
@@ -419,7 +419,7 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
     },
 
     subscribe() {
-      // No-op — Ledger emits no events. Capabilities flag is `false`.
+      // No-op; Ledger emits no events. Capabilities flag is `false`.
       void SUBSCRIBE_NOT_AVAILABLE;
       return () => {};
     },

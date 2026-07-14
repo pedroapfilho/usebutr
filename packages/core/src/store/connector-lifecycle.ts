@@ -10,7 +10,7 @@ import type { Account, ChainPlatform, Connector } from "../types";
  */
 type LifecycleHandlers = {
   /** Wallet exposed a new accounts list (or active account swap). The
-   *  bridge forwards the full array — single-account wallets included.
+   *  bridge forwards the full array; single-account wallets included.
    *  `active` is the address the wallet picked as current. */
   onAccountChanged: (
     connectorId: string,
@@ -32,7 +32,7 @@ type LifecycleHandlers = {
  */
 type ConnectorLifecycle = {
   /**
-   * Subscribe to the connector's events. Idempotent — calling `attach`
+   * Subscribe to the connector's events. Idempotent; calling `attach`
    * twice for the same `connectorId` detaches the previous subscription
    * before installing the new one, preserving the "exactly one"
    * invariant. No-op for connectors without a `subscribe` method.
@@ -66,7 +66,7 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
       if (!connector.subscribe) {
         return;
       }
-      // Idempotent install — drop any prior subscription first so a
+      // Idempotent install; drop any prior subscription first so a
       // re-attach doesn't leak listeners on the wallet side.
       detach(connectorId);
       try {

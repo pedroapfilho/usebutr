@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * butr brand theme — the same amber/OKLch tokens used by the docs site
+ * butr brand theme; the same amber/OKLch tokens used by the docs site
  * (apps/docs/app/global.css), but dark mode is driven by the OS via
  * `prefers-color-scheme` so the landing page needs no theme provider.
  */

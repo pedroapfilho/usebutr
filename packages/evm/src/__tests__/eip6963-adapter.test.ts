@@ -311,7 +311,7 @@ describe("buildEvmAdapter", () => {
     });
 
     const adapter = buildEvmAdapter(INFO, provider);
-    // Should not throw — disconnect swallows wallet errors.
+    // Should not throw; disconnect swallows wallet errors.
     await expect(adapter.disconnect?.()).resolves.toBeUndefined();
   });
 

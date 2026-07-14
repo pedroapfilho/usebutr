@@ -7,7 +7,7 @@ import type { StoredPoolEntry, StoredPoolRecord, StoredSelectionRecord } from ".
 const VALID_CHAIN_PLATFORMS = new Set<ChainPlatform>(CHAIN_PLATFORMS);
 
 /**
- * Server-safe view of a butr-persisted session — everything you can
+ * Server-safe view of a butr-persisted session; everything you can
  * know about a user's connected wallets from the cookie payload alone,
  * without instantiating a `Connector`.
  *
@@ -167,7 +167,7 @@ const parseSelection = (raw: string | undefined): StoredSelectionRecord => {
 /**
  * Parse a cookie source into a server-safe `WalletSnapshot`.
  *
- * Pure, sync, no `document`, no React — runnable in any environment
+ * Pure, sync, no `document`, no React; runnable in any environment
  * (Server Component, route handler, edge middleware, even client
  * code). Pair with `createCookieStorageDriver({ initialCookies })`
  * and `<WalletManagerProvider initialSnapshot={…} />` to render a
@@ -178,7 +178,7 @@ const parseSelection = (raw: string | undefined): StoredSelectionRecord => {
  * the wallet, switched accounts, or disconnected in another tab, the
  * client-side hydration will reconcile reality and the live store
  * will diverge from the snapshot. Treat the snapshot as an
- * *optimistic* shell — accurate enough to avoid a paint flicker,
+ * *optimistic* shell; accurate enough to avoid a paint flicker,
  * authoritative only after `useIsHydrated()` is true.
  *
  * **Inputs.** Accepts the three shapes Next.js / Express / Hono /
@@ -188,7 +188,7 @@ const parseSelection = (raw: string | undefined): StoredSelectionRecord => {
  *  - An iterable of `[name, value]` tuples
  *
  * Malformed entries are dropped with a `logWarn` (same policy as
- * `WalletStorage.getPool`) — a cross-tab corruption shouldn't crash
+ * `WalletStorage.getPool`); a cross-tab corruption shouldn't crash
  * the server render.
  */
 const readWalletSnapshot = (

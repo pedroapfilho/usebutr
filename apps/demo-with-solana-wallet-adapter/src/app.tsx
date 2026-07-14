@@ -57,7 +57,7 @@ const AdapterConsumer = ({
 }: {
   butrWallet: ReturnType<typeof useActiveWallet> & object;
 }) => {
-  // From here down it's STANDARD @solana/wallet-adapter-react usage —
+  // From here down it's STANDARD @solana/wallet-adapter-react usage;
   const { connection } = useConnection();
   const { publicKey, sendTransaction, signMessage, wallet: adapter } = useWallet();
   const disconnect = useDisconnectWallet();

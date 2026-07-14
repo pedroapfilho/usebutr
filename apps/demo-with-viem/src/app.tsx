@@ -56,7 +56,7 @@ const Connected = ({
     [wallet.account.walletAddress],
   );
 
-  // returns the raw EIP-1193 provider — exactly what `custom()` wants.
+  // returns the raw EIP-1193 provider; exactly what `custom()` wants.
   useEffect(() => {
     let cancelled = false;
     void (async () => {

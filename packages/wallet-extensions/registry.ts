@@ -22,7 +22,7 @@ import type { WalletExtension } from "./types";
  * **Runtime discovery is independent.** This registry is only consulted
  * by the test installer. The runtime discovery layer (EIP-6963,
  * Wallet Standard, the injected fallback) picks up *any* compliant
- * wallet without consulting this file — a wallet doesn't need to be
+ * wallet without consulting this file; a wallet doesn't need to be
  * listed here to work in production.
  *
  * Chrome Web Store IDs are mostly stable but can change when wallets

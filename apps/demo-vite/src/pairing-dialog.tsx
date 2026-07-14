@@ -1,5 +1,5 @@
 /**
- * PairingDialog — WalletConnect QR pairing overlay.
+ * PairingDialog: WalletConnect QR pairing overlay.
  *
  * Opens whenever a WalletConnect adapter emits a pairing URI
  * (`onPairingUri` → pairing store) and closes when the connect attempt

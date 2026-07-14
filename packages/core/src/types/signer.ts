@@ -2,7 +2,7 @@
  * Per-platform signer type registry.
  *
  * `Connector.getSigner()` returns `Promise<unknown>` because the actual
- * signer shape lives in the platform-specific packages — `@usebutr/evm`
+ * signer shape lives in the platform-specific packages: `@usebutr/evm`
  * returns an EIP-1193 provider, `@usebutr/svm` returns a Wallet
  * Standard wallet, `@usebutr/sui` returns the same Wallet Standard
  * wallet narrowed to Sui features, `@usebutr/bitcoin` returns either a
@@ -11,7 +11,7 @@
  *
  * Consumers cast the `unknown` to whichever signer their integration
  * library expects. This registry exists so the cast target is sourced
- * from one place — when a platform package renames its signer type,
+ * from one place; when a platform package renames its signer type,
  * consumer code keeps working through the registry without an explicit
  * patch.
  *
@@ -39,8 +39,8 @@
  * const signer = (await wallet.connector.getSigner()) as SignerForPlatform["evm"];
  * ```
  *
- * The cast is still there — `getSigner` itself stays type-erased to
- * keep the cross-package boundary loose — but the cast target lives in
+ * The cast is still there: `getSigner` itself stays type-erased to
+ * keep the cross-package boundary loose, but the cast target lives in
  * one canonical place.
  *
  * **Why not make `getSigner` generic.** Generic-on-platform `getSigner`

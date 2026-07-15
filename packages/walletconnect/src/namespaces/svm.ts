@@ -1,11 +1,16 @@
 import type { Account, ChainBase, SvmAdapter, WalletCapabilities } from "@usebutr/core";
 import { base64ToBytes, bytesToBase64, logWarn } from "@usebutr/core";
 
-import type { UniversalProviderLike } from "../loader";
-
+import {
+  CAIP_WC_CAPABILITIES,
+  buildCaipAccount,
+  buildCaipChain,
+  parseCaip10Address,
+  readNamespaceAccounts,
+} from "./caip";
 import type { WalletConnectNamespaceBuilder } from "./types";
 
-const SOLANA_PREFIX = "solana:";
+const SOLANA_NAMESPACE = "solana";
 const SOLANA_DECIMALS = 9;
 
 const DEFAULT_CHAINS: ReadonlyArray<string> = ["solana:mainnet"];
@@ -38,18 +43,7 @@ const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged"
  *  - `getBalance` / `getTransactionReceipt`: false; butr ships no RPC.
  *  - `requestAccounts`: false; accounts come from the pairing only.
  */
-const WALLETCONNECT_SVM_CAPABILITIES: WalletCapabilities = {
-  getBalance: false,
-  getTransactionReceipt: false,
-  requestAccounts: false,
-  sendTransaction: true,
-  signIn: false,
-  signMessage: true,
-  signTransaction: true,
-  subscribe: false,
-  switchAccount: false,
-  switchChain: true,
-};
+const WALLETCONNECT_SVM_CAPABILITIES: WalletCapabilities = { ...CAIP_WC_CAPABILITIES };
 
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const BASE58_INDEX = new Map<string, number>();
@@ -88,38 +82,6 @@ const base58ToBytes = (input: string): Uint8Array => {
   return Uint8Array.from(bytes);
 };
 
-/** Parse a CAIP-10 string (`solana:mainnet:Bg9LkP...`) into its
- *  components. The address is the trailing segment after the last `:`. */
-const parseCaip10Address = (caip10: string): string => {
-  const lastColon = caip10.lastIndexOf(":");
-  return lastColon === -1 ? caip10 : caip10.slice(lastColon + 1);
-};
-
-/** Pull the namespace section of the live WC session in a way that
- *  doesn't depend on the `@walletconnect/universal-provider` types
- *  being present at build time (the dep is optional). */
-const readSessionAccounts = (provider: UniversalProviderLike): ReadonlyArray<string> => {
-  const session = provider.session as
-    | { namespaces?: Record<string, { accounts?: ReadonlyArray<string> }> }
-    | null
-    | undefined;
-  return session?.namespaces?.["solana"]?.accounts ?? [];
-};
-
-const buildSolanaChain = (chainId: string, walletName: string): ChainBase => ({
-  id: chainId,
-  // Same posture as the EIP-6963 / Wallet Standard sides: butr doesn't
-  name: walletName,
-  namespace: "solana",
-  reference: chainId.slice(SOLANA_PREFIX.length),
-});
-
-const buildSolanaAccount = (address: string, chain: ChainBase): Account => ({
-  chain,
-  id: `${chain.id}:${address}`,
-  walletAddress: address,
-});
-
 /**
  * Solana (CAIP `solana:*`) namespace builder. Wraps the paired
  * `UniversalProvider` and routes calls through the WalletConnect v2
@@ -144,12 +106,12 @@ const buildSolanaAccount = (address: string, chain: ChainBase): Account => ({
 const solanaNamespace: WalletConnectNamespaceBuilder = {
   buildAdapter({ chains, icon, id, name, provider }) {
     let currentChainId = chains[0] ?? DEFAULT_CHAINS[0] ?? "solana:mainnet";
-    const currentChain = (): ChainBase => buildSolanaChain(currentChainId, name);
+    const currentChain = (): ChainBase => buildCaipChain(currentChainId, name, SOLANA_NAMESPACE);
 
     const resolveAccounts = (): Array<Account> => {
       const chain = currentChain();
-      return readSessionAccounts(provider).map((caip10) =>
-        buildSolanaAccount(parseCaip10Address(caip10), chain),
+      return readNamespaceAccounts(provider, SOLANA_NAMESPACE).map((caip10) =>
+        buildCaipAccount(parseCaip10Address(caip10), chain),
       );
     };
 

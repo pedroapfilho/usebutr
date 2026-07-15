@@ -204,12 +204,12 @@ out unrelated subscriptions.
 client, a transaction builder, or a connect modal; instead, every adapter
 exposes the raw, platform-native signer:
 
-| Platform | `getSigner()` returns                                    |
-| -------- | -------------------------------------------------------- |
-| EVM      | `Eip1193Provider`: pass to viem/ethers/wagmi.            |
-| SVM      | `WalletStandardWallet`: pass to `@solana/kit` / web3.js. |
-| Sui      | `WalletStandardWallet`: pass to `@mysten/sui`.           |
-| Bitcoin  | `WalletStandardWallet`: pass to `bitcoinjs-lib`.         |
+| Platform | `getSigner()` returns                                                                             |
+| -------- | ------------------------------------------------------------------------------------------------- |
+| EVM      | `Eip1193Provider`: pass to viem/ethers/wagmi.                                                     |
+| SVM      | `WalletStandardWallet`: pass to `@solana/kit` / web3.js.                                          |
+| Sui      | `WalletStandardWallet`: pass to `@mysten/sui`.                                                    |
+| Bitcoin  | `WalletStandardWallet`: pass to `bitcoinjs-lib`.                                                  |
 | Polkadot | `PolkadotSignerHandle` (`{ extensionName, address }`): bridge to `polkadot-api` via `pjs-signer`. |
 
 The signer type is fully tracked in TypeScript via the `SignerForPlatform`

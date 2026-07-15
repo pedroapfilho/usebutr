@@ -28,19 +28,19 @@ using whatever chain library you already know.
 
 butr is layered. Each package depends only on the ones below it.
 
-| Package                  | What it does                                                                               | Depends on            |
-| ------------------------ | ------------------------------------------------------------------------------------------ | --------------------- |
-| `@usebutr/core`          | Types, the wallet store, persistence, the discovery seam. No React, no protocols.          | —                     |
-| `@usebutr/react`         | Provider + hooks over the store.                                                           | `@usebutr/core`       |
-| `@usebutr/evm`           | EIP-1193 / EIP-6963 / injected discovery and adapters.                                     | `@usebutr/core`       |
-| `@usebutr/svm`           | Wallet Standard discovery and adapters for Solana.                                         | `@usebutr/core`       |
-| `@usebutr/sui`           | Wallet Standard discovery and adapters for Sui.                                            | `@usebutr/core`       |
-| `@usebutr/bitcoin`       | Wallet Standard + injected discovery and adapters for Bitcoin.                             | `@usebutr/core`       |
-| `@usebutr/polkadot`      | `injectedWeb3` discovery and adapters for Polkadot, with a Wallet Standard fallback.       | `@usebutr/core`       |
+| Package                  | What it does                                                                               | Depends on             |
+| ------------------------ | ------------------------------------------------------------------------------------------ | ---------------------- |
+| `@usebutr/core`          | Types, the wallet store, persistence, the discovery seam. No React, no protocols.          | —                      |
+| `@usebutr/react`         | Provider + hooks over the store.                                                           | `@usebutr/core`        |
+| `@usebutr/evm`           | EIP-1193 / EIP-6963 / injected discovery and adapters.                                     | `@usebutr/core`        |
+| `@usebutr/svm`           | Wallet Standard discovery and adapters for Solana.                                         | `@usebutr/core`        |
+| `@usebutr/sui`           | Wallet Standard discovery and adapters for Sui.                                            | `@usebutr/core`        |
+| `@usebutr/bitcoin`       | Wallet Standard + injected discovery and adapters for Bitcoin.                             | `@usebutr/core`        |
+| `@usebutr/polkadot`      | `injectedWeb3` discovery and adapters for Polkadot, with a Wallet Standard fallback.       | `@usebutr/core`        |
 | `@usebutr/wallets`       | Batteries-included five-platform discovery source (`autoDiscovery`) + combined registries. | core, react, platforms |
-| `@usebutr/walletconnect` | WalletConnect v2 adapter for EVM mobile wallets.                                           | core, evm             |
-| `@usebutr/ledger`        | Ledger hardware-wallet adapter (WebUSB, signing-only).                                     | `@usebutr/core`       |
-| `@usebutr/testing`       | Fake adapter + fake persistence for unit tests.                                            | `@usebutr/core`       |
+| `@usebutr/walletconnect` | WalletConnect v2 adapter for EVM mobile wallets.                                           | core, evm              |
+| `@usebutr/ledger`        | Ledger hardware-wallet adapter (WebUSB, signing-only).                                     | `@usebutr/core`        |
+| `@usebutr/testing`       | Fake adapter + fake persistence for unit tests.                                            | `@usebutr/core`        |
 
 Most apps want `@usebutr/wallets` (it pulls in `@usebutr/react`, `@usebutr/core`,
 and the per-platform adapter packages). Pass `autoDiscovery()` from

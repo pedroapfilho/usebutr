@@ -4,7 +4,7 @@ description: Derive address formats from network constants, sign messages, and r
 ---
 
 `bitcoinjs-lib` is the long-standing Bitcoin transaction toolkit. It is a
-**builder, not an RPC client** — it ships network constants and PSBT
+**builder, not an RPC client**: it ships network constants and PSBT
 construction, but no node connection. butr discovers and manages the wallet and
 exposes signing; `bitcoinjs-lib` supplies the network definitions and
 transaction encoding; a separate Esplora/Electrum client (not shown) would
@@ -31,17 +31,17 @@ const bech32Prefix = NETWORK_BY_CHAIN_REF[ref]?.bech32 ?? "unknown"; // "bc" | "
 
 ## Sign a message
 
-`signMessage` is wired on every Bitcoin adapter — call it on the connector:
+`signMessage` is wired on every Bitcoin adapter; call it on the connector:
 
 ```ts
 const message = new TextEncoder().encode("Hello from butr + bitcoinjs-lib");
 const { signature } = await wallet.connector.signMessage(message);
-// `signature` is a Uint8Array — render as hex for display.
+// `signature` is a Uint8Array; render as hex for display.
 ```
 
 ## Sign a PSBT
 
-PSBT signing is optional — not every Bitcoin wallet advertises it. Narrow on
+PSBT signing is optional; not every Bitcoin wallet advertises it. Narrow on
 `chainPlatform` so TypeScript exposes `signTransaction`, then feature-detect at
 runtime before calling it:
 
@@ -51,7 +51,7 @@ if (connector.chainPlatform !== "bitcoin" || !connector.signTransaction) {
   throw new Error("This wallet does not advertise PSBT signing (bitcoin:signPsbt).");
 }
 
-// PSBT bytes — built with bitcoinjs-lib's Psbt class from real UTXOs in
+// PSBT bytes, built with bitcoinjs-lib's Psbt class from real UTXOs in
 // a production app. The wallet returns the signed PSBT.
 const signed = await connector.signTransaction(psbtBytes);
 ```
@@ -60,7 +60,7 @@ const signed = await connector.signTransaction(psbtBytes);
   **No broadcast.** `bitcoinjs-lib` doesn't talk to a node. `signTransaction` returns a signed PSBT;
   you finalize it and POST the raw transaction to an Esplora / Electrum / Bitcoin Core endpoint
   yourself. The capability flag `signTransaction` is `false` on wallets that don't advertise
-  `bitcoin:signPsbt` — gate the UI on it.
+  `bitcoin:signPsbt`; gate the UI on it.
 </Callout>
 
 <Callout type="info">

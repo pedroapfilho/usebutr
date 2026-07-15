@@ -15,7 +15,7 @@ imports `@wallet-standard/app` (optional peer dependency).
 
 Fallback for wallets that inject `window.unisat` (Unisat, OKX legacy, generic
 `window.btc`) or expose `sats-connect` (Xverse). Use when no Wallet Standard
-wallet announces — `autoDiscovery()` composes both routes for you.
+wallet announces; `autoDiscovery()` composes both routes for you.
 
 ### `bitcoinDiscoverer: PlatformDiscoverer`
 
@@ -45,12 +45,12 @@ Type: `BitcoinCapabilityInput`.
 
 ## Chains
 
-- `BITCOIN_CHAINS` — record keyed by chain id (CAIP-2 `bip122:<genesis hash>`).
-- `BITCOIN_CHAINS_LIST` — array (mainnet / testnet / regtest).
+- `BITCOIN_CHAINS`: record keyed by chain id (CAIP-2 `bip122:<genesis hash>`).
+- `BITCOIN_CHAINS_LIST`: array (mainnet / testnet / regtest).
 
 ## Constants
 
-- `GENERIC_BITCOIN_ICON: string` — fallback SVG data URI for injected
+- `GENERIC_BITCOIN_ICON: string`: fallback SVG data URI for injected
   wallets that don't supply their own icon.
 
 ## Types
@@ -65,10 +65,10 @@ The shared Wallet Standard protocol types (`WalletStandardWallet`,
 `WalletStandardWalletAccount`, `WalletStandardAppModule`, `WalletsApp`,
 `StandardConnectFeature`, `StandardDisconnectFeature`,
 `StandardEventsFeature`, `StandardEventsListener`) live in
-[`@usebutr/wallet-standard-shared`](/api/index) — import them from
+[`@usebutr/wallet-standard-shared`](/api/index); import them from
 there directly when casting `getSigner()`.
 
-These feature types are what you cast `getSigner()` to when signing/sending —
+These feature types are what you cast `getSigner()` to when signing/sending;
 see the [Bitcoin Wallet Standard connector](/connectors/bitcoin-wallet-standard).
 
 **Source:** `packages/bitcoin/src/index.ts`.

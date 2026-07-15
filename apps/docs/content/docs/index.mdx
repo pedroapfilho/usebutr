@@ -1,12 +1,13 @@
 ---
 title: Introduction
-description: butr is a set of multi-chain wallet-management primitives for React. EVM and Solana, discovered and managed through one composable hook surface.
+description: butr is a set of multi-chain wallet-management primitives for React. EVM, Solana, Sui, Bitcoin, and Polkadot, discovered and managed through one composable hook surface.
 ---
 
-butr discovers EVM (EIP-6963 / EIP-1193) and Solana (Wallet Standard) wallets,
+butr discovers EVM (EIP-6963 / EIP-1193), Solana / Sui / Bitcoin (Wallet
+Standard), and Polkadot (`injectedWeb3`) wallets,
 manages their connection state across reloads, and exposes everything through
 small composable React hooks. It does not wrap viem, wagmi, gill, or
-framework-kit — it sits underneath them and hands you a raw signer so you keep
+framework-kit; it sits underneath them and hands you a raw signer so you keep
 using whatever chain library you already know.
 
 ## What butr is
@@ -14,8 +15,8 @@ using whatever chain library you already know.
 - **Multi-chain by default.** One provider, one pool. A user can connect
   MetaMask (EVM) and Phantom (SVM) at the same time; butr tracks each platform
   independently.
-- **Connector-shaped.** Every wallet — injected, WalletConnect, Ledger, or one
-  you write yourself — is a `WalletAdapter` plugged in through a single seam:
+- **Connector-shaped.** Every wallet (injected, WalletConnect, Ledger, or one
+  you write yourself) is a `WalletAdapter` plugged in through a single seam:
   `WalletManagerConfig.createConnector`.
 - **No lock-in.** `getSigner()` returns the underlying provider. You bridge it
   into viem / wagmi / gill / framework-kit / `@solana/kit` (or legacy
@@ -27,34 +28,37 @@ using whatever chain library you already know.
 
 butr is layered. Each package depends only on the ones below it.
 
-| Package                  | What it does                                                                               | Depends on            |
-| ------------------------ | ------------------------------------------------------------------------------------------ | --------------------- |
-| `@usebutr/core`          | Types, the wallet store, persistence, the discovery seam. No React, no protocols.          | —                     |
-| `@usebutr/react`         | Provider + hooks over the store.                                                           | `@usebutr/core`       |
-| `@usebutr/evm`           | EIP-1193 / EIP-6963 / injected discovery and adapters.                                     | `@usebutr/core`       |
-| `@usebutr/svm`           | Wallet Standard discovery and adapters for Solana.                                         | `@usebutr/core`       |
-| `@usebutr/wallets`       | Batteries-included EVM+SVM discovery source (`autoDiscovery`) + combined chain registries. | core, react, evm, svm |
-| `@usebutr/walletconnect` | WalletConnect v2 adapter for EVM mobile wallets.                                           | core, evm             |
-| `@usebutr/ledger`        | Ledger hardware-wallet adapter (WebUSB, signing-only).                                     | `@usebutr/core`       |
-| `@usebutr/testing`       | Fake adapter + fake persistence for unit tests.                                            | `@usebutr/core`       |
+| Package                  | What it does                                                                               | Depends on             |
+| ------------------------ | ------------------------------------------------------------------------------------------ | ---------------------- |
+| `@usebutr/core`          | Types, the wallet store, persistence, the discovery seam. No React, no protocols.          | —                      |
+| `@usebutr/react`         | Provider + hooks over the store.                                                           | `@usebutr/core`        |
+| `@usebutr/evm`           | EIP-1193 / EIP-6963 / injected discovery and adapters.                                     | `@usebutr/core`        |
+| `@usebutr/svm`           | Wallet Standard discovery and adapters for Solana.                                         | `@usebutr/core`        |
+| `@usebutr/sui`           | Wallet Standard discovery and adapters for Sui.                                            | `@usebutr/core`        |
+| `@usebutr/bitcoin`       | Wallet Standard + injected discovery and adapters for Bitcoin.                             | `@usebutr/core`        |
+| `@usebutr/polkadot`      | `injectedWeb3` discovery and adapters for Polkadot, with a Wallet Standard fallback.       | `@usebutr/core`        |
+| `@usebutr/wallets`       | Batteries-included five-platform discovery source (`autoDiscovery`) + combined registries. | core, react, platforms |
+| `@usebutr/walletconnect` | WalletConnect v2 adapter for EVM mobile wallets.                                           | core, evm              |
+| `@usebutr/ledger`        | Ledger hardware-wallet adapter (WebUSB, signing-only).                                     | `@usebutr/core`        |
+| `@usebutr/testing`       | Fake adapter + fake persistence for unit tests.                                            | `@usebutr/core`        |
 
-Most apps want `@usebutr/wallets` (it pulls in `@usebutr/react`, `@usebutr/evm`,
-`@usebutr/svm`, `@usebutr/core`). Pass `autoDiscovery()` from `@usebutr/wallets` to
-`WalletManagerProvider` from `@usebutr/react` for EVM+SVM discovery. Reach for
-the lower-level packages when you want an EVM-only bundle or a custom discovery
-pipeline.
+Most apps want `@usebutr/wallets` (it pulls in `@usebutr/react`, `@usebutr/core`,
+and the per-platform adapter packages). Pass `autoDiscovery()` from
+`@usebutr/wallets` to `WalletManagerProvider` from `@usebutr/react` for
+discovery across all five platforms. Reach for the lower-level packages when
+you want a single-platform bundle or a custom discovery pipeline.
 
 ## Where to go next
 
-- [Installation](/getting-started/installation) — pick your packages.
-- [Quickstart](/getting-started/quickstart) — a working app in five
+- [Installation](/getting-started/installation): pick your packages.
+- [Quickstart](/getting-started/quickstart): a working app in five
   minutes with `WalletManagerProvider`.
-- [Core concepts](/concepts) — the mental model: connectors, the pool,
+- [Core concepts](/concepts): the mental model of connectors, the pool,
   platforms, hydration.
-- [Standards compliance](/concepts/standards) — how butr follows the
+- [Standards compliance](/concepts/standards): how butr follows the
   Wallet Standard, EIP-6963, and EIP-1193, and the deliberate edges.
-- [Guides](/guides/provider-setup) — connect, sign, send, switch chains.
-- [API reference](/api/core) — every export, per package.
+- [Guides](/guides/provider-setup): connect, sign, send, switch chains.
+- [API reference](/api/core): every export, per package.
 
 <Callout type="info">
   All code in these docs is taken from the runnable demo apps and package tests in [the butr

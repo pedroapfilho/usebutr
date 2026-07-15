@@ -14,7 +14,7 @@ Sui, Suiet, Surf, …). Returns an unsubscribe function. Lazily imports
 ### `suiDiscoverer: PlatformDiscoverer`
 
 Descriptor used by `@usebutr/wallets`'s `autoDiscovery()` to compose Sui
-discovery into a multi-platform source. Wallet Standard only — no fallback.
+discovery into a multi-platform source. Wallet Standard only; no fallback.
 
 ## Adapter builder
 
@@ -39,8 +39,8 @@ Type: `WalletStandardCapabilityInput`.
 
 ## Chains
 
-- `SUI_CHAINS` — record keyed by chain id.
-- `SUI_CHAINS_LIST` — array (mainnet / testnet / devnet).
+- `SUI_CHAINS`: record keyed by chain id.
+- `SUI_CHAINS_LIST`: array (mainnet / testnet / devnet).
 
 ## Types
 
@@ -54,10 +54,10 @@ The shared Wallet Standard protocol types (`WalletStandardWallet`,
 `WalletStandardWalletAccount`, `WalletStandardAppModule`, `WalletsApp`,
 `StandardConnectFeature`, `StandardDisconnectFeature`,
 `StandardEventsFeature`, `StandardEventsListener`) live in
-[`@usebutr/wallet-standard-shared`](/api/index) — import them from
+[`@usebutr/wallet-standard-shared`](/api/index); import them from
 there directly when casting `getSigner()`.
 
-These feature types are what you cast `getSigner()` to when signing/sending —
+These feature types are what you cast `getSigner()` to when signing/sending;
 see the [Sui Wallet Standard connector](/connectors/sui-wallet-standard).
 
 **Source:** `packages/sui/src/index.ts`.

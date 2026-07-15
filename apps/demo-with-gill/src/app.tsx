@@ -315,7 +315,7 @@ const App = () => (
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">butr + gill</h1>
         <p className="mt-1 text-sm text-neutral-500">
-          gill is the ergonomic SDK built on <code>@solana/kit</code> — the path the Solana
+          gill is the ergonomic SDK built on <code>@solana/kit</code>, the path the Solana
           Foundation recommends for most apps. butr discovers and manages the wallet; gill handles
           the RPC and transaction builder; the wallet&apos;s Wallet Standard features supply signing
           + submission.

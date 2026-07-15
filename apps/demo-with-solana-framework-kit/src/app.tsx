@@ -325,7 +325,7 @@ const App = () => (
         <p className="mt-1 text-sm text-neutral-500">
           The recommended modern Solana stack. butr discovers and manages the wallet; Solana
           Foundation&apos;s framework-kit (<code>@solana/client</code> +{" "}
-          <code>@solana/react-hooks</code>) is the reactive RPC/data layer — <code>useBalance</code>{" "}
+          <code>@solana/react-hooks</code>) is the reactive RPC/data layer: <code>useBalance</code>{" "}
           auto-fetches and watches; the wallet&apos;s Wallet Standard features supply signing +
           submission.
         </p>

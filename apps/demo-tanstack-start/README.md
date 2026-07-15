@@ -122,7 +122,7 @@ More information on layouts can be found in the [Layouts documentation](https://
 
 ## Server Functions
 
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
+TanStack Start provides server functions: server-side code you call directly from your client components.
 
 ```tsx
 import { createServerFn } from "@tanstack/react-start";
@@ -191,7 +191,7 @@ function PeopleComponent() {
 }
 ```
 
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
+Loaders simplify your data fetching logic. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
 
 # Demo files
 

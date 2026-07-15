@@ -29,7 +29,7 @@ const buildWagmiConfig = (provider: EIP1193Provider, name: string, id: string): 
 
 After building the config, run wagmi's `connect` so subsequent `@wagmi/core`
 actions know which connector to use. The wallet already authorised the dapp
-through butr, so this resolves **silently — no second popup**:
+through butr, so this resolves **silently, with no second popup**:
 
 ```ts
 const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
@@ -52,7 +52,7 @@ const hash = await sendTransaction(cfg, {
 });
 ```
 
-Every sign and every transaction hits the actual wallet butr connected — not a
+Every sign and every transaction hits the actual wallet butr connected, not a
 mock.
 
 <Callout type="info">

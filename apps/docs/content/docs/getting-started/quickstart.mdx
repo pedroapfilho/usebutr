@@ -11,8 +11,8 @@ batteries-included `@usebutr/wallets` package.
 
 `WalletManagerProvider` from `@usebutr/react` is the single provider. Pass it a
 `WalletSource` via the `discovery` prop to enable auto-discovery. `autoDiscovery()`
-from `@usebutr/wallets` composes EVM (EIP-6963) and Solana (Wallet Standard) in one
-call. `storageKeyPrefix` namespaces the storage keys.
+from `@usebutr/wallets` composes EVM (EIP-6963), Solana / Sui / Bitcoin (Wallet
+Standard), and Polkadot (`injectedWeb3`) discovery in one call. `storageKeyPrefix` namespaces the storage keys.
 
 Hoist the `discovery` source to module scope so the same instance is reused
 across renders:
@@ -117,7 +117,7 @@ const Connected = () => {
 ```
 
 That is a complete multi-chain connect flow. The same `wallet.connector`
-exposes `signMessage`, `sendTx`, `switchChain`, and `getSigner` — see the
+exposes `signMessage`, `sendTx`, `switchChain`, and `getSigner`; see the
 [guides](/guides/provider-setup).
 
 <Callout type="info">
@@ -128,8 +128,8 @@ exposes `signMessage`, `sendTx`, `switchChain`, and `getSigner` — see the
 
 ## Next steps
 
-- [Core concepts](/concepts) — what the pool, selection, and active wallet
+- [Core concepts](/concepts): what the pool, selection, and active wallet
   mean, and why hydration is asynchronous.
-- [Multi-chain & switching](/guides/multi-chain) — connect more than one
+- [Multi-chain & switching](/guides/multi-chain): connect more than one
   wallet and switch chains.
 - [Signing](/guides/signing) and [Transactions](/guides/transactions).

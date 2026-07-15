@@ -3,7 +3,7 @@ title: Read balances
 description: useBalance for the built-in path, or query your own RPC for full control.
 ---
 
-## `useBalance` — the built-in path
+## `useBalance`: the built-in path
 
 `useBalance(connectorId?, mint?)` is an async hook returning a typed lifecycle
 state plus `refetch`:
@@ -39,7 +39,7 @@ balance where the connector supports it.
 
 <Callout type="warn">
   `useBalance` only returns a real value when `wallet.connector.capabilities.getBalance` is `true`.
-  Ledger, for example, is signing-only and has no RPC — its `getBalance` is `false`. Query an RPC
+  Ledger, for example, is signing-only and has no RPC; its `getBalance` is `false`. Query an RPC
   yourself for those.
 </Callout>
 
@@ -49,7 +49,7 @@ For full control (custom RPC, caching, token lists) read through your chain
 library instead. butr stays out of the way:
 
 ```ts
-// viem — its own public client, not the wallet's RPC
+// viem: its own public client, not the wallet's RPC
 const wei = await publicClient.getBalance({ address: account });
 const eth = `${formatEther(wei)} ETH`;
 
@@ -59,7 +59,7 @@ const sol = `${Number(value) / 1_000_000_000} SOL`;
 ```
 
 For a reactive Solana read that auto-fetches and watches, framework-kit's
-`useBalance` works against a butr-managed wallet — see the
+`useBalance` works against a butr-managed wallet; see the
 [framework-kit integration](/integrations/solana-framework-kit).
 
 <Callout type="info">

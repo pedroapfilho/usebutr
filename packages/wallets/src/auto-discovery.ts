@@ -4,7 +4,8 @@ import { type DiscoverOptions, discoverWalletAdapters } from "./discover";
 
 /**
  * The batteries-included discovery source: composes EVM (EIP-6963 +
- * injected fallback) and SVM (Wallet Standard). Pass to
+ * injected fallback), SVM / Sui / Bitcoin (Wallet Standard), and
+ * Polkadot (`injectedWeb3` + Wallet Standard fallback). Pass to
  * `<WalletManagerProvider discovery={autoDiscovery()} />`. Restrict
  * platforms with `options`, e.g. `autoDiscovery({ evm: true })`.
  */

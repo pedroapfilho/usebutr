@@ -1,16 +1,16 @@
 ---
 title: WalletConnect
-description: WalletConnect v2 for EVM, Solana, Sui, and Bitcoin mobile wallets — one Reown project id, one QR scan, multiple namespaces.
+description: "WalletConnect v2 for EVM, Solana, Sui, and Bitcoin mobile wallets: one Reown project id, one QR scan, multiple namespaces."
 ---
 
 `@usebutr/walletconnect` is a WalletConnect v2 adapter for **mobile** wallets
 (Trust, Rainbow, Argent, Zerion, MetaMask Mobile, Phantom Mobile, Slush, Magic
-Eden, …). It is not browser-injected — you build the adapter once and register
+Eden, …). It is not browser-injected; you build the adapter once and register
 it through `createConnector`.
 
-It ships namespace builders for all four `ChainPlatform` variants — `eip155`
-(EVM), `solana` (SVM), `sui`, and `bip122` (Bitcoin) — and a multi-namespace
-factory so a single pairing can hand back one adapter per platform.
+It ships namespace builders for all four `ChainPlatform` variants: `eip155`
+(EVM), `solana` (SVM), `sui`, and `bip122` (Bitcoin). A multi-namespace
+factory lets a single pairing hand back one adapter per platform.
 
 ## Install
 
@@ -39,8 +39,8 @@ const wcs = await createWalletConnectAdapters({
 });
 ```
 
-`createWalletConnectAdapters(options)` returns `Promise<Array<WalletAdapter>>`
-— one per requested namespace, all sharing the same paired session. When more
+`createWalletConnectAdapters(options)` returns `Promise<Array<WalletAdapter>>`:
+one per requested namespace, all sharing the same paired session. When more
 than one namespace is requested, each adapter's id is suffixed with the
 platform (`walletconnect-evm`, `walletconnect-svm`, …) so they coexist in
 butr's pool. With a single namespace, the id stays the base
@@ -63,7 +63,7 @@ chains. Omit a key entirely to skip that platform.
 
 ## Register it
 
-The adapter is fully formed but **un-paired** — pairing happens when butr's
+The adapter is fully formed but **un-paired**; pairing happens when butr's
 runtime calls `adapter.connect()` (when the user clicks "Connect"). Build the
 adapter once at module scope, then pass it through the unified provider:
 
@@ -117,7 +117,7 @@ import {
 ```
 
 `KNOWN_NAMESPACES` is the registry `createWalletConnectAdapters` dispatches
-through — keyed by `ChainPlatform`. Adding a fifth platform is three touches:
+through, keyed by `ChainPlatform`. Adding a fifth platform is three touches:
 write a builder under `src/namespaces/<platform>.ts`, add an entry to
 `KNOWN_NAMESPACES`, and re-export it.
 
@@ -128,7 +128,7 @@ own constant:
 
 ```ts
 import {
-  WALLETCONNECT_CAPABILITIES, // EVM — single-platform factory uses this
+  WALLETCONNECT_CAPABILITIES, // EVM; single-platform factory uses this
   WALLETCONNECT_BITCOIN_CAPABILITIES,
   WALLETCONNECT_SUI_CAPABILITIES,
   WALLETCONNECT_SVM_CAPABILITIES,
@@ -141,7 +141,7 @@ import {
 | `sendTransaction`       |  ✓  |  ✓  |  ✓  |    ✓    | BTC routes through `bip122:signPsbt` with `broadcast: true`.           |
 | `signTransaction`       |     |     |  ✓  |    ✓    | Sui: raw tx bytes; BTC: PSBT round-trip.                               |
 | `switchChain`           |  ✓  |  ✓  |  ✓  |         | BTC: switching network ≈ re-pair.                                      |
-| `requestAccounts`       |     |     |     |         | No EIP-2255 equivalent — "more accounts" means re-pairing.             |
+| `requestAccounts`       |     |     |     |         | No EIP-2255 equivalent; "more accounts" means re-pairing.              |
 | `switchAccount`         |     |     |     |         | Pick the account in the mobile wallet.                                 |
 | `subscribe`             |  ✓  |  ✓  |  ✓  |    ✓    | Relayed via session events (`accountsChanged`, `chainChanged`, …).     |
 | `getBalance`            |  ✓  |     |     |         | EVM: via the relay's `eth_getBalance`. Others have no RPC contract.    |

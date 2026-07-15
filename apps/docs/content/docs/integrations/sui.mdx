@@ -10,7 +10,7 @@ and execution.
 
 ## Read state with `SuiClient`
 
-`SuiClient` talks to a Sui full node directly — point it at a network and read
+`SuiClient` talks to a Sui full node directly; point it at a network and read
 balances without routing through the wallet:
 
 ```ts
@@ -24,19 +24,19 @@ const sui = `${Number(totalBalance) / 1_000_000_000} SUI`; // MIST → SUI
 
 ## Sign a message
 
-The Sui adapter wires `signMessage` directly — call it on the connector and get
+The Sui adapter wires `signMessage` directly; call it on the connector and get
 the signature bytes back:
 
 ```ts
 const message = new TextEncoder().encode("Hello from butr + @mysten/sui");
 const { signature } = await wallet.connector.signMessage(message);
-// `signature` is a Uint8Array — render as hex for display.
+// `signature` is a Uint8Array; render as hex for display.
 ```
 
 ## Build and send a transaction
 
 Build with `@mysten/sui`'s `Transaction` programmable-transaction builder, then
-hand the object to butr's `sendTx` — the Sui adapter routes it through the
+hand the object to butr's `sendTx`; the Sui adapter routes it through the
 wallet's `sui:signAndExecuteTransaction` feature, which signs **and** broadcasts:
 
 ```ts
@@ -53,7 +53,7 @@ const digest = await wallet.connector.sendTx(tx);
 ```
 
 <Callout type="info">
-  Unlike EVM/SVM, you don't broadcast separately — Sui wallets expose
+  Unlike EVM/SVM, you don't broadcast separately: Sui wallets expose
   `sui:signAndExecuteTransaction`, which signs and submits in one step. `sendTx` resolves to the
   transaction digest, not raw signed bytes. For sign-only flows (no broadcast), use
   `signTransaction` instead.

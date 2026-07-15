@@ -29,7 +29,7 @@ import { useConnectionError } from "@usebutr/react";
 
 const error = useConnectionError();
 if (error?.kind === "UserRejected") {
-  // user clicked "reject" — usually no UI needed
+  // user clicked "reject"; usually no UI needed
 } else if (error?.kind === "WalletLocked") {
   // prompt: "Unlock your wallet and try again"
 } else if (error) {
@@ -57,7 +57,7 @@ It recognises:
 
 <Callout type="warn">
   Normalisation is best-effort. A custom connector that throws an unrecognised shape lands in
-  `Unknown`. butr does no retrying — you decide whether to retry based on `kind`.
+  `Unknown`. butr does no retrying; you decide whether to retry based on `kind`.
 </Callout>
 
 **Source:** `packages/core/src/types/errors.ts`.

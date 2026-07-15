@@ -31,8 +31,8 @@ Type: `WalletStandardCapabilityInput`.
 
 ## Chains
 
-- `SVM_CHAINS` — record keyed by chain id.
-- `SVM_CHAINS_LIST` — array (mainnet / testnet / devnet).
+- `SVM_CHAINS`: record keyed by chain id.
+- `SVM_CHAINS_LIST`: array (mainnet / testnet / devnet).
 
 ## Types
 
@@ -45,10 +45,10 @@ The shared Wallet Standard protocol types (`WalletStandardWallet`,
 `WalletStandardWalletAccount`, `WalletStandardAppModule`, `WalletsApp`,
 `StandardConnectFeature`, `StandardDisconnectFeature`,
 `StandardEventsFeature`, `StandardEventsListener`) live in
-[`@usebutr/wallet-standard-shared`](/api/index) — import them from
+[`@usebutr/wallet-standard-shared`](/api/index); import them from
 there directly when casting `getSigner()`.
 
-These feature types are what you cast `getSigner()` to when signing/sending —
+These feature types are what you cast `getSigner()` to when signing/sending;
 see the [Solana integrations](/integrations/solana-web3js).
 
 **Source:** `packages/svm/src/index.ts`.

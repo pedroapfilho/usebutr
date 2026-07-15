@@ -1,6 +1,6 @@
 ---
 title: Standards compliance
-description: How butr follows the Wallet Standard, EIP-6963, and EIP-1193 — what is covered, and the deliberate edges.
+description: "How butr follows the Wallet Standard, EIP-6963, and EIP-1193: what is covered, and the deliberate edges."
 ---
 
 butr discovers wallets through the published standards only. There is no
@@ -14,15 +14,15 @@ Standard](https://github.com/wallet-standard/wallet-standard); EVM goes through
 
 ## Discovery is spec-only
 
-- **Wallet Standard (SVM, Sui, Bitcoin, Polkadot)** — `@usebutr/svm`,
+- **Wallet Standard (SVM, Sui, Bitcoin, Polkadot)**: `@usebutr/svm`,
   `@usebutr/sui`, `@usebutr/bitcoin`, and `@usebutr/polkadot` lazily import
   `@wallet-standard/app` and use `getWallets()`: `get()` for wallets already
   present, `on('register')` for ones that load later, and `on('unregister')`
   to drop a wallet whose extension is disabled or removed mid-session.
-- **EVM** — `@usebutr/evm` adds the `eip6963:announceProvider` listener _before_
+- **EVM**: `@usebutr/evm` adds the `eip6963:announceProvider` listener _before_
   dispatching `eip6963:requestProvider`, so wallets that announced early
   aren't missed. Providers are de-duplicated by `info.rdns`.
-- **Legacy fallback** — a raw `window.ethereum` is adopted only after a 150 ms
+- **Legacy fallback**: a raw `window.ethereum` is adopted only after a 150 ms
   settle window in which no EIP-6963 wallet answered. It suppresses itself the
   moment a compliant wallet is present, so it never double-lists.
 
@@ -42,7 +42,7 @@ Standard](https://github.com/wallet-standard/wallet-standard); EVM goes through
 | Switch chain           | per-call `chain` + local state                           | `wallet_switchEthereumChain`                               |
 
 Eager hydration asks the wallet to restore already-authorized accounts
-**without prompting** — Wallet Standard's `silent` input, the `eth_accounts`
+**without prompting**: Wallet Standard's `silent` input, the `eth_accounts`
 read on EIP-1193. A wallet that can't reconnect silently fails the restore
 cleanly instead of popping a connect dialog on page load. Hardware (Ledger)
 and WalletConnect adapters, which are inherently interactive, reject a silent
@@ -63,14 +63,14 @@ never claim more than the wallet supports.
 
 These are intentional boundaries, not gaps:
 
-- **No RPC.** `getBalance` / `getTransactionReceipt` return placeholders —
+- **No RPC.** `getBalance` / `getTransactionReceipt` return placeholders;
   butr hands you a signer and stays out of the RPC business. Wrap your own
   client (viem, `@solana/kit`, …).
 - **`solana:signTransaction` is sign-only.** butr returns the signed bytes;
   you broadcast them, because butr ships no RPC. Gated by
   `capabilities.signTransaction`.
 - **No silent account switch.** Neither spec has a "use address X" RPC, so
-  `switchAccount` is a no-op on auto adapters — the user picks the active
+  `switchAccount` is a no-op on auto adapters; the user picks the active
   account in the wallet's own UI; butr mirrors it via the change event.
 - **Feature changes don't re-derive capabilities.** A wallet that swaps its
   advertised feature set at runtime won't change a connected entry's

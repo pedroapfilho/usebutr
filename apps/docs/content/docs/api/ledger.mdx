@@ -44,7 +44,7 @@ Each factory is also exported directly:
 - `createSuiLedgerAdapter(options: SuiLedgerOptions): Promise<WalletAdapter>`
 - `createBitcoinLedgerAdapter(options: BitcoinLedgerOptions): Promise<WalletAdapter>`
 
-The dispatch's `default` branch is a true `never` exhaustiveness check — every
+The dispatch's `default` branch is a true `never` exhaustiveness check; every
 `ChainPlatform` variant is covered today.
 
 ## Options
@@ -104,11 +104,11 @@ The dispatch's `default` branch is a true `never` exhaustiveness check — every
 
 ## Constants
 
-- `LEDGER_DEFAULT_ICON: string` — EVM default SVG.
-- `LEDGER_SVM_DEFAULT_ICON: string` — SVM default SVG.
-- `LEDGER_SUI_DEFAULT_ICON: string` — Sui default SVG.
-- `LEDGER_BITCOIN_DEFAULT_ICON: string` — Bitcoin default SVG.
-- `LEDGER_CAPABILITIES: WalletCapabilities` — signing-only baseline. Sui
+- `LEDGER_DEFAULT_ICON: string`: EVM default SVG.
+- `LEDGER_SVM_DEFAULT_ICON: string`: SVM default SVG.
+- `LEDGER_SUI_DEFAULT_ICON: string`: Sui default SVG.
+- `LEDGER_BITCOIN_DEFAULT_ICON: string`: Bitcoin default SVG.
+- `LEDGER_CAPABILITIES: WalletCapabilities`: signing-only baseline. Sui
   overrides `signMessage: false` since `@ledgerhq/hw-app-sui` doesn't expose
   `signPersonalMessage` at the current version.
 

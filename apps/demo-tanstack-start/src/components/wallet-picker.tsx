@@ -45,7 +45,7 @@ const WalletBrandRow = ({
             return (
               <button
                 aria-busy={isConnecting}
-                aria-label={`${brand.name} — ${adapter.chainPlatform}`}
+                aria-label={`${brand.name} (${adapter.chainPlatform})`}
                 className="min-h-[44px] rounded-md border border-neutral-300 px-2 py-1 font-mono text-xs uppercase hover:bg-neutral-50 disabled:opacity-50"
                 disabled={isConnecting}
                 key={adapter.id}

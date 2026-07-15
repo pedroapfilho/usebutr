@@ -1,17 +1,17 @@
 ---
 title: Overview
-description: Every connector plugs in through the same createConnector seam — discovered, or registered explicitly.
+description: Every connector plugs in through the same createConnector seam, discovered or registered explicitly.
 ---
 
 A connector is a `WalletAdapter`. They reach butr two ways, both through
 `WalletManagerProvider`:
 
-- **Discovered** — browser wallets announce themselves. `@usebutr/evm` listens
+- **Discovered**: browser wallets announce themselves. `@usebutr/evm` listens
   for EIP-6963; `@usebutr/svm`, `@usebutr/sui`, and `@usebutr/bitcoin` listen
   for the Wallet Standard (`@usebutr/bitcoin` also tries injected fallbacks
   like `window.unisat` and `sats-connect`). `@usebutr/wallets` composes all of
   them via `autoDiscovery()`. You don't register these by hand.
-- **Registered explicitly** — WalletConnect and Ledger aren't browser-injected.
+- **Registered explicitly**: WalletConnect and Ledger aren't browser-injected.
   You build the adapter once and return it from `createConnector`. Both now
   ship per-platform builders for EVM, SVM, Sui, and Bitcoin.
 

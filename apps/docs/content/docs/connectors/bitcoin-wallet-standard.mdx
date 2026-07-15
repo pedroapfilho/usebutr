@@ -5,8 +5,8 @@ description: Wallet Standard discovery for Bitcoin wallets plus injected fallbac
 
 `@usebutr/bitcoin` discovers Bitcoin wallets two ways:
 
-- **Wallet Standard** — Phantom, Magic Eden, Leather, OKX (modern), …
-- **Injected fallback** — `window.unisat` (Unisat, OKX legacy, generic
+- **Wallet Standard**: Phantom, Magic Eden, Leather, OKX (modern), …
+- **Injected fallback**: `window.unisat` (Unisat, OKX legacy, generic
   `window.btc`) and `sats-connect` (Xverse).
 
 The fallback is opt-in via `discoverInjectedBitcoinAdapter` and runs when no
@@ -41,7 +41,7 @@ const discovery = createWalletSource((onAdapter) => {
 
 <Callout type="info">
   `@usebutr/bitcoin` lazily imports `@wallet-standard/app` (an optional peer dependency). Restored
-  Bitcoin wallets can land in `pendingIds` for a moment during that warmup — see
+  Bitcoin wallets can land in `pendingIds` for a moment during that warmup; see
   [hydration](/concepts/hydration).
 </Callout>
 
@@ -49,16 +49,16 @@ const discovery = createWalletSource((onAdapter) => {
 
 Resolved from the wallet's advertised features via `resolveBitcoinCapabilities`:
 
-- `signMessage` — true only if `bitcoin:signMessage` is advertised. Note this
+- `signMessage`: true only if `bitcoin:signMessage` is advertised. Note this
   is a Bitcoin Signed Message (BIP-322-ish), not interchangeable with EVM
   signatures.
-- `signTransaction` — true via `bitcoin:signPsbt`. PSBT in, signed PSBT out;
+- `signTransaction`: true via `bitcoin:signPsbt`. PSBT in, signed PSBT out;
   the consumer finalises and broadcasts.
-- `sendTransaction` — true via `bitcoin:sendTransfer` (one-shot send) or
+- `sendTransaction`: true via `bitcoin:sendTransfer` (one-shot send) or
   `bitcoin:signPsbt` with `broadcast: true` (depending on what the wallet
   advertises).
-- `subscribe` — true via the Standard `change` event.
-- `switchChain` — limited: switching mainnet ↔ testnet typically means
+- `subscribe`: true via the Standard `change` event.
+- `switchChain`: limited; switching mainnet ↔ testnet typically means
   re-connecting in the wallet UI.
 
 Always branch on [capabilities](/concepts/capabilities).
@@ -84,7 +84,7 @@ app for the full build-and-broadcast flow with `bitcoinjs-lib`.
 ## Chains
 
 `BITCOIN_CHAINS_LIST` / `BITCOIN_CHAINS` ship mainnet, testnet, and regtest
-(keyed by CAIP-2 — `bip122:<genesis block hash>`). `slugify`,
+(keyed by CAIP-2, `bip122:<genesis block hash>`). `slugify`,
 `resolveBitcoinCapabilities`, and `GENERIC_BITCOIN_ICON` are exported for
 adapter authors.
 

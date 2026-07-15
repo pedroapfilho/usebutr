@@ -14,8 +14,9 @@ import { createDiscoveryBus } from "./discovery-bus";
  * don't appear in the provider's `discovery` source.
  *
  * Default when omitted: every platform enabled (`evm`, `svm`, `sui`,
- * `bitcoin`), plus the legacy fallbacks (`injected` for EVM,
- * `injectedBitcoin` for Bitcoin).
+ * `bitcoin`, `polkadot`), plus the fallbacks (`injected` for EVM,
+ * `injectedBitcoin` for Bitcoin, `polkadotWalletStandard` for
+ * Polkadot).
  *
  * The legacy fallbacks emit only when their primary path has not
  * already produced an adapter by the settle deadline. Disable when

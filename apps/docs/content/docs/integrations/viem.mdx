@@ -5,7 +5,7 @@ description: Wrap butr's EIP-1193 provider with viem's createWalletClient.
 
 butr owns wallet discovery and connection state. viem owns chain abstraction
 and RPC. The bridge is one line: `getSigner()` on an EVM adapter returns the
-raw EIP-1193 provider — exactly what viem's `custom()` transport wants.
+raw EIP-1193 provider, exactly what viem's `custom()` transport wants.
 
 ## Wire the wallet client
 

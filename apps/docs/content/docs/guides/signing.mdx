@@ -48,13 +48,13 @@ const [output] = await feature.signMessage({ account, message });
 <Callout type="warn">
   Verify the signature against the returned `signedMessage`, **not** your input bytes. Solana Wallet
   Standard wallets may prefix or re-encode the message internally. EVM wallets echo the input, so
-  there it's the same bytes — but writing verification against `signedMessage` works for both.
+  there it's the same bytes, but writing verification against `signedMessage` works for both.
 </Callout>
 
 ## Signing through an integration library
 
 If you've wired viem / wagmi (see [Integrations](/integrations/viem)),
-sign through that library's API instead — it uses the same underlying provider
+sign through that library's API instead; it uses the same underlying provider
 butr handed you:
 
 ```ts

@@ -3,7 +3,7 @@ title: EVM-only setup
 description: Ship @usebutr/react + @usebutr/evm with no @usebutr/svm or @usebutr/wallets in the bundle.
 ---
 
-Pick this path when your app only touches EVM chains — a viem, wagmi, or ethers
+Pick this path when your app only touches EVM chains: a viem, wagmi, or ethers
 app with no Solana surface. You import `@usebutr/evm` for discovery instead of
 `autoDiscovery()` from `@usebutr/wallets`, and the Solana packages never enter your
 bundle. Nothing else about the provider or hooks changes.
@@ -31,7 +31,7 @@ import { WalletManagerProvider, useDiscoveredWallets } from "@usebutr/react";
 import { discoverEvmAdapters } from "@usebutr/evm";
 
 // EVM-only: @usebutr/react + @usebutr/evm. No @usebutr/svm / @usebutr/wallets in the
-// bundle — discovery is a WalletSource built from the EVM discoverer.
+// bundle; discovery is a WalletSource built from the EVM discoverer.
 const evmDiscovery = createWalletSource(discoverEvmAdapters);
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
@@ -47,12 +47,12 @@ export { WalletProvider, useDiscoveredWallets };
 use exactly this pattern. They re-export `useDiscoveredWallets` from the local
 `wallet-provider` module so consuming files import it from one place.
 
-On Next.js the same module needs a `"use client"` directive at the top — see
+On Next.js the same module needs a `"use client"` directive at the top; see
 [Next.js (App Router)](/getting-started/frameworks/nextjs).
 
 ## The bundle guarantee
 
-The isolation is not a flag — it is your import graph. `@usebutr/evm` depends only
+The isolation is not a flag; it is your import graph. `@usebutr/evm` depends only
 on `@usebutr/core`; it carries no Wallet Standard or Solana code. `autoDiscovery()`
 lives in `@usebutr/wallets`, which depends on both `@usebutr/evm` and `@usebutr/svm`, so
 importing it would pull Solana in. Here you import `discoverEvmAdapters` from
@@ -72,7 +72,7 @@ const CHAINS_BY_PLATFORM = { evm: EVM_CHAINS_LIST, svm: [] as const };
 
 `EVM_CHAINS` (keyed: `ethereum`, `sepolia`, `arbitrum`, `optimism`, `base`,
 `polygon`, `bsc`) and `EVM_CHAINS_LIST` (the same as an array) are both exported
-from `@usebutr/evm`. butr itself never reads this list — it is for your
+from `@usebutr/evm`. butr itself never reads this list; it is for your
 chain-switcher UI. `Connector.switchChain` accepts any `ChainBase`.
 
 ## Capabilities and caveats
@@ -84,19 +84,19 @@ raw EIP-1193 `window.ethereum` and never announce; `discoverInjectedAdapter`
 (also from `@usebutr/evm`) is the last-resort fallback for those.
 
 EVM connectors switch chains for real via `wallet_switchEthereumChain`.
-Capability values are derived from the wallet's EIP-6963 provider info — always
+Capability values are derived from the wallet's EIP-6963 provider info; always
 branch on [`wallet.connector.capabilities`](/concepts/capabilities) rather
 than assuming a wallet supports an operation.
 
 ## Next steps
 
-- [Injected EVM connector](/connectors/injected-evm) — the discovery and
+- [Injected EVM connector](/connectors/injected-evm): the discovery and
   injected-fallback detail.
 - [viem integration](/integrations/viem) /
-  [wagmi integration](/integrations/wagmi) — build and send transactions.
-- [Provider setup](/guides/provider-setup) — auto, manual, and composed
+  [wagmi integration](/integrations/wagmi): build and send transactions.
+- [Provider setup](/guides/provider-setup): auto, manual, and composed
   variants.
-- [Next.js (App Router)](/getting-started/frameworks/nextjs) — the RSC `"use client"`
+- [Next.js (App Router)](/getting-started/frameworks/nextjs): the RSC `"use client"`
   boundary.
 
 <Callout type="info">

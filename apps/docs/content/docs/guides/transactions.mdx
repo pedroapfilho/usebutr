@@ -11,7 +11,7 @@ through their chain library.
 
 ## EVM with viem
 
-`getSigner()` on an EVM adapter returns the raw EIP-1193 provider — exactly
+`getSigner()` on an EVM adapter returns the raw EIP-1193 provider, exactly
 what viem's `custom()` transport wants:
 
 ```ts
@@ -33,7 +33,7 @@ const hash = await walletClient.sendTransaction({
 ## EVM with wagmi
 
 Bridge the same provider into wagmi's `injected` connector via
-`target.provider`, run wagmi's connect lifecycle once (it resolves silently —
+`target.provider`, run wagmi's connect lifecycle once (it resolves silently;
 butr already authorised the dapp), then use `@wagmi/core` actions:
 
 ```ts
@@ -55,7 +55,7 @@ const hash = await sendTransaction(cfg, {
 ## Solana
 
 `getSigner()` on an SVM adapter returns the `WalletStandardWallet`. Build the
-transaction with your Solana library — `gill` or `@solana/kit` for new apps —
+transaction with your Solana library (`gill` or `@solana/kit` for new apps),
 then submit via the `solana:signAndSendTransaction` feature:
 
 ```ts
@@ -78,7 +78,7 @@ pairs it with reactive reads. The legacy
 `Transaction` instead.
 
 <Callout type="warn">
-  Solana wallets advertise features unevenly — Phantom exposes `solana:signAndSendTransaction`; some
+  Solana wallets advertise features unevenly: Phantom exposes `solana:signAndSendTransaction`; some
   don't expose `solana:signTransaction` at all. Feature-detect (`if (!feature) throw`) and branch on
   `wallet.connector.capabilities.sendTransaction`.
 </Callout>

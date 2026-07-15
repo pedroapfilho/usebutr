@@ -6,9 +6,9 @@ import { SUI_CHAINS, SUI_CHAINS_LIST } from "@usebutr/sui";
 import { SVM_CHAINS, SVM_CHAINS_LIST } from "@usebutr/svm";
 
 /**
- * Combined EVM + SVM + Sui + Bitcoin chain registries. Convenient for
- * `@usebutr/wallets` consumers who already pull every platform; i.e.
- * multi-chain apps using `autoDiscovery()`.
+ * Combined EVM + SVM + Sui + Bitcoin + Polkadot chain registries.
+ * Convenient for `@usebutr/wallets` consumers who already pull every
+ * platform; i.e. multi-chain apps using `autoDiscovery()`.
  *
  * Single-platform apps should NOT import this. Instead, import the
  * per-platform registry directly (e.g. `EVM_CHAINS` from `@usebutr/evm`)

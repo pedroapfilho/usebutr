@@ -25,7 +25,7 @@ const discovery = createWalletSource(discoverSuiAdapters);
 
 <Callout type="info">
   `@usebutr/sui` lazily imports `@wallet-standard/app` (an optional peer dependency). Restored Sui
-  wallets can land in `pendingIds` for a moment during that warmup — see
+  wallets can land in `pendingIds` for a moment during that warmup; see
   [hydration](/concepts/hydration).
 </Callout>
 
@@ -34,12 +34,12 @@ const discovery = createWalletSource(discoverSuiAdapters);
 Resolved from the wallet's advertised Wallet Standard features via
 `resolveSuiCapabilities`:
 
-- `signMessage` — true only if the wallet advertises `sui:signPersonalMessage`.
-- `signTransaction` — true via `sui:signTransaction` (BCS-encoded transaction
+- `signMessage`: true only if the wallet advertises `sui:signPersonalMessage`.
+- `signTransaction`: true via `sui:signTransaction` (BCS-encoded transaction
   block bytes).
-- `sendTransaction` — true via `sui:signAndExecuteTransaction`.
-- `subscribe` — true via the Standard `change` event.
-- `switchChain` — local state + per-call `chain` input when more than one
+- `sendTransaction`: true via `sui:signAndExecuteTransaction`.
+- `subscribe`: true via the Standard `change` event.
+- `switchChain`: local state + per-call `chain` input when more than one
   chain is advertised.
 
 Always branch on [capabilities](/concepts/capabilities).

@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: Which butr packages to install for your setup — batteries-included, EVM-only, or custom.
+description: "Which butr packages to install for your setup: batteries-included, EVM-only, or custom."
 ---
 
 butr targets React 18+ and uses [Zustand](https://github.com/pmndrs/zustand) as
@@ -9,9 +9,10 @@ a peer dependency. Pick the install that matches your app.
 ## Batteries-included (recommended)
 
 `@usebutr/wallets` provides `autoDiscovery()`, a `WalletSource` that composes
-EVM + SVM discovery in one call. Use it with `WalletManagerProvider` from
-`@usebutr/react`. It depends on `@usebutr/react`, `@usebutr/evm`, `@usebutr/svm`, and
-`@usebutr/core`, so this single line covers most apps.
+EVM, SVM, Sui, Bitcoin, and Polkadot discovery in one call. Use it with
+`WalletManagerProvider` from `@usebutr/react`. It depends on `@usebutr/react`,
+`@usebutr/core`, and the per-platform adapter packages, so this single line
+covers most apps.
 
 ```npm
 npm install @usebutr/wallets zustand
@@ -57,19 +58,19 @@ tests never touch a real wallet or `localStorage`. See the
 
 ## Peer dependencies
 
-| Package                  | Peer dependency                                         | Notes                            |
-| ------------------------ | ------------------------------------------------------- | -------------------------------- |
-| `@usebutr/core`          | `zustand >= 4`                                          | The store is Zustand-backed.     |
-| `@usebutr/react`         | `react >= 18`, `zustand >= 4`                           |                                  |
-| `@usebutr/wallets`       | `react >= 18`, `zustand >= 4`                           |                                  |
-| `@usebutr/svm`           | `@wallet-standard/app ^1.1.0`                           | Optional — lazily imported.      |
-| `@usebutr/sui`           | `@wallet-standard/app ^1.1.0`                           | Optional — lazily imported.      |
-| `@usebutr/bitcoin`       | `@wallet-standard/app ^1.1.0`                           | Optional — lazily imported.      |
-| `@usebutr/polkadot`      | `@wallet-standard/app ^1.1.0`                           | Optional — lazily imported.      |
-| `@usebutr/walletconnect` | `@walletconnect/universal-provider ^2`                  | Optional — dynamically imported. |
-| `@usebutr/ledger`        | `@ledgerhq/hw-app-eth`, `@ledgerhq/hw-transport-webusb` | Optional.                        |
+| Package                  | Peer dependency                                         | Notes                           |
+| ------------------------ | ------------------------------------------------------- | ------------------------------- |
+| `@usebutr/core`          | `zustand >= 4`                                          | The store is Zustand-backed.    |
+| `@usebutr/react`         | `react >= 18`, `zustand >= 4`                           |                                 |
+| `@usebutr/wallets`       | `react >= 18`, `zustand >= 4`                           |                                 |
+| `@usebutr/svm`           | `@wallet-standard/app ^1.1.0`                           | Optional, lazily imported.      |
+| `@usebutr/sui`           | `@wallet-standard/app ^1.1.0`                           | Optional, lazily imported.      |
+| `@usebutr/bitcoin`       | `@wallet-standard/app ^1.1.0`                           | Optional, lazily imported.      |
+| `@usebutr/polkadot`      | `@wallet-standard/app ^1.1.0`                           | Optional, lazily imported.      |
+| `@usebutr/walletconnect` | `@walletconnect/universal-provider ^2`                  | Optional, dynamically imported. |
+| `@usebutr/ledger`        | `@ledgerhq/hw-app-eth`, `@ledgerhq/hw-transport-webusb` | Optional.                       |
 
 <Callout type="info">
   No environment variables are required to use butr. WalletConnect needs a project ID, but that is
-  passed in code — see the [WalletConnect connector](/connectors/walletconnect).
+  passed in code; see the [WalletConnect connector](/connectors/walletconnect).
 </Callout>

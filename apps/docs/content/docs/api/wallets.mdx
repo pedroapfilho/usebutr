@@ -1,6 +1,6 @@
 ---
 title: "@usebutr/wallets"
-description: Batteries-included discovery source — autoDiscovery(), composed EVM + SVM discovery, combined chains.
+description: "Batteries-included discovery source: autoDiscovery(), composed multi-platform discovery, combined chains."
 ---
 
 ## Discovery
@@ -8,8 +8,9 @@ description: Batteries-included discovery source — autoDiscovery(), composed E
 ### `autoDiscovery(options?: DiscoverOptions): WalletSource`
 
 The headline export. Returns a `WalletSource` that composes EVM (EIP-6963 +
-injected fallback) and SVM (Wallet Standard) discovery. Pass it directly as the
-`discovery` prop on `WalletManagerProvider`:
+injected fallback), SVM / Sui / Bitcoin (Wallet Standard, plus an injected
+fallback for Bitcoin), and Polkadot (`injectedWeb3` + Wallet Standard fallback)
+discovery. Pass it directly as the `discovery` prop on `WalletManagerProvider`:
 
 ```tsx
 import { WalletManagerProvider } from "@usebutr/react";
@@ -23,21 +24,30 @@ export function App() {
 }
 ```
 
-`DiscoverOptions = { evm?; svm?; injected? }`. Omit options to enable
-everything. `injected` defaults to `true` whenever `evm` is enabled.
+`DiscoverOptions = { evm?; svm?; sui?; bitcoin?; polkadot?; injected?;
+injectedBitcoin?; polkadotWalletStandard? }`. Omit options to enable
+everything. Each fallback defaults to `true` whenever its primary platform is
+enabled (`injected` follows `evm`, `injectedBitcoin` follows `bitcoin`,
+`polkadotWalletStandard` follows `polkadot`).
 
 ## Discovery primitives
 
 ### `discoverWalletAdapters(onAdapter, options?: DiscoverOptions): () => void`
 
-Composed EVM + SVM discovery. Calls `onAdapter` for each wallet found and
+Composed multi-platform discovery. Calls `onAdapter` for each wallet found and
 returns an unsubscribe function.
 
 ### `resolveDiscoverOptions(auto: true | false | DiscoverOptions)`
 
 Normalises an options value. `true` enables everything. Object form is opt-in:
-unspecified flags default to `false`; `injected` defaults to `true` only when
-`evm` is true. Returns `{ active, evm, injected, svm }`.
+unspecified flags default to `false`; each fallback flag defaults to `true`
+only when its primary platform is enabled. Returns
+`{ active, bitcoin, evm, injected, injectedBitcoin, polkadot, polkadotWalletStandard, sui, svm }`.
+
+### `KNOWN_DISCOVERERS`
+
+Registry of the built-in `PlatformDiscoverer`s keyed by `ChainPlatform`
+(`bitcoin`, `evm`, `polkadot`, `sui`, `svm`).
 
 ### `createDiscoveryBus(onAdapter): DiscoveryBus`
 
@@ -45,8 +55,8 @@ Lower-level multiplexer. Types: `DiscoveryBus`, `DiscoveryPath`.
 
 ## Chains
 
-- `CHAINS` — `{ evm: Record<…>, svm: Record<…> }`.
-- `CHAINS_BY_PLATFORM` — `Record<"evm" | "svm", ChainBase[]>`. Index with
+- `CHAINS`: `{ bitcoin: Record<…>, evm: Record<…>, polkadot: Record<…>, sui: Record<…>, svm: Record<…> }`.
+- `CHAINS_BY_PLATFORM`: `Record<ChainPlatform, ChainBase[]>`. Index with
   `wallet.connector.chainPlatform`.
 
 ## Types

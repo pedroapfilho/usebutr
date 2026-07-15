@@ -1,6 +1,6 @@
 ---
 title: Pool, selection, and active
-description: Three independent pieces of state — every connected wallet, the chosen wallet per platform, and the one wallet in focus now.
+description: "Three independent pieces of state: every connected wallet, the chosen wallet per platform, and the one wallet in focus now."
 ---
 
 butr keeps three distinct things. Confusing them is the most common source of
@@ -20,10 +20,10 @@ A user can have many wallets in the pool at once (MetaMask + Phantom +
 WalletConnect). Adding or removing one never implicitly changes selection or
 active state.
 
-## Selection — per platform
+## Selection: per platform
 
 A `Map<ChainPlatform, connectorId>`: which wallet is chosen for `evm` and which
-for `svm`. The two are independent — selecting an EVM wallet does nothing to
+for `svm`. The two are independent: selecting an EVM wallet does nothing to
 SVM.
 
 ```ts
@@ -34,7 +34,7 @@ const setSelection = useSetSelection();
 setSelection("evm", "metamask");
 ```
 
-## Active — the one in focus
+## Active: the one in focus
 
 A single global `activeConnectorId`: the wallet the user is interacting with
 right now. This is what most single-wallet UIs read.
@@ -59,7 +59,7 @@ not be the active wallet at all.
 
 <Callout type="info">
   Stable accessors `useGetWallet()` and `useGetSelectedWallet()` return functions instead of
-  subscribing — use them inside callbacks and effect bodies to avoid re-renders.
+  subscribing; use them inside callbacks and effect bodies to avoid re-renders.
 </Callout>
 
 **Source:** `packages/react/src/hooks.ts`, `packages/core/src/store`.

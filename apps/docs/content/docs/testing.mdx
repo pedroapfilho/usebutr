@@ -1,6 +1,6 @@
 ---
 title: Testing
-description: "@usebutr/testing — fake adapters and fake persistence so unit tests never touch a real wallet or localStorage."
+description: "@usebutr/testing: fake adapters and fake persistence so unit tests never touch a real wallet or localStorage."
 ---
 
 `@usebutr/testing` provides deterministic test doubles. Install it as a dev
@@ -50,7 +50,7 @@ const config: WalletManagerConfig = {
 
 ## `createFakePersistence(seed?): WalletPersistence`
 
-In-memory `WalletPersistence` mirroring `WalletStorage`'s shape — no
+In-memory `WalletPersistence` mirroring `WalletStorage`'s shape: no
 `localStorage`, no cookies. Reads/writes resolve synchronously (wrapped in
 `Promise.resolve`).
 

@@ -4,7 +4,7 @@ description: Mount the provider at the router root; EVM-only discovery, no "use 
 ---
 
 TanStack Start is Vite-based SSR. The provider wiring is identical to the
-[Next.js pattern](/getting-started/frameworks/nextjs) — no `"use client"` directive needed
+[Next.js pattern](/getting-started/frameworks/nextjs); no `"use client"` directive needed
 (TanStack Start doesn't use RSC). Mount the provider at the router root.
 
 ```tsx title="src/wallet-provider.tsx"
@@ -14,7 +14,7 @@ import { WalletManagerProvider, useDiscoveredWallets } from "@usebutr/react";
 import { discoverEvmAdapters } from "@usebutr/evm";
 
 // EVM-only: @usebutr/react + @usebutr/evm. No @usebutr/svm / @usebutr/wallets in the
-// bundle — discovery is a WalletSource built from the EVM discoverer.
+// bundle; discovery is a WalletSource built from the EVM discoverer.
 const evmDiscovery = createWalletSource(discoverEvmAdapters);
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
@@ -37,7 +37,7 @@ import { WalletProvider } from "../wallet-provider";
 
 <Callout type="warn">
   Wallet discovery and `localStorage` are browser-only. The provider state is empty during SSR and
-  hydrates on the client — gate UI on [`useIsHydrated()`](/concepts/hydration) so server and first
+  hydrates on the client; gate UI on [`useIsHydrated()`](/concepts/hydration) so server and first
   client render agree.
 </Callout>
 

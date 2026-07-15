@@ -1,6 +1,6 @@
 ---
 title: Provider setup
-description: One WalletManagerProvider with flat props — auto-discovery, platform-only, manual, or composed.
+description: "One WalletManagerProvider with flat props: auto-discovery, platform-only, manual, or composed."
 ---
 
 There is one provider: `WalletManagerProvider` from `@usebutr/react`. You control
@@ -30,7 +30,7 @@ export { WalletProvider };
 ```
 
 <Callout type="info">
-  **Source:** `apps/demo-vite/src/wallet-provider.tsx` (auto, EVM + SVM) in the [butr
+  **Source:** `apps/demo-vite/src/wallet-provider.tsx` (auto, multi-chain) in the [butr
   repository](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-vite).
 </Callout>
 
@@ -38,7 +38,7 @@ export { WalletProvider };
 
 For an EVM-only build (`@usebutr/react` + `@usebutr/evm`, no `@usebutr/svm` /
 `@usebutr/wallets`) or an SVM-only build, the only thing that changes is the
-`discovery` value — the provider API is identical. Each has a complete path,
+`discovery` value; the provider API is identical. Each has a complete path,
 including install, chains, and platform caveats:
 
 - [EVM-only setup](/guides/evm-only)

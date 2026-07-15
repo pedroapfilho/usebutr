@@ -1,6 +1,6 @@
 ---
 title: gill
-description: The ergonomic SDK on top of @solana/kit — the path the Solana Foundation recommends for most apps.
+description: The ergonomic SDK on top of @solana/kit, the path the Solana Foundation recommends for most apps.
 ---
 
 `gill` wraps `@solana/kit` with friendlier client and transaction builders. It
@@ -26,7 +26,7 @@ const sol = `${Number(value) / 1_000_000_000} SOL`;
 
 ## Build and send a transaction
 
-The wallet — not gill — signs, so the fee payer is a no-op signer over butr's
+The wallet signs, not gill, so the fee payer is a no-op signer over butr's
 connected address. gill's program helpers stay fully typed; compile to a wire
 transaction and hand the bytes to `solana:signAndSendTransaction`:
 
@@ -70,8 +70,8 @@ Message signing uses `solana:signMessage` exactly as in the
 
 <Callout type="info">
   gill re-exports `@solana/kit`, so kit primitives (`createNoopSigner`, `compileTransaction`,
-  `getBase64EncodedWireTransaction`) are available from the same `gill` entry point — you do not
-  need a separate `@solana/kit` dependency.
+  `getBase64EncodedWireTransaction`) are available from the same `gill` entry point; you do not need
+  a separate `@solana/kit` dependency.
 </Callout>
 
 <Callout type="info">

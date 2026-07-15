@@ -1,6 +1,6 @@
 ---
 title: Caveats & Troubleshooting
-description: The sharp edges — connect timeout, silent storage, best-effort errors, SVM no-ops, Ledger browser support, hydration races.
+description: "The sharp edges: connect timeout, silent storage, best-effort errors, SVM no-ops, Ledger browser support, hydration races."
 ---
 
 ## Connect hangs, then fails after 90 seconds
@@ -9,12 +9,12 @@ butr enforces a 90-second connect timeout. If `connector.connect()` neither
 resolves nor rejects in that window, butr rejects with
 `Error("Connection timeout")`, which normalises to `{ kind: "Timeout" }`. This
 catches wallets that hang without cleanup. Separately, `onSlowConnect` fires
-once if a connect exceeds `slowConnectThresholdMs` (default `5000`) — use it
-for a "still trying — check your wallet" hint.
+once if a connect exceeds `slowConnectThresholdMs` (default `5000`); use it
+for a "still trying, check your wallet" hint.
 
 ## State isn't persisting and nothing errors
 
-Persistence is **fire-and-forget by design** — a failed write (quota exceeded,
+Persistence is **fire-and-forget by design**: a failed write (quota exceeded,
 IndexedDB shutdown, cross-tab conflict, cookie size limit) does not throw.
 You'll only see it if you set `onStorageError`. The default with no callback is
 `console.warn`. See [persistence](/concepts/persistence).
@@ -24,7 +24,7 @@ You'll only see it if you set `onStorageError`. The default with no callback is
 [Error normalisation](/concepts/errors) is best-effort. A connector that
 throws a shape `mapConnectionError` doesn't recognise lands in
 `{ kind: "Unknown", cause }`. Inspect `cause` for the raw value. butr never
-retries — you decide based on `kind`.
+retries; you decide based on `kind`.
 
 ## "Request more accounts" does nothing on Solana
 
@@ -38,7 +38,7 @@ so it doesn't render for SVM.
 Wallet Standard discovery (`@usebutr/svm`, `@usebutr/sui`, `@usebutr/bitcoin`,
 `@usebutr/polkadot`) lazily imports the optional peer dependency
 `@wallet-standard/app`. When it isn't installed, discovery is disabled and butr
-logs a single `console.warn` pointing at the missing install — no Wallet
+logs a single `console.warn` pointing at the missing install; no Wallet
 Standard wallets will be detected. Install it to fix:
 
 ```bash
@@ -50,7 +50,7 @@ See [peer dependencies](/getting-started/installation#peer-dependencies).
 ## Ledger doesn't connect in Firefox/Safari
 
 `@usebutr/ledger` uses WebUSB, which only exists in Chromium browsers (Chrome,
-Edge, Brave, Arc). It's also signing-only — `sendTx`, `getBalance`, and
+Edge, Brave, Arc). It's also signing-only: `sendTx`, `getBalance`, and
 `getTransactionReceipt` reject. See the
 [Ledger connector](/connectors/ledger).
 
@@ -78,7 +78,7 @@ Set a distinct `storageKeyPrefix` per app sharing an origin.
 ## Signature verification fails on Solana
 
 Verify against the `signedMessage` returned by `signMessage`, not your input
-bytes — Solana Wallet Standard wallets may prefix/re-encode the message. See
+bytes; Solana Wallet Standard wallets may prefix/re-encode the message. See
 [signing](/guides/signing).
 
 ## UI flashes "not connected" on every reload

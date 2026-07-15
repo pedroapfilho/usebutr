@@ -11,7 +11,7 @@ signing and submission.
 
 framework-kit runs its own Wallet Standard discovery (`autoDiscover()`). Here
 butr owns discovery and connection instead, so no `walletConnectors` are passed
-to `createClient` — framework-kit is used purely for reactive reads.
+to `createClient`; framework-kit is used purely for reactive reads.
 
 ## Provider
 
@@ -34,7 +34,7 @@ const client = createClient({ cluster: "devnet", commitment: "confirmed" });
 ## Reactive balance
 
 `useBalance` auto-fetches and watches the balance for butr's connected
-address — no manual refetch wiring:
+address; no manual refetch wiring:
 
 ```ts
 import { useBalance } from "@solana/react-hooks";
@@ -46,13 +46,13 @@ const balance = lamports !== null ? `${Number(lamports) / 1_000_000_000} SOL` : 
 ## Sign and send a transaction
 
 Transaction building rides on `@solana/kit` (the substrate framework-kit is
-built on); the wallet — managed by butr — signs and submits through
+built on); the wallet (managed by butr) signs and submits through
 `solana:signAndSendTransaction`, exactly as in the
 [`@solana/kit` integration](/integrations/solana-kit). Message signing
 uses `solana:signMessage` the same way.
 
 <Callout type="info">
-  `useBalance` needs only the client from `SolanaProvider` and an address — it does not require
+  `useBalance` needs only the client from `SolanaProvider` and an address; it does not require
   framework-kit's own wallet connection, so it composes cleanly with a butr-managed wallet.
 </Callout>
 

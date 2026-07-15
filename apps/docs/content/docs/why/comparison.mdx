@@ -1,6 +1,6 @@
 ---
 title: Comparison with other solutions
-description: butr is a discovery and connection-state layer, not a chain library or a connect modal — here is how it lines up against the categories of tools it composes with.
+description: butr is a discovery and connection-state layer, not a chain library or a connect modal; here is how it lines up against the categories of tools it composes with.
 ---
 
 butr is not a replacement for the wallet tooling you already use. It is the
@@ -10,21 +10,21 @@ with chain libraries and wallet SDKs rather than competing with them.
 The categories below describe how each kind of tool typically behaves, not a
 scored ranking of any one product.
 
-- **EVM connect kits** — wallet detection plus a connect modal for EVM, usually
+- **EVM connect kits**: wallet detection plus a connect modal for EVM, usually
   bound to a single chain library.
-- **Solana wallet adapters** — Wallet Standard discovery and React context for
+- **Solana wallet adapters**: Wallet Standard discovery and React context for
   Solana, scoped to SVM.
-- **Embedded / MPC wallet platforms** — hosted or key-managed wallets behind a
+- **Embedded / MPC wallet platforms**: hosted or key-managed wallets behind a
   vendor SDK, often spanning chains but custodial in some form.
 
 ## Capability matrix
 
 | Capability                                               | EVM connect kits | Solana wallet adapters | Embedded / MPC platforms | butr |
 | -------------------------------------------------------- | ---------------- | ---------------------- | ------------------------ | ---- |
-| EVM + SVM in one pool, equal footing                     | EVM only         | SVM only               | Varies, vendor-defined   | Yes  |
+| Multi-chain in one pool, equal footing                   | EVM only         | SVM only               | Varies, vendor-defined   | Yes  |
 | Framework-agnostic, React-free core                      | No               | No                     | Varies                   | Yes  |
 | No chain-library lock-in (raw signer escape hatch)       | Coupled          | Coupled                | Vendor SDK               | Yes  |
-| Modular install — drop a platform entirely               | N/A              | N/A                    | No                       | Yes  |
+| Modular install: drop a platform entirely                | N/A              | N/A                    | No                       | Yes  |
 | Connector-shaped extension seam (bring your own adapter) | Limited          | Standard-bound         | No                       | Yes  |
 | Standards compliance (EIP-6963 / EIP-1193 / Wallet Std)  | EIP only         | Wallet Std only        | Abstracted away          | Both |
 | Built-in mock adapters for unit tests                    | Rare             | Rare                   | Vendor mocks             | Yes  |
@@ -37,7 +37,7 @@ transactions, or render UI.
 
 That smaller surface is the reason it composes. Because butr stops at discovery
 and connection state, it slots underneath a connect kit's UI, beside an
-embedded-wallet SDK, and in front of any chain library — without forcing you to
+embedded-wallet SDK, and in front of any chain library, without forcing you to
 adopt the rest of its world. If you want a modal, bring one. If you want viem,
 bring viem. butr only guarantees you know which wallets exist and which are
 connected.

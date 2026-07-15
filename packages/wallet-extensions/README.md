@@ -4,7 +4,7 @@ Registry + install helpers for the wallet browser extensions butr's
 end-to-end tests need.
 
 This package is **infrastructure-only**. It does not download, install,
-or launch browsers itself — it gives you (a) a typed registry of the
+or launch browsers itself; it gives you (a) a typed registry of the
 wallets we care about and (b) two helpers that map the registry into
 the two install methods Chromium and Chrome support. The actual
 download-and-unpack step plus the Playwright fixtures live in
@@ -28,7 +28,7 @@ download-and-unpack step plus the Playwright fixtures live in
 Each entry carries a Chrome Web Store ID, a Web Store URL, and the
 butr `ChainPlatform`s the wallet serves. Entries marked `TODO_VERIFY`
 (Binance Wallet, Jupiter Wallet) need a manual ID lookup before they
-can be enrolled — open the URL, copy the 32-character path segment,
+can be enrolled: open the URL, copy the 32-character path segment,
 and update `registry.ts`.
 
 ## Two install strategies
@@ -37,7 +37,7 @@ Chrome and Chromium take different paths to "pre-install these
 extensions for a browser session." Both helpers ship in this package
 so a test can pick the right one for its runner.
 
-### Strategy A — Chrome's external-preferences method
+### Strategy A: Chrome's external-preferences method
 
 Reference:
 [Distribute extensions → Preferences](https://developer.chrome.com/docs/extensions/how-to/distribute/install-extensions#preferences).
@@ -73,7 +73,7 @@ const context = await chromium.launchPersistentContext(userDataDir, {
 - Cold-launch is slow on first run because Chrome fetches every
   extension before the test starts.
 
-### Strategy B — Chromium's `--load-extension=` method
+### Strategy B: Chromium's `--load-extension=` method
 
 Pre-download each `.crx` (a ZIP under the hood), unpack to a known
 directory, and pass the path list to Chromium.
@@ -87,7 +87,7 @@ import {
 } from "@repo/wallet-extensions";
 
 const { paths, missing } = partitionResolvedExtensions(ALL_WALLETS, (wallet) => {
-  // Whatever your fixture uses — `tests/e2e/.cache/<slug>/` is a
+  // Whatever your fixture uses; `tests/e2e/.cache/<slug>/` is a
   // reasonable convention.
   const candidate = `/path/to/cache/${wallet.slug}`;
   return existsSync(candidate) ? candidate : null;
@@ -111,7 +111,7 @@ const context = await chromium.launchPersistentContext(userDataDir, {
   `https://clients2.google.com/service/update2/crx?response=redirect&os=mac&arch=x64&os_arch=x86_64&nacl_arch=x86-64&prod=chromiumcrx&prodchannel=unknown&prodversion=130.0.0.0&acceptformat=crx2,crx3&x=id%3D<EXT_ID>%26uc`
   and `unzip`s it. (We'll add a `fetch-crx` script here when we wire
   the Playwright fixtures.)
-- Persistent context only — incognito disables extensions unless they
+- Persistent context only: incognito disables extensions unless they
   opt in.
 
 ## Choosing between A and B
@@ -130,7 +130,7 @@ you want.
 ## Verifying extension IDs
 
 The Web Store URL for an extension always has the form
-`https://chromewebstore.google.com/detail/<slug>/<id>` — the trailing
+`https://chromewebstore.google.com/detail/<slug>/<id>`; the trailing
 32-character lowercase string is the ID.
 
 To verify an entry:
@@ -148,7 +148,7 @@ listing (the URL changes when an extension is delisted and republished).
   fetcher will be a small Node script under `tests/e2e/scripts/` when
   we wire it.
 - Playwright fixtures (`test.extend({ context })`). Those compose this
-  package's helpers — they belong in `tests/e2e/` alongside the
+  package's helpers and belong in `tests/e2e/` alongside the
   test files.
 - Wallet seed-phrase automation. Each wallet has its own onboarding
   flow; that's deliberately scoped to a future iteration where we

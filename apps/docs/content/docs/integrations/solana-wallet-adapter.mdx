@@ -61,7 +61,7 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
 }
 ```
 
-(See the full file for the base58 helper and `connect`/`disconnect` lifecycle —
+(See the full file for the base58 helper and `connect`/`disconnect` lifecycle;
 butr already did the real handshake, so the adapter's `connect()` just emits
 the lifecycle event.)
 
@@ -81,12 +81,12 @@ const bridge = new ButrAdapterBridge(wallet.connector, ws, wallet.account.wallet
 </ConnectionProvider>;
 ```
 
-Inside, `useWallet()` and `useConnection()` work unchanged — butr is invisible
+Inside, `useWallet()` and `useConnection()` work unchanged; butr is invisible
 to consumer code.
 
 <Callout type="warn">
   The demo bridge implements `signMessage` and `sendTransaction` (which wraps
-  `signAndSendTransaction`). `signTransaction` is intentionally unimplemented —
+  `signAndSendTransaction`). `signTransaction` is intentionally unimplemented;
   `solana:signTransaction` isn't advertised uniformly across wallets. A real app that needs raw
   signing would feature-detect and either implement the wallet-specific path or fall back to
   `signAndSendTransaction`.

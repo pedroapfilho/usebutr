@@ -3,7 +3,7 @@ title: SVM-only setup
 description: Ship @usebutr/react + @usebutr/svm with no @usebutr/evm or @usebutr/wallets in the bundle.
 ---
 
-Pick this path when your app only touches Solana — a framework-kit, `gill`,
+Pick this path when your app only touches Solana: a framework-kit, `gill`,
 `@solana/kit`, `@solana/wallet-adapter-react`, or legacy `@solana/web3.js` app
 with no EVM surface. You
 import `@usebutr/svm` for discovery instead of `autoDiscovery()` from
@@ -60,7 +60,7 @@ this pattern (each with its own `storageKeyPrefix`). They re-export
 
 ## The bundle guarantee
 
-The isolation is not a flag — it is your import graph. `@usebutr/svm` depends only
+The isolation is not a flag; it is your import graph. `@usebutr/svm` depends only
 on `@usebutr/core`; it carries no EVM or EIP-6963 code. `autoDiscovery()` lives in
 `@usebutr/wallets`, which depends on both `@usebutr/evm` and `@usebutr/svm`, so importing
 it would pull EVM in. Here you import `discoverSvmAdapters` from `@usebutr/svm`
@@ -81,7 +81,7 @@ const CHAINS_BY_PLATFORM = { evm: [] as const, svm: SVM_CHAINS_LIST };
 `SVM_CHAINS` (keyed: `mainnet`, `devnet`, `testnet`) and `SVM_CHAINS_LIST` (the
 same as an array) are both exported from `@usebutr/svm`. These use Wallet Standard
 shortnames (`solana:mainnet`, not the strict CAIP-2 genesis-hash form) because
-that is what real wallets — Phantom, Solflare, Backpack — advertise in
+that is what real wallets (Phantom, Solflare, Backpack) advertise in
 `wallet.chains`.
 
 ## Capabilities and caveats
@@ -89,14 +89,14 @@ that is what real wallets — Phantom, Solflare, Backpack — advertise in
 `@usebutr/svm` discovers wallets via the
 [Wallet Standard](https://github.com/wallet-standard/wallet-standard). Because it
 lazily imports `@wallet-standard/app`, there is an asynchronous warmup: a
-restored wallet can land in `pendingIds` for a moment before it resolves — see
+restored wallet can land in `pendingIds` for a moment before it resolves; see
 [Hydration](/concepts/hydration).
 
 Capabilities are resolved from the wallet's advertised Wallet Standard features:
 `signMessage` is true only if the wallet advertises `solana:signMessage`,
 `sendTransaction` only if it advertises `solana:signAndSendTransaction`,
 `subscribe` via the Standard `change` event. `requestAccounts` is generally a
-no-op — Standard wallets expose all accounts at once, there is no picker. Always
+no-op: Standard wallets expose all accounts at once, there is no picker. Always
 branch on [`wallet.connector.capabilities`](/concepts/capabilities).
 
 `getSigner()` on an SVM adapter returns the `WalletStandardWallet`; you call its
@@ -105,15 +105,15 @@ the full build-and-send flow.
 
 ## Next steps
 
-- [Solana Wallet Standard connector](/connectors/solana-wallet-standard) —
+- [Solana Wallet Standard connector](/connectors/solana-wallet-standard):
   the discovery and signer detail.
 - [framework-kit](/integrations/solana-framework-kit) /
   [gill](/integrations/gill) /
   [solana-kit](/integrations/solana-kit) /
   [solana-wallet-adapter](/integrations/solana-wallet-adapter) /
-  [solana-web3js](/integrations/solana-web3js) (legacy) — build and send
+  [solana-web3js](/integrations/solana-web3js) (legacy): build and send
   transactions.
-- [Provider setup](/guides/provider-setup) — auto, manual, and composed
+- [Provider setup](/guides/provider-setup): auto, manual, and composed
   variants.
 
 <Callout type="info">

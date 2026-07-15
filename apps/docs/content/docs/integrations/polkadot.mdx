@@ -28,13 +28,13 @@ const pas = `${Number(data.free) / 1e10} PAS`;
 
 ## Sign a message
 
-The Polkadot adapter wires `signMessage` for raw-bytes signing — call it on the
+The Polkadot adapter wires `signMessage` for raw-bytes signing; call it on the
 connector and get the signature back:
 
 ```ts
 const message = new TextEncoder().encode("Hello from butr + polkadot-api");
 const { signature } = await wallet.connector.signMessage(message);
-// `signature` is a Uint8Array — render as hex for display.
+// `signature` is a Uint8Array; render as hex for display.
 ```
 
 ## Build and submit an extrinsic
@@ -48,7 +48,7 @@ import { MultiAddress } from "@polkadot-api/descriptors";
 import { connectInjectedExtension } from "polkadot-api/pjs-signer";
 import type { PolkadotSignerHandle } from "@usebutr/polkadot";
 
-// getSigner() returns { extensionName, address } — not a PAPI signer.
+// getSigner() returns { extensionName, address }, not a PAPI signer.
 const handle = (await wallet.connector.getSigner()) as PolkadotSignerHandle;
 
 // Bridge: pjs-signer reads the injected extension and produces a PolkadotSigner.
@@ -75,7 +75,7 @@ tx.signSubmitAndWatch(account.polkadotSigner).subscribe({
   Unlike EVM, Polkadot extrinsics are SCALE-encoded and include a mortal era (block expiry). PAPI
   handles encoding. `getSigner()` returns a handle (`extensionName` + `address`); you bridge it to a
   PAPI `PolkadotSigner` via `connectInjectedExtension`. Signing is always done in the wallet
-  extension — butr never touches the private key.
+  extension; butr never touches the private key.
 </Callout>
 
 <Callout type="info">

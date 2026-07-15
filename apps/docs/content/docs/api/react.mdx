@@ -11,7 +11,7 @@ description: The provider and every hook, grouped by what they do.
 <WalletManagerProvider discovery={discovery}>{children}</WalletManagerProvider>
 ```
 
-All props are flat — there is no nested `config` object. Props captured once at
+All props are flat; there is no nested `config` object. Props captured once at
 mount; later changes are silently ignored. Pass stable references (module-level
 values, `useRef`, `useCallback`).
 
@@ -35,7 +35,7 @@ values, `useRef`, `useCallback`).
 Also exports `WalletStoreContext` and `useWalletStoreContext()` (the raw store,
 used in custom discovery wiring).
 
-## Sync hooks — read state
+## Sync hooks: read state
 
 | Hook                               | Returns                                                    |
 | ---------------------------------- | ---------------------------------------------------------- |
@@ -68,7 +68,7 @@ used in custom discovery wiring).
 import { useDiscoveredWallets } from "@usebutr/react";
 
 const wallets = useDiscoveredWallets();
-// ReadonlyArray<WalletAdapter> — empty when no `discovery` prop was passed
+// ReadonlyArray<WalletAdapter>; empty when no `discovery` prop was passed
 ```
 
 Live list of adapters announced via the `discovery` source since the provider
@@ -77,7 +77,7 @@ mounted. Sourced from `@usebutr/react`.
 ### `useWalletStore(selector)`
 
 Direct store access with shallow equality on the result (returning an inline
-object/array is safe — no infinite loop).
+object/array is safe, no infinite loop).
 
 ```tsx
 const { pool, activeConnectorId } = useWalletStore((s) => ({
@@ -86,7 +86,7 @@ const { pool, activeConnectorId } = useWalletStore((s) => ({
 }));
 ```
 
-## Mutation hooks — change state
+## Mutation hooks: change state
 
 Each returns a stable function.
 

@@ -1,6 +1,6 @@
 ---
 title: Ledger
-description: Ledger hardware wallets over WebUSB — EVM, Solana, Sui, and Bitcoin. Chromium-only, signing-only, no RPC or events.
+description: "Ledger hardware wallets over WebUSB: EVM, Solana, Sui, and Bitcoin. Chromium-only, signing-only, no RPC or events."
 ---
 
 `@usebutr/ledger` is a Ledger hardware-wallet adapter using WebUSB. It ships
@@ -13,7 +13,7 @@ messages and transactions; it does **not** broadcast or read chain state.
 npm install @usebutr/ledger @ledgerhq/hw-transport-webusb
 ```
 
-Then add the Ledger app modules you need — each is an optional peer dep loaded
+Then add the Ledger app modules you need; each is an optional peer dep loaded
 on demand:
 
 ```npm
@@ -28,7 +28,7 @@ You only pay for the apps you actually use.
 ## Build the adapter
 
 The unified factory dispatches on `options.platform`. The discriminant is
-required — every caller passes it explicitly.
+required; every caller passes it explicitly.
 
 ### EVM
 
@@ -78,20 +78,20 @@ You can also import each per-platform factory directly:
 
 ### Common options
 
-| Option                 | Default                                           | Notes                                                                                       |
-| ---------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `accountCount`         | `1`                                               | How many paths to enumerate via `getAccounts()`. Each hits the device (~1–2s) — keep small. |
-| `derivationPathPrefix` | per-platform (see below)                          | `getAccounts(n)` appends the index.                                                         |
-| `id` / `name` / `icon` | `"ledger"` / `"Ledger"` / `LEDGER_*_DEFAULT_ICON` | Per-platform icon constants are exported.                                                   |
+| Option                 | Default                                           | Notes                                                                                      |
+| ---------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `accountCount`         | `1`                                               | How many paths to enumerate via `getAccounts()`. Each hits the device (~1–2s); keep small. |
+| `derivationPathPrefix` | per-platform (see below)                          | `getAccounts(n)` appends the index.                                                        |
+| `id` / `name` / `icon` | `"ledger"` / `"Ledger"` / `LEDGER_*_DEFAULT_ICON` | Per-platform icon constants are exported.                                                  |
 
 ### Per-platform defaults
 
-| Platform | `chainId` / `cluster` | Derivation prefix | Notes                                                  |
-| -------- | --------------------- | ----------------- | ------------------------------------------------------ |
-| EVM      | `chainId: 1`          | `44'/60'/0'/0`    | Local state — Ledger has no on-device "current chain". |
-| SVM      | `cluster: "mainnet"`  | `44'/501'/0'`     | Each account appends `/<n>'` (hardened).               |
-| Sui      | `cluster: "mainnet"`  | `44'/784'/0'/0'`  | Each account appends `/<n>'` (canonical 5-segment).    |
-| Bitcoin  | mainnet `bip122:000…` | `84'/0'/0'/0`     | BIP-84 native SegWit. Each account appends `/<n>`.     |
+| Platform | `chainId` / `cluster` | Derivation prefix | Notes                                                 |
+| -------- | --------------------- | ----------------- | ----------------------------------------------------- |
+| EVM      | `chainId: 1`          | `44'/60'/0'/0`    | Local state; Ledger has no on-device "current chain". |
+| SVM      | `cluster: "mainnet"`  | `44'/501'/0'`     | Each account appends `/<n>'` (hardened).              |
+| Sui      | `cluster: "mainnet"`  | `44'/784'/0'/0'`  | Each account appends `/<n>'` (canonical 5-segment).   |
+| Bitcoin  | mainnet `bip122:000…` | `84'/0'/0'/0`     | BIP-84 native SegWit. Each account appends `/<n>`.    |
 
 Register it through the unified provider exactly like
 [WalletConnect](/connectors/walletconnect):
@@ -128,8 +128,8 @@ Bitcoin. Sui diverges in one spot (no `signMessage`):
 | `signMessage`           |  ✓  |  ✓  |     |    ✓    | `@ledgerhq/hw-app-sui` doesn't expose `signPersonalMessage` at the current version. |
 | `signTransaction`       |  ✓  |  ✓  |  ✓  |    ✓    | Bitcoin uses Bitcoin app v2.1+'s `signPsbt` (PSBT in, signed PSBT out).             |
 | `sendTransaction`       |     |     |     |         | Ledger signs but doesn't broadcast. Wrap `getSigner()` with your own RPC.           |
-| `subscribe`             |     |     |     |         | No events — devices don't push.                                                     |
-| `switchChain`           |  ✓  |  ✓  |  ✓  |    ✓    | Local state only — nothing is written to the device.                                |
+| `subscribe`             |     |     |     |         | No events; devices don't push.                                                      |
+| `switchChain`           |  ✓  |  ✓  |  ✓  |    ✓    | Local state only; nothing is written to the device.                                 |
 | `switchAccount`         |     |     |     |         | Use `accountCount` to enumerate; pass `account` per call.                           |
 | `requestAccounts`       |     |     |     |         | Walking to more paths is sequential and slow.                                       |
 | `getBalance`            |     |     |     |         | No RPC.                                                                             |
@@ -150,23 +150,23 @@ Bitcoin. Sui diverges in one spot (no `signMessage`):
 
 <Callout type="warn">
   **Sui has no `signMessage`** at the current `@ledgerhq/hw-app-sui` version. The capability flag
-  reflects this — gate the UI accordingly.
+  reflects this; gate the UI accordingly.
 </Callout>
 
 <Callout type="warn">
   **Bitcoin PSBTs need full BIP-32 derivation paths.** The adapter doesn't backfill missing
-  `PSBT_IN_BIP32_DERIVATION` entries — your PSBT builder must populate them, or the device will
+  `PSBT_IN_BIP32_DERIVATION` entries; your PSBT builder must populate them, or the device will
   reject the request.
 </Callout>
 
-- **No persistence** — the device must be reconnected on reload (no session
+- **No persistence**: the device must be reconnected on reload (no session
   survives).
-- **No events** — `subscribe()` is a no-op.
-- **Multiple accounts via paths** — there's no `switchAccount`; expose more
+- **No events**: `subscribe()` is a no-op.
+- **Multiple accounts via paths**: there's no `switchAccount`; expose more
   addresses with `accountCount` and pass a specific `account` to
   `signMessage` / `signTransaction`. Walking to a non-active path hits the
   device sequentially.
-- **Manual chain** — call `switchChain()` to update the adapter's local
+- **Manual chain**: call `switchChain()` to update the adapter's local
   state; it isn't written to the device.
 
 <Callout type="info">

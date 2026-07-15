@@ -6,7 +6,7 @@ description: butr is a set of multi-chain wallet-management primitives for React
 butr discovers EVM (EIP-6963 / EIP-1193) and Solana (Wallet Standard) wallets,
 manages their connection state across reloads, and exposes everything through
 small composable React hooks. It does not wrap viem, wagmi, gill, or
-framework-kit — it sits underneath them and hands you a raw signer so you keep
+framework-kit; it sits underneath them and hands you a raw signer so you keep
 using whatever chain library you already know.
 
 ## What butr is
@@ -14,8 +14,8 @@ using whatever chain library you already know.
 - **Multi-chain by default.** One provider, one pool. A user can connect
   MetaMask (EVM) and Phantom (SVM) at the same time; butr tracks each platform
   independently.
-- **Connector-shaped.** Every wallet — injected, WalletConnect, Ledger, or one
-  you write yourself — is a `WalletAdapter` plugged in through a single seam:
+- **Connector-shaped.** Every wallet (injected, WalletConnect, Ledger, or one
+  you write yourself) is a `WalletAdapter` plugged in through a single seam:
   `WalletManagerConfig.createConnector`.
 - **No lock-in.** `getSigner()` returns the underlying provider. You bridge it
   into viem / wagmi / gill / framework-kit / `@solana/kit` (or legacy
@@ -46,15 +46,15 @@ pipeline.
 
 ## Where to go next
 
-- [Installation](/getting-started/installation) — pick your packages.
-- [Quickstart](/getting-started/quickstart) — a working app in five
+- [Installation](/getting-started/installation): pick your packages.
+- [Quickstart](/getting-started/quickstart): a working app in five
   minutes with `WalletManagerProvider`.
-- [Core concepts](/concepts) — the mental model: connectors, the pool,
+- [Core concepts](/concepts): the mental model of connectors, the pool,
   platforms, hydration.
-- [Standards compliance](/concepts/standards) — how butr follows the
+- [Standards compliance](/concepts/standards): how butr follows the
   Wallet Standard, EIP-6963, and EIP-1193, and the deliberate edges.
-- [Guides](/guides/provider-setup) — connect, sign, send, switch chains.
-- [API reference](/api/core) — every export, per package.
+- [Guides](/guides/provider-setup): connect, sign, send, switch chains.
+- [API reference](/api/core): every export, per package.
 
 <Callout type="info">
   All code in these docs is taken from the runnable demo apps and package tests in [the butr

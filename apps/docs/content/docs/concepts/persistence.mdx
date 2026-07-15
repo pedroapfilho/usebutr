@@ -16,7 +16,7 @@ Keys are prefixed: `{prefix}:pool`, `{prefix}:selection`, `{prefix}:active`,
 ## Storage drivers
 
 A driver is a tiny get/set/remove interface. butr ships three and accepts any
-custom one (including async — React Native / IndexedDB).
+custom one (including async: React Native / IndexedDB).
 
 ```ts
 type StorageDriver = {
@@ -50,7 +50,7 @@ Native / Expo `AsyncStorage` driver.
 ## Writes are silent by design
 
 butr's persistence layer is **fire-and-forget**. Any individual write can fail
-— quota exceeded, IndexedDB shutdown, cross-tab conflicts, cookie size limits —
+(quota exceeded, IndexedDB shutdown, cross-tab conflicts, cookie size limits)
 without corrupting the in-memory store. Each storage key is durable on its own;
 the writes race intentionally.
 

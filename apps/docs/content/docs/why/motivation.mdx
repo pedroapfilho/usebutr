@@ -1,6 +1,6 @@
 ---
 title: Why butr exists
-description: Wallet tooling makes you pick a chain, couples connection state to a chain library, or locks you into a connect modal — butr is the layer that does none of that.
+description: Wallet tooling makes you pick a chain, couples connection state to a chain library, or locks you into a connect modal; butr is the layer that does none of that.
 ---
 
 Browser wallet tooling grew up single-chain. Pick a stack and the assumptions
@@ -37,19 +37,19 @@ state**. It sits _underneath_ chain libraries and _beside_ wallet SDKs.
   platforms in one pool. A user can have MetaMask and Phantom connected in the
   same render pass.
 - `getSigner()` hands back the raw underlying provider. butr never wraps RPC or
-  signing — you keep viem, wagmi, `@solana/web3.js`, or whatever you already
+  signing; you keep viem, wagmi, `@solana/web3.js`, or whatever you already
   know.
 - There is no butr modal. Discovery is data, not UI; you render connection
   however you want.
 
 ## The design stance
 
-The shape follows from the goal. The core is framework-agnostic and React-free
-— `@usebutr/react` is a binding over it, not its foundation. Every wallet,
+The shape follows from the goal. The core is framework-agnostic and React-free;
+`@usebutr/react` is a binding over it, not its foundation. Every wallet,
 injected or hardware or WalletConnect, is the same `WalletAdapter` plugged into
 one seam. Protocols live in separate packages so an EVM-only app never ships
 Solana code. butr has no opinion about how you read chain state or submit
-transactions, and that absence is the point — see
+transactions, and that absence is the point; see
 [Comparison with other solutions](/why/comparison).
 
 <Callout type="info">

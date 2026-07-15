@@ -13,13 +13,14 @@ behavior in and out.
 graph TD
   subgraph discovery["Discovery layer"]
     eip6963["EIP-6963 (EVM)"]
-    walletstandard["Wallet Standard (SVM / Sui / Bitcoin)"]
+    walletstandard["Wallet Standard (SVM / Sui / Bitcoin · Polkadot fallback)"]
+    injectedweb3["injectedWeb3 (Polkadot primary)"]
     injected["Injected fallback (window.ethereum / window.unisat / sats-connect)"]
     source["WalletSource: discovery seam"]
   end
 
   subgraph adapters["Adapter contract"]
-    adapter["WalletAdapter: discriminated by chainPlatform<br>evm | svm | sui | bitcoin"]
+    adapter["WalletAdapter: discriminated by chainPlatform<br>evm | svm | sui | bitcoin | polkadot"]
   end
 
   subgraph core["@usebutr/core"]
@@ -34,11 +35,12 @@ graph TD
   end
 
   subgraph integration["Integration"]
-    signer["getSigner(): escape hatch<br>EIP-1193 / WalletStandardWallet"]
+    signer["getSigner(): escape hatch<br>EIP-1193 / WalletStandardWallet / PolkadotSignerHandle"]
   end
 
   eip6963 --> source
   walletstandard --> source
+  injectedweb3 --> source
   injected --> source
   source --> adapter
   adapter --> store
@@ -51,11 +53,14 @@ graph TD
 
 ## Layer 1: Discovery
 
-Browser wallets announce themselves through one of two standards:
+Browser wallets announce themselves through one of three mechanisms:
 
 - **EIP-6963** for EVM: wallets dispatch a custom event on `window`.
-- **Wallet Standard** for SVM, Sui, Bitcoin, and Polkadot: wallets register
+- **Wallet Standard** for SVM, Sui, and Bitcoin: wallets register
   through the global `@wallet-standard/app` registry.
+- **injectedWeb3** for Polkadot: extensions inject into
+  `window.injectedWeb3`; a Wallet Standard `polkadot:*` fallback covers
+  wallets the primary channel missed.
 
 Each `@usebutr/<platform>` package exposes one or two discoverers:
 
@@ -63,6 +68,8 @@ Each `@usebutr/<platform>` package exposes one or two discoverers:
 - `discoverSvmAdapters` (`@usebutr/svm`)
 - `discoverSuiAdapters` (`@usebutr/sui`)
 - `discoverBitcoinAdapters` + `discoverInjectedBitcoinAdapter` (`@usebutr/bitcoin`)
+- `discoverInjectedPolkadotAdapters` + `discoverPolkadotWalletStandardAdapters`
+  (`@usebutr/polkadot`)
 
 A discoverer takes a callback and returns an unsubscribe function. It's a pull
 model: discovery only happens when a `WalletSource` subscribes.
@@ -95,7 +102,8 @@ type WalletAdapter =
   | EvmAdapter // chainPlatform: "evm"
   | SvmAdapter // chainPlatform: "svm"
   | SuiAdapter // chainPlatform: "sui"
-  | BitcoinAdapter; // chainPlatform: "bitcoin"
+  | BitcoinAdapter // chainPlatform: "bitcoin"
+  | PolkadotAdapter; // chainPlatform: "polkadot"
 ```
 
 The discriminant lets TypeScript narrow correctly: after
@@ -202,6 +210,7 @@ exposes the raw, platform-native signer:
 | SVM      | `WalletStandardWallet`: pass to `@solana/kit` / web3.js. |
 | Sui      | `WalletStandardWallet`: pass to `@mysten/sui`.           |
 | Bitcoin  | `WalletStandardWallet`: pass to `bitcoinjs-lib`.         |
+| Polkadot | `PolkadotSignerHandle` (`{ extensionName, address }`): bridge to `polkadot-api` via `pjs-signer`. |
 
 The signer type is fully tracked in TypeScript via the `SignerForPlatform`
 type registry; there's no `unknown` or `as any` needed in the bridge code.
@@ -211,7 +220,7 @@ platform.
 
 ## Adding a platform
 
-Adding a fifth `ChainPlatform` is a fixed-shape change touching the same
+Adding a sixth `ChainPlatform` is a fixed-shape change touching the same
 four files every time:
 
 1. **Extend** the `ChainPlatform` union in `@usebutr/core` and add an entry
@@ -225,8 +234,8 @@ four files every time:
    `@usebutr/walletconnect/src/namespaces/<platform>.ts` and an app factory
    under `@usebutr/ledger/src/apps/<platform>.ts`.
 
-The four current platforms (EVM, SVM, Sui, Bitcoin) each ship the same
-shape. The Ledger dispatch's `default:` branch is a true `never`
+The five current platforms (EVM, SVM, Sui, Bitcoin, Polkadot) each ship
+the same shape. The Ledger dispatch's `default:` branch is a true `never`
 exhaustiveness check; TypeScript will flag a missing case the moment the
 union extends.
 

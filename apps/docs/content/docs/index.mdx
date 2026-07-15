@@ -1,9 +1,10 @@
 ---
 title: Introduction
-description: butr is a set of multi-chain wallet-management primitives for React. EVM and Solana, discovered and managed through one composable hook surface.
+description: butr is a set of multi-chain wallet-management primitives for React. EVM, Solana, Sui, Bitcoin, and Polkadot, discovered and managed through one composable hook surface.
 ---
 
-butr discovers EVM (EIP-6963 / EIP-1193) and Solana (Wallet Standard) wallets,
+butr discovers EVM (EIP-6963 / EIP-1193), Solana / Sui / Bitcoin (Wallet
+Standard), and Polkadot (`injectedWeb3`) wallets,
 manages their connection state across reloads, and exposes everything through
 small composable React hooks. It does not wrap viem, wagmi, gill, or
 framework-kit; it sits underneath them and hands you a raw signer so you keep
@@ -33,16 +34,19 @@ butr is layered. Each package depends only on the ones below it.
 | `@usebutr/react`         | Provider + hooks over the store.                                                           | `@usebutr/core`       |
 | `@usebutr/evm`           | EIP-1193 / EIP-6963 / injected discovery and adapters.                                     | `@usebutr/core`       |
 | `@usebutr/svm`           | Wallet Standard discovery and adapters for Solana.                                         | `@usebutr/core`       |
-| `@usebutr/wallets`       | Batteries-included EVM+SVM discovery source (`autoDiscovery`) + combined chain registries. | core, react, evm, svm |
+| `@usebutr/sui`           | Wallet Standard discovery and adapters for Sui.                                            | `@usebutr/core`       |
+| `@usebutr/bitcoin`       | Wallet Standard + injected discovery and adapters for Bitcoin.                             | `@usebutr/core`       |
+| `@usebutr/polkadot`      | `injectedWeb3` discovery and adapters for Polkadot, with a Wallet Standard fallback.       | `@usebutr/core`       |
+| `@usebutr/wallets`       | Batteries-included five-platform discovery source (`autoDiscovery`) + combined registries. | core, react, platforms |
 | `@usebutr/walletconnect` | WalletConnect v2 adapter for EVM mobile wallets.                                           | core, evm             |
 | `@usebutr/ledger`        | Ledger hardware-wallet adapter (WebUSB, signing-only).                                     | `@usebutr/core`       |
 | `@usebutr/testing`       | Fake adapter + fake persistence for unit tests.                                            | `@usebutr/core`       |
 
-Most apps want `@usebutr/wallets` (it pulls in `@usebutr/react`, `@usebutr/evm`,
-`@usebutr/svm`, `@usebutr/core`). Pass `autoDiscovery()` from `@usebutr/wallets` to
-`WalletManagerProvider` from `@usebutr/react` for EVM+SVM discovery. Reach for
-the lower-level packages when you want an EVM-only bundle or a custom discovery
-pipeline.
+Most apps want `@usebutr/wallets` (it pulls in `@usebutr/react`, `@usebutr/core`,
+and the per-platform adapter packages). Pass `autoDiscovery()` from
+`@usebutr/wallets` to `WalletManagerProvider` from `@usebutr/react` for
+discovery across all five platforms. Reach for the lower-level packages when
+you want a single-platform bundle or a custom discovery pipeline.
 
 ## Where to go next
 

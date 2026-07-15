@@ -1,11 +1,16 @@
 import type { Account, ChainBase, SuiAdapter, WalletCapabilities } from "@usebutr/core";
 import { base64ToBytes, bytesToBase64, logWarn } from "@usebutr/core";
 
-import type { UniversalProviderLike } from "../loader";
-
+import {
+  CAIP_WC_CAPABILITIES,
+  buildCaipAccount,
+  buildCaipChain,
+  parseCaip10Address,
+  readNamespaceAccounts,
+} from "./caip";
 import type { WalletConnectNamespaceBuilder } from "./types";
 
-const SUI_PREFIX = "sui:";
+const SUI_NAMESPACE = "sui";
 const SUI_DECIMALS = 9;
 
 // Sui Wallet Standard wallets advertise chains as the short
@@ -42,50 +47,7 @@ const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged"
  *  - `getBalance` / `getTransactionReceipt`: false; butr ships no RPC.
  *  - `requestAccounts`: false; accounts come from the pairing only.
  */
-const WALLETCONNECT_SUI_CAPABILITIES: WalletCapabilities = {
-  getBalance: false,
-  getTransactionReceipt: false,
-  requestAccounts: false,
-  sendTransaction: true,
-  signIn: false,
-  signMessage: true,
-  signTransaction: true,
-  subscribe: false,
-  switchAccount: false,
-  switchChain: true,
-};
-
-/** Parse a CAIP-10 string (`sui:mainnet:0xabc...`) into the address
- *  segment. The address is the trailing segment after the last `:`. */
-const parseCaip10Address = (caip10: string): string => {
-  const lastColon = caip10.lastIndexOf(":");
-  return lastColon === -1 ? caip10 : caip10.slice(lastColon + 1);
-};
-
-/** Pull the namespace section of the live WC session in a way that
- *  doesn't depend on the `@walletconnect/universal-provider` types
- *  being present at build time (the dep is optional). */
-const readSessionAccounts = (provider: UniversalProviderLike): ReadonlyArray<string> => {
-  const session = provider.session as
-    | { namespaces?: Record<string, { accounts?: ReadonlyArray<string> }> }
-    | null
-    | undefined;
-  return session?.namespaces?.["sui"]?.accounts ?? [];
-};
-
-const buildSuiChain = (chainId: string, walletName: string): ChainBase => ({
-  id: chainId,
-  // Same posture as the EVM / SVM sides: butr doesn't ship a chain-id
-  name: walletName,
-  namespace: "sui",
-  reference: chainId.slice(SUI_PREFIX.length),
-});
-
-const buildSuiAccount = (address: string, chain: ChainBase): Account => ({
-  chain,
-  id: `${chain.id}:${address}`,
-  walletAddress: address,
-});
+const WALLETCONNECT_SUI_CAPABILITIES: WalletCapabilities = { ...CAIP_WC_CAPABILITIES };
 
 /**
  * Sui (CAIP `sui:*`) namespace builder. Wraps the paired
@@ -130,12 +92,12 @@ const coerceTransactionToBase64 = (tx: unknown): string => {
 const suiNamespace: WalletConnectNamespaceBuilder = {
   buildAdapter({ chains, icon, id, name, provider }) {
     let currentChainId = chains[0] ?? DEFAULT_CHAINS[0] ?? "sui:mainnet";
-    const currentChain = (): ChainBase => buildSuiChain(currentChainId, name);
+    const currentChain = (): ChainBase => buildCaipChain(currentChainId, name, SUI_NAMESPACE);
 
     const resolveAccounts = (): Array<Account> => {
       const chain = currentChain();
-      return readSessionAccounts(provider).map((caip10) =>
-        buildSuiAccount(parseCaip10Address(caip10), chain),
+      return readNamespaceAccounts(provider, SUI_NAMESPACE).map((caip10) =>
+        buildCaipAccount(parseCaip10Address(caip10), chain),
       );
     };
 

@@ -1,11 +1,16 @@
 import type { Account, BitcoinAdapter, ChainBase, WalletCapabilities } from "@usebutr/core";
 import { base64ToBytes, bytesToBase64, hexToBytes, logWarn } from "@usebutr/core";
 
-import type { UniversalProviderLike } from "../loader";
-
+import {
+  CAIP_WC_CAPABILITIES,
+  buildCaipAccount,
+  buildCaipChain,
+  parseCaip10Address,
+  readNamespaceAccounts,
+} from "./caip";
 import type { WalletConnectNamespaceBuilder } from "./types";
 
-const BITCOIN_PREFIX = "bip122:";
+const BITCOIN_NAMESPACE = "bip122";
 const BITCOIN_DECIMALS = 8;
 
 // Canonical CAIP-2 chain references for Bitcoin (genesis block hash,
@@ -49,50 +54,7 @@ const DEFAULT_EVENTS: ReadonlyArray<string> = ["bip122_addressesChanged"];
  *  - `getBalance` / `getTransactionReceipt`: false; butr ships no RPC.
  *  - `requestAccounts`: false; accounts come from the pairing only.
  */
-const WALLETCONNECT_BITCOIN_CAPABILITIES: WalletCapabilities = {
-  getBalance: false,
-  getTransactionReceipt: false,
-  requestAccounts: false,
-  sendTransaction: true,
-  signIn: false,
-  signMessage: true,
-  signTransaction: true,
-  subscribe: false,
-  switchAccount: false,
-  switchChain: true,
-};
-
-/** Parse a CAIP-10 string (`bip122:<chain>:<address>`) into the address
- *  segment. The address is the trailing segment after the last `:`. */
-const parseCaip10Address = (caip10: string): string => {
-  const lastColon = caip10.lastIndexOf(":");
-  return lastColon === -1 ? caip10 : caip10.slice(lastColon + 1);
-};
-
-/** Pull the namespace section of the live WC session in a way that
- *  doesn't depend on the `@walletconnect/universal-provider` types
- *  being present at build time (the dep is optional). */
-const readSessionAccounts = (provider: UniversalProviderLike): ReadonlyArray<string> => {
-  const session = provider.session as
-    | { namespaces?: Record<string, { accounts?: ReadonlyArray<string> }> }
-    | null
-    | undefined;
-  return session?.namespaces?.["bip122"]?.accounts ?? [];
-};
-
-const buildBitcoinChain = (chainId: string, walletName: string): ChainBase => ({
-  id: chainId,
-  // Same posture as the EVM / SVM / Sui sides: butr doesn't ship a
-  name: walletName,
-  namespace: "bip122",
-  reference: chainId.slice(BITCOIN_PREFIX.length),
-});
-
-const buildBitcoinAccount = (address: string, chain: ChainBase): Account => ({
-  chain,
-  id: `${chain.id}:${address}`,
-  walletAddress: address,
-});
+const WALLETCONNECT_BITCOIN_CAPABILITIES: WalletCapabilities = { ...CAIP_WC_CAPABILITIES };
 
 /** Coerce butr's `unknown` tx into the base64 PSBT string the bip122
  *  `signPsbt` method expects. Consumers pass either a base64 string
@@ -150,12 +112,12 @@ const coercePsbtToBase64 = (tx: unknown): string => {
 const bitcoinNamespace: WalletConnectNamespaceBuilder = {
   buildAdapter({ chains, icon, id, name, provider }) {
     let currentChainId = chains[0] ?? DEFAULT_CHAINS[0] ?? BITCOIN_MAINNET;
-    const currentChain = (): ChainBase => buildBitcoinChain(currentChainId, name);
+    const currentChain = (): ChainBase => buildCaipChain(currentChainId, name, BITCOIN_NAMESPACE);
 
     const resolveAccounts = (): Array<Account> => {
       const chain = currentChain();
-      return readSessionAccounts(provider).map((caip10) =>
-        buildBitcoinAccount(parseCaip10Address(caip10), chain),
+      return readNamespaceAccounts(provider, BITCOIN_NAMESPACE).map((caip10) =>
+        buildCaipAccount(parseCaip10Address(caip10), chain),
       );
     };
 

@@ -72,7 +72,7 @@ const DestHint = ({
   if (!ownedByActive) {
     return (
       <p className="text-xs text-amber-700">
-        Wrong wallet — this transfer was sent to {truncate(recipient)}, which the active{" "}
+        Wrong wallet: this transfer was sent to {truncate(recipient)}, which the active{" "}
         {destPlatform?.toUpperCase() ?? ""} wallet doesn’t own. Switch to that account, then Scan
         again.
       </p>

@@ -355,7 +355,7 @@ const WalletBrandRow = ({
             return (
               <button
                 aria-busy={isConnecting}
-                aria-label={`${brand.name} — ${adapter.chainPlatform}`}
+                aria-label={`${brand.name} (${adapter.chainPlatform})`}
                 className="hover:border-brand hover:bg-brand/10 hover:text-brand-foreground min-h-[44px] rounded-md border border-neutral-300 px-2 py-1 font-mono text-xs uppercase transition-colors disabled:opacity-50 motion-reduce:transition-none"
                 disabled={isConnecting}
                 key={adapter.id}

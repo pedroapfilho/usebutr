@@ -61,7 +61,7 @@ const WalletBrandRow = ({
           return (
             <button
               aria-busy={isConnecting}
-              aria-label={`${brand.name} — ${adapter.chainPlatform}`}
+              aria-label={`${brand.name} (${adapter.chainPlatform})`}
               className="min-h-[44px] rounded-md border border-neutral-300 px-2 py-1 font-mono text-xs uppercase hover:bg-neutral-50 disabled:opacity-50"
               disabled={isConnecting}
               key={adapter.id}
@@ -110,7 +110,7 @@ const WalletConnectDialog = ({
   const brands = groupByBrand(available);
 
   return (
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions, react-doctor/no-noninteractive-element-interactions
     <dialog
       aria-label="Connect wallet"
       aria-modal="true"

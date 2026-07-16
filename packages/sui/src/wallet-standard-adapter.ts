@@ -1,4 +1,4 @@
-import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
+import type { ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
 import { base64ToBytes, logWarn, sanitizeIcon } from "@usebutr/core";
 import {
   buildAccount,
@@ -40,9 +40,6 @@ const buildSuiChain = (chainId: string, walletName: string): ChainBase => ({
   namespace: "sui",
   reference: chainId.slice(SUI_PREFIX.length),
 });
-
-const buildSuiAccount = (address: string, chain: ChainBase): Account =>
-  buildAccount(address, chain);
 
 /** Coerce butr's `unknown` tx into the shape `sui:signAndExecuteTransaction`
  *  expects (an object with `toJSON()` returning a Promise<string>). When
@@ -113,7 +110,7 @@ const buildSuiAdapter = (
       return;
     }
     const chain = currentChain();
-    const built = wallet.accounts.map((a) => buildSuiAccount(a.address, chain));
+    const built = wallet.accounts.map((a) => buildAccount(a.address, chain));
     const first = built[0];
     if (!first) {
       return;
@@ -160,12 +157,12 @@ const buildSuiAdapter = (
       if (!address) {
         return Promise.resolve(null);
       }
-      return Promise.resolve(buildSuiAccount(address, currentChain()));
+      return Promise.resolve(buildAccount(address, currentChain()));
     },
 
     getAccounts() {
       const chain = currentChain();
-      return Promise.resolve(wallet.accounts.map((a) => buildSuiAccount(a.address, chain)));
+      return Promise.resolve(wallet.accounts.map((a) => buildAccount(a.address, chain)));
     },
 
     getBalance() {
@@ -277,7 +274,7 @@ const buildSuiAdapter = (
               return;
             }
             const chain = currentChain();
-            const built = changes.accounts.map((a) => buildSuiAccount(a.address, chain));
+            const built = changes.accounts.map((a) => buildAccount(a.address, chain));
             const first = built[0];
             if (!first) {
               return;

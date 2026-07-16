@@ -1,4 +1,4 @@
-import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
+import type { ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
 import { bytesToBase64, logWarn, sanitizeIcon } from "@usebutr/core";
 import {
   buildAccount,
@@ -43,9 +43,6 @@ const buildSolanaChain = (chainId: string, walletName: string): ChainBase => ({
   namespace: "solana",
   reference: chainId.slice(SOLANA_PREFIX.length),
 });
-
-const buildSolanaAccount = (address: string, chain: ChainBase): Account =>
-  buildAccount(address, chain);
 
 /**
  * Adapt a Solana Wallet Standard `Wallet` object into a butr
@@ -126,7 +123,7 @@ const buildSvmAdapter = (
       return;
     }
     const chain = currentChain();
-    const built = wallet.accounts.map((a) => buildSolanaAccount(a.address, chain));
+    const built = wallet.accounts.map((a) => buildAccount(a.address, chain));
     const first = built[0];
     if (!first) {
       return;
@@ -177,12 +174,12 @@ const buildSvmAdapter = (
       if (!address) {
         return Promise.resolve(null);
       }
-      return Promise.resolve(buildSolanaAccount(address, currentChain()));
+      return Promise.resolve(buildAccount(address, currentChain()));
     },
 
     getAccounts() {
       const chain = currentChain();
-      return Promise.resolve(wallet.accounts.map((a) => buildSolanaAccount(a.address, chain)));
+      return Promise.resolve(wallet.accounts.map((a) => buildAccount(a.address, chain)));
     },
 
     getBalance() {
@@ -309,7 +306,7 @@ const buildSvmAdapter = (
               throw new Error("signIn returned no outputs");
             }
             return {
-              account: buildSolanaAccount(output.account.address, currentChain()),
+              account: buildAccount(output.account.address, currentChain()),
               signature: output.signature,
               signedMessage: output.signedMessage,
             };
@@ -346,7 +343,7 @@ const buildSvmAdapter = (
             // so single-account-exposure wallets (Phantom Solana,
             // MetaMask Snap) don't accumulate stale addresses.
             const chain = currentChain();
-            const built = changes.accounts.map((a) => buildSolanaAccount(a.address, chain));
+            const built = changes.accounts.map((a) => buildAccount(a.address, chain));
             const first = built[0];
             if (!first) {
               return;

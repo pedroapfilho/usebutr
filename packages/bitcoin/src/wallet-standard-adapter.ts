@@ -1,4 +1,4 @@
-import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
+import type { ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
 import { logWarn, sanitizeIcon } from "@usebutr/core";
 import {
   buildAccount,
@@ -41,9 +41,6 @@ const buildBitcoinChain = (chainId: string, walletName: string): ChainBase => ({
   namespace: "bip122",
   reference: chainId.slice(BITCOIN_PREFIX.length),
 });
-
-const buildBitcoinAccount = (address: string, chain: ChainBase): Account =>
-  buildAccount(address, chain);
 
 /**
  * Adapt a Bitcoin Wallet Standard `Wallet` into a butr `WalletAdapter`.
@@ -102,7 +99,7 @@ const buildBitcoinAdapter = (
       return;
     }
     const chain = currentChain();
-    const built = wallet.accounts.map((a) => buildBitcoinAccount(a.address, chain));
+    const built = wallet.accounts.map((a) => buildAccount(a.address, chain));
     const first = built[0];
     if (!first) {
       return;
@@ -149,12 +146,12 @@ const buildBitcoinAdapter = (
       if (!address) {
         return Promise.resolve(null);
       }
-      return Promise.resolve(buildBitcoinAccount(address, currentChain()));
+      return Promise.resolve(buildAccount(address, currentChain()));
     },
 
     getAccounts() {
       const chain = currentChain();
-      return Promise.resolve(wallet.accounts.map((a) => buildBitcoinAccount(a.address, chain)));
+      return Promise.resolve(wallet.accounts.map((a) => buildAccount(a.address, chain)));
     },
 
     getBalance() {
@@ -278,7 +275,7 @@ const buildBitcoinAdapter = (
               return;
             }
             const chain = currentChain();
-            const built = changes.accounts.map((a) => buildBitcoinAccount(a.address, chain));
+            const built = changes.accounts.map((a) => buildAccount(a.address, chain));
             const first = built[0];
             if (!first) {
               return;

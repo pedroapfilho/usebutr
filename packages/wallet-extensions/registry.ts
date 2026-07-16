@@ -43,6 +43,7 @@ const Backpack: WalletExtension = {
 
 const BinanceWallet: WalletExtension = {
   // Verified 2026-05-21: listing exists at this ID on chromewebstore.google.com.
+  // Binance has shipped multiple browser-extension wallets over time (Binance
   // Chain Wallet → Binance Wallet); this is the current canonical listing.
   chromeWebStoreId: "fhbohimaelbohpjbbldcngcnapndodjp",
   name: "Binance Wallet",
@@ -71,7 +72,9 @@ const Leather: WalletExtension = {
 
 const MagicEdenWallet: WalletExtension = {
   // Verified 2026-05-21: "Magic Eden Wallet" by Barcom Trading, Inc.
+  // Advertises SVM (NFT-focused) and Bitcoin (Ordinals + BRC-20) via
   // Wallet Standard. Cross-chain swaps SVM <> BTC are an in-wallet
+  // feature; butr discovers each chain as a separate WalletAdapter.
   chromeWebStoreId: "mkpegjkblkkefacfnmkajcjmabijhclg",
   name: "Magic Eden Wallet",
   platforms: ["svm", "bitcoin"],
@@ -142,6 +145,8 @@ const Suiet: WalletExtension = {
 
 const Surf: WalletExtension = {
   // Verified 2026-05-21: "Surf Wallet" by surflabs.wallet. Sui-only;
+  // advertises MPC encryption, multi-sig, streaming payments. Mentioned
+  // by name in apps/demo-with-sui/src/app.tsx's empty-state copy.
   chromeWebStoreId: "emeeapjkbcbpbpgaagfchmcgglmebnen",
   name: "Surf Wallet",
   platforms: ["sui"],

@@ -48,6 +48,8 @@ const reducer = (state: State, action: Action): State => {
   }
 };
 
+// EVM: `balanceOf(address)` via a single `eth_call` against the chain's
+// own RPC, so the figure tracks the SELECTED chain, not whichever
 // network the wallet happens to be on.
 const readEvmUsdc = async (spec: ChainSpec, owner: string): Promise<string> => {
   const padded = owner.slice(2).toLowerCase().padStart(64, "0");

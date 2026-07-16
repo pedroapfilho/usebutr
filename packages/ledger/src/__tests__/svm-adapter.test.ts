@@ -8,6 +8,7 @@ import type {
 } from "../adapter";
 import { createLedgerAdapter, createSvmLedgerAdapter } from "../adapter";
 
+// Three distinct 32-byte ed25519 pubkeys filled with the index so each
 // derivation path produces a distinguishable base58 address.
 const buildFakePubkey = (index: number): Uint8Array => {
   const buf = new Uint8Array(32);

@@ -452,6 +452,8 @@ describe("createWalletStore", () => {
       expect(subscribe).toHaveBeenCalledTimes(1);
 
       // Single-account-exposure wallet (Phantom EVM, MetaMask Snap):
+      // accountsChanged carries just the new active. Pool entry's
+      // `accounts` array drops the previous address.
       const next = createMockAccount({ walletAddress: "0xNEXT" });
       listener!({ account: next, accounts: [next], type: "accountChanged" });
 
@@ -460,6 +462,7 @@ describe("createWalletStore", () => {
       expect(wallet?.accounts.map((a) => a.walletAddress)).toEqual(["0xNEXT"]);
 
       // Multi-account-exposure wallet (MetaMask EVM): accountsChanged
+      // carries the full authorized set. Pool entry mirrors it verbatim.
       const alt = createMockAccount({ walletAddress: "0xALT" });
       listener!({ account: next, accounts: [next, alt], type: "accountChanged" });
       wallet = store.getState().pool.get("metamask");

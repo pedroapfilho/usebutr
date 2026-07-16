@@ -19,6 +19,7 @@ const sleep = (ms: number): Promise<void> =>
   });
 
 // butr's SVM adapter returns the signature base64-encoded (its
+// cross-platform `bytesToBase64`). Solana explorers and RPCs speak
 // base58, so re-encode to the canonical signature string.
 const toBase58Signature = (base64: string): string =>
   getBase58Decoder().decode(getBase64Encoder().encode(base64));
@@ -46,6 +47,7 @@ const confirmSignature = async (rpc: SolanaRpc, sig: string): Promise<void> => {
 type Web3Signer = { publicKey: unknown; secretKey: Uint8Array };
 
 // Legacy `Transaction`: `recentBlockhash` is a mutable base58 string and
+// the unsigned tx serializes only with `requireAllSignatures: false`.
 type LegacyTx = {
   partialSign: (...signers: Array<Web3Signer>) => void;
   recentBlockhash?: string;
@@ -128,6 +130,7 @@ class ButrSvmWormholeSigner<N extends Network, C extends Chain> implements SignA
           transaction.partialSign(...signers);
         }
         // The wallet adds the fee-payer signature, so don't require a
+        // fully-signed tx here.
         serialized = transaction.serialize({
           requireAllSignatures: false,
           verifySignatures: false,

@@ -104,7 +104,9 @@ const getChainSpec = (chain: Chain): ChainSpec => {
   return spec;
 };
 
+// Non-throwing lookup: a discovered burn's destination may be a chain the
 // demo doesn't list, in which case the recovery UI shows it as unsupported
+// rather than crashing.
 const findChainSpec = (chain: Chain): ChainSpec | undefined => CHAINS[chain];
 
 export type { ChainSpec };

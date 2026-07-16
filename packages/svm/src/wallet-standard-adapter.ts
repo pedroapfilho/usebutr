@@ -38,6 +38,7 @@ const pickSolanaChain = (wallet: WalletStandardWallet): string | null => {
 const buildSolanaChain = (chainId: string, walletName: string): ChainBase => ({
   id: chainId,
   // Same stance as the EIP-6963 side: we don't ship a chain-id → name
+  // table. Consumers overlay via structural typing.
   name: walletName,
   namespace: "solana",
   reference: chainId.slice(SOLANA_PREFIX.length),
@@ -116,6 +117,8 @@ const buildSvmAdapter = (
   let currentChainId = solanaChainId;
   const currentChain = (): ChainBase => buildSolanaChain(currentChainId, wallet.name);
 
+  // Local listener set so `switchChain` (and `requestAccounts`) can
+  // synthesise `accountChanged` events that flow into butr's pool.
   // Wallet-native events from `standard:events` are bridged alongside.
   const listeners = new Set<(event: ConnectorEvent) => void>();
   const notifyAccountChanged = () => {
@@ -184,6 +187,7 @@ const buildSvmAdapter = (
 
     getBalance() {
       // Wallet Standard exposes no balance feature. Consumers wrap
+      // their own RPC client; this default keeps the type signature
       // honoured without lying about a value we don't have.
       return Promise.resolve({
         decimals: SOLANA_DECIMALS,
@@ -194,6 +198,7 @@ const buildSvmAdapter = (
     },
 
     getSigner() {
+      // Consumers cast to their preferred wrapper (e.g. an Anchor
       // provider built around the wallet's signTransaction feature).
       return Promise.resolve(wallet);
     },
@@ -208,7 +213,12 @@ const buildSvmAdapter = (
 
     async requestAccounts() {
       // Wallet Standard has no equivalent of EIP-2255's
+      // `wallet_requestPermissions`. The closest we can do is re-run
+      // `standard:connect`, which prompts the user on wallets that
       // surface their picker each time and silently returns the
+      // existing list on wallets that remember authorisations.
+      // butr's runtime calls `getAccounts()` afterwards to refresh
+      // the pool entry, so newly-exposed addresses appear either way.
       await connect.connect();
     },
 
@@ -238,7 +248,11 @@ const buildSvmAdapter = (
 
     sendTxToChain(tx, _targetChainId, account, cb) {
       // Solana Wallet Standard's signAndSendTransaction takes the
+      // target chain directly. `targetChainId` is the decimal-string
       // form butr uses, but the wallet expects a CAIP-2 chain string.
+      // For now we honour the connector's primary `solanaChainId` and
+      // let consumers route per-chain at a higher level if they need
+      // multi-cluster support.
       cb?.();
       return this.sendTx(tx, account);
     },
@@ -309,6 +323,8 @@ const buildSvmAdapter = (
       if (events) {
         const unsub = events.on("change", (changes) => {
           // Chain change: the wallet switched cluster. Re-point
+          // currentChainId so subsequent signAndSendTransaction routes
+          // through it, mirroring `switchChain`'s local-state model.
           if (changes.chains) {
             const next =
               changes.chains.find((c) => c === "solana:mainnet" || c === "solana:mainnet-beta") ??
@@ -325,6 +341,7 @@ const buildSvmAdapter = (
             }
             // Forward the FULL accounts list; Wallet Standard's
             // change.accounts reflects the wallet's current exposure
+            // set. Mirroring it into the pool entry keeps the array in
             // sync with what the wallet actually allows us to sign with,
             // so single-account-exposure wallets (Phantom Solana,
             // MetaMask Snap) don't accumulate stale addresses.
@@ -357,12 +374,14 @@ const buildSvmAdapter = (
         );
       }
       // The wallet must advertise this cluster; otherwise
+      // signAndSendTransaction will reject the chain string later.
       if (!wallet.chains.includes(chain.id)) {
         throw new Error(
           `Wallet ${wallet.name} does not advertise chain "${chain.id}". Available: ${wallet.chains.join(", ")}`,
         );
       }
       currentChainId = chain.id;
+      // Synthesise an `accountChanged` so butr's reducer updates the
       // pool entry's chain; the wallet itself has no event to fire here.
       notifyAccountChanged();
       return Promise.resolve();

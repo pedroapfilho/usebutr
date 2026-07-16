@@ -39,6 +39,7 @@ const PairingDialog = () => {
     }
   }, [open]);
 
+  // Sync store state when the dialog closes natively (Escape key) and
   // reset copy feedback for the next pairing attempt.
   useEffect(() => {
     const dialog = dialogRef.current;

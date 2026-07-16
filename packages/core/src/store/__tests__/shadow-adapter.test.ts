@@ -102,6 +102,7 @@ describe("isShadowAdapter", () => {
   it("returns false for an adapter advertising any real capability", () => {
     const shadow = createShadowAdapter(evmEntry());
     // Mutate a capability flag; would be impossible on a real shadow
+    // (capabilities object is frozen at module scope), so make a copy.
     const liveLooking = {
       ...shadow,
       capabilities: { ...shadow.capabilities, signMessage: true },

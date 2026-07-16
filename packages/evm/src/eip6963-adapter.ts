@@ -151,6 +151,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         });
       } catch {
         // Many wallets don't implement wallet_revokePermissions yet;
+        // not a failure.
       }
     },
 
@@ -249,10 +250,15 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       // that actually surfaces a fresh picker; Rabby / OKX / Binance
       // / Backpack silently return existing accounts; Phantom EVM and
       // Coinbase Wallet reject with `method not supported`. The
+      // `capabilities` layer (`EIP6963_RDNS_WITH_REQUEST_ACCOUNTS` in
+      // `capabilities.ts`) gates the
+      // demo button so users only see it where it'll do something
+      // visible; this method stays callable for consumers with
       // wallet-specific flows.
       // Fallback: rejecting wallets get routed through
       // `eth_requestAccounts`, which at least doesn't throw. It won't
       // reopen the picker but surfaces newly-added accounts on the
+      // next read.
       try {
         await provider.request({
           method: "wallet_requestPermissions",
@@ -311,6 +317,8 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     async signMessage(msg, account) {
       // Default to the first exposed account when the caller doesn't
       // specify one. MetaMask requires the address to be one currently
+      // exposed via `eth_requestAccounts`; pass any address from
+      // `ConnectedWallet.accounts` to sign with a non-active one.
       let signer = account?.walletAddress;
       if (!signer) {
         const accounts = (await provider.request({ method: "eth_accounts" })) as Array<string>;
@@ -333,8 +341,11 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
           listener({ type: "disconnected" });
           return;
         }
+        // Forward the FULL accounts array; `accountsChanged` reflects
         // the wallet's current exposure set, not an incremental add.
+        // The runtime mirrors this list verbatim into the pool entry,
         // so single-account-exposure wallets (Phantom EVM) don't end
+        // up with stale, non-signable addresses lingering in the array.
         void provider
           .request({ method: "eth_chainId" })
           // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async

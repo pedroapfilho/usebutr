@@ -54,6 +54,7 @@ const PopoverContent = ({ children, className, ref, ...props }: PopoverContentPr
         className,
       )}
       id={ctx.popoverId}
+      // popover is a valid HTML attribute in React 19+
       // eslint-disable-next-line react/no-unknown-property
       popover="auto"
     >

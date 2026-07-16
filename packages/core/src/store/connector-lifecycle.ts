@@ -77,7 +77,9 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
               break;
             }
             case "disconnected": {
+              // Clear the subscription before notifying so the handler
               // sees a clean state and can't re-enter via dispatch
+              // chains.
               detach(connectorId);
               handlers.onDisconnected(connectorId, connector.chainPlatform);
               break;

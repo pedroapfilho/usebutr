@@ -34,6 +34,9 @@ type WalletProviderProps = {
 };
 
 const WalletProvider = ({ children, initialCookies, initialState }: WalletProviderProps) => {
+  // Build the storage once at mount. The cookie driver covers the
+  // persistent slot (pool / selection / active connector) so the same
+  // values are reachable on the server; the session slot stays on
   // sessionStorage (cookies can't model "until tab closes" cleanly).
   const [storage] = useState(
     () =>

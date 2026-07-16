@@ -167,6 +167,8 @@ const buildBitcoinAdapter = (
     },
 
     getSigner() {
+      // Consumers cast to whatever Bitcoin signing wrapper they use
+      // (bitcoinjs-lib's Signer, scure-btc-signer's HDWallet, etc.) or
       // call butr's adapter directly for PSBT / send-transfer.
       return Promise.resolve(wallet);
     },

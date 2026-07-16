@@ -166,6 +166,7 @@ const DEFAULT_ICON =
 
 const buildBitcoinChain = (chainId: string, walletName: string): ChainBase => {
   // Reference is the part after the `bip122:` (or other) namespace prefix.
+  // Falls back to the full id when no `:` is present so malformed inputs
   // don't crash the chain builder.
   const colonIndex = chainId.indexOf(":");
   const namespace = colonIndex === -1 ? "bip122" : chainId.slice(0, colonIndex);
@@ -252,6 +253,7 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
       if (opts?.silent) {
         // Ledger connect always shows the browser's WebUSB device picker;
         // there is no silent reconnect. Reject so eager hydration doesn't
+        // pop the chooser on page load.
         throw new Error("Ledger requires an interactive connect");
       }
       const TransportFactoryImpl = options.transport ?? (await loadTransport());
@@ -289,6 +291,7 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
       const chain = buildBitcoinChain(chainId, name);
       const accounts: Array<Account> = [];
       // Sequential walk; the device serialises USB requests; parallel
+      // calls would deadlock the transport. Slow but correct.
       for (let i = 0; i < accountCount; i += 1) {
         // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
         const { bitcoinAddress } = await btc.getWalletPublicKey(pathAt(i), {

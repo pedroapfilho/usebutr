@@ -126,7 +126,13 @@ describe("reducer — reconnectingIds lifecycle", () => {
     const store = createWalletStore(createMockConfig({ initialState: baseSnapshot }));
     expect(store.getState().reconnectingIds.has("metamask")).toBe(true);
 
+    // Simulate the dispatch that the runtime's tryRestoreFromPending
+    // would produce on a successful late upgrade. We use setState
+    // directly here; the reducer logic that clears reconnectingIds
+    // inside CONNECT_SUCCEEDED is exercised via the public API in
     // store/__tests__/wallet-store.test.ts; this test just confirms
+    // that downstream consumers see the set shrink after a successful
+    // restore path settles.
     store.setState((prev) => ({
       ...prev,
       reconnectingIds: new Set(),

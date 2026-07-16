@@ -16,6 +16,7 @@ const formatError = (error: unknown): string => {
     return error;
   }
   // SDK / wallet errors are often plain objects; surface their message
+  // instead of a useless "unknown error".
   if (error !== null && typeof error === "object") {
     if ("message" in error && typeof error.message === "string") {
       return error.message;

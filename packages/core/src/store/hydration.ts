@@ -92,7 +92,11 @@ const restoreOneEntry = async (
     // Eager restore: ask the wallet to reconnect to already-authorized
     // accounts without prompting (Wallet Standard `silent`, EIP-1193
     // `eth_accounts`). A wallet that can't do this silently rejects;
+    // the entry stays out of the pool for this session but storage is
+    // preserved so the next load (e.g. once the user unlocks their
     // wallet) can retry. EIP-1193 `eth_accounts: []` is ambiguous
+    // between "locked" and "deauthorized"; dropping the storage entry
+    // on a transient `[]` was the cause of the reload-disconnect race.
     await connector.connect({ silent: true });
     const freshAccount = await connector.getAccount();
     const accountToUse = freshAccount || entry.account;

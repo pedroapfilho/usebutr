@@ -67,6 +67,7 @@ const createFakeProvider = (
     request(args: RequestArgs) {
       requests.push(args);
       // Reasonable defaults so the EIP-6963 adapter's connect/getAccount
+      // path can run end-to-end without crashing.
       if (args.method === "eth_accounts" || args.method === "eth_requestAccounts") {
         return Promise.resolve(["0x53d120cf09b21c2fcc67814cdf10c8ca9bcc7670"]);
       }
@@ -263,6 +264,7 @@ describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
       throw new Error("expected one adapter");
     }
     // No connect(); namespace disconnect() returns early (no session),
+    // but cleanup still runs in the `finally`.
     await adapter.disconnect?.();
 
     expect(provider.disconnectCalls).toBe(0);
@@ -285,6 +287,8 @@ describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
     await adapter.connect();
 
     // The evm namespace's disconnect() swallows relay errors by design
+    // (logs a warning, marks disconnected locally). The wrapper's
+    // `finally` still runs cleanup despite the underlying rejection.
     await expect(adapter.disconnect?.()).resolves.toBeUndefined();
     expect(provider.disconnectCalls).toBe(1);
     expect(displayUriListeners(provider.removeListenerCalls)).toHaveLength(1);

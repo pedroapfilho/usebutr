@@ -66,6 +66,7 @@ const discoverInjectedPolkadotAdapters = (
   };
 
   // Always do one synchronous read so tests (and fast extensions) don't
+  // wait for a timer.
   scan();
   for (const offset of polls) {
     if (offset === 0) {

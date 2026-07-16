@@ -23,6 +23,7 @@ import { useDiscoveredWallets } from "./wallet-provider";
 const DEVNET = "https://api.devnet.solana.com";
 const BURN_ADDRESS = address("11111111111111111111111111111111");
 
+// Transaction building rides on @solana/kit (the substrate framework-kit is
 // built on); the wallet (managed by butr) signs and submits.
 const SYSTEM_PROGRAM = address("11111111111111111111111111111111");
 const rpc = createSolanaRpc(DEVNET);

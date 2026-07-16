@@ -193,6 +193,7 @@ describe("createCookieStorageDriver — server context (no document)", () => {
     });
     expect(() => driver.setItem("butr-active", "phantom")).not.toThrow();
     // Snapshot is the source of truth on the server; setItem doesn't
+    // mutate it, so subsequent reads still return the original value.
     expect(driver.getItem("butr-active")).toBe("metamask");
     expect(() => driver.removeItem("butr-active")).not.toThrow();
     expect(driver.getItem("butr-active")).toBe("metamask");

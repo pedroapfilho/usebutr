@@ -53,6 +53,7 @@ const buildFakeBtcCtor = (hooks: BtcCtorHooks = {}): BtcAppConstructor => {
       options: { accountPath: string; addressFormat: BitcoinAddressFormat; finalizePsbt: boolean },
     ): Promise<{ psbt: Uint8Array; tx?: string }> {
       void options;
+      // Echo the input bytes with an extra tag so tests can confirm the
       // round-trip plumbing without depending on a real PSBT structure.
       const out = new Uint8Array(psbtBuffer.length + 1);
       out.set(psbtBuffer);

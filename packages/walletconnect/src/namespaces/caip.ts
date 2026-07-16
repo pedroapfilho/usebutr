@@ -1,4 +1,4 @@
-import type { Account, ChainBase, WalletCapabilities } from "@usebutr/core";
+import type { ChainBase, WalletCapabilities } from "@usebutr/core";
 
 import type { UniversalProviderLike } from "../loader";
 
@@ -56,16 +56,4 @@ const buildCaipChain = (chainId: string, walletName: string, namespace: string):
   reference: chainId.slice(namespace.length + 1),
 });
 
-const buildCaipAccount = (address: string, chain: ChainBase): Account => ({
-  chain,
-  id: `${chain.id}:${address}`,
-  walletAddress: address,
-});
-
-export {
-  CAIP_WC_CAPABILITIES,
-  buildCaipAccount,
-  buildCaipChain,
-  parseCaip10Address,
-  readNamespaceAccounts,
-};
+export { CAIP_WC_CAPABILITIES, buildCaipChain, parseCaip10Address, readNamespaceAccounts };

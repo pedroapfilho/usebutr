@@ -1,9 +1,8 @@
 import type { Account, BitcoinAdapter, ChainBase, WalletCapabilities } from "@usebutr/core";
-import { base64ToBytes, bytesToBase64, hexToBytes, logWarn } from "@usebutr/core";
+import { base64ToBytes, buildAccount, bytesToBase64, hexToBytes, logWarn } from "@usebutr/core";
 
 import {
   CAIP_WC_CAPABILITIES,
-  buildCaipAccount,
   buildCaipChain,
   parseCaip10Address,
   readNamespaceAccounts,
@@ -120,7 +119,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
     const resolveAccounts = (): Array<Account> => {
       const chain = currentChain();
       return readNamespaceAccounts(provider, BITCOIN_NAMESPACE).map((caip10) =>
-        buildCaipAccount(parseCaip10Address(caip10), chain),
+        buildAccount(parseCaip10Address(caip10), chain),
       );
     };
 

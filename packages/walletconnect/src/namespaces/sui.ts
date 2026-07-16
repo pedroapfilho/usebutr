@@ -28,26 +28,8 @@ const DEFAULT_METHODS: ReadonlyArray<string> = [
 
 const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged", "disconnect"];
 
-/**
- * Runtime capability flags for a Sui adapter speaking WalletConnect v2.
- *
- *  - `sendTransaction` / `signMessage` / `signTransaction`: true; all
- *    three sui_* methods are advertised at pairing time. Per-wallet
- *    method support varies (mobile wallets are inconsistent); callers
- *    that hit a wallet without the method will get a JSON-RPC error
- *    back from the request.
- *  - `signIn`: false; there is no Sign-In-With-Sui RPC method on
- *    WalletConnect today.
- *  - `subscribe`: false; wallet-side events over WC are mediated by
- *    the universal provider rather than this adapter; we leave the
- *    method a no-op for v0 and let consumers wire native events later.
- *  - `switchChain`: true; the active chain is encoded in `chains` at
- *    pair time and we update local state for subsequent calls; the
- *    wallet itself can't "switch" inside an existing session.
- *  - `switchAccount`: false; no RPC for it.
- *  - `getBalance` / `getTransactionReceipt`: false; butr ships no RPC.
- *  - `requestAccounts`: false; accounts come from the pairing only.
- */
+/** Shared CAIP-WC capability surface (rationale on `CAIP_WC_CAPABILITIES`);
+ *  the true flags map to the `sui_*` sign/send methods requested at pairing. */
 const WALLETCONNECT_SUI_CAPABILITIES: WalletCapabilities = { ...CAIP_WC_CAPABILITIES };
 
 /**

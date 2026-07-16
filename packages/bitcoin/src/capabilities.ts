@@ -23,8 +23,10 @@ type BitcoinCapabilityInput = {
  *   message-signing oriented, not auth).
  * - `subscribe = events present`. Most Bitcoin wallets don't emit
  *   change events portably; capabilities admits the truth.
- * - `switchChain = false`. No portable per-call switch RPC across
- *   Bitcoin wallets; Xverse/Unisat/Phantom each pick their own network.
+ * - `switchChain = chainCount > 1`. No portable switch RPC across
+ *   Bitcoin wallets (Xverse/Unisat/Phantom each pick their own
+ *   network), so the switch is local-state-only and advertised only
+ *   when the wallet exposes more than one chain to switch between.
  */
 const resolveBitcoinCapabilities = (input: BitcoinCapabilityInput): WalletCapabilities => ({
   getBalance: false,

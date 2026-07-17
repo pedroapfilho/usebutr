@@ -162,6 +162,7 @@ const buildSatsConnectAdapter = (
         );
       }
       // sats-connect's signPsbt takes a base64 PSBT; encode our bytes
+      // and decode the response back to bytes.
       const result = await callRequest<{ psbt: string }>("signPsbt", {
         psbt: bytesToBase64(tx),
       });

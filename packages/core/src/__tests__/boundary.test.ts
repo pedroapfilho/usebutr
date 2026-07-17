@@ -28,6 +28,8 @@ const collectDeps = (packageName: string): Set<string> => {
         queue.push(dep);
       }
     } catch {
+      // Unresolvable (peer-only / private / external); skip. The
+      // assertions below check for the specific names we forbid, so a
       // missed resolution here can't hide a real boundary violation.
     }
   }

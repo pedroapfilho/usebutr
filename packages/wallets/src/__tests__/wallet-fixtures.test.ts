@@ -3,8 +3,11 @@
 // simulate the wallet's responses (error codes, picker behaviour)
 // rather than driving a real extension; that's Strategy A in the
 // testing matrix. Real-wallet Playwright coverage (Strategy C) would
+// live in `tests/e2e/` once wired.
+//
 // When a wallet changes its behaviour upstream (new error code,
 // different fallback path), update the test AND
+// `EIP6963_RDNS_WITH_REQUEST_ACCOUNTS` in `capabilities.ts` together.
 
 import type { Eip1193Provider, Eip6963ProviderInfo } from "@usebutr/evm";
 import { buildEvmAdapter } from "@usebutr/evm";
@@ -133,6 +136,7 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
     // Verified May 2026. Rabby implements EIP-2255 but silently
     // returns the existing permission set without surfacing a picker
     // UI to the user. The call succeeds; no fallback fires; the
+    // observable effect is nothing.
     const info = baseInfo("io.rabby", "Rabby");
 
     it("wallet_requestPermissions resolves but no picker UI surfaces (simulated)", async () => {
@@ -171,7 +175,9 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
           Promise.reject(Object.assign(new Error("User rejected the request"), { code: 4001 })),
       });
       // Use MetaMask info so the capability flag is true and the
+      // requestAccounts path is exercised (it works the same for any
       // wallet; this is testing the rejection handling, not the
+      // capability gating).
       const adapter = buildEvmAdapter(baseInfo("io.metamask", "MetaMask"), provider);
       await expect(adapter.requestAccounts?.()).rejects.toMatchObject({ code: 4001 });
       expect(provider.requests.map((r) => r.method)).toEqual(["wallet_requestPermissions"]);
@@ -212,6 +218,7 @@ describe("EVM universal capabilities (every wallet)", () => {
   // Properties that are constant across the entire EIP-6963 adapter
   // surface. If any of these flip per-wallet in the future, the
   // capability needs to graduate from "EVM constant" to "per-wallet"
+  // and this test should split.
   it.each([
     "io.metamask",
     "io.rabby",
@@ -235,7 +242,9 @@ describe("EVM universal capabilities (every wallet)", () => {
 
 describe("Unverified wallets (todo — promote to fixtures once verified)", () => {
   // These wallets are listed in the EVM coverage matrix but haven't
+  // been driven against a real install. Promote each to a real
   // describe block once verified. Until then, the allow-list test
+  // above pins their capabilities at `false` (the safe default).
   it.todo("Brave Wallet: verify wallet_requestPermissions actually opens a picker");
   it.todo("Bitget Wallet: verify EIP-6963 announcement format");
   it.todo("Trust Wallet (extension): verify connect/sign/disconnect flow");

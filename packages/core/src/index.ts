@@ -31,7 +31,7 @@ export type {
   WalletCapabilities,
   WalletManagerConfig,
 } from "./types";
-export { buildChainsByPlatform, CHAIN_PLATFORMS, mapConnectionError } from "./types";
+export { buildAccount, buildChainsByPlatform, CHAIN_PLATFORMS, mapConnectionError } from "./types";
 
 export type { WalletSource } from "./wallet-source";
 export { createWalletSource } from "./wallet-source";

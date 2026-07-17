@@ -1,6 +1,9 @@
 import type { ConnectedWallet } from "@usebutr/core";
 import { type Network, Wormhole } from "@wormhole-foundation/sdk-connect";
+// Direct chain-SDK imports; bypass the `@wormhole-foundation/sdk`
 // umbrella, which side-effect-imports addresses for chains we don't use.
+// The Circle (CCTP) protocol modules register themselves via side-effect
+// imports in `main.tsx`, sequenced before any `sdk-solana` import.
 import { EvmPlatform } from "@wormhole-foundation/sdk-evm";
 import { SolanaPlatform } from "@wormhole-foundation/sdk-solana";
 import type { Eip1193Provider } from "ethers";
@@ -33,6 +36,7 @@ const ensureChain = async (
 
 // Build a Wormhole SignAndSendSigner for the given chain + butr wallet.
 // EVM legs first switch the wallet to that chain's network so the burn
+// (or the mint, on an EVM destination) lands on the correct chain.
 const makeSigner = async (spec: ChainSpec, wallet: ConnectedWallet) => {
   if (spec.platform === "evm") {
     if (!spec.evmChainIdHex) {

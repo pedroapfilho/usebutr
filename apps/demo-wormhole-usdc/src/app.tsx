@@ -261,6 +261,8 @@ const App = () => {
       const destAddress = Wormhole.chainAddress(dstSpec.chain, dstWallet.account.walletAddress);
       const units = amount.units(amount.parse(amountInput, USDC_DECIMALS));
 
+      // CCTP moves only USDC, so no token argument. `automatic: false`
+      // selects the manual CircleBridge route: the user signs the burn
       // here and the mint in a separate step (matching the two-wallet UX).
       const transfer = await wh.circleTransfer(units, sourceAddress, destAddress, false);
       xferRef.current = transfer;

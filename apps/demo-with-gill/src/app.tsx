@@ -157,6 +157,8 @@ const Connected = ({
     setErrorMsg(null);
     try {
       // 1. Build the transaction with gill. The wallet (not gill) signs, so
+      //    the fee payer is a no-op signer over butr's connected address;
+      //    gill's program helpers stay fully typed.
       const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
       const feePayer = createNoopSigner(addr);
       const tx = createTransaction({

@@ -49,7 +49,10 @@
  * future major release. The registry is the small step you can take
  * today; the union is the larger step that makes the cast obsolete.
  */
+// Empty by design; each platform package augments this interface via
+// `declare module "@usebutr/core" { interface SignerForPlatform { … } }`.
 // Module augmentation requires `interface` (TypeScript can't merge type
+// aliases), so the rules that prefer `type` over `interface` and forbid
 // empty interfaces don't apply here.
 // oxlint-disable-next-line typescript/consistent-type-definitions, typescript/no-empty-interface, typescript/no-empty-object-type -- registry for module augmentation
 interface SignerForPlatform {}

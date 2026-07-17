@@ -103,6 +103,7 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
     createWalletStore(buildInitialConfig(adapters, props)),
   );
 
+  // Discovery subscription ref is also locked to the first render value.
   // eslint-disable-next-line react-hooks/exhaustive-deps -- captured once on mount
   const [discovery] = useState<WalletSource | undefined>(() => discoveryProp);
 

@@ -1,8 +1,10 @@
 import type { ChainBase } from "@usebutr/core";
 
 // Sui wallets follow the Wallet Standard convention of advertising
+// chains as `sui:mainnet` / `sui:testnet` / `sui:devnet` / `sui:localnet`
 // rather than the strict CAIP-2 form (the genesis-checkpoint hash).
 // Sui Wallet, Suiet, Phantom (Sui), and Surf all exchange these short
+// names; the adapter's `switchChain` rejects anything else.
 const SUI_CHAINS = {
   devnet: { id: "sui:devnet", name: "Sui Devnet", namespace: "sui", reference: "devnet" },
   localnet: {

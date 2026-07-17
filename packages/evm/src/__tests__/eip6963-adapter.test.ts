@@ -67,6 +67,7 @@ const createMockProvider = (): MockProviderHandle => {
 describe("hex helpers", () => {
   it("round-trips bytes through hex", () => {
     // 0xde 0xad 0xbe 0xef in decimal; oxlint + oxfmt disagree on hex
+    // literal case, so use decimal here to keep both happy.
     const bytes = new Uint8Array([222, 173, 190, 239]);
     expect(bytesToHex(bytes)).toBe("0xdeadbeef");
     expect(hexToBytes("0xdeadbeef")).toEqual(bytes);
@@ -137,6 +138,7 @@ describe("buildEvmAdapter", () => {
 
     const adapter = buildEvmAdapter(INFO, provider);
     // getAccounts is optional on the Connector contract; the EIP-6963
+    // builder always provides it, so a missing method is a test failure.
     if (!adapter.getAccounts) {
       throw new Error("expected getAccounts on the EIP-6963 adapter");
     }
@@ -324,6 +326,7 @@ describe("buildEvmAdapter", () => {
     const unsub = adapter.subscribe?.(listener);
 
     // Fire the wallet event and wait one microtask for the internal
+    // eth_chainId resolution.
     provider.emit("accountsChanged", ["0xNEW"]);
     await new Promise((resolve) => {
       setTimeout(resolve, 0);

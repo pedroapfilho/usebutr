@@ -124,6 +124,7 @@ const bytesToSuiAddress = (bytes: Uint8Array): string => {
 
 const buildSuiChain = (cluster: SuiCluster, walletName: string): ChainBase => ({
   id: `sui:${cluster}`,
+  // Same stance as the EVM / SVM builders; no chain-id → name table in
   // butr; we surface the wallet name and let consumers overlay structurally.
   name: walletName,
   namespace: "sui",
@@ -182,6 +183,7 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
   let currentAddress: string | null = null;
 
   // Sui paths are fully-hardened per Sui Wallet convention; every
+  // segment ends in `'`, including the account index.
   const pathAt = (index: number): string => `${derivationPathPrefix}/${index}'`;
 
   const adapter: WalletAdapter = {
@@ -228,6 +230,7 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
       const chain = buildSuiChain(cluster, name);
       const accounts: Array<Account> = [];
       // Sequential walk; the device serialises USB requests; parallel
+      // calls would deadlock the transport. Slow but correct.
       for (let i = 0; i < accountCount; i += 1) {
         // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
         const { address } = await sui.getPublicKey(pathAt(i));
@@ -277,6 +280,8 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
 
     signMessage() {
       // Ledger's Sui app exposes no signPersonalMessage / off-chain
+      // message instruction at this app version. Capabilities flag
+      // already reflects this; this rejection is defence-in-depth.
       return Promise.reject(
         new Error(
           "[butr/ledger] signMessage not supported — Ledger's Sui app exposes no off-chain message signing instruction. Use a non-hardware wallet for off-chain auth flows.",

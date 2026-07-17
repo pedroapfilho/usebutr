@@ -1,9 +1,8 @@
 import type { Account, ChainBase, SvmAdapter, WalletCapabilities } from "@usebutr/core";
-import { base64ToBytes, bytesToBase64, logWarn } from "@usebutr/core";
+import { base64ToBytes, buildAccount, bytesToBase64, logWarn } from "@usebutr/core";
 
 import {
   CAIP_WC_CAPABILITIES,
-  buildCaipAccount,
   buildCaipChain,
   parseCaip10Address,
   readNamespaceAccounts,
@@ -23,26 +22,8 @@ const DEFAULT_METHODS: ReadonlyArray<string> = [
 
 const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged", "disconnect"];
 
-/**
- * Runtime capability flags for an SVM adapter speaking WalletConnect v2.
- *
- *  - `sendTransaction` / `signMessage` / `signTransaction`: true; all
- *    three solana_* methods are advertised at pairing time. Per-wallet
- *    method support varies (mobile wallets are inconsistent); callers
- *    that hit a wallet without the method will get a JSON-RPC error
- *    back from the request.
- *  - `signIn`: false; there is no Sign-In-With-Solana RPC method on
- *    WalletConnect today.
- *  - `subscribe`: false; wallet-side events over WC are mediated by
- *    the universal provider rather than this adapter; we leave the
- *    method a no-op for v0 and let consumers wire native events later.
- *  - `switchChain`: true; the active chain is encoded in `chains` at
- *    pair time and we update local state for subsequent calls; the
- *    wallet itself can't "switch" inside an existing session.
- *  - `switchAccount`: false; no RPC for it.
- *  - `getBalance` / `getTransactionReceipt`: false; butr ships no RPC.
- *  - `requestAccounts`: false; accounts come from the pairing only.
- */
+/** Shared CAIP-WC capability surface (rationale on `CAIP_WC_CAPABILITIES`);
+ *  the true flags map to the `solana_*` sign/send methods requested at pairing. */
 const WALLETCONNECT_SVM_CAPABILITIES: WalletCapabilities = { ...CAIP_WC_CAPABILITIES };
 
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -111,7 +92,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
     const resolveAccounts = (): Array<Account> => {
       const chain = currentChain();
       return readNamespaceAccounts(provider, SOLANA_NAMESPACE).map((caip10) =>
-        buildCaipAccount(parseCaip10Address(caip10), chain),
+        buildAccount(parseCaip10Address(caip10), chain),
       );
     };
 
@@ -161,6 +142,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
           // The relay may already have dropped the session (mobile
           // wallet uninstalled, etc.). Don't propagate; butr's
           // reducer marks the wallet disconnected on its side
+          // regardless.
           logWarn("[butr/walletconnect] disconnect threw:", error);
         }
       },
@@ -217,6 +199,8 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
       sendTxToChain(tx, _targetChainId, account, cb) {
         // WC Solana's signAndSendTransaction doesn't take a chain
         // parameter; the cluster is baked into the pairing. Honour the
+        // current chain and let consumers route per-chain higher up if
+        // they need multi-cluster support.
         cb?.();
         return this.sendTx(tx, account);
       },
@@ -236,6 +220,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
         }
         // butr's contract returns the raw signature bytes. WC speaks
         // base58 for Solana signatures; decode here so consumers don't
+        // have to know about the wire format.
         return { signature: base58ToBytes(signatureB58), signedMessage: msg };
       },
 
@@ -254,6 +239,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
         // The Solana WC spec leaves room for two return shapes: a base64
         // `transaction` (the fully-signed bytes) or a base58 `signature`
         // alone. Prefer the base64 transaction; that's the contract
+        // butr's SvmWallet.signTransaction returns.
         if (typeof result === "object" && result?.transaction) {
           return base64ToBytes(result.transaction);
         }
@@ -262,6 +248,8 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
           throw new Error("solana_signTransaction returned no transaction or signature");
         }
         // Fallback: a few wallets return just the signature. That's not
+        // a signed transaction, but it's all we got; pass it through as
+        // bytes and let the consumer reconcile.
         return base58ToBytes(signatureB58);
       },
 
@@ -278,6 +266,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
           );
         }
         // Local state only; the WC session's chain list is fixed at
+        // pair time, so this updates butr's view of "active cluster"
         // without re-negotiating with the wallet.
         currentChainId = chain.id;
         return Promise.resolve();

@@ -107,6 +107,9 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
 
   // The full per-platform chain list can include networks a given wallet
   // doesn't advertise (e.g. Phantom exposes Sui mainnet/testnet but not
+  // devnet), so switchChain may reject. Catch it instead of letting the
+  // rejection surface as an uncaught error; the controlled select reverts
+  // to the live chain on re-render since account.chain.id didn't change.
   const handleChange = async (chainId: string) => {
     const target = chains.find((c) => c.id === chainId);
     if (!target) {

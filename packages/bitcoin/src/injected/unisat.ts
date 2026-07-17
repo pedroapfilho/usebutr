@@ -88,6 +88,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     },
 
     disconnect() {
+      // No portable disconnect across UniSat-shaped wallets. butr's
       // reducer marks the wallet disconnected on its side regardless.
       return Promise.resolve();
     },
@@ -166,6 +167,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
       // We return the raw signature bytes (decoded from base64) and the
       // bytes the wallet signed (pass-through of the input). UniSat
       // doesn't expose a "pre-image" so the input itself is the signed
+      // message from butr's perspective.
       const text = new TextDecoder().decode(msg);
       const signatureB64 = await provider.signMessage(text);
       return { signature: base64ToBytes(signatureB64), signedMessage: msg };
@@ -214,6 +216,8 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
           `Bitcoin adapter received non-Bitcoin chain "${target.id}". Pass a chain with namespace "bip122".`,
         );
       }
+      // UniSat-shaped wallets pick their network via the user's
+      // extension UI; we update local state so consumers see it, but
       // the wallet itself doesn't switch.
       chain = target;
       void refreshChain();

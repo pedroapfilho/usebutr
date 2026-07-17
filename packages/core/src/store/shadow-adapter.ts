@@ -27,6 +27,10 @@ import type {
  * on whether `connectorId` is in `state.reconnectingIds`.
  */
 class ShadowConnectorError extends Error {
+  // Stable programmatic identifier; consumers branch on `.code` to
+  // distinguish this from generic connector errors. Read via
+  // `toMatchObject({ code: "BUTR_RECONNECTING" })` in tests, which
+  // static analysis can't trace.
   // fallow-ignore-next-line unused-class-member
   readonly code = "BUTR_RECONNECTING";
   readonly connectorId: string;
@@ -84,8 +88,11 @@ const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
   const reject = (method: string): Promise<never> =>
     Promise.reject(new ShadowConnectorError(method, id));
 
+  // Shape that satisfies the intersection of `Connector<P>` and
+  // `WalletBase`. Platform-specific optional methods (`signIn`,
   // `signTransaction`) are intentionally omitted; they don't exist on
   // a shadow, and their absence is a valid runtime state for the
+  // per-platform adapter types (which mark them `?:`).
   const base = {
     capabilities: ALL_FALSE_CAPABILITIES,
     connect: () => reject("connect"),
@@ -143,7 +150,10 @@ const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
  */
 const isShadowAdapter = (adapter: WalletAdapter): boolean => {
   const caps = adapter.capabilities;
+  // Derive the check from the canonical all-false key set so a newly
   // added capability can never be silently missed: adding a flag to
+  // `WalletCapabilities` forces it into `ALL_FALSE_CAPABILITIES` (the
+  // type annotation enforces that), and this guard then covers it.
   return (Object.keys(ALL_FALSE_CAPABILITIES) as Array<keyof WalletCapabilities>).every(
     (key) => caps[key] === false,
   );

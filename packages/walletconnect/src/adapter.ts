@@ -96,6 +96,7 @@ const initProvider = async (
     let removed = false;
     cleanup = () => {
       // Idempotent: calling removeListener twice (or after teardown) is
+      // a no-op, and the guard keeps it cheap.
       if (removed) {
         return;
       }
@@ -167,6 +168,7 @@ const createWalletConnectAdapters = async (
   }
   // Validate every requested namespace has a registered builder before
   // we open a WC session; fail loudly upfront rather than after the
+  // user has scanned the QR.
   const unsupported = requested.filter(([platform]) => !KNOWN_NAMESPACES[platform]);
   if (unsupported.length > 0) {
     throw new Error(
@@ -191,6 +193,7 @@ const createWalletConnectAdapters = async (
       chains: chains.length > 0 ? chains : builder.defaultChains,
       icon,
       // Suffix the id when more than one namespace is in play so each
+      // adapter has a unique pool key.
       id: multiNamespace ? `${baseId}-${platform}` : baseId,
       name: multiNamespace ? `${baseName} (${platform.toUpperCase()})` : baseName,
       provider,

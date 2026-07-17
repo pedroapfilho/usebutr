@@ -1,4 +1,4 @@
-import type { Account, ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
+import type { ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
 import { logWarn, sanitizeIcon } from "@usebutr/core";
 import {
   buildAccount,
@@ -31,8 +31,6 @@ const buildChain = (chainId: string, walletName: string): ChainBase => ({
   namespace: "polkadot",
   reference: chainId.slice(POLKADOT_PREFIX.length),
 });
-
-const buildWsAccount = (address: string, chain: ChainBase): Account => buildAccount(address, chain);
 
 /**
  * Adapt a Wallet Standard wallet advertising `polkadot:*` features into a
@@ -67,7 +65,7 @@ const buildPolkadotWalletStandardAdapter = (
       return;
     }
     const chain = currentChain();
-    const built = wallet.accounts.map((a) => buildWsAccount(a.address, chain));
+    const built = wallet.accounts.map((a) => buildAccount(a.address, chain));
     const first = built[0];
     if (!first) {
       return;
@@ -106,12 +104,12 @@ const buildPolkadotWalletStandardAdapter = (
 
     getAccount() {
       const address = pickFirstAddress(wallet.accounts);
-      return Promise.resolve(address ? buildWsAccount(address, currentChain()) : null);
+      return Promise.resolve(address ? buildAccount(address, currentChain()) : null);
     },
 
     getAccounts() {
       const chain = currentChain();
-      return Promise.resolve(wallet.accounts.map((a) => buildWsAccount(a.address, chain)));
+      return Promise.resolve(wallet.accounts.map((a) => buildAccount(a.address, chain)));
     },
 
     getBalance: noRpcBalance,
@@ -155,7 +153,7 @@ const buildPolkadotWalletStandardAdapter = (
               return;
             }
             const chain = currentChain();
-            const built = changes.accounts.map((a) => buildWsAccount(a.address, chain));
+            const built = changes.accounts.map((a) => buildAccount(a.address, chain));
             const first = built[0];
             if (first) {
               listener({ account: first, accounts: built, type: "accountChanged" });

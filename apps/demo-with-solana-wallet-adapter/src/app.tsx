@@ -58,6 +58,7 @@ const AdapterConsumer = ({
   butrWallet: ReturnType<typeof useActiveWallet> & object;
 }) => {
   // From here down it's STANDARD @solana/wallet-adapter-react usage;
+  // any tutorial or dapp using these hooks works unchanged.
   const { connection } = useConnection();
   const { publicKey, sendTransaction, signMessage, wallet: adapter } = useWallet();
   const disconnect = useDisconnectWallet();

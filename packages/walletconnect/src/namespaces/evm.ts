@@ -73,6 +73,7 @@ const evmNamespace: WalletConnectNamespaceBuilder = {
           // The relay may already have dropped the session (mobile
           // wallet uninstalled, etc.). Don't propagate; butr's
           // reducer marks the wallet disconnected on its side
+          // regardless.
           logWarn("[butr/walletconnect] disconnect threw:", error);
         }
       },

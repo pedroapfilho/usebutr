@@ -114,6 +114,7 @@ const useAsyncResource = <T>(fn: (() => Promise<T>) | null): AsyncState<T> => {
  */
 const useSigner = (connectorId?: string | null): AsyncState<unknown> => {
   const wallet = useWalletEntry(connectorId);
+  // Stabilise the request closure so `useAsyncResource` only re-runs
   // when the resolved wallet identity changes (not on every render).
   const fn = useMemo(() => (wallet ? () => wallet.connector.getSigner() : null), [wallet]);
   return useAsyncResource(fn);

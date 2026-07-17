@@ -12,6 +12,7 @@ const buildFakePubkey = (index: number): Uint8Array => {
 const buildFakeAddress = (index: number): Uint8Array => {
   const buf = new Uint8Array(32);
   // Distinguish address bytes from pubkey bytes so we don't accidentally
+  // verify against the wrong field.
   buf.fill((index + 1) << 4);
   return buf;
 };
@@ -78,6 +79,7 @@ describe("createSuiLedgerAdapter", () => {
     expect(adapter.name).toBe("Ledger");
     expect(adapter.chainPlatform).toBe("sui");
     // Sui's Ledger app exposes no off-chain message signing, so
+    // signMessage capability is false (unlike EVM/SVM).
     expect(adapter.capabilities.signMessage).toBe(false);
     expect(adapter.capabilities.sendTransaction).toBe(false);
     expect(adapter.capabilities.getBalance).toBe(false);

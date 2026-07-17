@@ -1,9 +1,8 @@
 import type { Account, BitcoinAdapter, ChainBase, WalletCapabilities } from "@usebutr/core";
-import { base64ToBytes, bytesToBase64, hexToBytes, logWarn } from "@usebutr/core";
+import { base64ToBytes, buildAccount, bytesToBase64, hexToBytes, logWarn } from "@usebutr/core";
 
 import {
   CAIP_WC_CAPABILITIES,
-  buildCaipAccount,
   buildCaipChain,
   parseCaip10Address,
   readNamespaceAccounts,
@@ -25,7 +24,10 @@ const DEFAULT_CHAINS: ReadonlyArray<string> = [BITCOIN_MAINNET];
 
 // Reown's bip122 methods are unprefixed camelCase (`signMessage`,
 // `signPsbt`, `sendTransfer`, `getAccountAddresses`); verified against
+// the Bitcoin RPC reference at
 // https://docs.reown.com/advanced/multichain/rpc-reference/bitcoin-rpc.
+// The event channel uses a `bip122_` prefix (`bip122_addressesChanged`),
+// which is why methods and events look asymmetric.
 const DEFAULT_METHODS: ReadonlyArray<string> = [
   "signMessage",
   "signPsbt",
@@ -35,25 +37,8 @@ const DEFAULT_METHODS: ReadonlyArray<string> = [
 
 const DEFAULT_EVENTS: ReadonlyArray<string> = ["bip122_addressesChanged"];
 
-/**
- * Runtime capability flags for a Bitcoin adapter speaking WalletConnect v2.
- *
- *  - `sendTransaction` / `signMessage` / `signTransaction`: true; all
- *    three bip122 methods are advertised at pairing time. Per-wallet
- *    method support varies; callers that hit a wallet without the method
- *    will get a JSON-RPC error back from the request.
- *  - `signIn`: false; no Sign-In-With-Bitcoin RPC method on
- *    WalletConnect today.
- *  - `subscribe`: false; wallet-side events over WC are mediated by
- *    the universal provider rather than this adapter; we leave the
- *    method a no-op for v0 and let consumers wire native events later.
- *  - `switchChain`: true; the active chain is encoded in `chains` at
- *    pair time and we update local state for subsequent calls; the
- *    wallet itself can't "switch" inside an existing session.
- *  - `switchAccount`: false; no RPC for it.
- *  - `getBalance` / `getTransactionReceipt`: false; butr ships no RPC.
- *  - `requestAccounts`: false; accounts come from the pairing only.
- */
+/** Shared CAIP-WC capability surface (rationale on `CAIP_WC_CAPABILITIES`);
+ *  the true flags map to the bip122 sign/send methods requested at pairing. */
 const WALLETCONNECT_BITCOIN_CAPABILITIES: WalletCapabilities = { ...CAIP_WC_CAPABILITIES };
 
 /** Coerce butr's `unknown` tx into the base64 PSBT string the bip122
@@ -117,7 +102,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
     const resolveAccounts = (): Array<Account> => {
       const chain = currentChain();
       return readNamespaceAccounts(provider, BITCOIN_NAMESPACE).map((caip10) =>
-        buildCaipAccount(parseCaip10Address(caip10), chain),
+        buildAccount(parseCaip10Address(caip10), chain),
       );
     };
 
@@ -167,6 +152,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
           // The relay may already have dropped the session (mobile
           // wallet uninstalled, etc.). Don't propagate; butr's
           // reducer marks the wallet disconnected on its side
+          // regardless.
           logWarn("[butr/walletconnect] disconnect threw:", error);
         }
       },
@@ -205,6 +191,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
         const address = resolveAddress(account);
         const psbt = coercePsbtToBase64(tx);
         // Map sendTx → signPsbt with broadcast:true. `sendTransfer` is
+        // the wrong primitive here; it asks for a recipient + amount
         // rather than a pre-built tx, which doesn't fit butr's
         // `sendTx(tx: unknown)` contract. See namespace docblock.
         const result = (await provider.request({
@@ -212,6 +199,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
           params: { account: address, broadcast: true, psbt, signInputs: [] },
         })) as { psbt?: string; txid?: string } | string;
         // Spec says `{ psbt, txid? }`. Tolerate a bare string too;
+        // some wallets short-circuit to the txid directly.
         const txid = typeof result === "string" ? result : result?.txid;
         if (!txid) {
           throw new Error("signPsbt with broadcast:true returned no txid");
@@ -222,6 +210,8 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
       sendTxToChain(tx, _targetChainId, account, cb) {
         // WC Bitcoin's signPsbt doesn't take a per-call chain
         // parameter; the network is baked into the pairing. Honour
+        // the current chain and let consumers route per-chain higher
+        // up if they need multi-network support.
         cb?.();
         return this.sendTx(tx, account);
       },
@@ -229,6 +219,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
       async signMessage(msg, account) {
         const address = resolveAddress(account);
         // bip122 `signMessage` takes a plain string `message`. butr's
+        // contract is `Uint8Array`; encode to a UTF-8 string when the
         // bytes are valid UTF-8, otherwise fall back to base64 so the
         // wallet can still receive arbitrary binary input.
         let message: string;
@@ -251,7 +242,10 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
       async signTransaction(tx, account) {
         const address = resolveAddress(account);
         const psbt = coercePsbtToBase64(tx);
+        // signInputs left empty: wallets default to signing every
+        // input the active address owns. Callers that need fine-
         // grained per-input control can pre-encode the PSBT with the
+        // appropriate inputs and route through `getSigner()` later.
         const result = (await provider.request({
           method: "signPsbt",
           params: { account: address, broadcast: false, psbt, signInputs: [] },
@@ -276,6 +270,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
           );
         }
         // Local state only; the WC session's chain list is fixed at
+        // pair time, so this updates butr's view of "active network"
         // without re-negotiating with the wallet.
         currentChainId = chain.id;
         return Promise.resolve();

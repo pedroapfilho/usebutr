@@ -17,7 +17,10 @@ import { useDiscoveredWallets } from "./wallet-provider";
 const BURN_ADDRESS: Address = "0x000000000000000000000000000000000000dEaD";
 
 // Bridge butr's EIP-1193 provider into wagmi via the `injected` connector's
+// `target.provider` override. wagmi's connector lifecycle (connect, getAccounts,
+// signMessage, sendTransaction) then routes through butr's real provider;
 // every sign and every transaction hits the actual wallet, not a mock.
+// The transport stays pure RPC (`http()`) for read-only chain queries so we
 // don't double-spend the wallet on `eth_getBalance` etc.
 const buildWagmiConfig = (provider: EIP1193Provider, butrName: string, butrId: string): Config =>
   createConfig({
@@ -83,8 +86,10 @@ const Connected = ({
         }
         const cfg = buildWagmiConfig(provider, wallet.connector.name, wallet.connector.id);
         const connector = cfg.connectors[0];
+        // Run wagmi's connect lifecycle through butr's provider so all subsequent
         // @wagmi/core actions know which connector to call. The wallet has
         // already authorised the dapp via butr, so this resolves silently; no
+        // second popup.
         if (connector) {
           await connect(cfg, { connector });
         }

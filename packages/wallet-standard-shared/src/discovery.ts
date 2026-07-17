@@ -77,6 +77,7 @@ const discoverWalletStandard = (
     const seenIds = new Set<string>();
     // wallet object → emitter that pushes synthetic `disconnected` to
     // this wallet's adapter's subscribers. Identity-keyed so the
+    // unregister handler can find the right emitter cheaply.
     const disconnectors = new Map<WalletStandardWallet, () => void>();
 
     const tryAdd = (wallet: WalletStandardWallet) => {

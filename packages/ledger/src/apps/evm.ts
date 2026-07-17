@@ -97,6 +97,7 @@ const DEFAULT_ICON =
 const buildEvmChain = (chainId: number, walletName: string): ChainBase => ({
   id: `eip155:${chainId}`,
   // Same stance as the EIP-6963 adapter; butr doesn't ship a chain
+  // id → name table. Consumers overlay via structural typing.
   name: walletName,
   namespace: "eip155",
   reference: chainId.toString(),
@@ -179,6 +180,7 @@ const createEvmLedgerAdapter = (options: EvmLedgerOptions): Promise<WalletAdapte
       const chain = buildEvmChain(chainId, name);
       const accounts: Array<Account> = [];
       // Sequential walk; the device serialises USB requests; parallel
+      // calls would deadlock the transport. Slow but correct.
       for (let i = 0; i < accountCount; i += 1) {
         // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
         const { address } = await eth.getAddress(pathAt(i));

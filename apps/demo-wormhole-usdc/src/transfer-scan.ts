@@ -25,6 +25,7 @@ type SolanaScanResult = {
   scannedSignatures: number;
 };
 
+// CCTP V1 TokenMessenger burn event. `depositor` is indexed (topic 3), so
 // the RPC filters to exactly this wallet's burns server-side.
 const burnInterface = new Interface([
   "event DepositForBurn(uint64 indexed nonce, address indexed burnToken, uint256 amount, address indexed depositor, bytes32 mintRecipient, uint32 destinationDomain, bytes32 destinationTokenMessenger, bytes32 destinationCaller)",
@@ -57,7 +58,10 @@ const mapPool = async <T, R>(
   return results;
 };
 
+// Classic SPL token + associated-token program ids. USDC on Solana devnet
+// uses the classic Token program, so we derive the owner's USDC ATA; the
 // account CCTP mints into, to tell whether the active wallet is the
+// recipient of a given transfer.
 const ASSOCIATED_TOKEN_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
@@ -75,6 +79,7 @@ const deriveUsdcAta = async (owner: string, mint: string): Promise<string> => {
 };
 
 // Find this wallet's CCTP burns on an EVM source chain via a `depositor`-
+// filtered `DepositForBurn` log query, chunked across the lookback window.
 const scanEvmBurns = async (
   spec: ChainSpec,
   tokenMessenger: string,
@@ -113,6 +118,7 @@ const scanEvmBurns = async (
 type ParsedTx = { transaction?: { message?: { accountKeys?: Array<{ pubkey: string }> } } };
 
 // Find this wallet's CCTP burns on a Solana source chain by scanning recent
+// signatures and keeping those whose tx invokes a CCTP program.
 const scanSolanaBurns = async (
   spec: ChainSpec,
   programIds: ReadonlyArray<string>,
@@ -122,7 +128,9 @@ const scanSolanaBurns = async (
   const ownerAddress = toAddress(owner) as Address;
   const programSet = new Set(programIds);
 
+  // Page back through signatures (newest-first) up to the cap, so an active
   // wallet's older burns aren't missed by a single window. `reachedEnd`
+  // distinguishes "scanned all history" from "stopped at the cap".
   const candidates: Array<Signature> = [];
   let before: Signature | undefined;
   let totalFetched = 0;

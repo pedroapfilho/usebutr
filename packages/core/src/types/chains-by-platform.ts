@@ -23,14 +23,14 @@ type ChainsByPlatform = Readonly<Record<ChainPlatform, ReadonlyArray<ChainBase>>
  * `@usebutr/wallets` instead.
  *
  * @example
- * // EVM-only app — Solana/Sui/Bitcoin tables never enter the bundle
+ * // EVM-only app: Solana/Sui/Bitcoin tables never enter the bundle
  * import { EVM_CHAINS_LIST } from "@usebutr/evm";
  * import { buildChainsByPlatform } from "@usebutr/core";
  *
  * const chains = buildChainsByPlatform({ evm: EVM_CHAINS_LIST });
  *
  * @example
- * // Multi-chain app — pull from each package the app actually uses
+ * // Multi-chain app: pull from each package the app actually uses
  * import { EVM_CHAINS_LIST } from "@usebutr/evm";
  * import { SVM_CHAINS_LIST } from "@usebutr/svm";
  *

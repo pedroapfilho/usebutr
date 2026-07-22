@@ -38,11 +38,7 @@ const readNamespaceAccounts = (
   provider: UniversalProviderLike,
   namespace: string,
 ): ReadonlyArray<string> => {
-  const session = provider.session as
-    | { namespaces?: Record<string, { accounts?: ReadonlyArray<string> }> }
-    | null
-    | undefined;
-  return session?.namespaces?.[namespace]?.accounts ?? [];
+  return provider.session?.namespaces?.[namespace]?.accounts ?? [];
 };
 
 /** Build a butr `ChainBase` for a CAIP-2 chain id. butr ships no

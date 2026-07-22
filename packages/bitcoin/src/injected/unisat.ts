@@ -48,9 +48,32 @@ const CAPS_UNISAT: WalletCapabilities = {
  * derivative. Differences (network names, `sendBitcoin` presence) are
  * gated by feature detection per call.
  */
+const toStringArray = (value: unknown): Array<string> =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+
 const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider): WalletAdapter => {
   let chain: ChainBase = BITCOIN_CHAINS.mainnet;
   const listenersSet = new Set<(event: ConnectorEvent) => void>();
+
+  const sendBitcoinTx = (tx: unknown): Promise<string> => {
+    if (typeof provider.sendBitcoin !== "function") {
+      throw new TypeError(`Wallet ${name} does not expose sendBitcoin`);
+    }
+    if (
+      typeof tx !== "object" ||
+      tx === null ||
+      !("recipient" in tx) ||
+      typeof tx.recipient !== "string" ||
+      !("amount" in tx) ||
+      typeof tx.amount !== "bigint"
+    ) {
+      throw new TypeError(
+        "Bitcoin sendTx expects { amount: bigint, recipient: string }: amount in satoshis",
+      );
+    }
+    const { amount, recipient } = tx;
+    return provider.sendBitcoin(recipient, Number(amount));
+  };
 
   const refreshChain = async () => {
     if (typeof provider.getNetwork !== "function") {
@@ -75,7 +98,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     chainPlatform: "bitcoin",
 
     async connect(opts) {
-      if (opts?.silent) {
+      if (opts?.silent === true) {
         const accounts = await provider.getAccounts();
         if (accounts.length === 0) {
           throw new Error("No authorized accounts for silent reconnect");
@@ -87,16 +110,15 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
       await refreshChain();
     },
 
-    disconnect() {
+    disconnect: () =>
       // No portable disconnect across UniSat-shaped wallets. butr's
       // reducer marks the wallet disconnected on its side regardless.
-      return Promise.resolve();
-    },
+      Promise.resolve(),
 
     async getAccount() {
       const accounts = await provider.getAccounts();
       const first = accounts[0];
-      if (!first) {
+      if (first === undefined) {
         return null;
       }
       await refreshChain();
@@ -112,22 +134,17 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
       return accounts.map((a) => buildAccount(a, chain));
     },
 
-    getBalance() {
-      return Promise.resolve({
+    getBalance: () =>
+      Promise.resolve({
         decimals: 8,
         formatted: "0",
         symbol: "BTC",
         value: 0n,
-      });
-    },
+      }),
 
-    getSigner() {
-      return Promise.resolve(provider);
-    },
+    getSigner: () => Promise.resolve(provider),
 
-    getTransactionReceipt() {
-      return Promise.resolve({ status: "Pending" as const });
-    },
+    getTransactionReceipt: () => Promise.resolve({ status: "Pending" as const }),
 
     icon: GENERIC_BITCOIN_ICON,
     id,
@@ -138,28 +155,11 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
       await refreshChain();
     },
 
-    sendTx(tx) {
-      if (typeof provider.sendBitcoin !== "function") {
-        throw new TypeError(`Wallet ${name} does not expose sendBitcoin`);
-      }
-      if (
-        !tx ||
-        typeof tx !== "object" ||
-        typeof (tx as { recipient?: unknown }).recipient !== "string" ||
-        typeof (tx as { amount?: unknown }).amount !== "bigint"
-      ) {
-        throw new TypeError(
-          "Bitcoin sendTx expects { amount: bigint, recipient: string } — amount in satoshis",
-        );
-      }
-      const { amount, recipient } = tx as { amount: bigint; recipient: string };
-      const sats = Number(amount);
-      return provider.sendBitcoin(recipient, sats);
-    },
+    sendTx: (tx) => sendBitcoinTx(tx),
 
-    sendTxToChain(tx, _targetChainIdDecimal, _account, cb) {
+    sendTxToChain: (tx, _targetChainIdDecimal, _account, cb) => {
       cb?.();
-      return this.sendTx(tx);
+      return sendBitcoinTx(tx);
     },
 
     async signMessage(msg) {
@@ -186,14 +186,14 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     subscribe(listener) {
       listenersSet.add(listener);
       const onAccountsChanged = (...args: ReadonlyArray<unknown>) => {
-        const accounts = (args[0] as ReadonlyArray<string> | undefined) ?? [];
+        const accounts = toStringArray(args[0]);
         if (accounts.length === 0) {
           listener({ type: "disconnected" });
           return;
         }
         const built = accounts.map((a) => buildAccount(a, chain));
         const first = built[0];
-        if (!first) {
+        if (first === undefined) {
           return;
         }
         listener({ account: first, accounts: built, type: "accountChanged" });
@@ -210,7 +210,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
       };
     },
 
-    switchChain(target) {
+    switchChain: (target) => {
       if (target.namespace !== "bip122") {
         throw new Error(
           `Bitcoin adapter received non-Bitcoin chain "${target.id}". Pass a chain with namespace "bip122".`,

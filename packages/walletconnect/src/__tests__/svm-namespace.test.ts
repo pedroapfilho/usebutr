@@ -94,7 +94,7 @@ describe("solanaNamespace", () => {
     await adapter.connect();
 
     expect(provider.connectCalls).toHaveLength(1);
-    const namespace = provider.connectCalls[0]?.namespaces["solana"];
+    const namespace = provider.connectCalls[0]?.namespaces.solana;
     expect(namespace?.chains).toEqual(["solana:mainnet", "solana:devnet"]);
     expect(namespace?.methods).toContain("solana_signMessage");
     expect(namespace?.methods).toContain("solana_signTransaction");

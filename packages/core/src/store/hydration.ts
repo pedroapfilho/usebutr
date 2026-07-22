@@ -1,11 +1,17 @@
 import type { StoredPoolEntry, WalletPersistence } from "../storage";
+import { CHAIN_PLATFORMS } from "../types";
 import type {
   Account,
   ChainPlatform,
   ConnectedWallet,
   Connector,
+  WalletAdapter,
   WalletManagerConfig,
 } from "../types";
+
+const VALID_CHAIN_PLATFORMS: ReadonlySet<string> = new Set(CHAIN_PLATFORMS);
+
+const isChainPlatform = (value: string): value is ChainPlatform => VALID_CHAIN_PLATFORMS.has(value);
 
 /**
  * Restore outcome for a single pool entry. `kind: "ok"` carries the
@@ -86,7 +92,7 @@ const resolveHydratedAccounts = async (
 const restoreOneEntry = async (
   connectorId: string,
   entry: { account: Account; accounts: ReadonlyArray<Account> },
-  connector: Connector,
+  connector: WalletAdapter,
 ): Promise<RestoreOutcome> => {
   try {
     // Eager restore: ask the wallet to reconnect to already-authorized
@@ -99,14 +105,14 @@ const restoreOneEntry = async (
     // on a transient `[]` was the cause of the reload-disconnect race.
     await connector.connect({ silent: true });
     const freshAccount = await connector.getAccount();
-    const accountToUse = freshAccount || entry.account;
+    const accountToUse = freshAccount ?? entry.account;
     const accounts = await resolveHydratedAccounts(connector, entry.accounts, accountToUse);
     return {
       connectorId,
       entry: {
         account: accountToUse,
         accounts,
-        connector: connector as ConnectedWallet["connector"],
+        connector,
       },
       kind: "ok",
     };
@@ -173,8 +179,8 @@ const createHydrationCoordinator = (
 
       const selection = new Map<ChainPlatform, string>();
       for (const [platform, connectorId] of Object.entries(storedSelection)) {
-        if (connectorId && pool.has(connectorId)) {
-          selection.set(platform as ChainPlatform, connectorId);
+        if (isChainPlatform(platform) && connectorId !== undefined && pool.has(connectorId)) {
+          selection.set(platform, connectorId);
         }
       }
       for (const [connectorId, wallet] of pool) {
@@ -185,7 +191,7 @@ const createHydrationCoordinator = (
       }
 
       let activeConnectorId: string | null = null;
-      if (storedActive && pool.has(storedActive)) {
+      if (storedActive !== null && pool.has(storedActive)) {
         activeConnectorId = storedActive;
       } else if (pool.size > 0) {
         activeConnectorId = pool.keys().next().value ?? null;

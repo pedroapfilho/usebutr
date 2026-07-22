@@ -172,7 +172,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
     <View style={styles.activeCard}>
       <View style={styles.activeHeader}>
         <View style={styles.walletRowLeft}>
-          {wallet.connector.icon ? (
+          {wallet.connector.icon !== undefined && wallet.connector.icon !== "" ? (
             <Image source={{ uri: wallet.connector.icon }} style={styles.activeIcon} />
           ) : null}
           <View>
@@ -189,11 +189,21 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
         </View>
         <View style={styles.actionRow}>
           {isActive ? null : (
-            <Pressable onPress={() => setActive(wallet.connector.id)} style={styles.outlineButton}>
+            <Pressable
+              onPress={() => {
+                setActive(wallet.connector.id);
+              }}
+              style={styles.outlineButton}
+            >
               <Text style={styles.outlineButtonText}>Make active</Text>
             </Pressable>
           )}
-          <Pressable onPress={() => disconnect(wallet.connector.id)} style={styles.outlineButton}>
+          <Pressable
+            onPress={() => {
+              disconnect(wallet.connector.id);
+            }}
+            style={styles.outlineButton}
+          >
             <Text style={styles.outlineButtonText}>Disconnect</Text>
           </Pressable>
         </View>
@@ -253,12 +263,20 @@ const WalletBrandRow = ({
 }) => (
   <View style={styles.walletRow}>
     <View style={styles.walletRowLeft}>
-      {brand.icon ? <Image source={{ uri: brand.icon }} style={styles.walletIcon} /> : null}
+      {brand.icon !== undefined && brand.icon !== "" ? (
+        <Image source={{ uri: brand.icon }} style={styles.walletIcon} />
+      ) : null}
       <Text style={styles.walletName}>{brand.name}</Text>
     </View>
     <View style={styles.brandPlatformList}>
       {brand.adapters.map((adapter) => (
-        <Pressable key={adapter.id} onPress={() => connect(adapter.id)} style={styles.platformChip}>
+        <Pressable
+          key={adapter.id}
+          onPress={() => {
+            connect(adapter.id);
+          }}
+          style={styles.platformChip}
+        >
           <Text style={styles.platformChipText}>{adapter.chainPlatform.toUpperCase()}</Text>
         </Pressable>
       ))}
@@ -284,7 +302,9 @@ const WalletPicker = ({
           discovers browser-extension wallets via EIP-6963 and the Solana Wallet Standard.
         </Text>
         <Pressable
-          onPress={() => Linking.openURL("https://metamask.io/download")}
+          onPress={() => {
+            void Linking.openURL("https://metamask.io/download");
+          }}
           style={styles.outlineButton}
         >
           <Text style={styles.outlineButtonText}>Install MetaMask</Text>
@@ -303,7 +323,13 @@ const WalletPicker = ({
       <Text style={styles.h2}>{hasConnected ? "Connect another" : "Available wallets"}</Text>
       <View style={[styles.stackSmall, { marginTop: 12 }]}>
         {brands.map((brand) => (
-          <WalletBrandRow brand={brand} connect={connect} key={brand.name} />
+          <WalletBrandRow
+            brand={brand}
+            connect={(id) => {
+              void connect(id);
+            }}
+            key={brand.name}
+          />
         ))}
       </View>
     </View>

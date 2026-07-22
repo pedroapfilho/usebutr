@@ -145,7 +145,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
           </option>
         ))}
       </select>
-      {error ? (
+      {error !== null && error !== "" ? (
         <p className="mt-1 text-xs text-red-700" role="alert">
           {error}
         </p>
@@ -178,7 +178,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
     <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {wallet.connector.icon ? (
+          {wallet.connector.icon !== undefined && wallet.connector.icon !== "" ? (
             <img alt="" className="size-8 rounded" src={wallet.connector.icon} />
           ) : null}
           <div>
@@ -197,7 +197,9 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
           {isActive ? null : (
             <button
               className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
-              onClick={() => setActive(wallet.connector.id)}
+              onClick={() => {
+                setActive(wallet.connector.id);
+              }}
               type="button"
             >
               Make active
@@ -205,7 +207,9 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
           )}
           <button
             className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
-            onClick={() => disconnect(wallet.connector.id)}
+            onClick={() => {
+              disconnect(wallet.connector.id);
+            }}
             type="button"
           >
             Disconnect
@@ -347,7 +351,7 @@ const WalletBrandRow = ({
     <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-3">
-          {brand.icon ? (
+          {brand.icon !== undefined && brand.icon !== "" ? (
             <img alt="" className="size-6 rounded" height={24} src={brand.icon} width={24} />
           ) : null}
           <span className="font-medium">{brand.name}</span>
@@ -362,7 +366,9 @@ const WalletBrandRow = ({
                 className="hover:border-brand hover:bg-brand/10 hover:text-brand-foreground min-h-[44px] rounded-md border border-neutral-300 px-2 py-1 font-mono text-xs uppercase transition-colors disabled:opacity-50 motion-reduce:transition-none"
                 disabled={isConnecting}
                 key={adapter.id}
-                onClick={() => connect(adapter.id)}
+                onClick={() => {
+                  connect(adapter.id);
+                }}
                 type="button"
               >
                 {adapter.chainPlatform}
@@ -426,7 +432,12 @@ const WalletPicker = ({
       <ul className="space-y-2">
         {brands.map((brand) => (
           <li key={brand.name}>
-            <WalletBrandRow brand={brand} connect={connect} />
+            <WalletBrandRow
+              brand={brand}
+              connect={(id) => {
+                void connect(id);
+              }}
+            />
           </li>
         ))}
       </ul>
@@ -462,19 +473,23 @@ const Content = () => {
           </h2>
           <button
             className="bg-brand text-brand-foreground rounded-md px-4 py-2 text-sm font-medium ring-1 ring-black/5 transition-[filter] ring-inset hover:brightness-95"
-            onClick={() => setDialogOpen(true)}
+            onClick={() => {
+              setDialogOpen(true);
+            }}
             type="button"
           >
             Connect via dialog
           </button>
           <WalletConnectDialog
             available={available}
-            onClose={() => setDialogOpen(false)}
+            onClose={() => {
+              setDialogOpen(false);
+            }}
             open={dialogOpen}
           />
         </section>
       ) : null}
-      {error ? (
+      {error === null ? null : (
         <p
           aria-live="assertive"
           className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
@@ -482,7 +497,7 @@ const Content = () => {
         >
           {error.kind}: {error.message}
         </p>
-      ) : null}
+      )}
     </div>
   );
 };

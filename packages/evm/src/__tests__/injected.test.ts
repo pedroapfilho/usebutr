@@ -1,3 +1,4 @@
+import type { WalletAdapter } from "@usebutr/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Eip1193Provider } from "../eip1193";
@@ -20,7 +21,7 @@ describe("discoverInjectedAdapter", () => {
   });
 
   it("emits a generic adapter after the settle window when window.ethereum exists", () => {
-    const callback = vi.fn();
+    const callback = vi.fn<(adapter: WalletAdapter) => void>();
     const unsub = discoverInjectedAdapter(callback, {
       settleMs: 50,
       target: { ethereum: fakeProvider },
@@ -39,7 +40,7 @@ describe("discoverInjectedAdapter", () => {
   });
 
   it("skips emission when hasAnyEip6963Adapter() is true at settle time", () => {
-    const callback = vi.fn();
+    const callback = vi.fn<(adapter: WalletAdapter) => void>();
     let seenEip6963 = false;
     const unsub = discoverInjectedAdapter(callback, {
       hasAnyEip6963Adapter: () => seenEip6963,
@@ -55,7 +56,7 @@ describe("discoverInjectedAdapter", () => {
   });
 
   it("skips emission when window.ethereum is undefined", () => {
-    const callback = vi.fn();
+    const callback = vi.fn<(adapter: WalletAdapter) => void>();
     const unsub = discoverInjectedAdapter(callback, {
       settleMs: 50,
       target: {},
@@ -67,7 +68,7 @@ describe("discoverInjectedAdapter", () => {
   });
 
   it("skips emission when ethereum lacks a request method (sanity check)", () => {
-    const callback = vi.fn();
+    const callback = vi.fn<(adapter: WalletAdapter) => void>();
     const unsub = discoverInjectedAdapter(callback, {
       settleMs: 50,
       target: { ethereum: { on() {}, removeListener() {} } },
@@ -79,7 +80,7 @@ describe("discoverInjectedAdapter", () => {
   });
 
   it("cancels the pending emit when unsubscribed before the settle window elapses", () => {
-    const callback = vi.fn();
+    const callback = vi.fn<(adapter: WalletAdapter) => void>();
     const unsub = discoverInjectedAdapter(callback, {
       settleMs: 50,
       target: { ethereum: fakeProvider },

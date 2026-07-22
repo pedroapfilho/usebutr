@@ -42,7 +42,9 @@ const WalletRow = ({
           <span aria-hidden="true" className={active ? "text-emerald-500" : "text-neutral-300"}>
             ●
           </span>
-          {connector.icon ? <img alt="" className="size-4 rounded" src={connector.icon} /> : null}
+          {connector.icon !== undefined && connector.icon !== "" ? (
+            <img alt="" className="size-4 rounded" src={connector.icon} />
+          ) : null}
           <div className="min-w-0">
             <p className="text-sm font-medium text-neutral-900">{connector.name}</p>
             {showSwitcher ? null : (
@@ -60,7 +62,9 @@ const WalletRow = ({
           ) : (
             <button
               className="rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs hover:bg-neutral-50"
-              onClick={() => onUse(connector.id)}
+              onClick={() => {
+                onUse(connector.id);
+              }}
               type="button"
             >
               Use
@@ -68,7 +72,9 @@ const WalletRow = ({
           )}
           <button
             className="rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs text-neutral-600 hover:bg-neutral-50"
-            onClick={() => onDisconnect(connector.id)}
+            onClick={() => {
+              onDisconnect(connector.id);
+            }}
             type="button"
           >
             Disconnect
@@ -99,7 +105,9 @@ const WalletRow = ({
           {canAddAccounts ? (
             <button
               className="shrink-0 rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs hover:bg-neutral-50"
-              onClick={() => onRequestAccounts(connector.id)}
+              onClick={() => {
+                onRequestAccounts(connector.id);
+              }}
               type="button"
             >
               Add accounts
@@ -149,7 +157,9 @@ const WalletGroup = ({
               onDisconnect={disconnect}
               onRequestAccounts={requestAccounts}
               onSelectAccount={updateWalletAccount}
-              onUse={(id) => setSelection(platform, id)}
+              onUse={(id) => {
+                setSelection(platform, id);
+              }}
               wallet={w}
             />
           ))
@@ -161,10 +171,14 @@ const WalletGroup = ({
             <button
               className="flex items-center gap-2 rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-sm hover:bg-neutral-50"
               key={d.id}
-              onClick={() => connect(d.id)}
+              onClick={() => {
+                connect(d.id);
+              }}
               type="button"
             >
-              {d.icon ? <img alt="" className="size-4 rounded" src={d.icon} /> : null}
+              {d.icon !== undefined && d.icon !== "" ? (
+                <img alt="" className="size-4 rounded" src={d.icon} />
+              ) : null}
               {d.name}
             </button>
           ))}
@@ -194,7 +208,9 @@ const WalletList = () => {
       <div className="grid gap-3 sm:grid-cols-2">
         {PLATFORMS.map(({ label, platform }) => (
           <WalletGroup
-            connect={connect}
+            connect={(id) => {
+              void connect(id);
+            }}
             connected={pool.filter((w) => w.connector.chainPlatform === platform)}
             disconnect={disconnect}
             discovered={discovered.filter((d) => d.chainPlatform === platform)}

@@ -1,6 +1,7 @@
+import type { WalletAdapter } from "@usebutr/core";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Eip1193Provider, Eip6963ProviderDetail } from "../eip1193";
+import type { Eip1193Provider, Eip6963ProviderDetail, Eip6963ProviderInfo } from "../eip1193";
 import { ANNOUNCE_EVENT, REQUEST_EVENT, discoverEvmAdapters } from "../eip6963";
 
 const noopProvider: Eip1193Provider = {
@@ -31,7 +32,7 @@ describe("discoverEvmAdapters", () => {
 
   it("invokes the callback for each unique rdns", () => {
     const target = new EventTarget();
-    const callback = vi.fn();
+    const callback = vi.fn<(adapter: WalletAdapter, info: Eip6963ProviderInfo) => void>();
     const unsub = discoverEvmAdapters(callback, { target });
 
     announce(target, {
@@ -62,7 +63,7 @@ describe("discoverEvmAdapters", () => {
 
   it("deduplicates re-announces by rdns", () => {
     const target = new EventTarget();
-    const callback = vi.fn();
+    const callback = vi.fn<(adapter: WalletAdapter, info: Eip6963ProviderInfo) => void>();
     const unsub = discoverEvmAdapters(callback, { target });
 
     const detail: Eip6963ProviderDetail = {
@@ -83,7 +84,7 @@ describe("discoverEvmAdapters", () => {
 
   it("ignores announcements with missing or empty rdns", () => {
     const target = new EventTarget();
-    const callback = vi.fn();
+    const callback = vi.fn<(adapter: WalletAdapter, info: Eip6963ProviderInfo) => void>();
     const unsub = discoverEvmAdapters(callback, { target });
 
     announce(target, {
@@ -102,7 +103,7 @@ describe("discoverEvmAdapters", () => {
 
   it("ignores wallets announced after unsubscribe", () => {
     const target = new EventTarget();
-    const callback = vi.fn();
+    const callback = vi.fn<(adapter: WalletAdapter, info: Eip6963ProviderInfo) => void>();
     const unsub = discoverEvmAdapters(callback, { target });
     unsub();
 
@@ -120,7 +121,7 @@ describe("discoverEvmAdapters", () => {
   });
 
   it("returns a noop in environments without a window", () => {
-    const callback = vi.fn();
+    const callback = vi.fn<(adapter: WalletAdapter, info: Eip6963ProviderInfo) => void>();
     const unsub = discoverEvmAdapters(callback);
     unsub();
     expect(callback).not.toHaveBeenCalled();

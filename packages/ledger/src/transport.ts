@@ -27,6 +27,7 @@ type TransportFactory = {
  * Safari but isn't wired here.
  */
 const loadTransport = async (): Promise<TransportFactory> => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped optional peer-dep module boundary
   const mod = (await import("@ledgerhq/hw-transport-webusb")) as unknown as {
     default?: TransportFactory;
   };

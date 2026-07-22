@@ -1,3 +1,4 @@
+import type { WalletAdapter } from "@usebutr/core";
 import { describe, expect, it, vi } from "vitest";
 
 import { discoverInjectedBitcoinAdapter } from "../injected";
@@ -9,7 +10,7 @@ const flushSettle = () =>
 
 describe("discoverInjectedBitcoinAdapter", () => {
   it("skips emission when no provider is present", async () => {
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
     const unsubscribe = discoverInjectedBitcoinAdapter(onAdapter, {
       settleMs: 10,
       target: {},
@@ -20,7 +21,7 @@ describe("discoverInjectedBitcoinAdapter", () => {
   });
 
   it("emits a unisat adapter when window.unisat is present", async () => {
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
     const unisat = {
       getAccounts: vi.fn().mockResolvedValue(["bc1qaddr"]),
       pushPsbt: vi.fn(),
@@ -41,7 +42,7 @@ describe("discoverInjectedBitcoinAdapter", () => {
   });
 
   it("emits multiple adapters when multiple injected providers are present", async () => {
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
     const unisat = {
       getAccounts: vi.fn().mockResolvedValue([]),
       requestAccounts: vi.fn(),
@@ -62,7 +63,7 @@ describe("discoverInjectedBitcoinAdapter", () => {
   });
 
   it("respects hasAnyWalletStandardAdapter — skips emission when a WS adapter exists", async () => {
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
     const unisat = {
       getAccounts: vi.fn(),
       requestAccounts: vi.fn(),
@@ -80,7 +81,7 @@ describe("discoverInjectedBitcoinAdapter", () => {
   });
 
   it("a synchronous unsubscribe before settle cancels emission", async () => {
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
     const unisat = {
       getAccounts: vi.fn(),
       requestAccounts: vi.fn(),

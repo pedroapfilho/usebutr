@@ -46,7 +46,7 @@ const mapConnectionError = (raw: unknown): ConnectionError => {
       return { kind: "NotConnected", message };
     }
 
-    const code = (raw as { code?: unknown }).code;
+    const code = "code" in raw ? raw.code : undefined;
     if (code === 4001) {
       return { kind: "UserRejected", message };
     }

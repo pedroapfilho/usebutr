@@ -57,6 +57,17 @@ const coercePsbtToBase64 = (tx: unknown): string => {
   );
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const readStringField = (value: unknown, key: string): string | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const field = value[key];
+  return typeof field === "string" ? field : undefined;
+};
+
 /**
  * Bitcoin (CAIP `bip122:*`) namespace builder. Wraps the paired
  * `UniversalProvider` and routes calls through the WalletConnect v2
@@ -113,10 +124,30 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
         return account.walletAddress;
       }
       const first = resolveAccounts()[0];
-      if (!first) {
+      if (first === undefined) {
         throw new Error("No connected Bitcoin account");
       }
       return first.walletAddress;
+    };
+
+    const broadcastTx = async (tx: unknown, account?: Account): Promise<string> => {
+      const address = resolveAddress(account);
+      const psbt = coercePsbtToBase64(tx);
+      // Map sendTx to signPsbt with broadcast:true. `sendTransfer` is
+      // the wrong primitive here; it asks for a recipient + amount
+      // rather than a pre-built tx, which doesn't fit butr's
+      // `sendTx(tx: unknown)` contract. See namespace docblock.
+      const result: unknown = await provider.request({
+        method: "signPsbt",
+        params: { account: address, broadcast: true, psbt, signInputs: [] },
+      });
+      // Spec says `{ psbt, txid? }`. Tolerate a bare string too; some
+      // wallets short-circuit to the txid directly.
+      const txid = typeof result === "string" ? result : readStringField(result, "txid");
+      if (txid === undefined || txid === "") {
+        throw new Error("signPsbt with broadcast:true returned no txid");
+      }
+      return txid;
     };
 
     const adapter: BitcoinAdapter = {
@@ -128,7 +159,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
         if (provider.session) {
           return;
         }
-        if (opts?.silent) {
+        if (opts?.silent === true) {
           throw new Error("No WalletConnect session for silent reconnect");
         }
         await provider.connect({
@@ -157,63 +188,38 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
         }
       },
 
-      getAccount() {
+      getAccount: () => {
         const first = resolveAccounts()[0] ?? null;
         return Promise.resolve(first);
       },
 
-      getAccounts() {
-        return Promise.resolve(resolveAccounts());
-      },
+      getAccounts: () => Promise.resolve(resolveAccounts()),
 
-      getBalance() {
-        return Promise.resolve({
+      getBalance: () =>
+        Promise.resolve({
           decimals: BITCOIN_DECIMALS,
           formatted: "0",
           symbol: "BTC",
           value: 0n,
-        });
-      },
+        }),
 
-      getSigner() {
-        return Promise.resolve(provider);
-      },
+      getSigner: () => Promise.resolve(provider),
 
-      getTransactionReceipt() {
-        return Promise.resolve({ status: "Pending" as const });
-      },
+      getTransactionReceipt: () => Promise.resolve({ status: "Pending" as const }),
 
       icon,
       id,
       name,
 
-      async sendTx(tx, account) {
-        const address = resolveAddress(account);
-        const psbt = coercePsbtToBase64(tx);
-        // Map sendTx → signPsbt with broadcast:true. `sendTransfer` is
-        // the wrong primitive here; it asks for a recipient + amount
-        // rather than a pre-built tx, which doesn't fit butr's
-        // `sendTx(tx: unknown)` contract. See namespace docblock.
-        const result = (await provider.request({
-          method: "signPsbt",
-          params: { account: address, broadcast: true, psbt, signInputs: [] },
-        })) as { psbt?: string; txid?: string } | string;
-        // Spec says `{ psbt, txid? }`. Tolerate a bare string too;
-        // some wallets short-circuit to the txid directly.
-        const txid = typeof result === "string" ? result : result?.txid;
-        if (!txid) {
-          throw new Error("signPsbt with broadcast:true returned no txid");
-        }
-        return txid;
-      },
+      sendTx: (tx, account) => broadcastTx(tx, account),
 
-      sendTxToChain(tx, _targetChainId, account, cb) {
+      sendTxToChain: (tx, _targetChainId, account, cb) => {
         // WC Bitcoin's signPsbt doesn't take a per-call chain
         // parameter; the network is baked into the pairing. Honour
         // the current chain and let consumers route per-chain higher
         // up if they need multi-network support.
         cb?.();
-        return this.sendTx(tx, account);
+        return broadcastTx(tx, account);
       },
 
       async signMessage(msg, account) {
@@ -228,12 +234,13 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
         } catch {
           message = bytesToBase64(msg);
         }
-        const result = (await provider.request({
+        const result: unknown = await provider.request({
           method: "signMessage",
           params: { account: address, address, message },
-        })) as { address?: string; signature?: string } | string;
-        const signatureHex = typeof result === "string" ? result : result?.signature;
-        if (!signatureHex) {
+        });
+        const signatureHex =
+          typeof result === "string" ? result : readStringField(result, "signature");
+        if (signatureHex === undefined || signatureHex === "") {
           throw new Error("signMessage returned no signature");
         }
         return { signature: hexToBytes(signatureHex), signedMessage: msg };
@@ -246,24 +253,20 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
         // input the active address owns. Callers that need fine-
         // grained per-input control can pre-encode the PSBT with the
         // appropriate inputs and route through `getSigner()` later.
-        const result = (await provider.request({
+        const result: unknown = await provider.request({
           method: "signPsbt",
           params: { account: address, broadcast: false, psbt, signInputs: [] },
-        })) as { psbt?: string; txid?: string } | string;
-        const signedPsbt = typeof result === "string" ? result : result?.psbt;
-        if (!signedPsbt) {
+        });
+        const signedPsbt = typeof result === "string" ? result : readStringField(result, "psbt");
+        if (signedPsbt === undefined || signedPsbt === "") {
           throw new Error("signPsbt returned no psbt");
         }
         return base64ToBytes(signedPsbt);
       },
 
-      subscribe() {
-        // v0: no-op. WC wallet-side events are mediated by the provider
-        // and need per-wallet quirks the namespace builder shouldn't own.
-        return () => {};
-      },
+      subscribe: () => () => {},
 
-      switchChain(chain) {
+      switchChain: (chain) => {
         if (chain.namespace !== "bip122") {
           throw new Error(
             `Bitcoin WC adapter received non-Bitcoin chain "${chain.id}". Pass a chain with namespace "bip122".`,

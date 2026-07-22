@@ -166,7 +166,7 @@ describe("buildBitcoinAdapter", () => {
       "standard:connect": connectFeature,
     });
     const adapter = buildBitcoinAdapter(wallet);
-    await expect(adapter?.sendTx(42 as unknown)).rejects.toThrow(TypeError);
+    await expect(adapter?.sendTx(42)).rejects.toThrow(TypeError);
   });
 
   it("signTransaction() bridges through bitcoin:signPsbt", async () => {

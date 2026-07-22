@@ -15,7 +15,7 @@ vi.mock("@usebutr/core", async (importOriginal) => {
 const pathThatEmits = (
   ...adapterIds: ReadonlyArray<string>
 ): { path: DiscoveryPath; unsubscribe: ReturnType<typeof vi.fn> } => {
-  const unsubscribe = vi.fn();
+  const unsubscribe = vi.fn<() => void>();
   return {
     path: (emit) => {
       for (const id of adapterIds) {
@@ -29,7 +29,7 @@ const pathThatEmits = (
 
 describe("createDiscoveryBus", () => {
   it("forwards a single adapter from one path", () => {
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<(adapter: ButrCore.WalletAdapter) => void>();
     const bus = createDiscoveryBus(onAdapter);
     bus.register(pathThatEmits("wallet-a").path);
 
@@ -38,7 +38,7 @@ describe("createDiscoveryBus", () => {
   });
 
   it("dedupes adapters by id across the same path", () => {
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<(adapter: ButrCore.WalletAdapter) => void>();
     const bus = createDiscoveryBus(onAdapter);
     bus.register(pathThatEmits("wallet-a", "wallet-a", "wallet-b").path);
 
@@ -47,7 +47,7 @@ describe("createDiscoveryBus", () => {
   });
 
   it("dedupes adapters by id across multiple paths", () => {
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<(adapter: ButrCore.WalletAdapter) => void>();
     const bus = createDiscoveryBus(onAdapter);
     bus.register(pathThatEmits("wallet-a", "wallet-b").path);
     bus.register(pathThatEmits("wallet-b", "wallet-c").path);
@@ -56,26 +56,28 @@ describe("createDiscoveryBus", () => {
   });
 
   it("hasAny returns false before any emit", () => {
-    const bus = createDiscoveryBus(vi.fn());
+    const bus = createDiscoveryBus(vi.fn<(adapter: ButrCore.WalletAdapter) => void>());
     expect(bus.hasAny()).toBe(false);
   });
 
   it("hasAny returns true after the first emit", () => {
-    const bus = createDiscoveryBus(vi.fn());
+    const bus = createDiscoveryBus(vi.fn<(adapter: ButrCore.WalletAdapter) => void>());
     bus.register(pathThatEmits("wallet-a").path);
     expect(bus.hasAny()).toBe(true);
   });
 
   it("register(null) is a no-op", () => {
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<(adapter: ButrCore.WalletAdapter) => void>();
     const bus = createDiscoveryBus(onAdapter);
-    expect(() => bus.register(null)).not.toThrow();
+    expect(() => {
+      bus.register(null);
+    }).not.toThrow();
     expect(onAdapter).not.toHaveBeenCalled();
     expect(bus.hasAny()).toBe(false);
   });
 
   it("supports the injected-fallback pattern: skip emit when an earlier path has emitted", () => {
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<(adapter: ButrCore.WalletAdapter) => void>();
     const bus = createDiscoveryBus(onAdapter);
     bus.register(pathThatEmits("eip6963-wallet").path);
 
@@ -93,7 +95,7 @@ describe("createDiscoveryBus", () => {
   });
 
   it("injected fallback DOES emit when no prior path emitted", () => {
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<(adapter: ButrCore.WalletAdapter) => void>();
     const bus = createDiscoveryBus(onAdapter);
     bus.register((emit) => {
       if (!bus.hasAny()) {
@@ -107,7 +109,7 @@ describe("createDiscoveryBus", () => {
   it("unsubscribeAll tears down every registered path", () => {
     const a = pathThatEmits();
     const b = pathThatEmits();
-    const bus = createDiscoveryBus(vi.fn());
+    const bus = createDiscoveryBus(vi.fn<(adapter: ButrCore.WalletAdapter) => void>());
     bus.register(a.path);
     bus.register(b.path);
 
@@ -119,7 +121,7 @@ describe("createDiscoveryBus", () => {
 
   it("unsubscribeAll drops references so a second call is a no-op", () => {
     const a = pathThatEmits();
-    const bus = createDiscoveryBus(vi.fn());
+    const bus = createDiscoveryBus(vi.fn<(adapter: ButrCore.WalletAdapter) => void>());
     bus.register(a.path);
 
     bus.unsubscribeAll();
@@ -135,11 +137,13 @@ describe("createDiscoveryBus", () => {
       }) as DiscoveryPath,
     };
     const b = pathThatEmits();
-    const bus = createDiscoveryBus(vi.fn());
+    const bus = createDiscoveryBus(vi.fn<(adapter: ButrCore.WalletAdapter) => void>());
     bus.register(a.path);
     bus.register(b.path);
 
-    expect(() => bus.unsubscribeAll()).not.toThrow();
+    expect(() => {
+      bus.unsubscribeAll();
+    }).not.toThrow();
     expect(b.unsubscribe).toHaveBeenCalledTimes(1);
     expect(logWarn).toHaveBeenCalledWith("[butr] discovery unsubscribe threw:", expect.any(Error));
   });

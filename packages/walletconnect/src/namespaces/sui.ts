@@ -72,6 +72,17 @@ const coerceTransactionToBase64 = (tx: unknown): string => {
   );
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const readStringField = (value: unknown, key: string): string | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const field = value[key];
+  return typeof field === "string" ? field : undefined;
+};
+
 const suiNamespace: WalletConnectNamespaceBuilder = {
   buildAdapter({ chains, icon, id, name, provider }) {
     let currentChainId = chains[0] ?? DEFAULT_CHAINS[0] ?? "sui:mainnet";
@@ -91,10 +102,26 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
         return account.walletAddress;
       }
       const first = resolveAccounts()[0];
-      if (!first) {
+      if (first === undefined) {
         throw new Error("No connected Sui account");
       }
       return first.walletAddress;
+    };
+
+    const executeTx = async (tx: unknown, account?: Account): Promise<string> => {
+      const address = resolveAddress(account);
+      const transaction = coerceTransactionToBase64(tx);
+      const result: unknown = await provider.request({
+        method: "sui_signAndExecuteTransaction",
+        params: { address, transaction },
+      });
+      // Spec says `{ digest }`. Tolerate a bare string too; some wallets
+      // short-circuit to the digest directly.
+      const digest = typeof result === "string" ? result : readStringField(result, "digest");
+      if (digest === undefined || digest === "") {
+        throw new Error("sui_signAndExecuteTransaction returned no digest");
+      }
+      return digest;
     };
 
     const adapter: SuiAdapter = {
@@ -106,7 +133,7 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
         if (provider.session) {
           return;
         }
-        if (opts?.silent) {
+        if (opts?.silent === true) {
           throw new Error("No WalletConnect session for silent reconnect");
         }
         await provider.connect({
@@ -135,70 +162,50 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
         }
       },
 
-      getAccount() {
+      getAccount: () => {
         const first = resolveAccounts()[0] ?? null;
         return Promise.resolve(first);
       },
 
-      getAccounts() {
-        return Promise.resolve(resolveAccounts());
-      },
+      getAccounts: () => Promise.resolve(resolveAccounts()),
 
-      getBalance() {
-        return Promise.resolve({
+      getBalance: () =>
+        Promise.resolve({
           decimals: SUI_DECIMALS,
           formatted: "0",
           symbol: "SUI",
           value: 0n,
-        });
-      },
+        }),
 
-      getSigner() {
-        return Promise.resolve(provider);
-      },
+      getSigner: () => Promise.resolve(provider),
 
-      getTransactionReceipt() {
-        return Promise.resolve({ status: "Pending" as const });
-      },
+      getTransactionReceipt: () => Promise.resolve({ status: "Pending" as const }),
 
       icon,
       id,
       name,
 
-      async sendTx(tx, account) {
-        const address = resolveAddress(account);
-        const transaction = coerceTransactionToBase64(tx);
-        const result = (await provider.request({
-          method: "sui_signAndExecuteTransaction",
-          params: { address, transaction },
-        })) as { digest?: string } | string;
-        // Spec says `{ digest }`. Tolerate a bare string too; some
-        // wallets short-circuit to the digest directly.
-        const digest = typeof result === "string" ? result : result?.digest;
-        if (!digest) {
-          throw new Error("sui_signAndExecuteTransaction returned no digest");
-        }
-        return digest;
-      },
+      sendTx: (tx, account) => executeTx(tx, account),
 
-      sendTxToChain(tx, _targetChainId, account, cb) {
+      sendTxToChain: (tx, _targetChainId, account, cb) => {
         // WC Sui's signAndExecute doesn't take a per-call chain
         // parameter; the cluster is baked into the pairing. Honour
         // the current chain and let consumers route per-chain higher
         // up if they need multi-cluster support.
         cb?.();
-        return this.sendTx(tx, account);
+        return executeTx(tx, account);
       },
 
       async signMessage(msg, account) {
         const address = resolveAddress(account);
         // Encode as base64: WC mobile wallets expect it, and plain-text wallets still decode (base64 ⊂ UTF-8).
-        const result = (await provider.request({
+        const result: unknown = await provider.request({
           method: "sui_signPersonalMessage",
           params: { address, message: bytesToBase64(msg) },
-        })) as { bytes?: string; signature?: string } | string;
-        const signatureB64 = typeof result === "string" ? result : result?.signature;
-        if (!signatureB64) {
+        });
+        const signatureB64 =
+          typeof result === "string" ? result : readStringField(result, "signature");
+        if (signatureB64 === undefined || signatureB64 === "") {
           throw new Error("sui_signPersonalMessage returned no signature");
         }
         // Wallets are inconsistent: some echo the signed bytes back
@@ -206,33 +213,34 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
         // spec lists only `signature`. Prefer the wallet's `bytes` if
         // present (lets verifiers check against what the wallet actually
         // signed), otherwise fall through to the original input.
-        const echoed =
-          typeof result === "object" && result?.bytes ? base64ToBytes(result.bytes) : msg;
+        const echoedBytes = readStringField(result, "bytes");
+        const echoed = echoedBytes === undefined ? msg : base64ToBytes(echoedBytes);
         return { signature: base64ToBytes(signatureB64), signedMessage: echoed };
       },
 
       async signTransaction(tx, account) {
         const address = resolveAddress(account);
         const transaction = coerceTransactionToBase64(tx);
-        const result = (await provider.request({
+        const result: unknown = await provider.request({
           method: "sui_signTransaction",
           params: { address, transaction },
-        })) as
-          | { signature?: string; transactionBlockBytes?: string; transactionBytes?: string }
-          | string;
-        if (typeof result === "object") {
+        });
+        if (isRecord(result)) {
           // The Reown docs spell the key `transactionBytes`. The older
           // Mysten Dappkit reference (and some wallets) use
           // `transactionBlockBytes`. Accept either; both are the
           // base64-encoded signed transaction bytes butr's
           // `SuiWallet.signTransaction` contract returns.
-          const bytesB64 = result?.transactionBytes ?? result?.transactionBlockBytes;
-          if (bytesB64) {
+          const bytesB64 =
+            readStringField(result, "transactionBytes") ??
+            readStringField(result, "transactionBlockBytes");
+          if (bytesB64 !== undefined) {
             return base64ToBytes(bytesB64);
           }
         }
-        const signatureB64 = typeof result === "string" ? result : result?.signature;
-        if (!signatureB64) {
+        const signatureB64 =
+          typeof result === "string" ? result : readStringField(result, "signature");
+        if (signatureB64 === undefined || signatureB64 === "") {
           throw new Error("sui_signTransaction returned no transaction or signature");
         }
         // Fallback: a few wallets return just the signature. That's not
@@ -241,13 +249,9 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
         return base64ToBytes(signatureB64);
       },
 
-      subscribe() {
-        // v0: no-op. WC wallet-side events are mediated by the provider
-        // and need per-wallet quirks the namespace builder shouldn't own.
-        return () => {};
-      },
+      subscribe: () => () => {},
 
-      switchChain(chain) {
+      switchChain: (chain) => {
         if (chain.namespace !== "sui") {
           throw new Error(
             `Sui WC adapter received non-Sui chain "${chain.id}". Pass a chain with namespace "sui".`,

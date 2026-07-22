@@ -44,11 +44,13 @@ const buildSatsConnectAdapter = (
   let chain: ChainBase = BITCOIN_CHAINS.mainnet;
   let cachedAccounts: ReadonlyArray<string> = [];
 
+  // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- caller-supplied result shape for an untyped RPC bridge
   const callRequest = async <T>(method: string, params?: Record<string, unknown>): Promise<T> => {
     const response = await provider.request(method, params);
     if (response.error) {
       throw new Error(`[butr/bitcoin] sats-connect ${method} failed: ${response.error.message}`);
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped sats-connect RPC result; caller declares the shape
     return response.result as T;
   };
 
@@ -59,12 +61,32 @@ const buildSatsConnectAdapter = (
       message: "Connect to butr",
       purposes: ["payment", "ordinals"],
     });
-    if (!result?.addresses) {
+    if (result.addresses === undefined) {
       return [];
     }
     const addresses = result.addresses.map((a) => a.address);
     cachedAccounts = addresses;
     return addresses;
+  };
+
+  const sendTransferTx = async (tx: unknown): Promise<string> => {
+    if (
+      typeof tx !== "object" ||
+      tx === null ||
+      !("recipient" in tx) ||
+      typeof tx.recipient !== "string" ||
+      !("amount" in tx) ||
+      typeof tx.amount !== "bigint"
+    ) {
+      throw new TypeError(
+        "Bitcoin sendTx expects { amount: bigint, recipient: string }: amount in satoshis",
+      );
+    }
+    const { amount, recipient } = tx;
+    const result = await callRequest<{ txid: string }>("sendTransfer", {
+      recipients: [{ address: recipient, amount: amount.toString() }],
+    });
+    return result.txid;
   };
 
   return {
@@ -75,19 +97,19 @@ const buildSatsConnectAdapter = (
       await loadAccounts();
     },
 
-    disconnect() {
+    disconnect: () => {
       cachedAccounts = [];
       return Promise.resolve();
     },
 
     async getAccount() {
       const first = cachedAccounts[0];
-      if (first) {
+      if (first !== undefined) {
         return buildAccount(first, chain);
       }
       const accounts = await loadAccounts();
       const firstFresh = accounts[0];
-      return firstFresh ? buildAccount(firstFresh, chain) : null;
+      return firstFresh === undefined ? null : buildAccount(firstFresh, chain);
     },
 
     async getAccounts() {
@@ -95,22 +117,17 @@ const buildSatsConnectAdapter = (
       return accounts.map((a) => buildAccount(a, chain));
     },
 
-    getBalance() {
-      return Promise.resolve({
+    getBalance: () =>
+      Promise.resolve({
         decimals: 8,
         formatted: "0",
         symbol: "BTC",
         value: 0n,
-      });
-    },
+      }),
 
-    getSigner() {
-      return Promise.resolve(provider);
-    },
+    getSigner: () => Promise.resolve(provider),
 
-    getTransactionReceipt() {
-      return Promise.resolve({ status: "Pending" as const });
-    },
+    getTransactionReceipt: () => Promise.resolve({ status: "Pending" as const }),
 
     icon: GENERIC_BITCOIN_ICON,
     id,
@@ -120,32 +137,16 @@ const buildSatsConnectAdapter = (
       await loadAccounts();
     },
 
-    async sendTx(tx) {
-      if (
-        !tx ||
-        typeof tx !== "object" ||
-        typeof (tx as { recipient?: unknown }).recipient !== "string" ||
-        typeof (tx as { amount?: unknown }).amount !== "bigint"
-      ) {
-        throw new TypeError(
-          "Bitcoin sendTx expects { amount: bigint, recipient: string } — amount in satoshis",
-        );
-      }
-      const { amount, recipient } = tx as { amount: bigint; recipient: string };
-      const result = await callRequest<{ txid: string }>("sendTransfer", {
-        recipients: [{ address: recipient, amount: amount.toString() }],
-      });
-      return result.txid;
-    },
+    sendTx: (tx) => sendTransferTx(tx),
 
-    sendTxToChain(tx, _targetChainId, _account, cb) {
+    sendTxToChain: (tx, _targetChainId, _account, cb) => {
       cb?.();
-      return this.sendTx(tx);
+      return sendTransferTx(tx);
     },
 
     async signMessage(msg) {
       const address = cachedAccounts[0];
-      if (!address) {
+      if (address === undefined) {
         throw new Error("No connected account");
       }
       const result = await callRequest<{ messageHash?: string; signature: string }>("signMessage", {
@@ -169,7 +170,7 @@ const buildSatsConnectAdapter = (
       return base64ToBytes(result.psbt);
     },
 
-    switchChain(target) {
+    switchChain: (target) => {
       if (target.namespace !== "bip122") {
         throw new Error(
           `Bitcoin adapter received non-Bitcoin chain "${target.id}". Pass a chain with namespace "bip122".`,

@@ -21,9 +21,9 @@ type EvmUnsignedTx<N extends Network, C extends Chain> = UnsignedTransaction<N, 
  * broadcast lock transactions on the EVM source chain.
  */
 class ButrEvmWormholeSigner<N extends Network, C extends Chain> implements SignAndSendSigner<N, C> {
-  private _chain: C;
-  private _address: string;
-  private _eip1193: Eip1193Provider;
+  private readonly _chain: C;
+  private readonly _address: string;
+  private readonly _eip1193: Eip1193Provider;
 
   constructor(chain: C, address: string, eip1193: Eip1193Provider) {
     this._chain = chain;
@@ -47,7 +47,7 @@ class ButrEvmWormholeSigner<N extends Network, C extends Chain> implements SignA
     for (const tx of txs as Array<EvmUnsignedTx<N, C>>) {
       // oxlint-disable-next-line no-await-in-loop, no-console
       console.log(`[wormhole/evm] sending: ${tx.description}`);
-      // oxlint-disable-next-line no-await-in-loop
+      // oxlint-disable-next-line no-await-in-loop, typescript/no-unsafe-argument -- Wormhole SDK types tx.transaction loosely; ethers narrows it to TransactionRequest at send
       const response = await signer.sendTransaction(tx.transaction);
       // oxlint-disable-next-line no-await-in-loop
       await response.wait(1);

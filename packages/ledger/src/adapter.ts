@@ -1,4 +1,4 @@
-import type { ChainPlatform, WalletAdapter } from "@usebutr/core";
+import type { WalletAdapter } from "@usebutr/core";
 
 import type { BitcoinLedgerOptions } from "./apps/bitcoin";
 import { createBitcoinLedgerAdapter } from "./apps/bitcoin";
@@ -64,29 +64,27 @@ type LedgerOptions = EvmLedgerOptions | SvmLedgerOptions | SuiLedgerOptions | Bi
  * your own RPC client to complete the send.
  */
 const createLedgerAdapter = (options: LedgerOptions): Promise<WalletAdapter> => {
-  const platform: ChainPlatform = options.platform;
-
-  switch (platform) {
+  switch (options.platform) {
     case "evm": {
-      return createEvmLedgerAdapter(options as EvmLedgerOptions);
+      return createEvmLedgerAdapter(options);
     }
     case "svm": {
-      return createSvmLedgerAdapter(options as SvmLedgerOptions);
+      return createSvmLedgerAdapter(options);
     }
     case "sui": {
-      return createSuiLedgerAdapter(options as SuiLedgerOptions);
+      return createSuiLedgerAdapter(options);
     }
     case "bitcoin": {
-      return createBitcoinLedgerAdapter(options as BitcoinLedgerOptions);
+      return createBitcoinLedgerAdapter(options);
     }
     default: {
       // Exhaustiveness check; every `ChainPlatform` variant ships a
       // Ledger app today. Adding a new platform to `ChainPlatform`
       // turns this into a typecheck error until the case is added.
-      const _exhaustive: never = platform;
+      const _exhaustive: never = options;
       void _exhaustive;
       return Promise.reject(
-        new Error(`[butr/ledger] no Ledger app builder for platform "${platform as string}".`),
+        new Error("[butr/ledger] no Ledger app builder for the given platform."),
       );
     }
   }

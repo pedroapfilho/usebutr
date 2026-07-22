@@ -74,9 +74,9 @@ const useAsyncResource = <T>(fn: (() => Promise<T>) | null): AsyncState<T> => {
   const [state, dispatch] = useReducer(asyncReducer<T>, IDLE);
 
   useEffect(() => {
-    if (!fn) {
+    if (fn === null) {
       dispatch({ type: "reset" });
-      return;
+      return undefined;
     }
     dispatch({ type: "load" });
     let cancelled = false;

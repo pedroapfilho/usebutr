@@ -8,7 +8,7 @@ import { defineConfig } from "vite";
 const config = defineConfig({
   plugins: [
     devtools(),
-    nitro({ config: { rollupConfig: { external: (id) => id.startsWith("@sentry/") } } }),
+    nitro({ rollupConfig: { external: (id: string) => id.startsWith("@sentry/") } }),
     tailwindcss(),
     tanstackStart(),
     viteReact(),

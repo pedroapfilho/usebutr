@@ -14,6 +14,11 @@ import type { WalletAdapter as ButrWalletAdapter } from "@usebutr/core";
 import type { SolanaSignAndSendTransactionFeature, SolanaSignMessageFeature } from "@usebutr/svm";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
+// @solana/wallet-adapter's interface declares Promise-returning methods whose
+// bodies are synchronous here; async would only trip require-await. Disable
+// file-wide so the per-method fallow-ignore comments stay adjacent to methods.
+// oxlint-disable typescript/promise-function-async
+
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const bytesToBase58 = (bytes: Uint8Array): string => {
   let intVal = 0n;
@@ -96,7 +101,6 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
   }
 
   // fallow-ignore-next-line unused-class-member
-  // oxlint-disable-next-line typescript/promise-function-async -- implements @solana/wallet-adapter interface; body is synchronous
   connect(): Promise<void> {
     if (this.connected) {
       return Promise.resolve();
@@ -115,7 +119,6 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
   }
 
   // fallow-ignore-next-line unused-class-member
-  // oxlint-disable-next-line typescript/promise-function-async -- implements @solana/wallet-adapter interface; body is synchronous
   disconnect(): Promise<void> {
     this._publicKey = null;
     this.emit("disconnect");
@@ -143,7 +146,6 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
   }
 
   // fallow-ignore-next-line unused-class-member
-  // oxlint-disable-next-line typescript/promise-function-async -- implements @solana/wallet-adapter interface; body is synchronous
   signTransaction<T extends Transaction | VersionedTransaction>(_transaction: T): Promise<T> {
     // The Wallet Standard `solana:signTransaction` feature isn't
     // advertised uniformly across wallets; Phantom does, MetaMask Snap

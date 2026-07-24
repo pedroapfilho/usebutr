@@ -34,7 +34,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
     <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {wallet.connector.icon ? (
+          {wallet.connector.icon !== undefined && wallet.connector.icon !== "" ? (
             <img alt="" className="size-8 rounded" src={wallet.connector.icon} />
           ) : null}
           <div>
@@ -53,7 +53,9 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
           {isActive ? null : (
             <button
               className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
-              onClick={() => setActive(wallet.connector.id)}
+              onClick={() => {
+                setActive(wallet.connector.id);
+              }}
               type="button"
             >
               Make active
@@ -61,7 +63,9 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
           )}
           <button
             className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
-            onClick={() => disconnect(wallet.connector.id)}
+            onClick={() => {
+              disconnect(wallet.connector.id);
+            }}
             type="button"
           >
             Disconnect

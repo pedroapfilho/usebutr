@@ -4,7 +4,12 @@ import type { ChainPlatform } from "../types";
 
 import type { StoredPoolEntry, StoredPoolRecord, StoredSelectionRecord } from "./persistence";
 
-const VALID_CHAIN_PLATFORMS = new Set<ChainPlatform>(CHAIN_PLATFORMS);
+const VALID_CHAIN_PLATFORMS: ReadonlySet<string> = new Set(CHAIN_PLATFORMS);
+
+const isChainPlatform = (value: string): value is ChainPlatform => VALID_CHAIN_PLATFORMS.has(value);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
 
 /**
  * Server-safe view of a butr-persisted session; everything you can
@@ -44,12 +49,11 @@ const EMPTY_SNAPSHOT: WalletSnapshot = Object.freeze({
 });
 
 const toCookieMap = (input: CookieSource): Map<string, string> => {
-  const maybeIterator = (input as { [Symbol.iterator]?: unknown })[Symbol.iterator];
-  if (typeof maybeIterator !== "function") {
-    return new Map(Object.entries(input as Readonly<Record<string, string>>));
+  if (!(Symbol.iterator in input)) {
+    return new Map(Object.entries(input));
   }
   const out = new Map<string, string>();
-  for (const entry of input as Iterable<{ name: string; value: string } | [string, string]>) {
+  for (const entry of input) {
     if (Array.isArray(entry)) {
       const [name, value] = entry;
       if (typeof name === "string" && typeof value === "string") {
@@ -57,14 +61,7 @@ const toCookieMap = (input: CookieSource): Map<string, string> => {
       }
       continue;
     }
-    if (
-      entry &&
-      typeof entry === "object" &&
-      "name" in entry &&
-      "value" in entry &&
-      typeof entry.name === "string" &&
-      typeof entry.value === "string"
-    ) {
+    if (typeof entry.name === "string" && typeof entry.value === "string") {
       out.set(entry.name, entry.value);
     }
   }
@@ -72,31 +69,30 @@ const toCookieMap = (input: CookieSource): Map<string, string> => {
 };
 
 const isValidAccount = (value: unknown): boolean => {
-  if (!value || typeof value !== "object") {
+  if (!isRecord(value)) {
     return false;
   }
-  const account = value as Record<string, unknown>;
-  if (typeof account.walletAddress !== "string" || typeof account.id !== "string") {
+  if (typeof value.walletAddress !== "string" || typeof value.id !== "string") {
     return false;
   }
-  if (!account.chain || typeof account.chain !== "object") {
+  if (!isRecord(value.chain)) {
     return false;
   }
   return true;
 };
 
 const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry => {
-  if (!value || typeof value !== "object") {
+  if (!isRecord(value)) {
     return false;
   }
-  const entry = value as Record<string, unknown>;
+  const entry = value;
   if (typeof entry.connectorId !== "string" || entry.connectorId !== key) {
     return false;
   }
   if (typeof entry.chainPlatform !== "string") {
     return false;
   }
-  if (!VALID_CHAIN_PLATFORMS.has(entry.chainPlatform as ChainPlatform)) {
+  if (!isChainPlatform(entry.chainPlatform)) {
     return false;
   }
   if (typeof entry.name !== "string" || entry.name.length === 0) {
@@ -115,16 +111,16 @@ const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry
 };
 
 const parsePool = (raw: string | undefined): StoredPoolRecord => {
-  if (!raw) {
+  if (raw === undefined || raw === "") {
     return {};
   }
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") {
+    if (!isRecord(parsed)) {
       return {};
     }
     const result: StoredPoolRecord = {};
-    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+    for (const [key, value] of Object.entries(parsed)) {
       if (isValidPoolEntry(key, value)) {
         result[key] = value;
       } else {
@@ -139,22 +135,18 @@ const parsePool = (raw: string | undefined): StoredPoolRecord => {
 };
 
 const parseSelection = (raw: string | undefined): StoredSelectionRecord => {
-  if (!raw) {
+  if (raw === undefined || raw === "") {
     return {};
   }
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") {
+    if (!isRecord(parsed)) {
       return {};
     }
     const result: StoredSelectionRecord = {};
-    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-      if (
-        VALID_CHAIN_PLATFORMS.has(key as ChainPlatform) &&
-        typeof value === "string" &&
-        value.length > 0
-      ) {
-        result[key as ChainPlatform] = value;
+    for (const [key, value] of Object.entries(parsed)) {
+      if (isChainPlatform(key) && typeof value === "string" && value.length > 0) {
+        result[key] = value;
       }
     }
     return result;
@@ -195,7 +187,8 @@ const readWalletSnapshot = (
   source: CookieSource,
   options: SnapshotOptions = {},
 ): WalletSnapshot => {
-  const keyPrefix = options.keyPrefix || "butr";
+  const keyPrefix =
+    options.keyPrefix === undefined || options.keyPrefix === "" ? "butr" : options.keyPrefix;
   const cookies = toCookieMap(source);
 
   const pool = parsePool(cookies.get(`${keyPrefix}-pool`));
@@ -203,7 +196,7 @@ const readWalletSnapshot = (
 
   const rawActive = cookies.get(`${keyPrefix}-active`);
   let activeConnectorId: string | null = null;
-  if (rawActive && rawActive.length > 0 && pool[rawActive]) {
+  if (rawActive !== undefined && rawActive.length > 0 && pool[rawActive] !== undefined) {
     activeConnectorId = rawActive;
   } else {
     // Mirror `HydrationCoordinator.hydrate` selection-fallback: when no

@@ -125,8 +125,8 @@ const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
   }, [store]);
 
   useEffect(() => {
-    if (!discovery) {
-      return;
+    if (discovery === undefined) {
+      return undefined;
     }
     const unsubscribe = discovery.subscribe((adapter) => {
       if (adapters.has(adapter.id)) {

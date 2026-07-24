@@ -9,10 +9,9 @@ import "./index.css";
 // oxlint-disable-next-line unicorn/prefer-node-protocol -- intentionally the npm browser polyfill, not the Node built-in
 import { Buffer } from "buffer";
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- attaching the browser Buffer polyfill onto the untyped global scope
 const globalScope = globalThis as unknown as { Buffer?: typeof Buffer };
-if (globalScope.Buffer === undefined) {
-  globalScope.Buffer = Buffer;
-}
+globalScope.Buffer ??= Buffer;
 
 import "@wormhole-foundation/sdk-evm-cctp";
 import "@wormhole-foundation/sdk-solana-cctp";

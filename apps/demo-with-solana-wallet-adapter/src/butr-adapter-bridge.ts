@@ -14,6 +14,11 @@ import type { WalletAdapter as ButrWalletAdapter } from "@usebutr/core";
 import type { SolanaSignAndSendTransactionFeature, SolanaSignMessageFeature } from "@usebutr/svm";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
+// @solana/wallet-adapter's interface declares Promise-returning methods whose
+// bodies are synchronous here; async would only trip require-await. Disable
+// file-wide so the per-method fallow-ignore comments stay adjacent to methods.
+// oxlint-disable typescript/promise-function-async
+
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const bytesToBase58 = (bytes: Uint8Array): string => {
   let intVal = 0n;
@@ -67,6 +72,7 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
 
   // fallow-ignore-next-line unused-class-member
   get name(): WalletName {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: bridging butr's string id to @solana/wallet-adapter's branded WalletName
     return this.butr.name as WalletName;
   }
 
@@ -102,7 +108,7 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     this._connecting = true;
     try {
       const pk = this._publicKey;
-      if (!pk) {
+      if (pk === null) {
         return Promise.resolve();
       }
       this.emit("connect", pk);
@@ -121,18 +127,19 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
 
   // fallow-ignore-next-line unused-class-member
   async signMessage(message: Uint8Array): Promise<Uint8Array> {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: untyped Wallet Standard feature registry
     const feature = this._wallet.features["solana:signMessage"] as
       | SolanaSignMessageFeature
       | undefined;
-    if (!feature) {
+    if (feature === undefined) {
       throw new Error("Wallet does not advertise solana:signMessage");
     }
     const account = this._wallet.accounts[0];
-    if (!account) {
+    if (account === undefined) {
       throw new Error("No exposed account");
     }
     const [output] = await feature.signMessage({ account, message });
-    if (!output) {
+    if (output === undefined) {
       throw new Error("signMessage returned no outputs");
     }
     return output.signature;
@@ -159,14 +166,15 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     _connection: Connection,
     _options?: SendTransactionOptions,
   ): Promise<string> {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: untyped Wallet Standard feature registry
     const feature = this._wallet.features["solana:signAndSendTransaction"] as
       | SolanaSignAndSendTransactionFeature
       | undefined;
-    if (!feature) {
+    if (feature === undefined) {
       throw new Error("Wallet does not advertise solana:signAndSendTransaction");
     }
     const account = this._wallet.accounts[0];
-    if (!account) {
+    if (account === undefined) {
       throw new Error("No exposed account");
     }
     const serialised =
@@ -178,7 +186,7 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
       chain: "solana:devnet",
       transaction: new Uint8Array(serialised),
     });
-    if (!output) {
+    if (output === undefined) {
       throw new Error("signAndSendTransaction returned no outputs");
     }
     return bytesToBase58(output.signature);

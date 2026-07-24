@@ -26,8 +26,17 @@ type InjectedBitcoinDiscoveryOptions = {
 };
 
 const readHost = (target: InjectedBitcoinDiscoveryOptions["target"]): InjectedHost | null => {
-  const globalWindow = typeof window === "undefined" ? null : (window as unknown as InjectedHost);
-  return target === undefined ? globalWindow : target;
+  if (target !== undefined) {
+    return target;
+  }
+  if (typeof window === "undefined") {
+    return null;
+  }
+  // `window` carries the injected wallet globals (`unisat`, `okxwallet`,
+  // etc.) as an untyped host object; `InjectedHost` names the four keys
+  // butr probes, all optional and read defensively in `probeProviders`.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped injected-wallet window globals
+  return window as unknown as InjectedHost;
 };
 
 const probeProviders = (host: InjectedHost): Array<WalletAdapter> => {
@@ -86,11 +95,11 @@ const discoverInjectedBitcoinAdapter = (
     if (cancelled) {
       return;
     }
-    if (options.hasAnyWalletStandardAdapter?.()) {
+    if (options.hasAnyWalletStandardAdapter?.() === true) {
       return;
     }
     const host = readHost(options.target);
-    if (!host) {
+    if (host === null) {
       return;
     }
     const adapters = probeProviders(host);

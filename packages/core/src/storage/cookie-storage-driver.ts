@@ -86,7 +86,7 @@ const buildCookieString = (
   expired = false,
 ): string => {
   const parts: Array<string> = [`${name}=${encode(value)}`, `Path=${options.path ?? "/"}`];
-  if (options.domain) {
+  if (options.domain !== undefined && options.domain !== "") {
     parts.push(`Domain=${options.domain}`);
   }
   if (expired) {
@@ -106,10 +106,10 @@ const toCookieMap = (input: InitialCookies | undefined): Map<string, string> | n
   if (!input) {
     return null;
   }
-  if (typeof (input as Iterable<[string, string]>)[Symbol.iterator] === "function") {
-    return new Map(input as Iterable<[string, string]>);
+  if (Symbol.iterator in input) {
+    return new Map(input);
   }
-  return new Map(Object.entries(input as Readonly<Record<string, string>>));
+  return new Map(Object.entries(input));
 };
 
 /**

@@ -69,6 +69,7 @@ const Connected = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const account: Address = useMemo(
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: butr addresses are hex strings; narrow to viem's Address
     () => wallet.account.walletAddress as Address,
     [wallet.account.walletAddress],
   );
@@ -80,6 +81,7 @@ const Connected = ({
         if (cancelled) {
           return;
         }
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: EVM adapter getSigner() returns the raw EIP-1193 provider
         const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
         if (cancelled) {
           return;
@@ -90,7 +92,7 @@ const Connected = ({
         // @wagmi/core actions know which connector to call. The wallet has
         // already authorised the dapp via butr, so this resolves silently; no
         // second popup.
-        if (connector) {
+        if (connector !== undefined) {
           await connect(cfg, { connector });
         }
         if (!cancelled) {
@@ -108,8 +110,8 @@ const Connected = ({
   }, [account, wallet.connector]);
 
   useEffect(() => {
-    if (!wagmiConfig) {
-      return;
+    if (wagmiConfig === null) {
+      return undefined;
     }
     let cancelled = false;
     void (async () => {
@@ -196,12 +198,12 @@ const Connected = ({
           Send 0 ETH to burn address
         </button>
       </div>
-      {signature ? (
+      {signature !== null && signature !== "" ? (
         <Row label="Signature">
           <code className="font-mono text-xs break-all">{signature}</code>
         </Row>
       ) : null}
-      {txHash ? (
+      {txHash !== null && txHash !== "" ? (
         <Row label="Tx hash">
           <a
             className="font-mono text-xs break-all text-blue-600 hover:underline"
@@ -213,7 +215,7 @@ const Connected = ({
           </a>
         </Row>
       ) : null}
-      {errorMsg ? (
+      {errorMsg !== null && errorMsg !== "" ? (
         <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {errorMsg}
         </p>
@@ -243,10 +245,12 @@ const Content = () => {
               <li key={wallet.id}>
                 <button
                   className="flex w-full items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-left hover:bg-neutral-50"
-                  onClick={() => void connectWallet(wallet.id)}
+                  onClick={() => {
+                    void connectWallet(wallet.id);
+                  }}
                   type="button"
                 >
-                  {wallet.icon ? (
+                  {wallet.icon !== undefined && wallet.icon !== "" ? (
                     <img
                       alt=""
                       className="size-6 rounded"
@@ -265,7 +269,14 @@ const Content = () => {
     );
   }
 
-  return <Connected onDisconnect={() => disconnect(active.connector.id)} wallet={active} />;
+  return (
+    <Connected
+      onDisconnect={() => {
+        disconnect(active.connector.id);
+      }}
+      wallet={active}
+    />
+  );
 };
 
 const App = () => (

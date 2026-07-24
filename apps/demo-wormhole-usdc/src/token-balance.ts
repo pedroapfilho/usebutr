@@ -1,4 +1,4 @@
-import { type Address, address as toAddress, createSolanaRpc } from "@solana/kit";
+import { address as toAddress, createSolanaRpc } from "@solana/kit";
 import { formatUnits } from "ethers";
 import { useEffect, useReducer } from "react";
 
@@ -64,8 +64,9 @@ const readEvmUsdc = async (spec: ChainSpec, owner: string): Promise<string> => {
     headers: { "content-type": "application/json" },
     method: "POST",
   });
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON-RPC response is untyped `any`; this is the typed boundary
   const json = (await response.json()) as { error?: { message: string }; result?: string };
-  if (json.error) {
+  if (json.error !== undefined) {
     throw new Error(json.error.message);
   }
   return formatUnits(BigInt(json.result ?? "0x0"), USDC_DECIMALS);
@@ -75,20 +76,21 @@ const readSvmUsdc = async (spec: ChainSpec, owner: string): Promise<string> => {
   const rpc = createSolanaRpc(spec.rpcUrl);
   const response = await rpc
     .getTokenAccountsByOwner(
-      toAddress(owner) as Address,
-      { mint: toAddress(spec.usdc) as Address },
+      toAddress(owner),
+      { mint: toAddress(spec.usdc) },
       { encoding: "jsonParsed" },
     )
     .send();
   const first = response.value[0];
-  if (!first) {
+  if (first === undefined) {
     return "0";
   }
-  const info = (
-    first.account.data as unknown as {
-      parsed?: { info?: { tokenAmount?: { uiAmount?: number; uiAmountString?: string } } };
-    }
-  ).parsed?.info?.tokenAmount;
+  type ParsedTokenData = {
+    parsed?: { info?: { tokenAmount?: { uiAmount?: number; uiAmountString?: string } } };
+  };
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- jsonParsed SPL token account shape is untyped at the RPC boundary
+  const parsedData = first.account.data as unknown as ParsedTokenData;
+  const info = parsedData.parsed?.info?.tokenAmount;
   return info?.uiAmountString ?? String(info?.uiAmount ?? 0);
 };
 
@@ -103,7 +105,7 @@ const useUsdcBalance = (spec: ChainSpec, owner: string | null | undefined): Usdc
   useEffect(() => {
     if (owner === null || owner === undefined || owner === "") {
       dispatch({ type: "reset" });
-      return;
+      return undefined;
     }
     let cancelled = false;
     dispatch({ type: "load" });
@@ -126,7 +128,9 @@ const useUsdcBalance = (spec: ChainSpec, owner: string | null | undefined): Usdc
   }, [spec, owner, state.tick]);
 
   return {
-    refetch: () => dispatch({ type: "bump" }),
+    refetch: () => {
+      dispatch({ type: "bump" });
+    },
     status: state.status,
     uiAmountString: state.status === "success" ? state.uiAmountString : null,
   };

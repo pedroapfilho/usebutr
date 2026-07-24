@@ -55,7 +55,10 @@ const ChainSelect = ({
     aria-label={label}
     className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs text-neutral-700 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:outline-none disabled:opacity-50"
     disabled={disabled}
-    onChange={(e) => onChange(e.target.value as Chain)}
+    onChange={(e) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: the select's option values are Wormhole Chain literals
+      onChange(e.target.value as Chain);
+    }}
     value={value}
   >
     {CHAIN_LIST.map((s) => (
@@ -92,12 +95,16 @@ const TokenIO = ({
           aria-label="USDC amount to send"
           className="w-full rounded-sm bg-transparent text-2xl font-semibold text-neutral-900 placeholder-neutral-300 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:outline-none"
           inputMode="decimal"
-          onChange={(e) => onAmountChange(e.target.value)}
+          onChange={(e) => {
+            onAmountChange(e.target.value);
+          }}
           placeholder="0"
           value={amountValue ?? ""}
         />
       ) : (
-        <span className="text-2xl font-semibold text-neutral-900">{amountValue || "0"}</span>
+        <span className="text-2xl font-semibold text-neutral-900">
+          {amountValue === undefined || amountValue === "" ? "0" : amountValue}
+        </span>
       )}
       <span className="text-base font-medium text-neutral-500">USDC</span>
     </div>

@@ -29,7 +29,7 @@ const PairingDialog = () => {
 
   useEffect(() => {
     const dialog = dialogRef.current;
-    if (!dialog) {
+    if (dialog === null) {
       return;
     }
     if (open) {
@@ -43,15 +43,17 @@ const PairingDialog = () => {
   // reset copy feedback for the next pairing attempt.
   useEffect(() => {
     const dialog = dialogRef.current;
-    if (!dialog) {
-      return;
+    if (dialog === null) {
+      return undefined;
     }
     const handleClose = () => {
       clearPairingUri();
       setCopied(false);
     };
     dialog.addEventListener("close", handleClose);
-    return () => dialog.removeEventListener("close", handleClose);
+    return () => {
+      dialog.removeEventListener("close", handleClose);
+    };
   }, []);
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
@@ -96,7 +98,7 @@ const PairingDialog = () => {
         </button>
       </div>
       <div className="flex flex-col items-center gap-4 p-5">
-        {qrSrc ? (
+        {qrSrc !== null && qrSrc !== "" ? (
           <img
             alt="WalletConnect pairing QR code"
             className="size-56 rounded-lg border border-neutral-100"

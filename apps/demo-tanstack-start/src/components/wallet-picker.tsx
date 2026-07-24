@@ -34,7 +34,7 @@ const WalletBrandRow = ({
     <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-3">
-          {brand.icon ? (
+          {brand.icon !== undefined && brand.icon !== "" ? (
             <img alt="" className="size-6 rounded" height={24} src={brand.icon} width={24} />
           ) : null}
           <span className="font-medium">{brand.name}</span>
@@ -49,7 +49,9 @@ const WalletBrandRow = ({
                 className="min-h-[44px] rounded-md border border-neutral-300 px-2 py-1 font-mono text-xs uppercase hover:bg-neutral-50 disabled:opacity-50"
                 disabled={isConnecting}
                 key={adapter.id}
-                onClick={() => connect(adapter.id)}
+                onClick={() => {
+                  connect(adapter.id);
+                }}
                 type="button"
               >
                 {adapter.chainPlatform}
@@ -113,7 +115,12 @@ const WalletPicker = ({
       <ul className="space-y-2">
         {brands.map((brand) => (
           <li key={brand.name}>
-            <WalletBrandRow brand={brand} connect={connect} />
+            <WalletBrandRow
+              brand={brand}
+              connect={(id) => {
+                void connect(id);
+              }}
+            />
           </li>
         ))}
       </ul>

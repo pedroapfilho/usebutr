@@ -59,7 +59,13 @@ const readInjectedWindow = (target?: InjectedWindow | null): InjectedWindow | nu
   if (target !== undefined) {
     return target;
   }
-  return typeof window === "undefined" ? null : (window as unknown as InjectedWindow);
+  if (typeof window === "undefined") {
+    return null;
+  }
+  // `window.injectedWeb3` is the untyped Polkadot extension registry; the
+  // DOM lib doesn't declare it, so this boundary assertion is unavoidable.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped window.injectedWeb3 extension registry
+  return window as unknown as InjectedWindow;
 };
 
 export type { Injected, InjectedAccount, InjectedSigner, InjectedWindow, InjectedWindowProvider };

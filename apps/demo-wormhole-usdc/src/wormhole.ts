@@ -24,7 +24,8 @@ const ensureChain = async (
   provider: Eip1193Provider,
   expectedChainIdHex: string,
 ): Promise<void> => {
-  const current = (await provider.request({ method: "eth_chainId" })) as string;
+  const rawChainId: unknown = await provider.request({ method: "eth_chainId" });
+  const current = typeof rawChainId === "string" ? rawChainId : "";
   if (current.toLowerCase() === expectedChainIdHex.toLowerCase()) {
     return;
   }
@@ -39,9 +40,10 @@ const ensureChain = async (
 // (or the mint, on an EVM destination) lands on the correct chain.
 const makeSigner = async (spec: ChainSpec, wallet: ConnectedWallet) => {
   if (spec.platform === "evm") {
-    if (!spec.evmChainIdHex) {
+    if (spec.evmChainIdHex === undefined || spec.evmChainIdHex === "") {
       throw new Error(`${spec.label} is missing an EVM chain id`);
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- EVM adapter getSigner() returns the raw EIP-1193 provider
     const provider = (await wallet.connector.getSigner()) as Eip1193Provider;
     await ensureChain(provider, spec.evmChainIdHex);
     return new ButrEvmWormholeSigner(spec.chain, wallet.account.walletAddress, provider);

@@ -70,8 +70,8 @@ const AdapterConsumer = ({
   const pubkey = useMemo(() => publicKey ?? null, [publicKey]);
 
   useEffect(() => {
-    if (!pubkey) {
-      return;
+    if (pubkey === null) {
+      return undefined;
     }
     let cancelled = false;
     void (async () => {
@@ -138,7 +138,9 @@ const AdapterConsumer = ({
         </div>
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
-          onClick={() => disconnect(butrWallet.connector.id)}
+          onClick={() => {
+            disconnect(butrWallet.connector.id);
+          }}
           type="button"
         >
           Disconnect
@@ -164,12 +166,12 @@ const AdapterConsumer = ({
           Send 0 SOL to System Program
         </button>
       </div>
-      {signature ? (
+      {signature !== null && signature !== "" ? (
         <Row label="Signature">
           <code className="font-mono text-xs break-all">{signature}</code>
         </Row>
       ) : null}
-      {txSignature ? (
+      {txSignature !== null && txSignature !== "" ? (
         <Row label="Tx signature">
           <a
             className="font-mono text-xs break-all text-blue-600 hover:underline"
@@ -181,7 +183,7 @@ const AdapterConsumer = ({
           </a>
         </Row>
       ) : null}
-      {errorMsg ? (
+      {errorMsg !== null && errorMsg !== "" ? (
         <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {errorMsg}
         </p>
@@ -201,6 +203,7 @@ const BridgeAndExplore = ({ wallet }: { wallet: ReturnType<typeof useActiveWalle
         if (cancelled) {
           return;
         }
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: getSigner() returns the Wallet Standard wallet for SVM adapters
         const ws = (await wallet.connector.getSigner()) as WalletStandardWallet;
         if (cancelled) {
           return;
@@ -217,7 +220,7 @@ const BridgeAndExplore = ({ wallet }: { wallet: ReturnType<typeof useActiveWalle
     };
   }, [wallet.account.walletAddress, wallet.connector]);
 
-  if (errorMsg) {
+  if (errorMsg !== null && errorMsg !== "") {
     return (
       <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
         {errorMsg}
@@ -259,10 +262,12 @@ const Content = () => {
               <li key={wallet.id}>
                 <button
                   className="flex w-full items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-left hover:bg-neutral-50"
-                  onClick={() => void connect(wallet.id)}
+                  onClick={() => {
+                    void connect(wallet.id);
+                  }}
                   type="button"
                 >
-                  {wallet.icon ? (
+                  {wallet.icon !== undefined && wallet.icon !== "" ? (
                     <img
                       alt=""
                       className="size-6 rounded"

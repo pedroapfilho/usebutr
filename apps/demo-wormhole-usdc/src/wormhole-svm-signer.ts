@@ -1,3 +1,4 @@
+/* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-argument, typescript/no-unsafe-call -- Wormhole SDK types UnsignedTransaction.transaction as `any`; this file is the typed boundary that narrows it */
 import { type Signature, createSolanaRpc, getBase58Decoder, getBase64Encoder } from "@solana/kit";
 import type { WalletAdapter } from "@usebutr/core";
 import type {
@@ -27,11 +28,11 @@ const toBase58Signature = (base64: string): string =>
 const confirmSignature = async (rpc: SolanaRpc, sig: string): Promise<void> => {
   const deadline = Date.now() + CONFIRM_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    // oxlint-disable-next-line no-await-in-loop
+    // oxlint-disable-next-line no-await-in-loop, typescript/no-unsafe-type-assertion -- sequential status poll; @solana/kit Signature is a branded string for a validated base58 signature
     const { value } = await rpc.getSignatureStatuses([sig as Signature]).send();
     const status = value[0];
     if (status) {
-      if (status.err) {
+      if (status.err !== null) {
         throw new Error(`Solana tx ${sig} failed: ${JSON.stringify(status.err)}`);
       }
       if (status.confirmationStatus === "confirmed" || status.confirmationStatus === "finalized") {
@@ -72,7 +73,7 @@ type SolanaUnsignedTx<N extends Network, C extends Chain> = UnsignedTransaction<
 };
 
 const isVersioned = (tx: LegacyTx | VersionedTx): tx is VersionedTx =>
-  "message" in tx && typeof (tx as VersionedTx).message === "object";
+  "message" in tx && typeof tx.message === "object";
 
 /**
  * Routes Wormhole-built Solana transactions through butr's SVM adapter,
@@ -88,10 +89,10 @@ const isVersioned = (tx: LegacyTx | VersionedTx): tx is VersionedTx =>
  * required".
  */
 class ButrSvmWormholeSigner<N extends Network, C extends Chain> implements SignAndSendSigner<N, C> {
-  private _chain: C;
-  private _address: string;
-  private _connector: WalletAdapter;
-  private _rpcUrl: string;
+  private readonly _chain: C;
+  private readonly _address: string;
+  private readonly _connector: WalletAdapter;
+  private readonly _rpcUrl: string;
 
   constructor(chain: C, address: string, connector: WalletAdapter, rpcUrl: string) {
     this._chain = chain;
@@ -120,13 +121,13 @@ class ButrSvmWormholeSigner<N extends Network, C extends Chain> implements SignA
       let serialized: Uint8Array;
       if (isVersioned(transaction)) {
         transaction.message.recentBlockhash = value.blockhash;
-        if (signers && signers.length > 0) {
+        if (signers !== undefined && signers.length > 0) {
           transaction.sign(signers);
         }
         serialized = transaction.serialize();
       } else {
         transaction.recentBlockhash = value.blockhash;
-        if (signers && signers.length > 0) {
+        if (signers !== undefined && signers.length > 0) {
           transaction.partialSign(...signers);
         }
         // The wallet adds the fee-payer signature, so don't require a

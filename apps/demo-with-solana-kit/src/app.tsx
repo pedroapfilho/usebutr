@@ -108,6 +108,7 @@ const Connected = ({
     let cancelled = false;
     void (async () => {
       try {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: getSigner() returns the Wallet Standard wallet for SVM adapters
         const ws = (await wallet.connector.getSigner()) as WalletStandardWallet;
         if (!cancelled) {
           setWalletStd(ws);
@@ -150,19 +151,20 @@ const Connected = ({
     }
     setErrorMsg(null);
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: untyped Wallet Standard feature registry
       const feature = walletStd.features["solana:signMessage"] as
         | SolanaSignMessageFeature
         | undefined;
-      if (!feature) {
+      if (feature === undefined) {
         throw new Error("Wallet does not advertise solana:signMessage");
       }
       const account = walletStd.accounts[0];
-      if (!account) {
+      if (account === undefined) {
         throw new Error("No exposed account");
       }
       const message = new TextEncoder().encode("Hello from butr + @solana/kit");
       const [output] = await feature.signMessage({ account, message });
-      if (!output) {
+      if (output === undefined) {
         throw new Error("signMessage returned no outputs");
       }
       setSignature(bytesToBase58(output.signature));
@@ -190,14 +192,15 @@ const Connected = ({
       const wire = getBase64EncodedWireTransaction(compiled);
       const bytes = base64ToBytes(wire);
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: untyped Wallet Standard feature registry
       const feature = walletStd.features["solana:signAndSendTransaction"] as
         | SolanaSignAndSendTransactionFeature
         | undefined;
-      if (!feature) {
+      if (feature === undefined) {
         throw new Error("Wallet does not advertise solana:signAndSendTransaction");
       }
       const account = walletStd.accounts[0];
-      if (!account) {
+      if (account === undefined) {
         throw new Error("No exposed account");
       }
       const [output] = await feature.signAndSendTransaction({
@@ -205,7 +208,7 @@ const Connected = ({
         chain: "solana:devnet",
         transaction: bytes,
       });
-      if (!output) {
+      if (output === undefined) {
         throw new Error("signAndSendTransaction returned no outputs");
       }
       setTxSignature(bytesToBase58(output.signature));
@@ -250,12 +253,12 @@ const Connected = ({
           Send 0 SOL to System Program
         </button>
       </div>
-      {signature ? (
+      {signature !== null && signature !== "" ? (
         <Row label="Signature">
           <code className="font-mono text-xs break-all">{signature}</code>
         </Row>
       ) : null}
-      {txSignature ? (
+      {txSignature !== null && txSignature !== "" ? (
         <Row label="Tx signature">
           <a
             className="font-mono text-xs break-all text-blue-600 hover:underline"
@@ -267,7 +270,7 @@ const Connected = ({
           </a>
         </Row>
       ) : null}
-      {errorMsg ? (
+      {errorMsg !== null && errorMsg !== "" ? (
         <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {errorMsg}
         </p>
@@ -296,10 +299,12 @@ const Content = () => {
               <li key={wallet.id}>
                 <button
                   className="flex w-full items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-left hover:bg-neutral-50"
-                  onClick={() => void connect(wallet.id)}
+                  onClick={() => {
+                    void connect(wallet.id);
+                  }}
                   type="button"
                 >
-                  {wallet.icon ? (
+                  {wallet.icon !== undefined && wallet.icon !== "" ? (
                     <img
                       alt=""
                       className="size-6 rounded"
@@ -318,7 +323,14 @@ const Content = () => {
     );
   }
 
-  return <Connected onDisconnect={() => disconnect(active.connector.id)} wallet={active} />;
+  return (
+    <Connected
+      onDisconnect={() => {
+        disconnect(active.connector.id);
+      }}
+      wallet={active}
+    />
+  );
 };
 
 const App = () => (

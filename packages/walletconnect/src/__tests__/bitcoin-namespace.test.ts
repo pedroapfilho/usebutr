@@ -120,7 +120,7 @@ describe("bitcoinNamespace", () => {
     await adapter.connect();
 
     expect(provider.connectCalls).toHaveLength(1);
-    const namespace = provider.connectCalls[0]?.namespaces["bip122"];
+    const namespace = provider.connectCalls[0]?.namespaces.bip122;
     expect(namespace?.chains).toEqual([MAINNET, TESTNET]);
     expect(namespace?.methods).toContain("signMessage");
     expect(namespace?.methods).toContain("signPsbt");

@@ -30,6 +30,7 @@ const RootLayout = ({ children }: { children: ReactNode }) => (
         className="reading-progress-bar fixed top-0 left-0 z-50 h-0.5 bg-[--primary] [animation-range:0%_100%]"
         style={{ width: "0%" }}
       />
+      {/* oxlint-disable-next-line typescript/no-deprecated -- fumadocs static-search `type` option; migration to the re-created dialog is tracked upstream */}
       <RootProvider search={{ options: { type: "static" } }}>{children}</RootProvider>
     </body>
   </html>

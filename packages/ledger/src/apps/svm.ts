@@ -40,6 +40,7 @@ const DEFAULT_DERIVATION_PATH_PREFIX = "44'/501'/0'";
 const DEFAULT_CLUSTER: SolanaCluster = "mainnet";
 
 const loadSolana = async (): Promise<SolanaAppConstructor> => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped optional peer-dep module boundary
   const mod = (await import("@ledgerhq/hw-app-solana")) as unknown as {
     default?: SolanaAppConstructor;
     Solana?: SolanaAppConstructor;
@@ -187,7 +188,7 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
     chainPlatform: "svm",
 
     async connect(opts) {
-      if (opts?.silent) {
+      if (opts?.silent === true) {
         // Ledger connect always shows the browser's WebUSB device
         // picker; there is no silent reconnect. Reject so eager
         // hydration doesn't pop the chooser on page load.
@@ -212,15 +213,15 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
       currentAddress = null;
     },
 
-    getAccount() {
-      if (!currentAddress) {
+    getAccount: () => {
+      if (currentAddress === null || currentAddress === "") {
         return Promise.resolve(null);
       }
       return Promise.resolve(buildSolanaAccount(currentAddress, buildSolanaChain(cluster, name)));
     },
 
     async getAccounts() {
-      if (!solana) {
+      if (solana === null) {
         return [];
       }
       const chain = buildSolanaChain(cluster, name);
@@ -236,47 +237,39 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
       return accounts;
     },
 
-    getBalance() {
-      return Promise.reject(
+    getBalance: () =>
+      Promise.reject(
         new Error(
-          "[butr/ledger] getBalance not supported — Ledger has no RPC. Use @solana/kit or @solana/web3.js with your own RPC URL.",
+          "[butr/ledger] getBalance not supported: Ledger has no RPC. Use @solana/kit or @solana/web3.js with your own RPC URL.",
         ),
-      );
-    },
+      ),
 
-    getSigner() {
-      return Promise.resolve(solana);
-    },
+    getSigner: () => Promise.resolve(solana),
 
-    getTransactionReceipt() {
-      return Promise.reject(
-        new Error("[butr/ledger] getTransactionReceipt not supported — Ledger has no RPC."),
-      );
-    },
+    getTransactionReceipt: () =>
+      Promise.reject(
+        new Error("[butr/ledger] getTransactionReceipt not supported: Ledger has no RPC."),
+      ),
 
     icon,
     id,
     name,
 
-    sendTx() {
-      return Promise.reject(
+    sendTx: () =>
+      Promise.reject(
         new Error(
-          "[butr/ledger] sendTx not supported — Ledger signs but doesn't broadcast. Use signTransaction + @solana/kit / @solana/web3.js.",
+          "[butr/ledger] sendTx not supported: Ledger signs but doesn't broadcast. Use signTransaction + @solana/kit / @solana/web3.js.",
         ),
-      );
-    },
+      ),
 
-    sendTxToChain() {
-      return Promise.reject(
-        new Error(
-          "[butr/ledger] sendTxToChain not supported — Ledger signs but doesn't broadcast.",
-        ),
-      );
-    },
+    sendTxToChain: () =>
+      Promise.reject(
+        new Error("[butr/ledger] sendTxToChain not supported: Ledger signs but doesn't broadcast."),
+      ),
 
     async signMessage(message, account) {
-      if (!solana) {
-        throw new Error("[butr/ledger] not connected — call connect() first");
+      if (solana === null) {
+        throw new Error("[butr/ledger] not connected: call connect() first");
       }
       let path = pathAt(0);
       if (account && account.walletAddress !== currentAddress) {
@@ -312,8 +305,8 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
      * Live + every Solana wallet ships this surface.
      */
     async signTransaction(tx, account) {
-      if (!solana) {
-        throw new Error("[butr/ledger] not connected — call connect() first");
+      if (solana === null) {
+        throw new Error("[butr/ledger] not connected: call connect() first");
       }
       if (!(tx instanceof Uint8Array)) {
         throw new TypeError(
@@ -344,21 +337,20 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
       return new Uint8Array(result.signature);
     },
 
-    subscribe() {
+    subscribe: () => {
       // No-op; Ledger emits no events. Capabilities flag is `false`.
       void SUBSCRIBE_NOT_AVAILABLE;
       return () => {};
     },
 
-    switchAccount() {
-      return Promise.reject(
+    switchAccount: () =>
+      Promise.reject(
         new Error(
-          "[butr/ledger] switchAccount not supported — pick a different account via signMessage(msg, account) using a different derivation path",
+          "[butr/ledger] switchAccount not supported: pick a different account via signMessage(msg, account) using a different derivation path",
         ),
-      );
-    },
+      ),
 
-    switchChain(chain) {
+    switchChain: (chain) => {
       if (chain.namespace !== "solana") {
         return Promise.reject(
           new Error(

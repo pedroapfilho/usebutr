@@ -1,4 +1,5 @@
 import type { ChainPlatform, WalletAdapter } from "@usebutr/core";
+import type { Eip1193Listener } from "@usebutr/evm";
 
 import type { UniversalProviderConstructor, UniversalProviderLike } from "./loader";
 import { loadUniversalProvider } from "./loader";
@@ -87,11 +88,12 @@ const initProvider = async (
   // or deep-link the user's mobile wallet.
   let cleanup = NOOP_CLEANUP;
   if (options.onPairingUri) {
-    const onDisplayUri = ((uri: unknown) => {
+    const onDisplayUri: Eip1193Listener = (...args) => {
+      const uri = args[0];
       if (typeof uri === "string") {
         options.onPairingUri?.(uri);
       }
-    }) as never;
+    };
     provider.on("display_uri", onDisplayUri);
     let removed = false;
     cleanup = () => {
@@ -113,7 +115,7 @@ const initProvider = async (
  * import its builder + add the entry. Today EVM, SVM, Sui, and Bitcoin
  * (bip122) all ship.
  */
-const KNOWN_NAMESPACES: Readonly<Partial<Record<ChainPlatform, WalletConnectNamespaceBuilder>>> = {
+const KNOWN_NAMESPACES: Readonly<Record<string, WalletConnectNamespaceBuilder | undefined>> = {
   bitcoin: bitcoinNamespace,
   evm: evmNamespace,
   sui: suiNamespace,
@@ -158,9 +160,12 @@ const KNOWN_NAMESPACES: Readonly<Partial<Record<ChainPlatform, WalletConnectName
 const createWalletConnectAdapters = async (
   options: WalletConnectOptions,
 ): Promise<Array<WalletAdapter>> => {
-  const requested = Object.entries(options.namespaces).filter(([, v]) => v !== undefined) as Array<
-    [ChainPlatform, ReadonlyArray<string>]
-  >;
+  const requested: Array<[string, ReadonlyArray<string>]> = [];
+  for (const [key, value] of Object.entries(options.namespaces)) {
+    if (value !== undefined) {
+      requested.push([key, value]);
+    }
+  }
   if (requested.length === 0) {
     throw new Error(
       "[butr/walletconnect] createWalletConnectAdapters needs at least one namespace",

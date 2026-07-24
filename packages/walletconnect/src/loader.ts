@@ -19,7 +19,11 @@ type UniversalProviderLike = Eip1193Provider & {
     >;
   }) => Promise<unknown>;
   disconnect: () => Promise<void>;
-  session: unknown;
+  session: WcSession | null | undefined;
+};
+
+type WcSession = {
+  namespaces?: Record<string, { accounts?: ReadonlyArray<string> }>;
 };
 
 type UniversalProviderInitOptions = {
@@ -46,11 +50,20 @@ type UniversalProviderConstructor = {
  * (`{ UniversalProvider }` vs `default`); we accept either.
  */
 const loadUniversalProvider = async (): Promise<UniversalProviderConstructor> => {
-  const mod = (await import("@walletconnect/universal-provider")) as unknown as {
-    default?: UniversalProviderConstructor;
-    UniversalProvider: UniversalProviderConstructor;
-  };
-  return mod.UniversalProvider ?? (mod.default as UniversalProviderConstructor);
+  const mod: unknown = await import("@walletconnect/universal-provider");
+  if (typeof mod !== "object" || mod === null) {
+    throw new Error("@walletconnect/universal-provider did not resolve to a module");
+  }
+  const named = "UniversalProvider" in mod ? mod.UniversalProvider : undefined;
+  const fallback = "default" in mod ? mod.default : undefined;
+  const ctor = named ?? fallback;
+  if (typeof ctor !== "function") {
+    throw new TypeError(
+      "@walletconnect/universal-provider exposes no UniversalProvider constructor",
+    );
+  }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- validated the export is callable; the untyped WC module is otherwise opaque
+  return ctor as unknown as UniversalProviderConstructor;
 };
 
 export type { UniversalProviderConstructor, UniversalProviderInitOptions, UniversalProviderLike };

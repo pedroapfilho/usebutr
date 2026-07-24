@@ -13,7 +13,9 @@ const InstallCommand = () => {
     try {
       await navigator.clipboard.writeText(INSTALL_COMMAND);
       setCopied(true);
-      setTimeout(() => setCopied(false), RESET_DELAY_MS);
+      setTimeout(() => {
+        setCopied(false);
+      }, RESET_DELAY_MS);
     } catch {
       // Clipboard unavailable (insecure context or denied permission); no-op.
     }
@@ -28,7 +30,9 @@ const InstallCommand = () => {
       <button
         aria-label={copied ? "Copied install command" : "Copy install command"}
         className="text-muted-foreground hover:text-foreground focus-visible:outline-ring relative inline-flex size-7 items-center justify-center rounded-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-        onClick={handleCopy}
+        onClick={() => {
+          void handleCopy();
+        }}
         type="button"
       >
         {copied ? (

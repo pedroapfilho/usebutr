@@ -15,18 +15,40 @@ type DiscoverOptions = {
   target?: EventTarget;
 };
 
+const isEip6963AnnounceEvent = (event: Event): event is Eip6963AnnounceEvent => {
+  if (!("detail" in event)) {
+    return false;
+  }
+  const detail: unknown = event.detail;
+  if (typeof detail !== "object" || detail === null) {
+    return false;
+  }
+  if (!("info" in detail) || !("provider" in detail)) {
+    return false;
+  }
+  const { info, provider } = detail;
+  return (
+    typeof info === "object" &&
+    info !== null &&
+    "rdns" in info &&
+    typeof info.rdns === "string" &&
+    typeof provider === "object" &&
+    provider !== null
+  );
+};
+
+const isEventTarget = (value: unknown): value is EventTarget =>
+  typeof value === "object" &&
+  value !== null &&
+  "addEventListener" in value &&
+  typeof value.addEventListener === "function";
+
 const resolveTarget = (target?: EventTarget): EventTarget | null => {
-  if (target) {
+  if (target !== undefined) {
     return target;
   }
-  const candidate = (globalThis as { window?: unknown }).window;
-  if (
-    !candidate ||
-    typeof (candidate as { addEventListener?: unknown }).addEventListener !== "function"
-  ) {
-    return null;
-  }
-  return candidate as EventTarget;
+  const candidate: unknown = (globalThis as { window?: unknown }).window;
+  return isEventTarget(candidate) ? candidate : null;
 };
 
 /**
@@ -58,13 +80,11 @@ const discoverEvmAdapters = (
 
   const seen = new Set<string>();
   const handler = (event: Event) => {
-    const announce = event as Eip6963AnnounceEvent;
-    const detail = announce.detail;
-    if (!detail || !detail.info || !detail.provider) {
+    if (!isEip6963AnnounceEvent(event)) {
       return;
     }
-    const { info, provider } = detail;
-    if (typeof info.rdns !== "string" || info.rdns.length === 0) {
+    const { info, provider } = event.detail;
+    if (info.rdns.length === 0) {
       return;
     }
     if (seen.has(info.rdns)) {

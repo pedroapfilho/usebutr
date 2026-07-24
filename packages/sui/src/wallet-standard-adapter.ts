@@ -50,7 +50,8 @@ const coerceSuiTransaction = (tx: unknown): { toJSON: () => Promise<string> } | 
   if (typeof tx === "string") {
     return tx;
   }
-  if (tx && typeof tx === "object" && "toJSON" in tx && typeof tx.toJSON === "function") {
+  if (typeof tx === "object" && tx !== null && "toJSON" in tx && typeof tx.toJSON === "function") {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- validated toJSON() above; @mysten/sui Transaction is otherwise untyped here
     return tx as { toJSON: () => Promise<string> };
   }
   throw new TypeError(
@@ -84,11 +85,11 @@ const buildSuiAdapter = (
   registerDisconnector?: (emit: () => void) => void,
 ): WalletAdapter | null => {
   const suiChainId = pickSuiChain(wallet);
-  if (!suiChainId) {
+  if (suiChainId === null) {
     return null;
   }
   const connect = getFeature<StandardConnectFeature>(wallet, "standard:connect");
-  if (!connect) {
+  if (connect === undefined) {
     return null;
   }
 
@@ -112,7 +113,7 @@ const buildSuiAdapter = (
     const chain = currentChain();
     const built = wallet.accounts.map((a) => buildAccount(a.address, chain));
     const first = built[0];
-    if (!first) {
+    if (first === undefined) {
       return;
     }
     for (const listener of listeners) {
@@ -125,6 +126,25 @@ const buildSuiAdapter = (
       listener({ type: "disconnected" });
     }
   });
+
+  const executeTx = async (tx: unknown, account?: { walletAddress: string }): Promise<string> => {
+    if (signAndExecute === undefined) {
+      throw new Error(`Wallet ${wallet.name} does not advertise sui:signAndExecuteTransaction`);
+    }
+    const wsAccount = account
+      ? pickAccountByAddress(wallet.accounts, account.walletAddress)
+      : wallet.accounts[0];
+    if (wsAccount === undefined) {
+      throw new Error("No connected account");
+    }
+    const transaction = coerceSuiTransaction(tx);
+    const output = await signAndExecute.signAndExecuteTransaction({
+      account: wsAccount,
+      chain: currentChainId,
+      transaction,
+    });
+    return output.digest;
+  };
 
   return {
     capabilities: resolveSuiCapabilities({
@@ -139,11 +159,11 @@ const buildSuiAdapter = (
     chainPlatform: "sui",
 
     async connect(opts) {
-      await connect.connect(opts?.silent ? { silent: true } : undefined);
+      await connect.connect(opts?.silent === true ? { silent: true } : undefined);
     },
 
     async disconnect() {
-      if (disconnect) {
+      if (disconnect !== undefined) {
         try {
           await disconnect.disconnect();
         } catch (error) {
@@ -152,35 +172,30 @@ const buildSuiAdapter = (
       }
     },
 
-    getAccount() {
+    getAccount: () => {
       const address = pickFirstAddress(wallet.accounts);
-      if (!address) {
+      if (address === null) {
         return Promise.resolve(null);
       }
       return Promise.resolve(buildAccount(address, currentChain()));
     },
 
-    getAccounts() {
+    getAccounts: () => {
       const chain = currentChain();
       return Promise.resolve(wallet.accounts.map((a) => buildAccount(a.address, chain)));
     },
 
-    getBalance() {
-      return Promise.resolve({
+    getBalance: () =>
+      Promise.resolve({
         decimals: SUI_DECIMALS,
         formatted: "0",
         symbol: "SUI",
         value: 0n,
-      });
-    },
+      }),
 
-    getSigner() {
-      return Promise.resolve(wallet);
-    },
+    getSigner: () => Promise.resolve(wallet),
 
-    getTransactionReceipt() {
-      return Promise.resolve({ status: "Pending" as const });
-    },
+    getTransactionReceipt: () => Promise.resolve({ status: "Pending" as const }),
 
     icon: sanitizeIcon(wallet.icon),
     id: slugify(wallet.name),
@@ -190,38 +205,21 @@ const buildSuiAdapter = (
       await connect.connect();
     },
 
-    async sendTx(tx, account) {
-      if (!signAndExecute) {
-        throw new Error(`Wallet ${wallet.name} does not advertise sui:signAndExecuteTransaction`);
-      }
-      const wsAccount = account
-        ? pickAccountByAddress(wallet.accounts, account.walletAddress)
-        : (wallet.accounts[0] ?? null);
-      if (!wsAccount) {
-        throw new Error("No connected account");
-      }
-      const transaction = coerceSuiTransaction(tx);
-      const output = await signAndExecute.signAndExecuteTransaction({
-        account: wsAccount,
-        chain: currentChainId,
-        transaction,
-      });
-      return output.digest;
-    },
+    sendTx: (tx, account) => executeTx(tx, account),
 
-    sendTxToChain(tx, _targetChainId, account, cb) {
+    sendTxToChain: (tx, _targetChainId, account, cb) => {
       cb?.();
-      return this.sendTx(tx, account);
+      return executeTx(tx, account);
     },
 
     async signMessage(msg, account) {
-      if (!signMessage) {
+      if (signMessage === undefined) {
         throw new Error(`Wallet ${wallet.name} does not advertise sui:signPersonalMessage`);
       }
       const wsAccount = account
         ? pickAccountByAddress(wallet.accounts, account.walletAddress)
-        : (wallet.accounts[0] ?? null);
-      if (!wsAccount) {
+        : wallet.accounts[0];
+      if (wsAccount === undefined) {
         throw new Error("No connected account");
       }
       const output = await signMessage.signPersonalMessage({
@@ -234,13 +232,14 @@ const buildSuiAdapter = (
       };
     },
 
-    ...(signTx
-      ? {
+    ...(signTx === undefined
+      ? {}
+      : {
           async signTransaction(tx, account) {
             const wsAccount = account
               ? pickAccountByAddress(wallet.accounts, account.walletAddress)
-              : (wallet.accounts[0] ?? null);
-            if (!wsAccount) {
+              : wallet.accounts[0];
+            if (wsAccount === undefined) {
               throw new Error("No connected account");
             }
             const transaction = coerceSuiTransaction(tx);
@@ -251,24 +250,23 @@ const buildSuiAdapter = (
             });
             return base64ToBytes(output.bytes);
           },
-        }
-      : {}),
+        }),
 
     subscribe(listener) {
       listeners.add(listener);
       let unsubWallet: (() => void) | null = null;
-      if (events) {
+      if (events !== undefined) {
         const unsub = events.on("change", (changes) => {
-          if (changes.chains) {
+          if (changes.chains !== undefined) {
             const next =
               changes.chains.find((c) => c === "sui:mainnet") ??
               changes.chains.find((c) => c.startsWith(SUI_PREFIX));
-            if (next) {
+            if (next !== undefined) {
               currentChainId = next;
             }
           }
 
-          if (changes.accounts) {
+          if (changes.accounts !== undefined) {
             if (changes.accounts.length === 0) {
               listener({ type: "disconnected" });
               return;
@@ -276,18 +274,20 @@ const buildSuiAdapter = (
             const chain = currentChain();
             const built = changes.accounts.map((a) => buildAccount(a.address, chain));
             const first = built[0];
-            if (!first) {
+            if (first === undefined) {
               return;
             }
             listener({ account: first, accounts: built, type: "accountChanged" });
             return;
           }
 
-          if (changes.chains) {
+          if (changes.chains !== undefined) {
             notifyAccountChanged();
           }
         });
-        unsubWallet = () => unsub();
+        unsubWallet = () => {
+          unsub();
+        };
       }
       return () => {
         listeners.delete(listener);
@@ -295,7 +295,7 @@ const buildSuiAdapter = (
       };
     },
 
-    switchChain(chain) {
+    switchChain: (chain) => {
       if (chain.namespace !== "sui") {
         throw new Error(
           `Sui adapter received non-Sui chain "${chain.id}". Pass a chain with namespace "sui".`,

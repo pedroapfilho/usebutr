@@ -33,6 +33,7 @@ const DEFAULT_DERIVATION_PATH_PREFIX = "44'/60'/0'/0";
 const DEFAULT_CHAIN_ID = 1;
 
 const loadEth = async (): Promise<EthAppConstructor> => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped optional peer-dep module boundary
   const mod = (await import("@ledgerhq/hw-app-eth")) as unknown as {
     default?: EthAppConstructor;
     Eth?: EthAppConstructor;
@@ -141,7 +142,7 @@ const createEvmLedgerAdapter = (options: EvmLedgerOptions): Promise<WalletAdapte
     chainPlatform: "evm",
 
     async connect(opts) {
-      if (opts?.silent) {
+      if (opts?.silent === true) {
         // Ledger connect always shows the browser's WebUSB device
         // picker; there is no silent reconnect. Reject so eager
         // hydration doesn't pop the chooser on page load.
@@ -166,15 +167,15 @@ const createEvmLedgerAdapter = (options: EvmLedgerOptions): Promise<WalletAdapte
       currentAddress = null;
     },
 
-    getAccount() {
-      if (!currentAddress) {
+    getAccount: () => {
+      if (currentAddress === null || currentAddress === "") {
         return Promise.resolve(null);
       }
       return Promise.resolve(buildEvmAccount(currentAddress, buildEvmChain(chainId, name)));
     },
 
     async getAccounts() {
-      if (!eth) {
+      if (eth === null) {
         return [];
       }
       const chain = buildEvmChain(chainId, name);
@@ -189,47 +190,39 @@ const createEvmLedgerAdapter = (options: EvmLedgerOptions): Promise<WalletAdapte
       return accounts;
     },
 
-    getBalance() {
-      return Promise.reject(
+    getBalance: () =>
+      Promise.reject(
         new Error(
-          "[butr/ledger] getBalance not supported — Ledger has no RPC. Use viem/ethers with your own RPC URL.",
+          "[butr/ledger] getBalance not supported: Ledger has no RPC. Use viem/ethers with your own RPC URL.",
         ),
-      );
-    },
+      ),
 
-    getSigner() {
-      return Promise.resolve(eth);
-    },
+    getSigner: () => Promise.resolve(eth),
 
-    getTransactionReceipt() {
-      return Promise.reject(
-        new Error("[butr/ledger] getTransactionReceipt not supported — Ledger has no RPC."),
-      );
-    },
+    getTransactionReceipt: () =>
+      Promise.reject(
+        new Error("[butr/ledger] getTransactionReceipt not supported: Ledger has no RPC."),
+      ),
 
     icon,
     id,
     name,
 
-    sendTx() {
-      return Promise.reject(
+    sendTx: () =>
+      Promise.reject(
         new Error(
-          "[butr/ledger] sendTx not supported — Ledger signs but doesn't broadcast. Use `getSigner()` + viem/ethers.",
+          "[butr/ledger] sendTx not supported: Ledger signs but doesn't broadcast. Use `getSigner()` + viem/ethers.",
         ),
-      );
-    },
+      ),
 
-    sendTxToChain() {
-      return Promise.reject(
-        new Error(
-          "[butr/ledger] sendTxToChain not supported — Ledger signs but doesn't broadcast.",
-        ),
-      );
-    },
+    sendTxToChain: () =>
+      Promise.reject(
+        new Error("[butr/ledger] sendTxToChain not supported: Ledger signs but doesn't broadcast."),
+      ),
 
     async signMessage(message, account) {
-      if (!eth) {
-        throw new Error("[butr/ledger] not connected — call connect() first");
+      if (eth === null) {
+        throw new Error("[butr/ledger] not connected: call connect() first");
       }
       let path = pathAt(0);
       if (account && account.walletAddress.toLowerCase() !== currentAddress?.toLowerCase()) {
@@ -260,21 +253,20 @@ const createEvmLedgerAdapter = (options: EvmLedgerOptions): Promise<WalletAdapte
       return { signature, signedMessage: message };
     },
 
-    subscribe() {
+    subscribe: () => {
       // No-op; Ledger emits no events. Capabilities flag is `false`.
       void SUBSCRIBE_NOT_AVAILABLE;
       return () => {};
     },
 
-    switchAccount() {
-      return Promise.reject(
+    switchAccount: () =>
+      Promise.reject(
         new Error(
-          "[butr/ledger] switchAccount not supported — pick a different account via signMessage(msg, account) using a different derivation path",
+          "[butr/ledger] switchAccount not supported: pick a different account via signMessage(msg, account) using a different derivation path",
         ),
-      );
-    },
+      ),
 
-    switchChain(chain) {
+    switchChain: (chain) => {
       if (chain.namespace !== "eip155") {
         return Promise.reject(
           new Error(

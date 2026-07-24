@@ -109,7 +109,7 @@ describe("suiNamespace", () => {
     await adapter.connect();
 
     expect(provider.connectCalls).toHaveLength(1);
-    const namespace = provider.connectCalls[0]?.namespaces["sui"];
+    const namespace = provider.connectCalls[0]?.namespaces.sui;
     expect(namespace?.chains).toEqual(["sui:mainnet", "sui:testnet"]);
     expect(namespace?.methods).toContain("sui_signTransaction");
     expect(namespace?.methods).toContain("sui_signAndExecuteTransaction");

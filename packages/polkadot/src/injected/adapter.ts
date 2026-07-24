@@ -71,14 +71,14 @@ const buildInjectedPolkadotAdapter = (
   const listenersSet = new Set<(event: ConnectorEvent) => void>();
 
   const requireInjected = (): Injected => {
-    if (!injected) {
+    if (injected === null) {
       throw new Error(`Wallet ${displayName} is not connected`);
     }
     return injected;
   };
 
   const firstAddress = async (): Promise<string | null> => {
-    if (!injected) {
+    if (injected === null) {
       return null;
     }
     const accounts = await injected.accounts.get();
@@ -97,18 +97,18 @@ const buildInjectedPolkadotAdapter = (
       }
     },
 
-    disconnect() {
+    disconnect: () => {
       injected = null;
       return Promise.resolve();
     },
 
     async getAccount() {
       const address = await firstAddress();
-      return address ? buildPolkadotAccount(address, chain) : null;
+      return address === null ? null : buildPolkadotAccount(address, chain);
     },
 
     async getAccounts() {
-      if (!injected) {
+      if (injected === null) {
         return [];
       }
       const accounts = await injected.accounts.get();
@@ -120,7 +120,7 @@ const buildInjectedPolkadotAdapter = (
     async getSigner() {
       const ext = requireInjected();
       const address = await firstAddress();
-      if (!address) {
+      if (address === null) {
         throw new Error("No connected account");
       }
       const handle: PolkadotSignerHandle = { address, extension: ext, extensionName };
@@ -139,11 +139,11 @@ const buildInjectedPolkadotAdapter = (
 
     async signMessage(msg, account) {
       const ext = requireInjected();
-      if (!ext.signer.signRaw) {
+      if (ext.signer.signRaw === undefined) {
         throw new Error(`Wallet ${displayName} does not expose signRaw`);
       }
       const address = account?.walletAddress ?? (await firstAddress());
-      if (!address) {
+      if (address === null || address === "") {
         throw new Error("No connected account");
       }
       const wrapped = wrapBytes(msg);
@@ -166,7 +166,7 @@ const buildInjectedPolkadotAdapter = (
           }
           const built = accounts.map((a) => buildPolkadotAccount(a.address, chain));
           const first = built[0];
-          if (first) {
+          if (first !== undefined) {
             listener({ account: first, accounts: built, type: "accountChanged" });
           }
         });
@@ -177,7 +177,7 @@ const buildInjectedPolkadotAdapter = (
       };
     },
 
-    switchChain(target) {
+    switchChain: (target) => {
       if (target.namespace !== "polkadot") {
         return Promise.reject(
           new Error(

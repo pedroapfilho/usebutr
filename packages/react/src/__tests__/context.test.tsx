@@ -101,7 +101,7 @@ describe("WalletManagerProvider (unified)", () => {
   });
 
   it("forwards onHydrated", async () => {
-    const onHydrated = vi.fn();
+    const onHydrated = vi.fn<() => void>();
     renderHook(() => null, { wrapper: wrap({ onHydrated }) });
     await act(async () => {
       await Promise.resolve();

@@ -106,10 +106,11 @@ const Connected = ({
     setErrorMsg(null);
     setTxStatus("Bridging signer…");
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: injected Polkadot adapter getSigner() returns a PolkadotSignerHandle
       const handle = (await wallet.connector.getSigner()) as PolkadotSignerHandle;
       const extension = await connectInjectedExtension(handle.extensionName);
       const account = extension.getAccounts().find((a) => a.address === handle.address);
-      if (!account) {
+      if (account === undefined) {
         setTxStatus(null);
         setErrorMsg("Active account not found in the injected extension");
         return;
@@ -122,12 +123,16 @@ const Connected = ({
       });
       txSubRef.current?.unsubscribe();
       txSubRef.current = tx.signSubmitAndWatch(account.polkadotSigner).subscribe({
-        complete: () => setTxStatus("Finalized"),
+        complete: () => {
+          setTxStatus("Finalized");
+        },
         error: (error: unknown) => {
           setTxStatus(null);
           setErrorMsg(formatError(error));
         },
-        next: (event) => setTxStatus(`Tx: ${event.type}`),
+        next: (event) => {
+          setTxStatus(`Tx: ${event.type}`);
+        },
       });
     } catch (error) {
       setTxStatus(null);
@@ -169,13 +174,13 @@ const Connected = ({
           Self-transfer 0.1 PAS
         </button>
       </div>
-      {txStatus ? <Row label="Transfer">{txStatus}</Row> : null}
-      {signature ? (
+      {txStatus !== null && txStatus !== "" ? <Row label="Transfer">{txStatus}</Row> : null}
+      {signature !== null && signature !== "" ? (
         <Row label="Signature">
           <code className="font-mono text-xs break-all">{signature}</code>
         </Row>
       ) : null}
-      {signedMessage ? (
+      {signedMessage !== null && signedMessage !== "" ? (
         <Row label="Signed payload">
           <span className="text-xs text-neutral-500">
             {"<Bytes>"}-wrapped hex sent to signRaw:{" "}
@@ -183,7 +188,7 @@ const Connected = ({
           <code className="font-mono text-xs break-all">{signedMessage}</code>
         </Row>
       ) : null}
-      {errorMsg ? (
+      {errorMsg !== null && errorMsg !== "" ? (
         <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {errorMsg}
         </p>
@@ -213,10 +218,14 @@ const Content = () => {
               <li key={wallet.id}>
                 <button
                   className="flex w-full items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-left hover:bg-neutral-50"
-                  onClick={() => void connect(wallet.id)}
+                  onClick={() => {
+                    void connect(wallet.id);
+                  }}
                   type="button"
                 >
-                  {wallet.icon ? <img alt="" className="size-6 rounded" src={wallet.icon} /> : null}
+                  {wallet.icon !== undefined && wallet.icon !== "" ? (
+                    <img alt="" className="size-6 rounded" src={wallet.icon} />
+                  ) : null}
                   <span className="font-medium">{wallet.name}</span>
                 </button>
               </li>
@@ -227,7 +236,14 @@ const Content = () => {
     );
   }
 
-  return <Connected onDisconnect={() => disconnect(active.connector.id)} wallet={active} />;
+  return (
+    <Connected
+      onDisconnect={() => {
+        disconnect(active.connector.id);
+      }}
+      wallet={active}
+    />
+  );
 };
 
 const App = () => (

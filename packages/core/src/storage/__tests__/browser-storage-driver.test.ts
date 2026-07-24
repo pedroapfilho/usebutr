@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createBrowserStorageDriver, createMemoryStorageDriver } from "../browser-storage-driver";
 
 describe("createMemoryStorageDriver", () => {
-  it("sets and gets values", () => {
+  it("sets and gets values", async () => {
     const driver = createMemoryStorageDriver();
-    driver.setItem("key", "value");
+    await driver.setItem("key", "value");
     expect(driver.getItem("key")).toBe("value");
   });
 
@@ -14,17 +14,17 @@ describe("createMemoryStorageDriver", () => {
     expect(driver.getItem("nonexistent")).toBeNull();
   });
 
-  it("removes items", () => {
+  it("removes items", async () => {
     const driver = createMemoryStorageDriver();
-    driver.setItem("key", "value");
-    driver.removeItem("key");
+    await driver.setItem("key", "value");
+    await driver.removeItem("key");
     expect(driver.getItem("key")).toBeNull();
   });
 
-  it("isolates memory between instances", () => {
+  it("isolates memory between instances", async () => {
     const a = createMemoryStorageDriver();
     const b = createMemoryStorageDriver();
-    a.setItem("key", "a");
+    await a.setItem("key", "a");
     expect(b.getItem("key")).toBeNull();
   });
 });
@@ -53,20 +53,20 @@ describe("createBrowserStorageDriver", () => {
       globalThis.sessionStorage = originalSessionStorage;
     });
 
-    it("falls back to in-memory for both drivers", () => {
+    it("falls back to in-memory for both drivers", async () => {
       const { persistent, session } = createBrowserStorageDriver();
 
-      persistent.setItem("p", "v");
+      await persistent.setItem("p", "v");
       expect(persistent.getItem("p")).toBe("v");
 
-      session.setItem("s", "v");
+      await session.setItem("s", "v");
       expect(session.getItem("s")).toBe("v");
     });
 
-    it("keeps persistent and session memory isolated", () => {
+    it("keeps persistent and session memory isolated", async () => {
       const { persistent, session } = createBrowserStorageDriver();
-      persistent.setItem("key", "persistent");
-      session.setItem("key", "session");
+      await persistent.setItem("key", "persistent");
+      await session.setItem("key", "session");
 
       expect(persistent.getItem("key")).toBe("persistent");
       expect(session.getItem("key")).toBe("session");
@@ -92,31 +92,31 @@ describe("createBrowserStorageDriver", () => {
       spy.mockRestore();
     });
 
-    it("delegates persistent.setItem to localStorage", () => {
+    it("delegates persistent.setItem to localStorage", async () => {
       const spy = vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {});
       const { persistent } = createBrowserStorageDriver();
 
-      persistent.setItem("key", "value");
+      await persistent.setItem("key", "value");
       expect(spy).toHaveBeenCalledWith("key", "value");
       spy.mockRestore();
     });
 
-    it("delegates session.setItem to sessionStorage", () => {
+    it("delegates session.setItem to sessionStorage", async () => {
       const spy = vi.spyOn(window.sessionStorage, "setItem").mockImplementation(() => {});
       const { session } = createBrowserStorageDriver();
 
-      session.setItem("key", "value");
+      await session.setItem("key", "value");
       expect(spy).toHaveBeenCalledWith("key", "value");
       spy.mockRestore();
     });
 
-    it("delegates removeItem to the correct storage", () => {
+    it("delegates removeItem to the correct storage", async () => {
       const localSpy = vi.spyOn(window.localStorage, "removeItem").mockImplementation(() => {});
       const sessionSpy = vi.spyOn(window.sessionStorage, "removeItem").mockImplementation(() => {});
       const { persistent, session } = createBrowserStorageDriver();
 
-      persistent.removeItem("a");
-      session.removeItem("b");
+      await persistent.removeItem("a");
+      await session.removeItem("b");
 
       expect(localSpy).toHaveBeenCalledWith("a");
       expect(sessionSpy).toHaveBeenCalledWith("b");

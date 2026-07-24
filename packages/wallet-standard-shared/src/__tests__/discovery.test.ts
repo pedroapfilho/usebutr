@@ -13,12 +13,14 @@ describe("discoverWalletStandard", () => {
 
   it("warns once when @wallet-standard/app is not installed", async () => {
     const warn = vi.spyOn(console, "warn").mockReturnValue(undefined);
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<() => void>();
 
     const unsubscribeA = discoverWalletStandard(onAdapter, () => null);
     const unsubscribeB = discoverWalletStandard(onAdapter, () => null);
 
-    await vi.waitFor(() => expect(warn).toHaveBeenCalled());
+    await vi.waitFor(() => {
+      expect(warn).toHaveBeenCalled();
+    });
 
     expect(warn).toHaveBeenCalledTimes(1);
     expect(String(warn.mock.calls[0]?.[0])).toContain("@wallet-standard/app");

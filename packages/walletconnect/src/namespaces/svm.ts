@@ -84,6 +84,17 @@ const base58ToBytes = (input: string): Uint8Array => {
  * shouldn't own. Consumers wire native events themselves until we
  * land a follow-up.
  */
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const readStringField = (value: unknown, key: string): string | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const field = value[key];
+  return typeof field === "string" ? field : undefined;
+};
+
 const solanaNamespace: WalletConnectNamespaceBuilder = {
   buildAdapter({ chains, icon, id, name, provider }) {
     let currentChainId = chains[0] ?? DEFAULT_CHAINS[0] ?? "solana:mainnet";
@@ -103,10 +114,29 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
         return account.walletAddress;
       }
       const first = resolveAccounts()[0];
-      if (!first) {
+      if (first === undefined) {
         throw new Error("No connected Solana account");
       }
       return first.walletAddress;
+    };
+
+    const signAndSend = async (tx: unknown, account?: Account): Promise<string> => {
+      if (!(tx instanceof Uint8Array)) {
+        throw new TypeError("SVM sendTx expects a serialized transaction (Uint8Array)");
+      }
+      const pubkey = resolveAddress(account);
+      const result: unknown = await provider.request({
+        method: "solana_signAndSendTransaction",
+        params: {
+          pubkey,
+          transaction: bytesToBase64(tx),
+        },
+      });
+      const signature = typeof result === "string" ? result : readStringField(result, "signature");
+      if (signature === undefined || signature === "") {
+        throw new Error("solana_signAndSendTransaction returned no signature");
+      }
+      return signature;
     };
 
     const adapter: SvmAdapter = {
@@ -118,7 +148,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
         if (provider.session) {
           return;
         }
-        if (opts?.silent) {
+        if (opts?.silent === true) {
           throw new Error("No WalletConnect session for silent reconnect");
         }
         await provider.connect({
@@ -147,75 +177,52 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
         }
       },
 
-      getAccount() {
+      getAccount: () => {
         const first = resolveAccounts()[0] ?? null;
         return Promise.resolve(first);
       },
 
-      getAccounts() {
-        return Promise.resolve(resolveAccounts());
-      },
+      getAccounts: () => Promise.resolve(resolveAccounts()),
 
-      getBalance() {
-        return Promise.resolve({
+      getBalance: () =>
+        Promise.resolve({
           decimals: SOLANA_DECIMALS,
           formatted: "0",
           symbol: "SOL",
           value: 0n,
-        });
-      },
+        }),
 
-      getSigner() {
-        return Promise.resolve(provider);
-      },
+      getSigner: () => Promise.resolve(provider),
 
-      getTransactionReceipt() {
-        return Promise.resolve({ status: "Pending" as const });
-      },
+      getTransactionReceipt: () => Promise.resolve({ status: "Pending" as const }),
 
       icon,
       id,
       name,
 
-      async sendTx(tx, account) {
-        if (!(tx instanceof Uint8Array)) {
-          throw new TypeError("SVM sendTx expects a serialized transaction (Uint8Array)");
-        }
-        const pubkey = resolveAddress(account);
-        const result = (await provider.request({
-          method: "solana_signAndSendTransaction",
-          params: {
-            pubkey,
-            transaction: bytesToBase64(tx),
-          },
-        })) as { signature?: string } | string;
-        const signature = typeof result === "string" ? result : result?.signature;
-        if (!signature) {
-          throw new Error("solana_signAndSendTransaction returned no signature");
-        }
-        return signature;
-      },
+      sendTx: (tx, account) => signAndSend(tx, account),
 
-      sendTxToChain(tx, _targetChainId, account, cb) {
+      sendTxToChain: (tx, _targetChainId, account, cb) => {
         // WC Solana's signAndSendTransaction doesn't take a chain
         // parameter; the cluster is baked into the pairing. Honour the
         // current chain and let consumers route per-chain higher up if
         // they need multi-cluster support.
         cb?.();
-        return this.sendTx(tx, account);
+        return signAndSend(tx, account);
       },
 
       async signMessage(msg, account) {
         const pubkey = resolveAddress(account);
-        const result = (await provider.request({
+        const result: unknown = await provider.request({
           method: "solana_signMessage",
           params: {
             message: bytesToBase64(msg),
             pubkey,
           },
-        })) as { signature?: string } | string;
-        const signatureB58 = typeof result === "string" ? result : result?.signature;
-        if (!signatureB58) {
+        });
+        const signatureB58 =
+          typeof result === "string" ? result : readStringField(result, "signature");
+        if (signatureB58 === undefined || signatureB58 === "") {
           throw new Error("solana_signMessage returned no signature");
         }
         // butr's contract returns the raw signature bytes. WC speaks
@@ -229,22 +236,24 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
           throw new TypeError("SVM signTransaction expects a serialized transaction (Uint8Array)");
         }
         const pubkey = resolveAddress(account);
-        const result = (await provider.request({
+        const result: unknown = await provider.request({
           method: "solana_signTransaction",
           params: {
             pubkey,
             transaction: bytesToBase64(tx),
           },
-        })) as { signature?: string; transaction?: string } | string;
+        });
         // The Solana WC spec leaves room for two return shapes: a base64
         // `transaction` (the fully-signed bytes) or a base58 `signature`
         // alone. Prefer the base64 transaction; that's the contract
         // butr's SvmWallet.signTransaction returns.
-        if (typeof result === "object" && result?.transaction) {
-          return base64ToBytes(result.transaction);
+        const transactionB64 = readStringField(result, "transaction");
+        if (transactionB64 !== undefined) {
+          return base64ToBytes(transactionB64);
         }
-        const signatureB58 = typeof result === "string" ? result : result?.signature;
-        if (!signatureB58) {
+        const signatureB58 =
+          typeof result === "string" ? result : readStringField(result, "signature");
+        if (signatureB58 === undefined || signatureB58 === "") {
           throw new Error("solana_signTransaction returned no transaction or signature");
         }
         // Fallback: a few wallets return just the signature. That's not
@@ -253,13 +262,9 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
         return base58ToBytes(signatureB58);
       },
 
-      subscribe() {
-        // v0: no-op. WC wallet-side events are mediated by the provider
-        // and need per-wallet quirks the namespace builder shouldn't own.
-        return () => {};
-      },
+      subscribe: () => () => {},
 
-      switchChain(chain) {
+      switchChain: (chain) => {
         if (chain.namespace !== "solana") {
           throw new Error(
             `SVM WC adapter received non-Solana chain "${chain.id}". Pass a chain with namespace "solana".`,

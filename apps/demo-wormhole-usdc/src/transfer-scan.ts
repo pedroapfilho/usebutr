@@ -51,7 +51,7 @@ const mapPool = async <T, R>(
       const index = cursor;
       cursor += 1;
       // oxlint-disable-next-line no-await-in-loop
-      results[index] = await fn(items[index] as T);
+      results[index] = await fn(items[index]);
     }
   };
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
@@ -68,11 +68,11 @@ const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const deriveUsdcAta = async (owner: string, mint: string): Promise<string> => {
   const encoder = getAddressEncoder();
   const [ata] = await getProgramDerivedAddress({
-    programAddress: ASSOCIATED_TOKEN_PROGRAM as Address,
+    programAddress: toAddress(ASSOCIATED_TOKEN_PROGRAM),
     seeds: [
-      encoder.encode(owner as Address),
-      encoder.encode(TOKEN_PROGRAM as Address),
-      encoder.encode(mint as Address),
+      encoder.encode(toAddress(owner)),
+      encoder.encode(toAddress(TOKEN_PROGRAM)),
+      encoder.encode(toAddress(mint)),
     ],
   });
   return ata;
@@ -146,7 +146,7 @@ const scanSolanaBurns = async (
     }
     totalFetched += page.length;
     for (const entry of page) {
-      if (!entry.err) {
+      if (entry.err === null || entry.err === undefined) {
         candidates.push(entry.signature);
       }
     }
@@ -168,6 +168,7 @@ const scanSolanaBurns = async (
           maxSupportedTransactionVersion: 0,
         })
         .send();
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- jsonParsed transaction shape is untyped at the RPC boundary
       const keys = (tx as unknown as ParsedTx)?.transaction?.message?.accountKeys;
       return Boolean(keys?.some((k) => programSet.has(k.pubkey)));
     } catch {

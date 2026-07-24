@@ -188,7 +188,7 @@ describe("buildEvmAdapter", () => {
     const provider = createMockProvider();
     provider.setHandler("eth_chainId", () => "0x1"); // currently on mainnet
     provider.setHandler("eth_sendTransaction", () => "0xtxhash");
-    const switchCb = vi.fn();
+    const switchCb = vi.fn<() => void>();
 
     const adapter = buildEvmAdapter(INFO, provider);
     const hash = await adapter.sendTxToChain({}, "137", undefined, switchCb);
@@ -205,7 +205,7 @@ describe("buildEvmAdapter", () => {
     const provider = createMockProvider();
     provider.setHandler("eth_chainId", () => "0x89");
     provider.setHandler("eth_sendTransaction", () => "0xhash");
-    const switchCb = vi.fn();
+    const switchCb = vi.fn<() => void>();
 
     const adapter = buildEvmAdapter(INFO, provider);
     await adapter.sendTxToChain({}, "137", undefined, switchCb);
@@ -251,7 +251,7 @@ describe("buildEvmAdapter", () => {
     const USDC = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
     provider.setHandler("eth_call", (params) => {
       const call = (params as Array<{ data: string; to: string }>)[0];
-      if (!call) {
+      if (call === undefined) {
         throw new Error("missing call");
       }
       if (call.to.toLowerCase() !== USDC.toLowerCase()) {
@@ -322,7 +322,7 @@ describe("buildEvmAdapter", () => {
     provider.setHandler("eth_chainId", () => "0x1");
 
     const adapter = buildEvmAdapter(INFO, provider);
-    const listener = vi.fn();
+    const listener = vi.fn<() => void>();
     const unsub = adapter.subscribe?.(listener);
 
     // Fire the wallet event and wait one microtask for the internal
@@ -344,7 +344,7 @@ describe("buildEvmAdapter", () => {
   it("subscribe() bridges empty-accounts to disconnected", () => {
     const provider = createMockProvider();
     const adapter = buildEvmAdapter(INFO, provider);
-    const listener = vi.fn();
+    const listener = vi.fn<() => void>();
     const unsub = adapter.subscribe?.(listener);
 
     provider.emit("accountsChanged", []);
@@ -356,7 +356,7 @@ describe("buildEvmAdapter", () => {
   it("subscribe() returns an unsubscribe that detaches every listener", () => {
     const provider = createMockProvider();
     const adapter = buildEvmAdapter(INFO, provider);
-    const listener = vi.fn();
+    const listener = vi.fn<() => void>();
     const unsub = adapter.subscribe?.(listener);
 
     unsub?.();

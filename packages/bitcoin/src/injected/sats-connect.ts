@@ -55,13 +55,16 @@ const buildSatsConnectAdapter = (
   };
 
   const loadAccounts = async (): Promise<ReadonlyArray<string>> => {
+    // `callRequest` only asserts the caller's shape onto an untyped RPC
+    // payload, so a wallet that answers without a `result` lands here as
+    // null/undefined and has to be read through an optional chain.
     const result = await callRequest<{
       addresses?: ReadonlyArray<{ address: string; purpose?: string }>;
-    }>("getAccounts", {
+    } | null>("getAccounts", {
       message: "Connect to butr",
       purposes: ["payment", "ordinals"],
     });
-    if (result.addresses === undefined) {
+    if (result?.addresses === undefined) {
       return [];
     }
     const addresses = result.addresses.map((a) => a.address);

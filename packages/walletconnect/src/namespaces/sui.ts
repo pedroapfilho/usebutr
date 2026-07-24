@@ -214,7 +214,8 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
         // present (lets verifiers check against what the wallet actually
         // signed), otherwise fall through to the original input.
         const echoedBytes = readStringField(result, "bytes");
-        const echoed = echoedBytes === undefined ? msg : base64ToBytes(echoedBytes);
+        const echoed =
+          echoedBytes === undefined || echoedBytes === "" ? msg : base64ToBytes(echoedBytes);
         return { signature: base64ToBytes(signatureB64), signedMessage: echoed };
       },
 
@@ -234,7 +235,7 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
           const bytesB64 =
             readStringField(result, "transactionBytes") ??
             readStringField(result, "transactionBlockBytes");
-          if (bytesB64 !== undefined) {
+          if (bytesB64 !== undefined && bytesB64 !== "") {
             return base64ToBytes(bytesB64);
           }
         }

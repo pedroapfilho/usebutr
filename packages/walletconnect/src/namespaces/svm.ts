@@ -248,7 +248,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
         // alone. Prefer the base64 transaction; that's the contract
         // butr's SvmWallet.signTransaction returns.
         const transactionB64 = readStringField(result, "transaction");
-        if (transactionB64 !== undefined) {
+        if (transactionB64 !== undefined && transactionB64 !== "") {
           return base64ToBytes(transactionB64);
         }
         const signatureB58 =

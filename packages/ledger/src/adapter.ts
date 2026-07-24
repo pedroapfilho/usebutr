@@ -64,6 +64,9 @@ type LedgerOptions = EvmLedgerOptions | SvmLedgerOptions | SuiLedgerOptions | Bi
  * your own RPC client to complete the send.
  */
 const createLedgerAdapter = (options: LedgerOptions): Promise<WalletAdapter> => {
+  // Read before the switch narrows `options` away, so the exhaustiveness branch
+  // can still name the platform an untyped caller passed.
+  const requestedPlatform: string = options.platform;
   switch (options.platform) {
     case "evm": {
       return createEvmLedgerAdapter(options);
@@ -84,7 +87,7 @@ const createLedgerAdapter = (options: LedgerOptions): Promise<WalletAdapter> => 
       const _exhaustive: never = options;
       void _exhaustive;
       return Promise.reject(
-        new Error("[butr/ledger] no Ledger app builder for the given platform."),
+        new Error(`[butr/ledger] no Ledger app builder for platform "${requestedPlatform}".`),
       );
     }
   }

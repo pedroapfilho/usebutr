@@ -36,20 +36,22 @@ type InjectedDiscoveryOptions = {
   target?: { ethereum?: unknown } | null;
 };
 
+const isEip1193Provider = (value: unknown): value is Eip1193Provider =>
+  typeof value === "object" &&
+  value !== null &&
+  "request" in value &&
+  typeof value.request === "function";
+
 const readEthereum = (target: InjectedDiscoveryOptions["target"]): Eip1193Provider | null => {
   // Resolve the host object: use the caller's override if given, otherwise
   // fall back to the global window (or null in SSR environments).
-  const globalWindow =
-    typeof window === "undefined" ? null : (window as unknown as { ethereum?: unknown });
-  const host = target === undefined ? globalWindow : target;
-  if (!host) {
+  const globalWindow: unknown = typeof window === "undefined" ? null : window;
+  const host: unknown = target === undefined ? globalWindow : target;
+  if (typeof host !== "object" || host === null || !("ethereum" in host)) {
     return null;
   }
-  const eth = (host as { ethereum?: unknown }).ethereum;
-  if (!eth || typeof (eth as { request?: unknown }).request !== "function") {
-    return null;
-  }
-  return eth as Eip1193Provider;
+  const eth: unknown = host.ethereum;
+  return isEip1193Provider(eth) ? eth : null;
 };
 
 /**
@@ -80,11 +82,11 @@ const discoverInjectedAdapter = (
     if (cancelled) {
       return;
     }
-    if (options.hasAnyEip6963Adapter?.()) {
+    if (options.hasAnyEip6963Adapter?.() === true) {
       return;
     }
     const provider = readEthereum(options.target);
-    if (!provider) {
+    if (provider === null) {
       return;
     }
     const info: Eip6963ProviderInfo = {

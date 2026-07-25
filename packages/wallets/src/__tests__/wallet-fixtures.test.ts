@@ -20,7 +20,7 @@ const baseInfo = (rdns: string, name: string): Eip6963ProviderInfo => ({
   uuid: `${rdns}-uuid`,
 });
 
-type MockResponse = () => Promise<unknown> | unknown;
+type MockResponse = () => unknown;
 type MockProvider = Eip1193Provider & { requests: Array<{ method: string }> };
 
 const createMockProvider = (responses: Record<string, MockResponse>): MockProvider => {
@@ -31,13 +31,13 @@ const createMockProvider = (responses: Record<string, MockResponse>): MockProvid
     request({ method }) {
       requests.push({ method });
       const handler = responses[method];
-      if (!handler) {
+      if (handler === undefined) {
         return Promise.reject(new Error(`[test] unmocked: ${method}`));
       }
       return Promise.resolve(handler());
     },
     requests,
-  } as MockProvider;
+  };
 };
 
 describe("EVM wallet fixtures — known quirks (Strategy A)", () => {

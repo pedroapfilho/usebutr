@@ -1,3 +1,4 @@
+import type { WalletAdapter } from "@usebutr/core";
 import { describe, expect, it, vi } from "vitest";
 
 import type { DiscoverOptions } from "../discover";
@@ -39,13 +40,15 @@ describe("autoDiscovery", () => {
     const source = autoDiscovery({ evm: false, svm: false });
     const unsubscribe = source.subscribe(() => {});
     expect(typeof unsubscribe).toBe("function");
-    expect(() => unsubscribe()).not.toThrow();
+    expect(() => {
+      unsubscribe();
+    }).not.toThrow();
   });
 
   it("forwards options to discoverWalletAdapters — evm:true svm:false activates EVM discovery only", () => {
     vi.mocked(discoverWalletAdapters).mockClear();
 
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
     const source = autoDiscovery({ evm: true, svm: false });
     const unsubscribe = source.subscribe(onAdapter);
 

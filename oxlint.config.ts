@@ -4,6 +4,10 @@ import awesomeness from "oxlint-config-awesomeness";
 export default defineConfig({
   extends: [awesomeness],
   ignorePatterns: ["apps/demo-with-polkadot/.papi/**"],
+  options: {
+    typeAware: true,
+    typeCheck: true,
+  },
   overrides: [
     {
       files: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],

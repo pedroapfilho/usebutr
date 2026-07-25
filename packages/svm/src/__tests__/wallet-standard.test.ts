@@ -1,3 +1,4 @@
+import type { WalletAdapter } from "@usebutr/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { discoverSvmAdapters } from "../wallet-standard";
@@ -11,7 +12,9 @@ describe("discoverSvmAdapters", () => {
   it("returns a synchronous unsubscribe even before the import resolves", () => {
     const unsubscribe = discoverSvmAdapters(() => {});
     expect(typeof unsubscribe).toBe("function");
-    expect(() => unsubscribe()).not.toThrow();
+    expect(() => {
+      unsubscribe();
+    }).not.toThrow();
   });
 
   it("emits adapters announced via the Wallet Standard `register` event", async () => {
@@ -32,7 +35,9 @@ describe("discoverSvmAdapters", () => {
 
     const { discoverSvmAdapters: subject } = await import("../wallet-standard");
     const seen: Array<string> = [];
-    const unsubscribe = subject((adapter) => seen.push(adapter.id));
+    const unsubscribe = subject((adapter) => {
+      seen.push(adapter.id);
+    });
     await new Promise<void>((resolve) => {
       setTimeout(resolve, 0);
     });
@@ -64,7 +69,7 @@ describe("discoverSvmAdapters", () => {
       throw new Error("module not installed");
     });
     const { discoverSvmAdapters: subject } = await import("../wallet-standard");
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
     const unsubscribe = subject(onAdapter);
     await new Promise<void>((resolve) => {
       setTimeout(resolve, 0);

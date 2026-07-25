@@ -1,13 +1,5 @@
 import type { StoredPoolEntry } from "../storage/persistence";
-import type {
-  BitcoinAdapter,
-  EvmAdapter,
-  PolkadotAdapter,
-  SuiAdapter,
-  SvmAdapter,
-  WalletAdapter,
-  WalletCapabilities,
-} from "../types";
+import type { WalletAdapter, WalletCapabilities } from "../types";
 
 /**
  * Error thrown when a method is called on a shadow adapter; the
@@ -110,22 +102,21 @@ const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
     switchChain: () => reject("switchChain"),
   };
 
-  // Cast required: TS can't narrow the literal `chainPlatform` field through a spread.
   switch (entry.chainPlatform) {
     case "bitcoin": {
-      return { ...base, chainPlatform: "bitcoin" } as BitcoinAdapter;
+      return { ...base, chainPlatform: "bitcoin" };
     }
     case "evm": {
-      return { ...base, chainPlatform: "evm" } as EvmAdapter;
+      return { ...base, chainPlatform: "evm" };
     }
     case "sui": {
-      return { ...base, chainPlatform: "sui" } as SuiAdapter;
+      return { ...base, chainPlatform: "sui" };
     }
     case "svm": {
-      return { ...base, chainPlatform: "svm" } as SvmAdapter;
+      return { ...base, chainPlatform: "svm" };
     }
     case "polkadot": {
-      return { ...base, chainPlatform: "polkadot" } as PolkadotAdapter;
+      return { ...base, chainPlatform: "polkadot" };
     }
     default: {
       const _exhaustive: never = entry.chainPlatform;
@@ -149,14 +140,11 @@ const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
  * accordingly).
  */
 const isShadowAdapter = (adapter: WalletAdapter): boolean => {
-  const caps = adapter.capabilities;
-  // Derive the check from the canonical all-false key set so a newly
-  // added capability can never be silently missed: adding a flag to
-  // `WalletCapabilities` forces it into `ALL_FALSE_CAPABILITIES` (the
-  // type annotation enforces that), and this guard then covers it.
-  return (Object.keys(ALL_FALSE_CAPABILITIES) as Array<keyof WalletCapabilities>).every(
-    (key) => caps[key] === false,
-  );
+  // `capabilities` is a closed record of booleans, so "every value is
+  // false" over the live object is the same check as iterating the
+  // canonical `ALL_FALSE_CAPABILITIES` key set: a newly added flag is
+  // forced into every adapter by the `WalletCapabilities` type.
+  return Object.values(adapter.capabilities).every((flag) => !flag);
 };
 
 export { createShadowAdapter, isShadowAdapter, ShadowConnectorError };

@@ -21,12 +21,21 @@ const slugify = (platformPrefix: string, name: string): string => {
 
 /**
  * Read a Wallet Standard feature off a wallet, returning `undefined`
- * when absent. The caller narrows the unknown payload to the
- * platform-specific feature shape at use sites.
+ * when absent. `features` is a reverse-DNS-keyed registry typed
+ * `Record<string, unknown>` by the spec, so the caller declares the
+ * concrete feature shape it expects; this accessor is the single
+ * boundary where that dynamism is acknowledged. The `T` parameter is
+ * intentionally caller-supplied (not inferable) and the assertion is
+ * unavoidable for an untyped registry.
  */
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- caller-supplied feature shape; not inferable from args
 const getFeature = <T>(wallet: WalletStandardWallet, name: string): T | undefined => {
-  const feature = wallet.features[name];
-  return feature ? (feature as T) : undefined;
+  const feature: unknown = wallet.features[name];
+  if (typeof feature !== "object" || feature === null) {
+    return undefined;
+  }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped Wallet Standard feature registry; caller declares the shape
+  return feature as T;
 };
 
 /**
@@ -35,7 +44,7 @@ const getFeature = <T>(wallet: WalletStandardWallet, name: string): T | undefine
  */
 const pickFirstAddress = (accounts: ReadonlyArray<WalletStandardWalletAccount>): string | null => {
   const first = accounts[0];
-  return first ? first.address : null;
+  return first === undefined ? null : first.address;
 };
 
 /**

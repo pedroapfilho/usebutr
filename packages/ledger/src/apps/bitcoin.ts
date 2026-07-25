@@ -91,6 +91,7 @@ const DEFAULT_DERIVATION_PATH_PREFIX = "84'/0'/0'/0";
 const DEFAULT_ADDRESS_FORMAT: BitcoinAddressFormat = "bech32";
 
 const loadBtc = async (): Promise<BtcAppConstructor> => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped optional peer-dep module boundary
   const mod = (await import("@ledgerhq/hw-app-btc")) as unknown as {
     Btc?: BtcAppConstructor;
     default?: BtcAppConstructor;
@@ -250,7 +251,7 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
     chainPlatform: "bitcoin",
 
     async connect(opts) {
-      if (opts?.silent) {
+      if (opts?.silent === true) {
         // Ledger connect always shows the browser's WebUSB device picker;
         // there is no silent reconnect. Reject so eager hydration doesn't
         // pop the chooser on page load.
@@ -277,15 +278,15 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
       currentAddress = null;
     },
 
-    getAccount() {
-      if (!currentAddress) {
+    getAccount: () => {
+      if (currentAddress === null || currentAddress === "") {
         return Promise.resolve(null);
       }
       return Promise.resolve(buildBitcoinAccount(currentAddress, buildBitcoinChain(chainId, name)));
     },
 
     async getAccounts() {
-      if (!btc) {
+      if (btc === null) {
         return [];
       }
       const chain = buildBitcoinChain(chainId, name);
@@ -302,47 +303,39 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
       return accounts;
     },
 
-    getBalance() {
-      return Promise.reject(
+    getBalance: () =>
+      Promise.reject(
         new Error(
-          "[butr/ledger] getBalance not supported — Ledger has no RPC. Use bitcoinjs-lib with an Esplora / Electrum client.",
+          "[butr/ledger] getBalance not supported: Ledger has no RPC. Use bitcoinjs-lib with an Esplora / Electrum client.",
         ),
-      );
-    },
+      ),
 
-    getSigner() {
-      return Promise.resolve(btc);
-    },
+    getSigner: () => Promise.resolve(btc),
 
-    getTransactionReceipt() {
-      return Promise.reject(
-        new Error("[butr/ledger] getTransactionReceipt not supported — Ledger has no RPC."),
-      );
-    },
+    getTransactionReceipt: () =>
+      Promise.reject(
+        new Error("[butr/ledger] getTransactionReceipt not supported: Ledger has no RPC."),
+      ),
 
     icon,
     id,
     name,
 
-    sendTx() {
-      return Promise.reject(
+    sendTx: () =>
+      Promise.reject(
         new Error(
-          "[butr/ledger] sendTx not supported — Ledger signs but doesn't broadcast. Use signTransaction + an Esplora / Electrum client.",
+          "[butr/ledger] sendTx not supported: Ledger signs but doesn't broadcast. Use signTransaction + an Esplora / Electrum client.",
         ),
-      );
-    },
+      ),
 
-    sendTxToChain() {
-      return Promise.reject(
-        new Error(
-          "[butr/ledger] sendTxToChain not supported — Ledger signs but doesn't broadcast.",
-        ),
-      );
-    },
+    sendTxToChain: () =>
+      Promise.reject(
+        new Error("[butr/ledger] sendTxToChain not supported: Ledger signs but doesn't broadcast."),
+      ),
 
     async signMessage(message, account) {
-      if (!btc) {
-        throw new Error("[butr/ledger] not connected — call connect() first");
+      if (btc === null) {
+        throw new Error("[butr/ledger] not connected: call connect() first");
       }
       let path = pathAt(0);
       if (account && account.walletAddress !== currentAddress) {
@@ -385,8 +378,8 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
      * device (the factory passes an empty `knownAddressDerivations` Map).
      */
     async signTransaction(tx, account) {
-      if (!btc) {
-        throw new Error("[butr/ledger] not connected — call connect() first");
+      if (btc === null) {
+        throw new Error("[butr/ledger] not connected: call connect() first");
       }
       if (!(tx instanceof Uint8Array)) {
         throw new TypeError(
@@ -421,21 +414,20 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
       return new Uint8Array(result.psbt);
     },
 
-    subscribe() {
+    subscribe: () => {
       // No-op; Ledger emits no events. Capabilities flag is `false`.
       void SUBSCRIBE_NOT_AVAILABLE;
       return () => {};
     },
 
-    switchAccount() {
-      return Promise.reject(
+    switchAccount: () =>
+      Promise.reject(
         new Error(
-          "[butr/ledger] switchAccount not supported — pick a different account via signMessage(msg, account) using a different derivation path",
+          "[butr/ledger] switchAccount not supported: pick a different account via signMessage(msg, account) using a different derivation path",
         ),
-      );
-    },
+      ),
 
-    switchChain(chain) {
+    switchChain: (chain) => {
       if (chain.namespace !== "bip122") {
         return Promise.reject(
           new Error(

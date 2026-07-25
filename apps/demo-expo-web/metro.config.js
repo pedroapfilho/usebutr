@@ -1,3 +1,4 @@
+/* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-call, typescript/no-unsafe-member-access -- untyped expo metro-config API in a JS build-config file */
 const { getDefaultConfig } = require("expo/metro-config");
 const path = require("node:path");
 

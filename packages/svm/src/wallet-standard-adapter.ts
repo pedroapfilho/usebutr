@@ -93,11 +93,11 @@ const buildSvmAdapter = (
   registerDisconnector?: (emit: () => void) => void,
 ): WalletAdapter | null => {
   const solanaChainId = pickSolanaChain(wallet);
-  if (!solanaChainId) {
+  if (solanaChainId === null) {
     return null;
   }
   const connect = getFeature<StandardConnectFeature>(wallet, "standard:connect");
-  if (!connect) {
+  if (connect === undefined) {
     return null;
   }
 
@@ -125,7 +125,7 @@ const buildSvmAdapter = (
     const chain = currentChain();
     const built = wallet.accounts.map((a) => buildAccount(a.address, chain));
     const first = built[0];
-    if (!first) {
+    if (first === undefined) {
       return;
     }
     for (const listener of listeners) {
@@ -138,6 +138,30 @@ const buildSvmAdapter = (
       listener({ type: "disconnected" });
     }
   });
+
+  const signAndSend = async (tx: unknown, account?: { walletAddress: string }): Promise<string> => {
+    if (signAndSendTx === undefined) {
+      throw new Error(`Wallet ${wallet.name} does not advertise solana:signAndSendTransaction`);
+    }
+    const wsAccount = account
+      ? pickAccountByAddress(wallet.accounts, account.walletAddress)
+      : wallet.accounts[0];
+    if (wsAccount === undefined) {
+      throw new Error("No connected account");
+    }
+    if (!(tx instanceof Uint8Array)) {
+      throw new TypeError("SVM sendTx expects a serialized transaction (Uint8Array)");
+    }
+    const [output] = await signAndSendTx.signAndSendTransaction({
+      account: wsAccount,
+      chain: currentChainId,
+      transaction: tx,
+    });
+    if (output === undefined) {
+      throw new Error("signAndSendTransaction returned no outputs");
+    }
+    return bytesToBase64(output.signature);
+  };
 
   return {
     capabilities: resolveWalletStandardCapabilities({
@@ -156,11 +180,11 @@ const buildSvmAdapter = (
       // Forward `silent` so eager hydration restores already-authorized
       // accounts without re-opening the wallet's approval UI. Wallets
       // that don't honour `silent` fall back to their normal behaviour.
-      await connect.connect(opts?.silent ? { silent: true } : undefined);
+      await connect.connect(opts?.silent === true ? { silent: true } : undefined);
     },
 
     async disconnect() {
-      if (disconnect) {
+      if (disconnect !== undefined) {
         try {
           await disconnect.disconnect();
         } catch (error) {
@@ -169,40 +193,35 @@ const buildSvmAdapter = (
       }
     },
 
-    getAccount() {
+    getAccount: () => {
       const address = pickFirstAddress(wallet.accounts);
-      if (!address) {
+      if (address === null) {
         return Promise.resolve(null);
       }
       return Promise.resolve(buildAccount(address, currentChain()));
     },
 
-    getAccounts() {
+    getAccounts: () => {
       const chain = currentChain();
       return Promise.resolve(wallet.accounts.map((a) => buildAccount(a.address, chain)));
     },
 
-    getBalance() {
-      // Wallet Standard exposes no balance feature. Consumers wrap
-      // their own RPC client; this default keeps the type signature
-      // honoured without lying about a value we don't have.
-      return Promise.resolve({
+    // Wallet Standard exposes no balance feature. Consumers wrap their
+    // own RPC client; this default keeps the type signature honoured
+    // without lying about a value we don't have.
+    getBalance: () =>
+      Promise.resolve({
         decimals: SOLANA_DECIMALS,
         formatted: "0",
         symbol: "SOL",
         value: 0n,
-      });
-    },
+      }),
 
-    getSigner() {
-      // Consumers cast to their preferred wrapper (e.g. an Anchor
-      // provider built around the wallet's signTransaction feature).
-      return Promise.resolve(wallet);
-    },
+    // Consumers wrap this in their preferred provider (e.g. an Anchor
+    // provider built around the wallet's signTransaction feature).
+    getSigner: () => Promise.resolve(wallet),
 
-    getTransactionReceipt() {
-      return Promise.resolve({ status: "Pending" as const });
-    },
+    getTransactionReceipt: () => Promise.resolve({ status: "Pending" as const }),
 
     icon: sanitizeIcon(wallet.icon),
     id: slugify(wallet.name),
@@ -219,31 +238,9 @@ const buildSvmAdapter = (
       await connect.connect();
     },
 
-    async sendTx(tx, account) {
-      if (!signAndSendTx) {
-        throw new Error(`Wallet ${wallet.name} does not advertise solana:signAndSendTransaction`);
-      }
-      const wsAccount = account
-        ? pickAccountByAddress(wallet.accounts, account.walletAddress)
-        : (wallet.accounts[0] ?? null);
-      if (!wsAccount) {
-        throw new Error("No connected account");
-      }
-      if (!(tx instanceof Uint8Array)) {
-        throw new TypeError("SVM sendTx expects a serialized transaction (Uint8Array)");
-      }
-      const [output] = await signAndSendTx.signAndSendTransaction({
-        account: wsAccount,
-        chain: currentChainId,
-        transaction: tx,
-      });
-      if (!output) {
-        throw new Error("signAndSendTransaction returned no outputs");
-      }
-      return bytesToBase64(output.signature);
-    },
+    sendTx: (tx, account) => signAndSend(tx, account),
 
-    sendTxToChain(tx, _targetChainId, account, cb) {
+    sendTxToChain: (tx, _targetChainId, account, cb) => {
       // Solana Wallet Standard's signAndSendTransaction takes the
       // target chain directly. `targetChainId` is the decimal-string
       // form butr uses, but the wallet expects a CAIP-2 chain string.
@@ -251,33 +248,34 @@ const buildSvmAdapter = (
       // let consumers route per-chain at a higher level if they need
       // multi-cluster support.
       cb?.();
-      return this.sendTx(tx, account);
+      return signAndSend(tx, account);
     },
 
     async signMessage(msg, account) {
-      if (!signMessage) {
+      if (signMessage === undefined) {
         throw new Error(`Wallet ${wallet.name} does not advertise solana:signMessage`);
       }
       const wsAccount = account
         ? pickAccountByAddress(wallet.accounts, account.walletAddress)
-        : (wallet.accounts[0] ?? null);
-      if (!wsAccount) {
+        : wallet.accounts[0];
+      if (wsAccount === undefined) {
         throw new Error("No connected account");
       }
       const [output] = await signMessage.signMessage({ account: wsAccount, message: msg });
-      if (!output) {
+      if (output === undefined) {
         throw new Error("signMessage returned no outputs");
       }
       return { signature: output.signature, signedMessage: output.signedMessage };
     },
 
-    ...(signTx
-      ? {
+    ...(signTx === undefined
+      ? {}
+      : {
           async signTransaction(tx, account) {
             const wsAccount = account
               ? pickAccountByAddress(wallet.accounts, account.walletAddress)
-              : (wallet.accounts[0] ?? null);
-            if (!wsAccount) {
+              : wallet.accounts[0];
+            if (wsAccount === undefined) {
               throw new Error("No connected account");
             }
             if (!(tx instanceof Uint8Array)) {
@@ -290,19 +288,19 @@ const buildSvmAdapter = (
               chain: currentChainId,
               transaction: tx,
             });
-            if (!output) {
+            if (output === undefined) {
               throw new Error("signTransaction returned no outputs");
             }
             return output.signedTransaction;
           },
-        }
-      : {}),
+        }),
 
-    ...(signIn
-      ? {
+    ...(signIn === undefined
+      ? {}
+      : {
           async signIn(input) {
             const [output] = await signIn.signIn(input);
-            if (!output) {
+            if (output === undefined) {
               throw new Error("signIn returned no outputs");
             }
             return {
@@ -311,27 +309,26 @@ const buildSvmAdapter = (
               signedMessage: output.signedMessage,
             };
           },
-        }
-      : {}),
+        }),
 
     subscribe(listener) {
       listeners.add(listener);
       let unsubWallet: (() => void) | null = null;
-      if (events) {
+      if (events !== undefined) {
         const unsub = events.on("change", (changes) => {
           // Chain change: the wallet switched cluster. Re-point
           // currentChainId so subsequent signAndSendTransaction routes
           // through it, mirroring `switchChain`'s local-state model.
-          if (changes.chains) {
+          if (changes.chains !== undefined) {
             const next =
               changes.chains.find((c) => c === "solana:mainnet" || c === "solana:mainnet-beta") ??
               changes.chains.find((c) => c.startsWith(SOLANA_PREFIX));
-            if (next) {
+            if (next !== undefined) {
               currentChainId = next;
             }
           }
 
-          if (changes.accounts) {
+          if (changes.accounts !== undefined) {
             if (changes.accounts.length === 0) {
               listener({ type: "disconnected" });
               return;
@@ -345,18 +342,20 @@ const buildSvmAdapter = (
             const chain = currentChain();
             const built = changes.accounts.map((a) => buildAccount(a.address, chain));
             const first = built[0];
-            if (!first) {
+            if (first === undefined) {
               return;
             }
             listener({ account: first, accounts: built, type: "accountChanged" });
             return;
           }
 
-          if (changes.chains) {
+          if (changes.chains !== undefined) {
             notifyAccountChanged();
           }
         });
-        unsubWallet = () => unsub();
+        unsubWallet = () => {
+          unsub();
+        };
       }
       return () => {
         listeners.delete(listener);
@@ -364,7 +363,7 @@ const buildSvmAdapter = (
       };
     },
 
-    switchChain(chain) {
+    switchChain: (chain) => {
       if (chain.namespace !== "solana") {
         throw new Error(
           `SVM adapter received non-Solana chain "${chain.id}". Pass a chain with namespace "solana".`,

@@ -59,8 +59,8 @@ describe("createFakePersistence", () => {
     await p.setPool(pool);
     const stored = await p.getPool();
     expect(Object.keys(stored).toSorted()).toEqual(["a", "b"]);
-    expect(stored["a"]?.connectorId).toBe("a");
-    expect(stored["b"]?.chainPlatform).toBe("evm");
+    expect(stored.a?.connectorId).toBe("a");
+    expect(stored.b?.chainPlatform).toBe("evm");
   });
 
   it("setSelection serialises a Map<platform, connectorId> into the storage shape", async () => {
@@ -95,8 +95,8 @@ describe("createFakePersistence", () => {
     );
     await p.removePoolEntry("a");
     const stored = await p.getPool();
-    expect(stored["a"]).toBeUndefined();
-    expect(stored["b"]).toBeDefined();
+    expect(stored.a).toBeUndefined();
+    expect(stored.b).toBeDefined();
   });
 
   it("clearPool removes all entries from the pool", async () => {

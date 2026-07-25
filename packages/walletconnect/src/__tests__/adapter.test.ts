@@ -22,7 +22,7 @@ const createFakeProvider = (
 } => {
   const listeners = new Map<string, Set<ProviderListener>>();
   const requests: Array<RequestArgs> = [];
-  let session: unknown = null;
+  let session: object | null = null;
   const connectCalls: Array<ConnectArgs> = [];
   const onCalls: Array<ListenerCall> = [];
   const removeListenerCalls: Array<ListenerCall> = [];
@@ -95,7 +95,7 @@ describe("createWalletConnectAdapters (single-namespace)", () => {
       universalProvider: stubUniversalProvider(provider),
     });
 
-    if (!adapter) {
+    if (adapter === undefined) {
       throw new Error("expected one adapter");
     }
     expect(adapter.id).toBe("walletconnect");
@@ -108,7 +108,7 @@ describe("createWalletConnectAdapters (single-namespace)", () => {
 
   it("forwards display_uri events to onPairingUri", async () => {
     const provider = createFakeProvider();
-    const onPairingUri = vi.fn();
+    const onPairingUri = vi.fn<(uri: string) => void>();
     await createWalletConnectAdapters({
       namespaces: EVM_ONLY,
       onPairingUri,
@@ -123,7 +123,7 @@ describe("createWalletConnectAdapters (single-namespace)", () => {
 
   it("ignores non-string display_uri payloads", async () => {
     const provider = createFakeProvider();
-    const onPairingUri = vi.fn();
+    const onPairingUri = vi.fn<(uri: string) => void>();
     await createWalletConnectAdapters({
       namespaces: EVM_ONLY,
       onPairingUri,
@@ -145,13 +145,13 @@ describe("createWalletConnectAdapters (single-namespace)", () => {
       universalProvider: stubUniversalProvider(provider),
     });
 
-    if (!adapter) {
+    if (adapter === undefined) {
       throw new Error("expected one adapter");
     }
     await adapter.connect();
 
     expect(provider.connectCalls).toHaveLength(1);
-    const namespace = provider.connectCalls[0]?.namespaces["eip155"];
+    const namespace = provider.connectCalls[0]?.namespaces.eip155;
     expect(namespace?.chains).toEqual(["eip155:1", "eip155:137"]);
     expect(namespace?.methods).toContain("personal_sign");
     expect(namespace?.events).toContain("accountsChanged");
@@ -165,7 +165,7 @@ describe("createWalletConnectAdapters (single-namespace)", () => {
       universalProvider: stubUniversalProvider(provider),
     });
 
-    if (!adapter) {
+    if (adapter === undefined) {
       throw new Error("expected one adapter");
     }
     await adapter.connect();
@@ -183,7 +183,7 @@ describe("createWalletConnectAdapters (single-namespace)", () => {
       universalProvider: stubUniversalProvider(provider),
     });
 
-    if (!adapter) {
+    if (adapter === undefined) {
       throw new Error("expected one adapter");
     }
     await adapter.disconnect?.();
@@ -205,7 +205,7 @@ describe("createWalletConnectAdapters (single-namespace)", () => {
       universalProvider: stubUniversalProvider(provider),
     });
 
-    if (!adapter) {
+    if (adapter === undefined) {
       throw new Error("expected one adapter");
     }
     expect(adapter.id).toBe("walletconnect:custom");
@@ -240,7 +240,7 @@ describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
       universalProvider: stubUniversalProvider(provider),
     });
 
-    if (!adapter) {
+    if (adapter === undefined) {
       throw new Error("expected one adapter");
     }
     await adapter.connect();
@@ -260,7 +260,7 @@ describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
       universalProvider: stubUniversalProvider(provider),
     });
 
-    if (!adapter) {
+    if (adapter === undefined) {
       throw new Error("expected one adapter");
     }
     // No connect(); namespace disconnect() returns early (no session),
@@ -281,7 +281,7 @@ describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
       universalProvider: stubUniversalProvider(provider),
     });
 
-    if (!adapter) {
+    if (adapter === undefined) {
       throw new Error("expected one adapter");
     }
     await adapter.connect();
@@ -303,7 +303,7 @@ describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
       universalProvider: stubUniversalProvider(provider),
     });
 
-    if (!adapter) {
+    if (adapter === undefined) {
       throw new Error("expected one adapter");
     }
     await adapter.connect();

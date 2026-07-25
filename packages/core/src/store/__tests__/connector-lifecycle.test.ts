@@ -32,8 +32,8 @@ describe("createConnectorLifecycle", () => {
   it("subscribes to the connector on attach", () => {
     const { connector } = createSubscribableConnector();
     const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn(),
-      onDisconnected: vi.fn(),
+      onAccountChanged: vi.fn<() => void>(),
+      onDisconnected: vi.fn<() => void>(),
     });
     lifecycle.attach("wallet-a", connector);
     expect(connector.subscribe).toHaveBeenCalledTimes(1);
@@ -45,16 +45,21 @@ describe("createConnectorLifecycle", () => {
       subscribe: undefined,
     };
     const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn(),
-      onDisconnected: vi.fn(),
+      onAccountChanged: vi.fn<() => void>(),
+      onDisconnected: vi.fn<() => void>(),
     });
-    expect(() => lifecycle.attach("wallet-a", connector)).not.toThrow();
+    expect(() => {
+      lifecycle.attach("wallet-a", connector);
+    }).not.toThrow();
   });
 
   it("routes accountChanged events to onAccountChanged with the full accounts list", () => {
     const { connector, emit } = createSubscribableConnector();
-    const onAccountChanged = vi.fn();
-    const lifecycle = createConnectorLifecycle({ onAccountChanged, onDisconnected: vi.fn() });
+    const onAccountChanged = vi.fn<() => void>();
+    const lifecycle = createConnectorLifecycle({
+      onAccountChanged,
+      onDisconnected: vi.fn<() => void>(),
+    });
     lifecycle.attach("wallet-a", connector);
 
     const account = createMockAccount({ walletAddress: "0xabc" });
@@ -66,8 +71,11 @@ describe("createConnectorLifecycle", () => {
 
   it("routes disconnected events to onDisconnected and tears down the subscription first", () => {
     const { connector, emit, unsubscribe } = createSubscribableConnector("wallet-a", "svm");
-    const onDisconnected = vi.fn();
-    const lifecycle = createConnectorLifecycle({ onAccountChanged: vi.fn(), onDisconnected });
+    const onDisconnected = vi.fn<() => void>();
+    const lifecycle = createConnectorLifecycle({
+      onAccountChanged: vi.fn<() => void>(),
+      onDisconnected,
+    });
     lifecycle.attach("wallet-a", connector);
 
     emit({ type: "disconnected" });
@@ -80,8 +88,8 @@ describe("createConnectorLifecycle", () => {
     const first = createSubscribableConnector("wallet-a");
     const second = createSubscribableConnector("wallet-a");
     const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn(),
-      onDisconnected: vi.fn(),
+      onAccountChanged: vi.fn<() => void>(),
+      onDisconnected: vi.fn<() => void>(),
     });
 
     lifecycle.attach("wallet-a", first.connector);
@@ -93,17 +101,19 @@ describe("createConnectorLifecycle", () => {
 
   it("detach is a no-op when no subscription is registered for the id", () => {
     const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn(),
-      onDisconnected: vi.fn(),
+      onAccountChanged: vi.fn<() => void>(),
+      onDisconnected: vi.fn<() => void>(),
     });
-    expect(() => lifecycle.detach("never-attached")).not.toThrow();
+    expect(() => {
+      lifecycle.detach("never-attached");
+    }).not.toThrow();
   });
 
   it("detach calls the connector's unsubscribe", () => {
     const { connector, unsubscribe } = createSubscribableConnector();
     const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn(),
-      onDisconnected: vi.fn(),
+      onAccountChanged: vi.fn<() => void>(),
+      onDisconnected: vi.fn<() => void>(),
     });
     lifecycle.attach("wallet-a", connector);
     lifecycle.detach("wallet-a");
@@ -114,8 +124,8 @@ describe("createConnectorLifecycle", () => {
     const a = createSubscribableConnector("a");
     const b = createSubscribableConnector("b");
     const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn(),
-      onDisconnected: vi.fn(),
+      onAccountChanged: vi.fn<() => void>(),
+      onDisconnected: vi.fn<() => void>(),
     });
     lifecycle.attach("a", a.connector);
     lifecycle.attach("b", b.connector);
@@ -135,11 +145,13 @@ describe("createConnectorLifecycle", () => {
       }),
     };
     const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn(),
-      onDisconnected: vi.fn(),
+      onAccountChanged: vi.fn<() => void>(),
+      onDisconnected: vi.fn<() => void>(),
     });
 
-    expect(() => lifecycle.attach("wallet-a", connector)).not.toThrow();
+    expect(() => {
+      lifecycle.attach("wallet-a", connector);
+    }).not.toThrow();
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining("subscribe failed for wallet-a"),
       expect.any(Error),
@@ -156,12 +168,14 @@ describe("createConnectorLifecycle", () => {
       }),
     };
     const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn(),
-      onDisconnected: vi.fn(),
+      onAccountChanged: vi.fn<() => void>(),
+      onDisconnected: vi.fn<() => void>(),
     });
     lifecycle.attach("wallet-a", connector);
 
-    expect(() => lifecycle.detach("wallet-a")).not.toThrow();
+    expect(() => {
+      lifecycle.detach("wallet-a");
+    }).not.toThrow();
     expect(warn).toHaveBeenCalledWith("[butr] unsubscribe threw:", expect.any(Error));
     warn.mockRestore();
   });
@@ -169,11 +183,14 @@ describe("createConnectorLifecycle", () => {
   it("detaches before invoking onDisconnected handler", () => {
     const { connector, emit, unsubscribe } = createSubscribableConnector();
     let unsubAtCallTime = 0;
-    const onDisconnected = vi.fn().mockImplementation(() => {
+    const onDisconnected = vi.fn<() => void>().mockImplementation(() => {
       unsubAtCallTime = (unsubscribe as unknown as { mock: { calls: Array<unknown> } }).mock.calls
         .length;
     });
-    const lifecycle = createConnectorLifecycle({ onAccountChanged: vi.fn(), onDisconnected });
+    const lifecycle = createConnectorLifecycle({
+      onAccountChanged: vi.fn<() => void>(),
+      onDisconnected,
+    });
     lifecycle.attach("wallet-a", connector);
 
     emit({ type: "disconnected" });

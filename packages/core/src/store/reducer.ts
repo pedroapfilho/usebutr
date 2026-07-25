@@ -136,9 +136,9 @@ const reducer = (state: State, event: Event): State => {
         selection.set(platform, id);
       }
       let activeConnectorId: string | null = null;
-      if (event.activeConnectorId && pool.has(event.activeConnectorId)) {
+      if (event.activeConnectorId !== null && pool.has(event.activeConnectorId)) {
         activeConnectorId = event.activeConnectorId;
-      } else if (state.activeConnectorId && pool.has(state.activeConnectorId)) {
+      } else if (state.activeConnectorId !== null && pool.has(state.activeConnectorId)) {
         activeConnectorId = state.activeConnectorId;
       } else if (pool.size > 0) {
         activeConnectorId = pool.keys().next().value ?? null;
@@ -248,7 +248,7 @@ const reducer = (state: State, event: Event): State => {
       if (newSelection.get(platform) === event.connectorId) {
         newSelection.delete(platform);
         const fallback = findConnectorForPlatform(newPool, platform);
-        if (fallback) {
+        if (fallback !== undefined) {
           newSelection.set(platform, fallback);
         }
       }

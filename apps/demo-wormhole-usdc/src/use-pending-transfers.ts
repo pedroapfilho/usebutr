@@ -80,12 +80,12 @@ const usePendingTransfers = (
         if (!cctp) {
           continue;
         }
-        if (spec.platform === "evm" && evmAddr) {
+        if (spec.platform === "evm" && evmAddr !== undefined && evmAddr !== "") {
           tasks.push({
             run: () => scanEvmBurns(spec, cctp.tokenMessenger, evmAddr),
             spec,
           });
-        } else if (spec.platform === "svm" && svmAddr) {
+        } else if (spec.platform === "svm" && svmAddr !== undefined && svmAddr !== "") {
           tasks.push({
             run: () =>
               scanSolanaBurns(spec, [cctp.tokenMessenger, cctp.messageTransmitter], svmAddr),
@@ -98,7 +98,7 @@ const usePendingTransfers = (
       const discovered: Array<DiscoveredBurn> = [];
       const partialChains: Array<string> = [];
       settled.forEach((result, index) => {
-        const { spec } = tasks[index] as ScanTask;
+        const { spec } = tasks[index];
         if (result.status === "fulfilled") {
           discovered.push(...result.value.burns);
           if (result.value.partial) {
@@ -114,7 +114,7 @@ const usePendingTransfers = (
       // i.e. the wrong Solana account is connected to complete them.
       const solanaUsdc = findChainSpec("Solana")?.usdc;
       const activeSvmAtaUniversal =
-        svmAddr && solanaUsdc
+        svmAddr !== undefined && svmAddr !== "" && solanaUsdc !== undefined && solanaUsdc !== ""
           ? Wormhole.chainAddress("Solana", await deriveUsdcAta(svmAddr, solanaUsdc))
               .address.toUniversalAddress()
               .toString()

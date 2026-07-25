@@ -222,7 +222,7 @@ describe("buildSuiAdapter", () => {
       "sui:signAndExecuteTransaction": sendFeature,
     });
     const adapter = buildSuiAdapter(wallet);
-    await expect(adapter?.sendTx(42 as unknown)).rejects.toThrow(TypeError);
+    await expect(adapter?.sendTx(42)).rejects.toThrow(TypeError);
   });
 
   it("switchChain() rejects a non-sui namespace", () => {

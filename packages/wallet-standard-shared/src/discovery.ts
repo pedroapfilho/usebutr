@@ -59,7 +59,17 @@ const discoverWalletStandard = (
   void (async () => {
     let mod: WalletStandardAppModule;
     try {
-      mod = (await import("@wallet-standard/app")) as unknown as WalletStandardAppModule;
+      const imported: unknown = await import("@wallet-standard/app");
+      if (
+        typeof imported !== "object" ||
+        imported === null ||
+        !("getWallets" in imported) ||
+        typeof imported.getWallets !== "function"
+      ) {
+        throw new Error("@wallet-standard/app has no getWallets export");
+      }
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- validated getWallets export above; the rest of the untyped module is trusted
+      mod = imported as WalletStandardAppModule;
     } catch (error) {
       if (!warnedMissingApp) {
         warnedMissingApp = true;

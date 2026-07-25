@@ -284,7 +284,7 @@ describe("buildSvmAdapter", () => {
       "standard:events": eventsFeature,
     });
     const adapter = buildSvmAdapter(wallet);
-    const listener = vi.fn();
+    const listener = vi.fn<() => void>();
     const unsub = adapter?.subscribe?.(listener);
 
     registered[0]?.({ accounts: [buildAccount("So1New")] });
@@ -307,7 +307,7 @@ describe("buildSvmAdapter", () => {
     };
     const wallet = withFeatures(buildWallet(), { "standard:connect": connectFeature });
     const adapter = buildSvmAdapter(wallet);
-    const listener = vi.fn();
+    const listener = vi.fn<() => void>();
     const unsub = adapter?.subscribe?.(listener);
     expect(typeof unsub).toBe("function");
     unsub?.();
@@ -397,7 +397,7 @@ describe("SVM wallet fixtures — protocol-level uniformity", () => {
 
     const withSignMessage = withFeatures(buildWallet(), {
       "solana:signAndSendTransaction": signAndSendFeature,
-      "solana:signMessage": { signMessage: vi.fn() } as SolanaSignMessageFeature,
+      "solana:signMessage": { signMessage: vi.fn() },
       "standard:connect": connectFeature,
     });
     expect(buildSvmAdapter(withSignMessage)?.capabilities.signMessage).toBe(true);
@@ -417,7 +417,7 @@ describe("SVM wallet fixtures — protocol-level uniformity", () => {
     const withFeature = withFeatures(buildWallet(), {
       "solana:signAndSendTransaction": {
         signAndSendTransaction: vi.fn(),
-      } as SolanaSignAndSendTransactionFeature,
+      },
       "standard:connect": connectFeature,
     });
     expect(buildSvmAdapter(withFeature)?.capabilities.sendTransaction).toBe(true);
@@ -433,7 +433,7 @@ describe("SVM wallet fixtures — protocol-level uniformity", () => {
 
     const withEvents = withFeatures(buildWallet(), {
       "standard:connect": connectFeature,
-      "standard:events": { on: vi.fn().mockReturnValue(() => {}) } as StandardEventsFeature,
+      "standard:events": { on: vi.fn().mockReturnValue(() => {}) },
     });
     expect(buildSvmAdapter(withEvents)?.capabilities.subscribe).toBe(true);
 
@@ -498,7 +498,7 @@ describe("buildSvmAdapter.switchChain", () => {
         "standard:events": eventsFeature,
       }),
     );
-    const listener = vi.fn();
+    const listener = vi.fn<() => void>();
     adapter?.subscribe?.(listener);
     await adapter?.switchChain({
       id: "solana:devnet",
@@ -563,7 +563,7 @@ describe("buildSvmAdapter edge cases", () => {
         "standard:events": eventsFeature,
       }),
     );
-    const fireListener = vi.fn();
+    const fireListener = vi.fn<() => void>();
     adapter?.subscribe?.(fireListener);
     captured[0]?.({ features: ["solana:signIn"] });
     expect(fireListener).not.toHaveBeenCalled();
@@ -584,7 +584,7 @@ describe("buildSvmAdapter edge cases", () => {
         "standard:events": eventsFeature,
       }),
     );
-    const fireListener = vi.fn();
+    const fireListener = vi.fn<() => void>();
     adapter?.subscribe?.(fireListener);
     captured[0]?.({ chains: ["solana:devnet"] });
     const expectedChain = expect.objectContaining({ id: "solana:devnet" });
@@ -665,7 +665,7 @@ describe("buildSvmAdapter edge cases", () => {
         emits.push(fn);
       },
     );
-    const fireListener = vi.fn();
+    const fireListener = vi.fn<() => void>();
     adapter?.subscribe?.(fireListener);
     emits[0]?.();
     expect(fireListener).toHaveBeenCalledWith({ type: "disconnected" });

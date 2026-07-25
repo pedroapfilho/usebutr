@@ -35,7 +35,7 @@ const accountsEqual = (a: ReadonlyArray<Account>, b: ReadonlyArray<Account>) => 
   for (let i = 0; i < a.length; i += 1) {
     const x = a[i];
     const y = b[i];
-    if (!x || !y) {
+    if (x === undefined || y === undefined) {
       return false;
     }
     if (x.walletAddress !== y.walletAddress || x.chain.id !== y.chain.id) {
@@ -64,7 +64,7 @@ const accountsEqual = (a: ReadonlyArray<Account>, b: ReadonlyArray<Account>) => 
 const useConnectionStatus = () => {
   const store = useWalletStoreContext();
   return useStore(store, (state) => {
-    if (state.activeConnectorId && state.reconnectingIds.has(state.activeConnectorId)) {
+    if (state.activeConnectorId !== null && state.reconnectingIds.has(state.activeConnectorId)) {
       return "reconnecting" as const;
     }
     return state.connectionStatus;
@@ -138,7 +138,8 @@ const useActiveWallet = (): ConnectedWallet | undefined => {
   const store = useWalletStoreContext();
   return useStoreWithEqualityFn(
     store,
-    (state) => (state.activeConnectorId ? state.pool.get(state.activeConnectorId) : undefined),
+    (state) =>
+      state.activeConnectorId === null ? undefined : state.pool.get(state.activeConnectorId),
     walletEqual,
   );
 };
@@ -149,11 +150,11 @@ const useSelectedWallet = (chainPlatform: ChainPlatform | null): ConnectedWallet
   return useStoreWithEqualityFn(
     store,
     (state) => {
-      if (!chainPlatform) {
+      if (chainPlatform === null) {
         return undefined;
       }
       const id = state.selection.get(chainPlatform);
-      return id ? state.pool.get(id) : undefined;
+      return id === undefined ? undefined : state.pool.get(id);
     },
     walletEqual,
   );
@@ -178,7 +179,7 @@ const useAccounts = (connectorId?: string | null): ReadonlyArray<Account> => {
     store,
     (state) => {
       const id = connectorId ?? state.activeConnectorId;
-      const wallet = id ? state.pool.get(id) : undefined;
+      const wallet = id === null ? undefined : state.pool.get(id);
       return wallet ? wallet.accounts : EMPTY_ACCOUNTS;
     },
     accountsEqual,
@@ -201,7 +202,7 @@ const useWalletEntry = (connectorId: string | null | undefined): ConnectedWallet
     store,
     (state) => {
       const id = connectorId ?? state.activeConnectorId;
-      return id ? state.pool.get(id) : undefined;
+      return id === null ? undefined : state.pool.get(id);
     },
     walletEqual,
   );
@@ -220,7 +221,7 @@ const useGetSelectedWallet = () => {
     (chainPlatform: ChainPlatform) => {
       const state = store.getState();
       const id = state.selection.get(chainPlatform);
-      return id ? state.pool.get(id) : undefined;
+      return id === undefined ? undefined : state.pool.get(id);
     },
     [store],
   );

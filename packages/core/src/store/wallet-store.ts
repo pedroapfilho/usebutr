@@ -3,6 +3,7 @@ import { createStore } from "zustand/vanilla";
 import { logError, logWarn } from "../logger";
 import type { WalletPersistence, WalletSnapshot } from "../storage";
 import { WalletStorage } from "../storage/wallet-storage";
+import { CHAIN_PLATFORMS } from "../types";
 import type {
   Account,
   ChainPlatform,
@@ -18,6 +19,10 @@ import { createHydrationCoordinator } from "./hydration";
 import { type Event, type State, initialState, reducer } from "./reducer";
 import { createShadowAdapter } from "./shadow-adapter";
 import { run } from "./wallet-store-helpers";
+
+const VALID_CHAIN_PLATFORMS: ReadonlySet<string> = new Set(CHAIN_PLATFORMS);
+
+const isChainPlatform = (value: string): value is ChainPlatform => VALID_CHAIN_PLATFORMS.has(value);
 
 /**
  * Build a synchronously-populated `State` from `config.initialState`.
@@ -45,12 +50,12 @@ const seedStateFromSnapshot = (snapshot: WalletSnapshot): State => {
   }
   const selection = new Map<ChainPlatform, string>();
   for (const [platform, connectorId] of Object.entries(snapshot.selection)) {
-    if (connectorId && pool.has(connectorId)) {
-      selection.set(platform as ChainPlatform, connectorId);
+    if (isChainPlatform(platform) && connectorId !== undefined && pool.has(connectorId)) {
+      selection.set(platform, connectorId);
     }
   }
   const activeConnectorId =
-    snapshot.activeConnectorId && pool.has(snapshot.activeConnectorId)
+    snapshot.activeConnectorId !== null && pool.has(snapshot.activeConnectorId)
       ? snapshot.activeConnectorId
       : (pool.keys().next().value ?? null);
   return {
@@ -97,8 +102,11 @@ type WalletStore = ReturnType<typeof createWalletStore>;
 type WalletStoreState = ExtractState<WalletStore>;
 
 const createWalletStore = (config: WalletManagerConfig) => {
-  const storageKeyPrefix = config.storageKeyPrefix || "butr";
-  const storage = config.storage || new WalletStorage({ keyPrefix: storageKeyPrefix });
+  const storageKeyPrefix =
+    config.storageKeyPrefix === undefined || config.storageKeyPrefix === ""
+      ? "butr"
+      : config.storageKeyPrefix;
+  const storage = config.storage ?? new WalletStorage({ keyPrefix: storageKeyPrefix });
 
   const reportStorageError = (context: string) => (error: unknown) => {
     if (config.onStorageError) {
@@ -209,7 +217,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
             }, slowThreshold)
           : null;
 
-        let connectTimeoutId: ReturnType<typeof setTimeout> | null = null;
+        let connectTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
         try {
           const connectPromise = connector.connect();
@@ -257,12 +265,10 @@ const createWalletStore = (config: WalletManagerConfig) => {
           } catch (cbError: unknown) {
             logWarn("[butr] onConnectError threw:", cbError);
           }
-          onError?.(error as Error);
+          onError?.(error instanceof Error ? error : new Error(String(error)));
           throw error;
         } finally {
-          if (connectTimeoutId) {
-            clearTimeout(connectTimeoutId);
-          }
+          clearTimeout(connectTimeoutId);
           if (slowTimer) {
             clearTimeout(slowTimer);
           }
@@ -341,7 +347,9 @@ const createWalletStore = (config: WalletManagerConfig) => {
         for (const id of hydration.pendingIds()) {
           void run(
             () => get().tryRestoreFromPending(id),
-            (e) => logWarn(`[butr] late restore rejected for ${id}:`, e),
+            (e) => {
+              logWarn(`[butr] late restore rejected for ${id}:`, e);
+            },
           );
         }
         if (config.onHydrated) {

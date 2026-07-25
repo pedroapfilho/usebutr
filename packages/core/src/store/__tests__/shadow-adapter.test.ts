@@ -117,7 +117,7 @@ describe("isShadowAdapter", () => {
       const liveLooking = {
         ...shadow,
         capabilities: { ...shadow.capabilities, [flag]: true },
-      } as typeof shadow;
+      };
       expect(isShadowAdapter(liveLooking)).toBe(false);
     },
   );

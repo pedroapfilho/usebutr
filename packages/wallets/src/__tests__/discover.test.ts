@@ -142,17 +142,23 @@ describe("discoverWalletAdapters", () => {
   it("returns an unsubscribe function with default options", () => {
     const unsubscribe = discoverWalletAdapters(() => {});
     expect(typeof unsubscribe).toBe("function");
-    expect(() => unsubscribe()).not.toThrow();
+    expect(() => {
+      unsubscribe();
+    }).not.toThrow();
   });
 
   it("doesn't throw when only the svm path is enabled (no EVM dispatch)", () => {
     const unsubscribe = discoverWalletAdapters(() => {}, { svm: true });
-    expect(() => unsubscribe()).not.toThrow();
+    expect(() => {
+      unsubscribe();
+    }).not.toThrow();
   });
 
   it("doesn't throw when only sui is enabled", () => {
     const unsubscribe = discoverWalletAdapters(() => {}, { sui: true });
-    expect(() => unsubscribe()).not.toThrow();
+    expect(() => {
+      unsubscribe();
+    }).not.toThrow();
   });
 
   it("doesn't throw when only bitcoin is enabled (without injected fallback)", () => {
@@ -160,7 +166,9 @@ describe("discoverWalletAdapters", () => {
       bitcoin: true,
       injectedBitcoin: false,
     });
-    expect(() => unsubscribe()).not.toThrow();
+    expect(() => {
+      unsubscribe();
+    }).not.toThrow();
   });
 
   it("disabling every platform returns a no-op unsubscribe", () => {
@@ -171,7 +179,9 @@ describe("discoverWalletAdapters", () => {
       svm: false,
     });
     expect(typeof unsubscribe).toBe("function");
-    expect(() => unsubscribe()).not.toThrow();
+    expect(() => {
+      unsubscribe();
+    }).not.toThrow();
   });
 });
 

@@ -7,7 +7,7 @@ describe("createWalletSource", () => {
     const unsub = vi.fn();
     const subscribe = vi.fn(() => unsub);
     const source = createWalletSource(subscribe);
-    const onAdapter = vi.fn();
+    const onAdapter = vi.fn<() => void>();
     const returned = source.subscribe(onAdapter);
     expect(subscribe).toHaveBeenCalledWith(onAdapter);
     returned();

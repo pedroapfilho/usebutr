@@ -57,7 +57,7 @@ const partitionResolvedExtensions = (
   const missing: Array<WalletExtension> = [];
   for (const wallet of wallets) {
     const path = resolve(wallet);
-    if (path) {
+    if (path !== null && path !== "") {
       paths.push({ path, wallet });
     } else {
       missing.push(wallet);

@@ -24,7 +24,7 @@ const formatError = (error: unknown): string => {
     try {
       return JSON.stringify(error);
     } catch {
-      return String(error);
+      return "unrecognized error";
     }
   }
   return "unknown error";
@@ -32,7 +32,7 @@ const formatError = (error: unknown): string => {
 
 const truncate = (a: string): string => (a.length > 14 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a);
 
-const chainLabel = (chain: string): string => findChainSpec(chain as never)?.label ?? chain;
+const chainLabel = (chain: string): string => findChainSpec(chain)?.label ?? chain;
 
 type RowStatus =
   | { kind: "idle" }
@@ -96,11 +96,12 @@ const PendingTransfers = () => {
   const [rows, setRows] = useState<Record<string, RowStatus>>({});
 
   const noWallets = !evmWallet && !svmWallet;
-  const setRow = (key: string, status: RowStatus) =>
+  const setRow = (key: string, status: RowStatus) => {
     setRows((current) => ({ ...current, [key]: status }));
+  };
 
   const handleComplete = async (item: ResumableTransfer) => {
-    const destSpec = findChainSpec(item.destChain as never);
+    const destSpec = findChainSpec(item.destChain);
     const destWallet = destSpec?.platform === "evm" ? evmWallet : svmWallet;
     if (!destSpec || !destWallet) {
       return;
@@ -162,7 +163,7 @@ const PendingTransfers = () => {
       ) : null}
 
       {items.map((item) => {
-        const destSpec = findChainSpec(item.destChain as never);
+        const destSpec = findChainSpec(item.destChain);
         const destWallet = destSpec?.platform === "evm" ? evmWallet : svmWallet;
         const row = rows[item.key] ?? { kind: "idle" };
         const srcSpec = getChainSpec(item.sourceChain);
@@ -205,7 +206,9 @@ const PendingTransfers = () => {
                 ) : null}
                 <button
                   className="rounded-md border border-neutral-300 px-3 py-1 text-xs text-neutral-600 hover:bg-neutral-50"
-                  onClick={() => dismiss(item.key)}
+                  onClick={() => {
+                    dismiss(item.key);
+                  }}
                   type="button"
                 >
                   Dismiss

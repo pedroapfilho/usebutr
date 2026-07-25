@@ -1,6 +1,6 @@
 import type { WalletAdapter } from "@usebutr/core";
 import { logWarn } from "@usebutr/core";
-import type { Eip1193Provider, Eip6963ProviderInfo } from "@usebutr/evm";
+import type { Eip6963ProviderInfo } from "@usebutr/evm";
 import { buildEvmAdapter } from "@usebutr/evm";
 
 import { WALLETCONNECT_CAPABILITIES } from "../capabilities";
@@ -40,7 +40,7 @@ const evmNamespace: WalletConnectNamespaceBuilder = {
       rdns: id,
       uuid: id,
     };
-    const base = buildEvmAdapter(info, provider as Eip1193Provider);
+    const base = buildEvmAdapter(info, provider);
 
     const adapter: WalletAdapter = {
       ...base,
@@ -50,7 +50,7 @@ const evmNamespace: WalletConnectNamespaceBuilder = {
         if (provider.session) {
           return;
         }
-        if (opts?.silent) {
+        if (opts?.silent === true) {
           throw new Error("No WalletConnect session for silent reconnect");
         }
         await provider.connect({

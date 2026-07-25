@@ -14,4 +14,8 @@ jobs:
         with:
           runtime: node@24
           cache: true
+      # Type-aware linting reads types off disk, and they only exist after a
+      # build: the workspace .d.ts files, plus demo-tanstack-start's generated
+      # route tree. Narrowing this to ./packages/* breaks that demo's lint.
+      - run: pnpm build
       - run: pnpm oxlint --format=github .

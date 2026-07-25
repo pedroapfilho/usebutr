@@ -44,11 +44,11 @@ const buildPolkadotWalletStandardAdapter = (
   registerDisconnector?: (emit: () => void) => void,
 ): WalletAdapter | null => {
   const chainId = pickPolkadotChain(wallet);
-  if (!chainId) {
+  if (chainId === null) {
     return null;
   }
   const connect = getFeature<StandardConnectFeature>(wallet, "standard:connect");
-  if (!connect) {
+  if (connect === undefined) {
     return null;
   }
 
@@ -67,7 +67,7 @@ const buildPolkadotWalletStandardAdapter = (
     const chain = currentChain();
     const built = wallet.accounts.map((a) => buildAccount(a.address, chain));
     const first = built[0];
-    if (!first) {
+    if (first === undefined) {
       return;
     }
     for (const listener of listeners) {
@@ -89,11 +89,11 @@ const buildPolkadotWalletStandardAdapter = (
     chainPlatform: "polkadot",
 
     async connect(opts) {
-      await connect.connect(opts?.silent ? { silent: true } : undefined);
+      await connect.connect(opts?.silent === true ? { silent: true } : undefined);
     },
 
     async disconnect() {
-      if (disconnect) {
+      if (disconnect !== undefined) {
         try {
           await disconnect.disconnect();
         } catch (error) {
@@ -102,21 +102,19 @@ const buildPolkadotWalletStandardAdapter = (
       }
     },
 
-    getAccount() {
+    getAccount: () => {
       const address = pickFirstAddress(wallet.accounts);
-      return Promise.resolve(address ? buildAccount(address, currentChain()) : null);
+      return Promise.resolve(address === null ? null : buildAccount(address, currentChain()));
     },
 
-    getAccounts() {
+    getAccounts: () => {
       const chain = currentChain();
       return Promise.resolve(wallet.accounts.map((a) => buildAccount(a.address, chain)));
     },
 
     getBalance: noRpcBalance,
 
-    getSigner() {
-      return Promise.resolve(wallet);
-    },
+    getSigner: () => Promise.resolve(wallet),
 
     getTransactionReceipt: noRpcTransactionReceipt,
 
@@ -129,13 +127,13 @@ const buildPolkadotWalletStandardAdapter = (
     sendTxToChain: noRpcSendTxToChain,
 
     async signMessage(msg, account) {
-      if (!signMessage) {
+      if (signMessage === undefined) {
         throw new Error(`Wallet ${wallet.name} does not advertise polkadot:signMessage`);
       }
       const wsAccount = account
         ? pickAccountByAddress(wallet.accounts, account.walletAddress)
-        : (wallet.accounts[0] ?? null);
-      if (!wsAccount) {
+        : wallet.accounts[0];
+      if (wsAccount === undefined) {
         throw new Error("No connected account");
       }
       const output = await signMessage.signMessage({ account: wsAccount, message: msg });
@@ -145,9 +143,9 @@ const buildPolkadotWalletStandardAdapter = (
     subscribe(listener) {
       listeners.add(listener);
       let unsubWallet: (() => void) | null = null;
-      if (events) {
+      if (events !== undefined) {
         const unsub = events.on("change", (changes) => {
-          if (changes.accounts) {
+          if (changes.accounts !== undefined) {
             if (changes.accounts.length === 0) {
               listener({ type: "disconnected" });
               return;
@@ -155,12 +153,14 @@ const buildPolkadotWalletStandardAdapter = (
             const chain = currentChain();
             const built = changes.accounts.map((a) => buildAccount(a.address, chain));
             const first = built[0];
-            if (first) {
+            if (first !== undefined) {
               listener({ account: first, accounts: built, type: "accountChanged" });
             }
           }
         });
-        unsubWallet = () => unsub();
+        unsubWallet = () => {
+          unsub();
+        };
       }
       return () => {
         listeners.delete(listener);
@@ -168,7 +168,7 @@ const buildPolkadotWalletStandardAdapter = (
       };
     },
 
-    switchChain(target) {
+    switchChain: (target) => {
       if (target.namespace !== "polkadot") {
         throw new Error(
           `Polkadot adapter received non-Polkadot chain "${target.id}". Pass a chain with namespace "polkadot".`,

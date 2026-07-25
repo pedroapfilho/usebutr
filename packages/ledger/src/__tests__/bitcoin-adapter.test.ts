@@ -267,7 +267,7 @@ describe("createBitcoinLedgerAdapter", () => {
     await adapter.connect();
     const accounts = await adapter.getAccounts!();
     const targetAccount = accounts[2];
-    if (!targetAccount) {
+    if (targetAccount === undefined) {
       throw new Error("expected third account");
     }
     const psbt = new Uint8Array([9, 9, 9]);

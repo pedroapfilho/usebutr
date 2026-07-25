@@ -11,7 +11,12 @@ import type {
   WalletPersistence,
 } from "./persistence";
 
-const VALID_CHAIN_PLATFORMS = new Set<ChainPlatform>(CHAIN_PLATFORMS);
+const VALID_CHAIN_PLATFORMS: ReadonlySet<string> = new Set(CHAIN_PLATFORMS);
+
+const isChainPlatform = (value: string): value is ChainPlatform => VALID_CHAIN_PLATFORMS.has(value);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
 
 type StorageConfig = {
   keyPrefix: string;
@@ -22,14 +27,13 @@ type StorageConfig = {
 };
 
 const isValidAccount = (value: unknown): boolean => {
-  if (!value || typeof value !== "object") {
+  if (!isRecord(value)) {
     return false;
   }
-  const account = value as Record<string, unknown>;
-  if (typeof account.walletAddress !== "string" || typeof account.id !== "string") {
+  if (typeof value.walletAddress !== "string" || typeof value.id !== "string") {
     return false;
   }
-  if (!account.chain || typeof account.chain !== "object") {
+  if (!isRecord(value.chain)) {
     return false;
   }
   return true;
@@ -50,17 +54,17 @@ const isValidAccount = (value: unknown): boolean => {
  * "what's storable" is a single fact.
  */
 const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry => {
-  if (!value || typeof value !== "object") {
+  if (!isRecord(value)) {
     return false;
   }
-  const entry = value as Record<string, unknown>;
+  const entry = value;
   if (typeof entry.connectorId !== "string" || entry.connectorId !== key) {
     return false;
   }
   if (typeof entry.chainPlatform !== "string") {
     return false;
   }
-  if (!VALID_CHAIN_PLATFORMS.has(entry.chainPlatform as ChainPlatform)) {
+  if (!isChainPlatform(entry.chainPlatform)) {
     return false;
   }
   if (typeof entry.name !== "string" || entry.name.length === 0) {
@@ -79,12 +83,12 @@ const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry
 };
 
 class WalletStorage implements WalletPersistence {
-  private poolKey: string;
-  private selectionKey: string;
-  private activeKey: string;
-  private userDisconnectedKey: string;
-  private persistent: StorageDriver;
-  private session: StorageDriver;
+  private readonly poolKey: string;
+  private readonly selectionKey: string;
+  private readonly activeKey: string;
+  private readonly userDisconnectedKey: string;
+  private readonly persistent: StorageDriver;
+  private readonly session: StorageDriver;
   /**
    * Serializes pool-key mutations so concurrent fire-and-forget
    * writes can't interleave their read-modify-write phases. Without
@@ -139,16 +143,16 @@ class WalletStorage implements WalletPersistence {
   async getPool(): Promise<StoredPoolRecord> {
     try {
       const stored = await this.persistent.getItem(this.poolKey);
-      if (!stored) {
+      if (stored === null || stored === "") {
         return {};
       }
       const parsed: unknown = JSON.parse(stored);
-      if (!parsed || typeof parsed !== "object") {
+      if (!isRecord(parsed)) {
         await this.clearPool();
         return {};
       }
       const result: StoredPoolRecord = {};
-      for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      for (const [key, value] of Object.entries(parsed)) {
         if (isValidPoolEntry(key, value)) {
           result[key] = value;
         } else {
@@ -173,8 +177,8 @@ class WalletStorage implements WalletPersistence {
    * Use `removePoolEntry` for explicit eviction (the user clicked
    * Disconnect) and `clearAll` for a full wipe (reset).
    */
-  setPool(pool: Map<string, ConnectedWallet>): Promise<void> {
-    return this.serializePoolMutation(async () => {
+  async setPool(pool: Map<string, ConnectedWallet>): Promise<void> {
+    await this.serializePoolMutation(async () => {
       try {
         const existing = await this.getPool();
         const serializable: StoredPoolRecord = { ...existing };
@@ -205,8 +209,8 @@ class WalletStorage implements WalletPersistence {
     });
   }
 
-  removePoolEntry(connectorId: string): Promise<void> {
-    return this.serializePoolMutation(async () => {
+  async removePoolEntry(connectorId: string): Promise<void> {
+    await this.serializePoolMutation(async () => {
       try {
         const stored = await this.getPool();
         if (stored[connectorId]) {
@@ -219,8 +223,8 @@ class WalletStorage implements WalletPersistence {
     });
   }
 
-  clearPool(): Promise<void> {
-    return this.serializePoolMutation(async () => {
+  async clearPool(): Promise<void> {
+    await this.serializePoolMutation(async () => {
       await this.persistent.removeItem(this.poolKey);
     });
   }
@@ -228,21 +232,17 @@ class WalletStorage implements WalletPersistence {
   async getSelection(): Promise<StoredSelectionRecord> {
     try {
       const stored = await this.persistent.getItem(this.selectionKey);
-      if (!stored) {
+      if (stored === null || stored === "") {
         return {};
       }
       const parsed: unknown = JSON.parse(stored);
-      if (!parsed || typeof parsed !== "object") {
+      if (!isRecord(parsed)) {
         return {};
       }
       const result: StoredSelectionRecord = {};
-      for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-        if (
-          VALID_CHAIN_PLATFORMS.has(key as ChainPlatform) &&
-          typeof value === "string" &&
-          value.length > 0
-        ) {
-          result[key as ChainPlatform] = value;
+      for (const [key, value] of Object.entries(parsed)) {
+        if (isChainPlatform(key) && typeof value === "string" && value.length > 0) {
+          result[key] = value;
         }
       }
       return result;
@@ -267,7 +267,7 @@ class WalletStorage implements WalletPersistence {
   async getActiveConnectorId(): Promise<string | null> {
     try {
       const value = await this.persistent.getItem(this.activeKey);
-      return value && value.length > 0 ? value : null;
+      return value !== null && value.length > 0 ? value : null;
     } catch {
       return null;
     }

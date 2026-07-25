@@ -150,8 +150,8 @@ describe("createWalletStore", () => {
     });
 
     it("calls onConnect and onSuccess", async () => {
-      const onConnect = vi.fn();
-      const onSuccess = vi.fn();
+      const onConnect = vi.fn<() => void>();
+      const onSuccess = vi.fn<() => void>();
       const { store } = createTestStore({ onConnect });
       await store.getState().connectWallet("test", onSuccess);
       expect(onConnect).toHaveBeenCalledTimes(1);
@@ -165,7 +165,7 @@ describe("createWalletStore", () => {
       const { store } = createTestStore({
         createConnector: vi.fn().mockReturnValue(connector),
       });
-      const onError = vi.fn();
+      const onError = vi.fn<() => void>();
 
       await expect(store.getState().connectWallet("test", undefined, onError)).rejects.toThrow(
         "User rejected",
@@ -344,7 +344,7 @@ describe("createWalletStore", () => {
     });
 
     it("calls onDisconnect with the chainPlatform of the removed wallet", async () => {
-      const onDisconnect = vi.fn();
+      const onDisconnect = vi.fn<() => void>();
       const connector = createMockConnector({ chainPlatform: "evm", id: "metamask" });
       const { store } = createTestStore({
         createConnector: vi.fn().mockReturnValue(connector),

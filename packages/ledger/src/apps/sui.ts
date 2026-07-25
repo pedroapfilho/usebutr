@@ -48,6 +48,7 @@ const DEFAULT_DERIVATION_PATH_PREFIX = "44'/784'/0'/0'";
 const DEFAULT_CLUSTER: SuiCluster = "mainnet";
 
 const loadSui = async (): Promise<SuiAppConstructor> => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped optional peer-dep module boundary
   const mod = (await import("@ledgerhq/hw-app-sui")) as unknown as {
     default?: SuiAppConstructor;
     Sui?: SuiAppConstructor;
@@ -191,7 +192,7 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
     chainPlatform: "sui",
 
     async connect(opts) {
-      if (opts?.silent) {
+      if (opts?.silent === true) {
         // Ledger connect always shows the browser's WebUSB device
         // picker; there is no silent reconnect. Reject so eager
         // hydration doesn't pop the chooser on page load.
@@ -216,15 +217,15 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
       currentAddress = null;
     },
 
-    getAccount() {
-      if (!currentAddress) {
+    getAccount: () => {
+      if (currentAddress === null || currentAddress === "") {
         return Promise.resolve(null);
       }
       return Promise.resolve(buildSuiAccount(currentAddress, buildSuiChain(cluster, name)));
     },
 
     async getAccounts() {
-      if (!sui) {
+      if (sui === null) {
         return [];
       }
       const chain = buildSuiChain(cluster, name);
@@ -240,54 +241,45 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
       return accounts;
     },
 
-    getBalance() {
-      return Promise.reject(
+    getBalance: () =>
+      Promise.reject(
         new Error(
-          "[butr/ledger] getBalance not supported — Ledger has no RPC. Use @mysten/sui's SuiClient with your own RPC URL.",
+          "[butr/ledger] getBalance not supported: Ledger has no RPC. Use @mysten/sui's SuiClient with your own RPC URL.",
         ),
-      );
-    },
+      ),
 
-    getSigner() {
-      return Promise.resolve(sui);
-    },
+    getSigner: () => Promise.resolve(sui),
 
-    getTransactionReceipt() {
-      return Promise.reject(
-        new Error("[butr/ledger] getTransactionReceipt not supported — Ledger has no RPC."),
-      );
-    },
+    getTransactionReceipt: () =>
+      Promise.reject(
+        new Error("[butr/ledger] getTransactionReceipt not supported: Ledger has no RPC."),
+      ),
 
     icon,
     id,
     name,
 
-    sendTx() {
-      return Promise.reject(
+    sendTx: () =>
+      Promise.reject(
         new Error(
-          "[butr/ledger] sendTx not supported — Ledger signs but doesn't broadcast. Use signTransaction + @mysten/sui's SuiClient.",
+          "[butr/ledger] sendTx not supported: Ledger signs but doesn't broadcast. Use signTransaction + @mysten/sui's SuiClient.",
         ),
-      );
-    },
+      ),
 
-    sendTxToChain() {
-      return Promise.reject(
-        new Error(
-          "[butr/ledger] sendTxToChain not supported — Ledger signs but doesn't broadcast.",
-        ),
-      );
-    },
+    sendTxToChain: () =>
+      Promise.reject(
+        new Error("[butr/ledger] sendTxToChain not supported: Ledger signs but doesn't broadcast."),
+      ),
 
-    signMessage() {
-      // Ledger's Sui app exposes no signPersonalMessage / off-chain
-      // message instruction at this app version. Capabilities flag
-      // already reflects this; this rejection is defence-in-depth.
-      return Promise.reject(
+    // Ledger's Sui app exposes no signPersonalMessage / off-chain
+    // message instruction at this app version. Capabilities flag
+    // already reflects this; this rejection is defence-in-depth.
+    signMessage: () =>
+      Promise.reject(
         new Error(
-          "[butr/ledger] signMessage not supported — Ledger's Sui app exposes no off-chain message signing instruction. Use a non-hardware wallet for off-chain auth flows.",
+          "[butr/ledger] signMessage not supported: Ledger's Sui app exposes no off-chain message signing instruction. Use a non-hardware wallet for off-chain auth flows.",
         ),
-      );
-    },
+      ),
 
     /**
      * Sign a serialized Sui transaction. Returns the raw 64-byte ed25519
@@ -297,8 +289,8 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
      * helpers. Mirrors how Suiet + every Sui wallet ships this surface.
      */
     async signTransaction(tx, account) {
-      if (!sui) {
-        throw new Error("[butr/ledger] not connected — call connect() first");
+      if (sui === null) {
+        throw new Error("[butr/ledger] not connected: call connect() first");
       }
       if (!(tx instanceof Uint8Array)) {
         throw new TypeError(
@@ -329,21 +321,20 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
       return new Uint8Array(result.signature);
     },
 
-    subscribe() {
+    subscribe: () => {
       // No-op; Ledger emits no events. Capabilities flag is `false`.
       void SUBSCRIBE_NOT_AVAILABLE;
       return () => {};
     },
 
-    switchAccount() {
-      return Promise.reject(
+    switchAccount: () =>
+      Promise.reject(
         new Error(
-          "[butr/ledger] switchAccount not supported — pick a different account via signTransaction(tx, account) using a different derivation path",
+          "[butr/ledger] switchAccount not supported: pick a different account via signTransaction(tx, account) using a different derivation path",
         ),
-      );
-    },
+      ),
 
-    switchChain(chain) {
+    switchChain: (chain) => {
       if (chain.namespace !== "sui") {
         return Promise.reject(
           new Error(

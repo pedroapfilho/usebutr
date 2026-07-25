@@ -182,7 +182,9 @@ const discoverWalletAdapters = (
     }
   }
 
-  return () => bus.unsubscribeAll();
+  return () => {
+    bus.unsubscribeAll();
+  };
 };
 
 export type { DiscoverOptions };

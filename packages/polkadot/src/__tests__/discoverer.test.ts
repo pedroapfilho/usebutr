@@ -11,9 +11,14 @@ describe("polkadotDiscoverer", () => {
 
   it("fallback returns a no-op unsubscribe and does not emit when a primary adapter already exists", () => {
     let emitted = 0;
-    const stop = polkadotDiscoverer.fallback?.subscribe(() => (emitted += 1), {
-      hasAnyPrimaryAdapter: () => true,
-    });
+    const stop = polkadotDiscoverer.fallback?.subscribe(
+      () => {
+        emitted += 1;
+      },
+      {
+        hasAnyPrimaryAdapter: () => true,
+      },
+    );
     expect(typeof stop).toBe("function");
     stop?.();
     expect(emitted).toBe(0);

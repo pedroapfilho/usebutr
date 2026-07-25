@@ -26,7 +26,7 @@ const createLedgerSafe = async (
 };
 
 const createWalletConnectSafe = async (): Promise<Array<WalletAdapter>> => {
-  if (!WC_PROJECT_ID) {
+  if (WC_PROJECT_ID === undefined || WC_PROJECT_ID === "") {
     return [];
   }
   try {

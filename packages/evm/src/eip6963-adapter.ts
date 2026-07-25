@@ -8,6 +8,37 @@ const HEX_PREFIX = "0x";
 const ETH_DECIMALS = 18n;
 const ETH_UNIT = 10n ** ETH_DECIMALS;
 
+/** `provider.request` is typed `unknown` by design; these helpers
+ *  narrow the well-known EVM RPC shapes at the boundary with runtime
+ *  guards so call sites stay assertion-free. Malformed responses
+ *  collapse to an empty/blank value rather than throwing. */
+const requestStringArray = async (
+  provider: Eip1193Provider,
+  args: { method: string; params?: ReadonlyArray<unknown> },
+): Promise<Array<string>> => {
+  const result = await provider.request(args);
+  return Array.isArray(result)
+    ? result.filter((item): item is string => typeof item === "string")
+    : [];
+};
+
+const requestString = async (
+  provider: Eip1193Provider,
+  args: { method: string; params?: ReadonlyArray<unknown> },
+): Promise<string> => {
+  const result = await provider.request(args);
+  return typeof result === "string" ? result : "";
+};
+
+const toStringArray = (value: unknown): Array<string> =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+
+/** Merge a `from` address into a transaction object of unknown shape.
+ *  butr's `sendTx` accepts `tx: unknown` (viem/ethers/raw all differ);
+ *  when it's an object we overlay `from`, otherwise pass it through. */
+const withFrom = (tx: unknown, from: string): unknown =>
+  typeof tx === "object" && tx !== null ? { ...tx, from } : tx;
+
 const chainIdHexToDecimal = (hex: string): string => BigInt(hex).toString(10);
 const chainIdDecimalToHex = (dec: string): string => `${HEX_PREFIX}${BigInt(dec).toString(16)}`;
 
@@ -131,10 +162,10 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     chainPlatform: "evm",
 
     async connect(opts) {
-      if (opts?.silent) {
-        const accounts = (await provider.request({
+      if (opts?.silent === true) {
+        const accounts = await requestStringArray(provider, {
           method: "eth_accounts",
-        })) as Array<string>;
+        });
         if (accounts.length === 0) {
           throw new Error("No authorized accounts for silent reconnect");
         }
@@ -156,40 +187,40 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     },
 
     async getAccount() {
-      const accounts = (await provider.request({ method: "eth_accounts" })) as Array<string>;
+      const accounts = await requestStringArray(provider, { method: "eth_accounts" });
       if (accounts.length === 0) {
         return null;
       }
-      const chainIdHex = (await provider.request({ method: "eth_chainId" })) as string;
+      const chainIdHex = await requestString(provider, { method: "eth_chainId" });
       const chain = buildEvmChain(chainIdHex, info.name);
       const first = accounts[0];
-      if (!first) {
+      if (first === undefined) {
         return null;
       }
       return buildEvmAccount(first, chain);
     },
 
     async getAccounts() {
-      const accounts = (await provider.request({ method: "eth_accounts" })) as Array<string>;
+      const accounts = await requestStringArray(provider, { method: "eth_accounts" });
       if (accounts.length === 0) {
         return [];
       }
-      const chainIdHex = (await provider.request({ method: "eth_chainId" })) as string;
+      const chainIdHex = await requestString(provider, { method: "eth_chainId" });
       const chain = buildEvmChain(chainIdHex, info.name);
       return accounts.map((addr) => buildEvmAccount(addr, chain));
     },
 
     async getBalance(mint) {
-      const accounts = (await provider.request({ method: "eth_accounts" })) as Array<string>;
+      const accounts = await requestStringArray(provider, { method: "eth_accounts" });
       const first = accounts[0];
-      if (!first) {
+      if (first === undefined) {
         throw new Error("No connected account");
       }
-      if (!mint) {
-        const balanceHex = (await provider.request({
+      if (mint === undefined || mint === "") {
+        const balanceHex = await requestString(provider, {
           method: "eth_getBalance",
           params: [first, "latest"],
-        })) as string;
+        });
         const value = BigInt(balanceHex);
         return {
           decimals: Number(ETH_DECIMALS),
@@ -199,20 +230,20 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         };
       }
       const balanceCallData = `${ERC20_BALANCE_OF_SELECTOR}${padAddressForCall(first)}`;
-      const [balanceHex, decimalsHex, symbolHex] = (await Promise.all([
-        provider.request({
+      const [balanceHex, decimalsHex, symbolHex] = await Promise.all([
+        requestString(provider, {
           method: "eth_call",
           params: [{ data: balanceCallData, to: mint }, "latest"],
         }),
-        provider.request({
+        requestString(provider, {
           method: "eth_call",
           params: [{ data: ERC20_DECIMALS_SELECTOR, to: mint }, "latest"],
         }),
-        provider.request({
+        requestString(provider, {
           method: "eth_call",
           params: [{ data: ERC20_SYMBOL_SELECTOR, to: mint }, "latest"],
         }),
-      ])) as [string, string, string];
+      ]);
       const value = BigInt(balanceHex);
       const decimals = Number(BigInt(decimalsHex));
       const symbol = decodeAbiString(symbolHex);
@@ -224,16 +255,14 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       };
     },
 
-    getSigner() {
-      return Promise.resolve(provider);
-    },
+    getSigner: () => Promise.resolve(provider),
 
     async getTransactionReceipt(tx) {
-      const receipt = (await provider.request({
+      const receipt = await provider.request({
         method: "eth_getTransactionReceipt",
         params: [tx],
-      })) as { status: string } | null;
-      if (!receipt) {
+      });
+      if (receipt === null || typeof receipt !== "object" || !("status" in receipt)) {
         return { status: "Pending" };
       }
       return { status: receipt.status === "0x1" ? "Success" : "Error" };
@@ -265,9 +294,18 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
           params: [{ eth_accounts: {} }],
         });
       } catch (error: unknown) {
-        const err = error as { code?: number; data?: { originalError?: { code?: number } } } | null;
-        const outerCode = err?.code;
-        const innerCode = err?.data?.originalError?.code;
+        const outerCode =
+          typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
+        const errData =
+          typeof error === "object" && error !== null && "data" in error ? error.data : undefined;
+        const originalError =
+          typeof errData === "object" && errData !== null && "originalError" in errData
+            ? errData.originalError
+            : undefined;
+        const innerCode =
+          typeof originalError === "object" && originalError !== null && "code" in originalError
+            ? originalError.code
+            : undefined;
         const isMethodNotSupported =
           outerCode === 4200 || // EIP-1474 "method not supported"
           outerCode === -32_601 || // JSON-RPC "method not found"
@@ -284,18 +322,16 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     },
 
     async sendTx(tx, account) {
-      const txWithFrom = account
-        ? { ...(tx as Record<string, unknown>), from: account.walletAddress }
-        : tx;
-      const hash = (await provider.request({
+      const txWithFrom = account ? withFrom(tx, account.walletAddress) : tx;
+      const hash = await requestString(provider, {
         method: "eth_sendTransaction",
         params: [txWithFrom],
-      })) as string;
+      });
       return hash;
     },
 
     async sendTxToChain(tx, targetChainIdDecimal, account, cb) {
-      const current = (await provider.request({ method: "eth_chainId" })) as string;
+      const current = await requestString(provider, { method: "eth_chainId" });
       const targetHex = chainIdDecimalToHex(targetChainIdDecimal);
       if (current.toLowerCase() !== targetHex.toLowerCase()) {
         await provider.request({
@@ -304,13 +340,11 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         });
         cb?.();
       }
-      const txWithFrom = account
-        ? { ...(tx as Record<string, unknown>), from: account.walletAddress }
-        : tx;
-      const hash = (await provider.request({
+      const txWithFrom = account ? withFrom(tx, account.walletAddress) : tx;
+      const hash = await requestString(provider, {
         method: "eth_sendTransaction",
         params: [txWithFrom],
-      })) as string;
+      });
       return hash;
     },
 
@@ -320,23 +354,23 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       // exposed via `eth_requestAccounts`; pass any address from
       // `ConnectedWallet.accounts` to sign with a non-active one.
       let signer = account?.walletAddress;
-      if (!signer) {
-        const accounts = (await provider.request({ method: "eth_accounts" })) as Array<string>;
+      if (signer === undefined || signer === "") {
+        const accounts = await requestStringArray(provider, { method: "eth_accounts" });
         signer = accounts[0];
       }
-      if (!signer) {
+      if (signer === undefined || signer === "") {
         throw new Error("No connected account");
       }
-      const signatureHex = (await provider.request({
+      const signatureHex = await requestString(provider, {
         method: "personal_sign",
         params: [bytesToHex(msg), signer],
-      })) as string;
+      });
       return { signature: hexToBytes(signatureHex), signedMessage: msg };
     },
 
     subscribe(listener) {
       const onAccountsChanged: Eip1193Listener = (...args) => {
-        const accs = args[0] as Array<string>;
+        const accs = toStringArray(args[0]);
         if (accs.length === 0) {
           listener({ type: "disconnected" });
           return;
@@ -350,10 +384,13 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
           .request({ method: "eth_chainId" })
           // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async
           .then((chainIdHex) => {
-            const chain = buildEvmChain(chainIdHex as string, info.name);
+            const chain = buildEvmChain(
+              typeof chainIdHex === "string" ? chainIdHex : "",
+              info.name,
+            );
             const accounts = accs.map((addr) => buildEvmAccount(addr, chain));
             const first = accounts[0];
-            if (!first) {
+            if (first === undefined) {
               return undefined;
             }
             listener({ account: first, accounts, type: "accountChanged" });
@@ -366,19 +403,19 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       };
 
       const onChainChanged: Eip1193Listener = (...args) => {
-        const chainIdHex = args[0] as string;
+        const chainIdHex = typeof args[0] === "string" ? args[0] : "";
         void provider
           .request({ method: "eth_accounts" })
           // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async
           .then((accounts) => {
-            const accs = accounts as Array<string>;
+            const accs = toStringArray(accounts);
             if (accs.length === 0) {
               return undefined;
             }
             const chain = buildEvmChain(chainIdHex, info.name);
             const built = accs.map((addr) => buildEvmAccount(addr, chain));
             const first = built[0];
-            if (!first) {
+            if (first === undefined) {
               return undefined;
             }
             listener({ account: first, accounts: built, type: "accountChanged" });
@@ -401,14 +438,17 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         ])
           // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async
           .then(([accountsRaw, chainIdHex]) => {
-            const accs = accountsRaw as Array<string>;
+            const accs = toStringArray(accountsRaw);
             if (accs.length === 0) {
               return undefined;
             }
-            const chain = buildEvmChain(chainIdHex as string, info.name);
+            const chain = buildEvmChain(
+              typeof chainIdHex === "string" ? chainIdHex : "",
+              info.name,
+            );
             const built = accs.map((addr) => buildEvmAccount(addr, chain));
             const first = built[0];
-            if (!first) {
+            if (first === undefined) {
               return undefined;
             }
             listener({ account: first, accounts: built, type: "accountChanged" });

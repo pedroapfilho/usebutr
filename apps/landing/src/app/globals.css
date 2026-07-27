@@ -61,6 +61,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 html {
@@ -70,9 +71,27 @@ html {
 body {
   background-color: var(--background);
   color: var(--foreground);
-  -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
   background-color: color-mix(in oklab, var(--primary) 35%, transparent);
+}
+
+/*
+ * Shiki emits both themes as CSS variables (`defaultColor: false`), so the code
+ * panel tracks the page instead of pinning one palette. Same media query the
+ * tokens above use, keeping the landing free of a theme provider.
+ */
+.shiki,
+.shiki span {
+  background-color: var(--shiki-light-bg);
+  color: var(--shiki-light);
+}
+
+@media (prefers-color-scheme: dark) {
+  .shiki,
+  .shiki span {
+    background-color: var(--shiki-dark-bg);
+    color: var(--shiki-dark);
+  }
 }

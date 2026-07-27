@@ -29,17 +29,14 @@ const Connect = () => {
 };`;
 
 const CodeExample = () => (
-  <section className="border-border bg-muted/40 border-y">
-    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-6 py-16 sm:py-24 lg:grid-cols-2 lg:items-center">
+  <section className="border-border bg-muted/40 border-y py-16 sm:py-24">
+    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-6 lg:grid-cols-2 lg:items-center">
       <div>
-        <h2 className="max-w-[24ch] text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+        <h2 className="max-w-[40ch] text-3xl font-semibold tracking-tight text-balance sm:max-w-[35ch] sm:text-4xl">
           Wire up your wallets in one provider.
         </h2>
-        <p className="text-muted-foreground mt-4 max-w-[56ch] text-lg text-pretty">
-          Drop{" "}
-          <code className="bg-card rounded-sm px-1.5 py-0.5 font-mono text-[0.9em]">
-            autoDiscovery()
-          </code>{" "}
+        <p className="text-muted-foreground mt-4 max-w-[48ch] text-lg text-pretty">
+          Drop <code className="bg-card rounded-sm px-1.5 py-0.5 font-mono">autoDiscovery()</code>{" "}
           into the provider and read wallets from a hook. You get discovered wallets and connection
           state, without writing chain-specific UI or per-wallet branches.
         </p>

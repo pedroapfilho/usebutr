@@ -4,20 +4,22 @@ import { cn } from "@/lib/cn";
 
 type ButtonLinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
   size?: "md" | "sm";
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "soft";
 };
 
 const BASE_CLASSES =
-  "inline-flex items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-[background-color,border-color,box-shadow,color] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none";
+  "inline-flex items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 const VARIANT_CLASSES: Record<NonNullable<ButtonLinkProps["variant"]>, string> = {
-  primary:
-    "bg-primary text-primary-foreground ring-1 ring-inset ring-black/5 hover:brightness-95 dark:hover:brightness-110",
+  primary: "bg-primary text-primary-foreground hover:brightness-95 dark:hover:brightness-110",
   secondary: "border border-border bg-background text-foreground hover:bg-muted",
+  // `text-foreground` rather than `text-primary`: amber on a 15% amber tint
+  // fails contrast, while foreground inverts correctly in dark mode.
+  soft: "bg-primary/15 text-foreground hover:bg-primary/25",
 };
 
 const SIZE_CLASSES: Record<NonNullable<ButtonLinkProps["size"]>, string> = {
-  md: "px-4 py-2.5 text-sm",
+  md: "px-3.5 py-2.5 text-sm",
   sm: "px-3 py-1.5 text-sm",
 };
 

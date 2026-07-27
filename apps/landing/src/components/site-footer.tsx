@@ -36,12 +36,12 @@ const CURRENT_YEAR = new Date().getFullYear();
 
 const FooterColumn = ({ links, title }: FooterColumnProps) => (
   <div>
-    <h2 className="text-foreground text-sm font-medium">{title}</h2>
+    <h2 className="text-foreground text-base font-medium sm:text-sm">{title}</h2>
     <ul className="mt-4 space-y-3">
       {links.map((link) => (
-        <li key={link.label}>
+        <li className="text-base sm:text-sm" key={link.label}>
           <a
-            className="text-muted-foreground hover:text-foreground focus-visible:outline-ring rounded-sm text-sm font-normal transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="text-muted-foreground hover:text-foreground focus-visible:outline-ring rounded-sm font-normal focus-visible:outline-2 focus-visible:outline-offset-2"
             href={link.href}
           >
             {link.label}
@@ -63,7 +63,7 @@ const SiteFooter = () => (
         >
           <BrandLogo />
         </Link>
-        <p className="text-muted-foreground mt-4 max-w-[36ch] text-sm text-pretty">
+        <p className="text-muted-foreground mt-4 max-w-[56ch] text-base text-pretty sm:max-w-[36ch] sm:text-sm">
           Multi-chain wallet discovery and connection state for React.
         </p>
       </div>
@@ -73,7 +73,7 @@ const SiteFooter = () => (
     </div>
 
     <div className="mx-auto w-full max-w-6xl px-6 pb-10">
-      <p className="text-muted-foreground text-sm">© {CURRENT_YEAR} butr</p>
+      <p className="text-muted-foreground text-base sm:text-sm">© {CURRENT_YEAR} butr</p>
     </div>
   </footer>
 );

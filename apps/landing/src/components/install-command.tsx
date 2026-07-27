@@ -22,14 +22,14 @@ const InstallCommand = () => {
   };
 
   return (
-    <div className="border-border bg-card text-card-foreground inline-flex items-center gap-3 rounded-md border py-2 pr-2 pl-4 font-mono text-sm shadow-sm">
+    <div className="bg-card text-card-foreground inline-flex items-center gap-3 rounded-md py-2 pr-2 pl-4 font-mono text-base shadow-sm ring-1 ring-black/5 sm:text-sm dark:shadow-none dark:ring-white/10">
       <span aria-hidden="true" className="text-muted-foreground select-none">
         $
       </span>
       <code>{INSTALL_COMMAND}</code>
       <button
         aria-label={copied ? "Copied install command" : "Copy install command"}
-        className="text-muted-foreground hover:text-foreground focus-visible:outline-ring relative inline-flex size-7 items-center justify-center rounded-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+        className="text-muted-foreground hover:text-foreground focus-visible:outline-ring relative inline-flex size-7 items-center justify-center rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"
         onClick={() => {
           void handleCopy();
         }}

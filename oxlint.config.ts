@@ -15,7 +15,7 @@ export default defineConfig({
         "new-cap": [
           "error",
           {
-            capIsNewExceptions: ["Geist", "Inter", "Scalar"],
+            capIsNewExceptions: ["Geist", "Geist_Mono", "Inter", "Scalar"],
           },
         ],
       },

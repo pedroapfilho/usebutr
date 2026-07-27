@@ -1,8 +1,14 @@
+import { Menu, X } from "lucide-react";
 import Link from "next/link";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { ButtonLink } from "@/components/button-link";
 import { DEMO_URL, DOCS_URL, GITHUB_URL } from "@/lib/site";
+
+const NAV_LINKS = [
+  { href: DOCS_URL, label: "Docs" },
+  { href: DEMO_URL, label: "Demo" },
+];
 
 const SiteHeader = () => (
   <header className="border-border/60 bg-background/80 sticky top-0 z-50 border-b backdrop-blur-md">
@@ -16,23 +22,22 @@ const SiteHeader = () => (
       </Link>
 
       <nav aria-label="Primary" className="flex items-center gap-1 sm:gap-2">
-        <a
-          className="text-muted-foreground hover:text-foreground focus-visible:outline-ring hidden rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:inline-flex"
-          href={DOCS_URL}
-        >
-          Docs
-        </a>
-        <a
-          className="text-muted-foreground hover:text-foreground focus-visible:outline-ring hidden rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:inline-flex"
-          href={DEMO_URL}
-        >
-          Demo
-        </a>
+        {NAV_LINKS.map(({ href, label }) => (
+          <a
+            className="text-muted-foreground hover:text-foreground focus-visible:outline-ring inline-flex rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 max-sm:hidden"
+            href={href}
+            key={label}
+          >
+            {label}
+          </a>
+        ))}
+
         <a
           aria-label="butr on GitHub"
-          className="text-muted-foreground hover:text-foreground focus-visible:outline-ring relative inline-flex size-9 items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="text-muted-foreground hover:text-foreground focus-visible:outline-ring relative inline-flex size-9 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2"
           href={GITHUB_URL}
         >
+          {/* Official GitHub mark rather than an icon-set glyph: this is a brand link. */}
           <svg
             aria-hidden="true"
             className="size-5"
@@ -47,9 +52,38 @@ const SiteHeader = () => (
             className="absolute top-1/2 left-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden"
           />
         </a>
+
         <ButtonLink href={DOCS_URL} size="sm" variant="secondary">
           Get started
         </ButtonLink>
+
+        {/* Disclosure rather than a client component: `details` keeps the header
+            server-rendered and gives keyboard support without JS. */}
+        <details className="group sm:hidden">
+          <summary
+            aria-label="Menu"
+            className="text-muted-foreground hover:text-foreground focus-visible:outline-ring relative inline-flex size-9 list-none items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden"
+          >
+            <Menu aria-hidden className="size-6 group-open:hidden" />
+            <X aria-hidden className="size-6 group-not-open:hidden" />
+            <span
+              aria-hidden="true"
+              className="absolute top-1/2 left-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden"
+            />
+          </summary>
+
+          <div className="border-border bg-background absolute inset-x-0 top-16 flex flex-col border-b px-6 py-2">
+            {NAV_LINKS.map(({ href, label }) => (
+              <a
+                className="text-muted-foreground hover:text-foreground focus-visible:outline-ring rounded-md py-3 text-base font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
+                href={href}
+                key={label}
+              >
+                {label}
+              </a>
+            ))}
+          </div>
+        </details>
       </nav>
     </div>
   </header>

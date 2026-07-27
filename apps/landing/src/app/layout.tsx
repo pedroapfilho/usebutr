@@ -1,13 +1,19 @@
 import "./globals.css";
 
-import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 
 const geist = Geist({
   display: "swap",
   subsets: ["latin"],
   variable: "--font-geist",
+});
+
+const geistMono = Geist_Mono({
+  display: "swap",
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
 });
 
 const metadata: Metadata = {
@@ -28,11 +34,18 @@ const metadata: Metadata = {
   },
 };
 
+const viewport: Viewport = {
+  themeColor: [
+    { color: "oklch(1 0 0)", media: "(prefers-color-scheme: light)" },
+    { color: "oklch(0.145 0 0)", media: "(prefers-color-scheme: dark)" },
+  ],
+};
+
 const RootLayout = ({ children }: { children: ReactNode }) => (
-  <html className={geist.variable} lang="en">
+  <html className={`${geist.variable} ${geistMono.variable} antialiased`} lang="en">
     <body>{children}</body>
   </html>
 );
 
-export { metadata };
+export { metadata, viewport };
 export default RootLayout;

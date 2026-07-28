@@ -1,5 +1,11 @@
 # @usebutr/core
 
+## 0.4.2
+
+### Patch Changes
+
+- c1309ee: Validate persisted wallet data and WalletConnect responses with shared Zod schemas.
+
 ## 0.4.1
 
 ### Patch Changes

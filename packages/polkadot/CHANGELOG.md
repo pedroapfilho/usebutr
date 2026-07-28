@@ -1,5 +1,13 @@
 # @usebutr/polkadot
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [c1309ee]
+  - @usebutr/core@0.4.2
+  - @usebutr/wallet-standard-shared@0.2.6
+
 ## 0.1.2
 
 ### Patch Changes

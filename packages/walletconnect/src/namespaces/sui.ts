@@ -8,6 +8,7 @@ import {
   readNamespaceAccounts,
 } from "./caip";
 import type { WalletConnectNamespaceBuilder } from "./types";
+import { readStringField } from "./wallet-response";
 
 const SUI_NAMESPACE = "sui";
 const SUI_DECIMALS = 9;
@@ -70,17 +71,6 @@ const coerceTransactionToBase64 = (tx: unknown): string => {
   throw new TypeError(
     "Sui sendTx/signTransaction expects a base64-encoded string or Uint8Array of BCS bytes",
   );
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-const readStringField = (value: unknown, key: string): string | undefined => {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const field = value[key];
-  return typeof field === "string" ? field : undefined;
 };
 
 const suiNamespace: WalletConnectNamespaceBuilder = {
@@ -226,18 +216,16 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
           method: "sui_signTransaction",
           params: { address, transaction },
         });
-        if (isRecord(result)) {
-          // The Reown docs spell the key `transactionBytes`. The older
-          // Mysten Dappkit reference (and some wallets) use
-          // `transactionBlockBytes`. Accept either; both are the
-          // base64-encoded signed transaction bytes butr's
-          // `SuiWallet.signTransaction` contract returns.
-          const bytesB64 =
-            readStringField(result, "transactionBytes") ??
-            readStringField(result, "transactionBlockBytes");
-          if (bytesB64 !== undefined && bytesB64 !== "") {
-            return base64ToBytes(bytesB64);
-          }
+        // The Reown docs spell the key `transactionBytes`. The older
+        // Mysten Dappkit reference (and some wallets) use
+        // `transactionBlockBytes`. Accept either; both are the
+        // base64-encoded signed transaction bytes butr's
+        // `SuiWallet.signTransaction` contract returns.
+        const bytesB64 =
+          readStringField(result, "transactionBytes") ??
+          readStringField(result, "transactionBlockBytes");
+        if (bytesB64 !== undefined && bytesB64 !== "") {
+          return base64ToBytes(bytesB64);
         }
         const signatureB64 =
           typeof result === "string" ? result : readStringField(result, "signature");

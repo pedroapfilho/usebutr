@@ -8,6 +8,7 @@ import {
   readNamespaceAccounts,
 } from "./caip";
 import type { WalletConnectNamespaceBuilder } from "./types";
+import { readStringField } from "./wallet-response";
 
 const SOLANA_NAMESPACE = "solana";
 const SOLANA_DECIMALS = 9;
@@ -84,17 +85,6 @@ const base58ToBytes = (input: string): Uint8Array => {
  * shouldn't own. Consumers wire native events themselves until we
  * land a follow-up.
  */
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-const readStringField = (value: unknown, key: string): string | undefined => {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const field = value[key];
-  return typeof field === "string" ? field : undefined;
-};
-
 const solanaNamespace: WalletConnectNamespaceBuilder = {
   buildAdapter({ chains, icon, id, name, provider }) {
     let currentChainId = chains[0] ?? DEFAULT_CHAINS[0] ?? "solana:mainnet";

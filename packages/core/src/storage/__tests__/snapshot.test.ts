@@ -88,6 +88,21 @@ describe("readWalletSnapshot", () => {
     warn.mockRestore();
   });
 
+  it("drops pool entries with incomplete account chain data", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const snapshot = readWalletSnapshot({
+      "butr-pool": JSON.stringify({
+        metamask: {
+          ...validPoolEntry,
+          account: { ...validPoolEntry.account, chain: { id: "eip155:1" } },
+        },
+      }),
+    });
+    expect(snapshot.pool).toEqual({});
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it("returns empty pool when cookie value is invalid JSON", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const snapshot = readWalletSnapshot({ "butr-pool": "not json" });

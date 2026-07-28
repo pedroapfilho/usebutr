@@ -8,6 +8,7 @@ import {
   readNamespaceAccounts,
 } from "./caip";
 import type { WalletConnectNamespaceBuilder } from "./types";
+import { readStringField } from "./wallet-response";
 
 const BITCOIN_NAMESPACE = "bip122";
 const BITCOIN_DECIMALS = 8;
@@ -55,17 +56,6 @@ const coercePsbtToBase64 = (tx: unknown): string => {
   throw new TypeError(
     "Bitcoin signTransaction expects a base64-encoded PSBT string or Uint8Array of PSBT bytes",
   );
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-const readStringField = (value: unknown, key: string): string | undefined => {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const field = value[key];
-  return typeof field === "string" ? field : undefined;
 };
 
 /**

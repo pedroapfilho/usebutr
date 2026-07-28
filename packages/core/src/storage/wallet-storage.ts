@@ -1,5 +1,4 @@
 import { logWarn } from "../logger";
-import { CHAIN_PLATFORMS } from "../types";
 import type { ChainPlatform, ConnectedWallet } from "../types";
 
 import { createBrowserStorageDriver } from "./browser-storage-driver";
@@ -10,13 +9,7 @@ import type {
   StoredSelectionRecord,
   WalletPersistence,
 } from "./persistence";
-
-const VALID_CHAIN_PLATFORMS: ReadonlySet<string> = new Set(CHAIN_PLATFORMS);
-
-const isChainPlatform = (value: string): value is ChainPlatform => VALID_CHAIN_PLATFORMS.has(value);
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
+import { chainPlatformSchema, parseStoredPoolEntry, recordSchema } from "./validation";
 
 type StorageConfig = {
   keyPrefix: string;
@@ -24,62 +17,6 @@ type StorageConfig = {
   persistent?: StorageDriver;
   /** Cleared on session end. Defaults to sessionStorage on web. */
   session?: StorageDriver;
-};
-
-const isValidAccount = (value: unknown): boolean => {
-  if (!isRecord(value)) {
-    return false;
-  }
-  if (typeof value.walletAddress !== "string" || typeof value.id !== "string") {
-    return false;
-  }
-  if (!isRecord(value.chain)) {
-    return false;
-  }
-  return true;
-};
-
-/**
- * Structural validator for a serialized pool entry.
- *
- * Used in two directions:
- *  - On read (`getPool`): malformed entries from storage are warned
- *    and dropped; legacy / cross-tab corruption shouldn't crash the
- *    consumer.
- *  - On write (`setPool`): the runtime's reducer state is the source
- *    of truth, and a malformed write would indicate a programming
- *    error inside butr. Throw rather than silently corrupt storage.
- *
- * Same validator either way; keeping the two paths symmetric means
- * "what's storable" is a single fact.
- */
-const isValidPoolEntry = (key: string, value: unknown): value is StoredPoolEntry => {
-  if (!isRecord(value)) {
-    return false;
-  }
-  const entry = value;
-  if (typeof entry.connectorId !== "string" || entry.connectorId !== key) {
-    return false;
-  }
-  if (typeof entry.chainPlatform !== "string") {
-    return false;
-  }
-  if (!isChainPlatform(entry.chainPlatform)) {
-    return false;
-  }
-  if (typeof entry.name !== "string" || entry.name.length === 0) {
-    return false;
-  }
-  if (entry.icon !== undefined && typeof entry.icon !== "string") {
-    return false;
-  }
-  if (!isValidAccount(entry.account)) {
-    return false;
-  }
-  if (!Array.isArray(entry.accounts) || !entry.accounts.every(isValidAccount)) {
-    return false;
-  }
-  return true;
 };
 
 class WalletStorage implements WalletPersistence {
@@ -146,17 +83,19 @@ class WalletStorage implements WalletPersistence {
       if (stored === null || stored === "") {
         return {};
       }
-      const parsed: unknown = JSON.parse(stored);
-      if (!isRecord(parsed)) {
+      const value: unknown = JSON.parse(stored);
+      const parsed = recordSchema.safeParse(value);
+      if (!parsed.success) {
         await this.clearPool();
         return {};
       }
       const result: StoredPoolRecord = {};
-      for (const [key, value] of Object.entries(parsed)) {
-        if (isValidPoolEntry(key, value)) {
-          result[key] = value;
-        } else {
+      for (const [key, entryValue] of Object.entries(parsed.data)) {
+        const entry = parseStoredPoolEntry(key, entryValue);
+        if (entry === null) {
           logWarn(`[butr] dropping invalid pool entry for ${key}`);
+        } else {
+          result[key] = entry;
         }
       }
       return result;
@@ -197,7 +136,7 @@ class WalletStorage implements WalletPersistence {
           // write site rather than silently corrupting storage and
           // re-emerging as a "wallet didn't restore" puzzle on the next
           // page load.
-          if (!isValidPoolEntry(connectorId, entry)) {
+          if (parseStoredPoolEntry(connectorId, entry) === null) {
             throw new Error(`[butr] refusing to persist invalid pool entry for ${connectorId}`);
           }
           serializable[connectorId] = entry;
@@ -235,14 +174,16 @@ class WalletStorage implements WalletPersistence {
       if (stored === null || stored === "") {
         return {};
       }
-      const parsed: unknown = JSON.parse(stored);
-      if (!isRecord(parsed)) {
+      const value: unknown = JSON.parse(stored);
+      const parsed = recordSchema.safeParse(value);
+      if (!parsed.success) {
         return {};
       }
       const result: StoredSelectionRecord = {};
-      for (const [key, value] of Object.entries(parsed)) {
-        if (isChainPlatform(key) && typeof value === "string" && value.length > 0) {
-          result[key] = value;
+      for (const [key, selectionValue] of Object.entries(parsed.data)) {
+        const platform = chainPlatformSchema.safeParse(key);
+        if (platform.success && typeof selectionValue === "string" && selectionValue.length > 0) {
+          result[platform.data] = selectionValue;
         }
       }
       return result;

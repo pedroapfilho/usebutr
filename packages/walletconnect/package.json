@@ -37,7 +37,8 @@
   },
   "dependencies": {
     "@usebutr/core": "workspace:*",
-    "@usebutr/evm": "workspace:*"
+    "@usebutr/evm": "workspace:*",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@repo/config-vitest": "workspace:*",

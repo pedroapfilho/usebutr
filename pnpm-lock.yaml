@@ -1148,6 +1148,10 @@ importers:
         version: 26.1.1
 
   packages/core:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@repo/config-vitest':
         specifier: workspace:*
@@ -1403,6 +1407,9 @@ importers:
       '@usebutr/evm':
         specifier: workspace:*
         version: link:../evm
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@repo/config-vitest':
         specifier: workspace:*

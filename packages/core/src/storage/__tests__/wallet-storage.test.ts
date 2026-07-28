@@ -82,6 +82,30 @@ describe("WalletStorage", () => {
       expect(result.metamask).toBeUndefined();
     });
 
+    it("drops entries with incomplete account chain data", async () => {
+      const persistent = createMockStorageDriver();
+      const account = {
+        chain: { id: "eip155:1" },
+        id: "acc-1",
+        walletAddress: "0x123",
+      };
+      await persistent.setItem(
+        "test-pool",
+        JSON.stringify({
+          metamask: {
+            account,
+            accounts: [account],
+            chainPlatform: "evm",
+            connectorId: "metamask",
+            name: "MetaMask",
+          },
+        }),
+      );
+      const { storage } = createStorage({ persistent });
+
+      expect(await storage.getPool()).toEqual({});
+    });
+
     it("drops entries whose connectorId does not match the key", async () => {
       const persistent = createMockStorageDriver();
       const data = {

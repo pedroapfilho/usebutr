@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/walletconnect",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "WalletConnect v2 adapter for butr.",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",

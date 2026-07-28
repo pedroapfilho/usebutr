@@ -1,5 +1,12 @@
 # @usebutr/react
 
+## 0.1.7
+
+### Patch Changes
+
+- Updated dependencies [c1309ee]
+  - @usebutr/core@0.4.2
+
 ## 0.1.6
 
 ### Patch Changes

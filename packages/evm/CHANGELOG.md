@@ -1,5 +1,12 @@
 # @usebutr/evm
 
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [c1309ee]
+  - @usebutr/core@0.4.2
+
 ## 0.2.3
 
 ### Patch Changes

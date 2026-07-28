@@ -1,5 +1,15 @@
 # demo-with-polkadot
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies [c1309ee]
+  - @usebutr/core@0.4.2
+  - @usebutr/wallets@0.2.3
+  - @usebutr/polkadot@0.1.3
+  - @usebutr/react@0.1.7
+
 ## 0.0.3
 
 ### Patch Changes

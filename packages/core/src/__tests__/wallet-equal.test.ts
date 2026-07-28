@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import type { ConnectedWallet } from "../types";
+import type { ConnectedWallet, WalletAdapter } from "../types";
 import { walletEqual } from "../wallet-equal";
 
-const buildWallet = (id: string, address: string, chainId: string): ConnectedWallet => ({
+const buildConnector = (id: string): WalletAdapter => ({ id }) as unknown as WalletAdapter;
+
+const buildWallet = (
+  connector: WalletAdapter,
+  address: string,
+  chainId: string,
+): ConnectedWallet => ({
   account: {
     chain: {
       id: chainId,
@@ -15,8 +21,7 @@ const buildWallet = (id: string, address: string, chainId: string): ConnectedWal
     walletAddress: address,
   },
   accounts: [],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  connector: { id } as never,
+  connector,
 });
 
 describe("walletEqual", () => {
@@ -25,36 +30,46 @@ describe("walletEqual", () => {
   });
 
   it("returns false when only one is undefined", () => {
-    expect(walletEqual(buildWallet("a", "0x1", "eip155:1"), undefined)).toBe(false);
-    expect(walletEqual(undefined, buildWallet("a", "0x1", "eip155:1"))).toBe(false);
+    const wallet = buildWallet(buildConnector("a"), "0x1", "eip155:1");
+    expect(walletEqual(wallet, undefined)).toBe(false);
+    expect(walletEqual(undefined, wallet)).toBe(false);
   });
 
   it("returns true when identity is the same reference", () => {
-    const w = buildWallet("a", "0x1", "eip155:1");
-    expect(walletEqual(w, w)).toBe(true);
+    const wallet = buildWallet(buildConnector("a"), "0x1", "eip155:1");
+    expect(walletEqual(wallet, wallet)).toBe(true);
   });
 
-  it("returns true when connectorId + walletAddress + chain id all match", () => {
-    expect(
-      walletEqual(buildWallet("a", "0x1", "eip155:1"), buildWallet("a", "0x1", "eip155:1")),
-    ).toBe(true);
+  it("returns true when connector + walletAddress + chain id all match", () => {
+    const connector = buildConnector("a");
+    const first = buildWallet(connector, "0x1", "eip155:1");
+    const second = buildWallet(connector, "0x1", "eip155:1");
+    expect(walletEqual(first, second)).toBe(true);
+  });
+
+  it("returns false when the adapter instance is swapped under an unchanged id", () => {
+    const shadow = buildWallet(buildConnector("a"), "0x1", "eip155:1");
+    const live = buildWallet(buildConnector("a"), "0x1", "eip155:1");
+    expect(walletEqual(shadow, live)).toBe(false);
   });
 
   it("returns false when connectorId differs", () => {
-    expect(
-      walletEqual(buildWallet("a", "0x1", "eip155:1"), buildWallet("b", "0x1", "eip155:1")),
-    ).toBe(false);
+    const first = buildWallet(buildConnector("a"), "0x1", "eip155:1");
+    const second = buildWallet(buildConnector("b"), "0x1", "eip155:1");
+    expect(walletEqual(first, second)).toBe(false);
   });
 
   it("returns false when walletAddress differs", () => {
-    expect(
-      walletEqual(buildWallet("a", "0x1", "eip155:1"), buildWallet("a", "0x2", "eip155:1")),
-    ).toBe(false);
+    const connector = buildConnector("a");
+    const first = buildWallet(connector, "0x1", "eip155:1");
+    const second = buildWallet(connector, "0x2", "eip155:1");
+    expect(walletEqual(first, second)).toBe(false);
   });
 
   it("returns false when chain id differs", () => {
-    expect(
-      walletEqual(buildWallet("a", "0x1", "eip155:1"), buildWallet("a", "0x1", "eip155:137")),
-    ).toBe(false);
+    const connector = buildConnector("a");
+    const first = buildWallet(connector, "0x1", "eip155:1");
+    const second = buildWallet(connector, "0x1", "eip155:137");
+    expect(walletEqual(first, second)).toBe(false);
   });
 });

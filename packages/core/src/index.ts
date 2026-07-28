@@ -37,7 +37,7 @@ export type { WalletSource } from "./wallet-source";
 export { createWalletSource } from "./wallet-source";
 
 export type { ConnectionStatus, WalletStore, WalletStoreState } from "./store";
-export { createWalletStore } from "./store";
+export { createWalletStore, isShadowAdapter, ShadowConnectorError } from "./store";
 
 export type {
   BrowserStorageDrivers,

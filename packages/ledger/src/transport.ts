@@ -33,7 +33,7 @@ const loadTransport = async (): Promise<TransportFactory> => {
   };
   if (!mod.default) {
     throw new Error(
-      "[butr/ledger] failed to load @ledgerhq/hw-transport-webusb — install it as an optional peer dep",
+      "[butr/ledger] failed to load @ledgerhq/hw-transport-webusb: install it as an optional peer dep",
     );
   }
   return mod.default;

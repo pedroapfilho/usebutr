@@ -29,7 +29,7 @@ class ShadowConnectorError extends Error {
   readonly method: string;
   constructor(method: string, connectorId: string) {
     super(
-      `[butr] ${method} called on shadow connector "${connectorId}" — wait for silent reconnect to complete (check reconnectingIds.has(id) before calling).`,
+      `[butr] ${method} called on shadow connector "${connectorId}". Wait for silent reconnect to complete (check reconnectingIds.has(id) before calling).`,
     );
     this.name = "ShadowConnectorError";
     this.connectorId = connectorId;

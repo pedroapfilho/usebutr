@@ -48,7 +48,7 @@ const loadSolana = async (): Promise<SolanaAppConstructor> => {
   const ctor = mod.default ?? mod.Solana;
   if (!ctor) {
     throw new Error(
-      "[butr/ledger] failed to load @ledgerhq/hw-app-solana — install it as an optional peer dep",
+      "[butr/ledger] failed to load @ledgerhq/hw-app-solana: install it as an optional peer dep",
     );
   }
   return ctor;
@@ -143,7 +143,7 @@ const buildSolanaAccount = (address: string, chain: ChainBase): Account => ({
 });
 
 const SUBSCRIBE_NOT_AVAILABLE =
-  "[butr/ledger] subscribe is not implemented — device emits no events";
+  "[butr/ledger] subscribe is not implemented: device emits no events";
 
 /**
  * Build a Ledger hardware-wallet adapter wired to the **Solana app**.

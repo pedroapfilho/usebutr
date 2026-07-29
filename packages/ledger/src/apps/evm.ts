@@ -41,7 +41,7 @@ const loadEth = async (): Promise<EthAppConstructor> => {
   const ctor = mod.default ?? mod.Eth;
   if (!ctor) {
     throw new Error(
-      "[butr/ledger] failed to load @ledgerhq/hw-app-eth — install it as an optional peer dep",
+      "[butr/ledger] failed to load @ledgerhq/hw-app-eth: install it as an optional peer dep",
     );
   }
   return ctor;
@@ -111,7 +111,7 @@ const buildEvmAccount = (address: string, chain: ChainBase): Account => ({
 });
 
 const SUBSCRIBE_NOT_AVAILABLE =
-  "[butr/ledger] subscribe is not implemented — device emits no events";
+  "[butr/ledger] subscribe is not implemented: device emits no events";
 
 /**
  * Build a Ledger hardware-wallet adapter wired to the **EVM Ethereum

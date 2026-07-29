@@ -99,7 +99,7 @@ const loadBtc = async (): Promise<BtcAppConstructor> => {
   const ctor = mod.default ?? mod.Btc;
   if (!ctor) {
     throw new Error(
-      "[butr/ledger] failed to load @ledgerhq/hw-app-btc — install it as an optional peer dep",
+      "[butr/ledger] failed to load @ledgerhq/hw-app-btc: install it as an optional peer dep",
     );
   }
   return ctor;
@@ -187,7 +187,7 @@ const buildBitcoinAccount = (address: string, chain: ChainBase): Account => ({
 });
 
 const SUBSCRIBE_NOT_AVAILABLE =
-  "[butr/ledger] subscribe is not implemented — device emits no events";
+  "[butr/ledger] subscribe is not implemented: device emits no events";
 
 /**
  * Build a Ledger hardware-wallet adapter wired to the **Bitcoin app**. The

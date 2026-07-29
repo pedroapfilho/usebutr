@@ -10,9 +10,9 @@ import type { Balance } from "@usebutr/core";
  * share these so the invariant lives in one place.
  */
 const POLKADOT_SEND_TX_HINT =
-  "Polkadot sendTx is unsupported — use getSigner() with polkadot-api to build and submit extrinsics";
+  "Polkadot sendTx is unsupported: use getSigner() with polkadot-api to build and submit extrinsics";
 const POLKADOT_SEND_TX_TO_CHAIN_HINT =
-  "Polkadot sendTxToChain is unsupported — use getSigner() with polkadot-api to build and submit extrinsics";
+  "Polkadot sendTxToChain is unsupported: use getSigner() with polkadot-api to build and submit extrinsics";
 
 const noRpcBalance = (): Promise<Balance> =>
   Promise.resolve({ decimals: 0, formatted: "0", symbol: "", value: 0n });

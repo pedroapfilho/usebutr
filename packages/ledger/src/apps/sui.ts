@@ -56,7 +56,7 @@ const loadSui = async (): Promise<SuiAppConstructor> => {
   const ctor = mod.default ?? mod.Sui;
   if (!ctor) {
     throw new Error(
-      "[butr/ledger] failed to load @ledgerhq/hw-app-sui — install it as an optional peer dep",
+      "[butr/ledger] failed to load @ledgerhq/hw-app-sui: install it as an optional peer dep",
     );
   }
   return ctor;
@@ -139,7 +139,7 @@ const buildSuiAccount = (address: string, chain: ChainBase): Account => ({
 });
 
 const SUBSCRIBE_NOT_AVAILABLE =
-  "[butr/ledger] subscribe is not implemented — device emits no events";
+  "[butr/ledger] subscribe is not implemented: device emits no events";
 
 /**
  * Build a Ledger hardware-wallet adapter wired to the **Sui app**. The

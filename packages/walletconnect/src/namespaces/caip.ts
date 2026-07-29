@@ -189,10 +189,4 @@ const createCaipAdapterCore = ({
   };
 };
 
-export {
-  CAIP_WC_CAPABILITIES,
-  buildCaipChain,
-  createCaipAdapterCore,
-  parseCaip10Address,
-  readNamespaceAccounts,
-};
+export { CAIP_WC_CAPABILITIES, createCaipAdapterCore };

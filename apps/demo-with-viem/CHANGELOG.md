@@ -1,5 +1,14 @@
 # demo-with-viem
 
+## 0.0.8
+
+### Patch Changes
+
+- Updated dependencies [4467a5e]
+  - @usebutr/core@0.5.0
+  - @usebutr/evm@0.2.5
+  - @usebutr/react@0.1.8
+
 ## 0.0.7
 
 ### Patch Changes

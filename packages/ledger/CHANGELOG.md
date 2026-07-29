@@ -1,5 +1,12 @@
 # @usebutr/ledger
 
+## 0.2.7
+
+### Patch Changes
+
+- Updated dependencies [4467a5e]
+  - @usebutr/core@0.5.0
+
 ## 0.2.6
 
 ### Patch Changes

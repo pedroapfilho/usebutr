@@ -1,5 +1,19 @@
 # @usebutr/wallets
 
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [efe4550]
+- Updated dependencies [4467a5e]
+  - @usebutr/bitcoin@0.2.7
+  - @usebutr/polkadot@0.1.4
+  - @usebutr/sui@0.2.7
+  - @usebutr/svm@0.2.7
+  - @usebutr/core@0.5.0
+  - @usebutr/evm@0.2.5
+  - @usebutr/react@0.1.8
+
 ## 0.2.3
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @usebutr/testing
 
+## 0.1.8
+
+### Patch Changes
+
+- Updated dependencies [4467a5e]
+  - @usebutr/core@0.5.0
+
 ## 0.1.7
 
 ### Patch Changes

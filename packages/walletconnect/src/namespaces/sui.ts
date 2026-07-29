@@ -1,17 +1,13 @@
-import type { Account, ChainBase, SuiAdapter, WalletCapabilities } from "@usebutr/core";
-import { base64ToBytes, buildAccount, bytesToBase64, logWarn } from "@usebutr/core";
+import type { Account, SuiAdapter, WalletCapabilities } from "@usebutr/core";
+import { base64ToBytes, bytesToBase64 } from "@usebutr/core";
 
-import {
-  CAIP_WC_CAPABILITIES,
-  buildCaipChain,
-  parseCaip10Address,
-  readNamespaceAccounts,
-} from "./caip";
+import { CAIP_WC_CAPABILITIES, createCaipAdapterCore } from "./caip";
 import type { WalletConnectNamespaceBuilder } from "./types";
 import { readStringField } from "./wallet-response";
 
 const SUI_NAMESPACE = "sui";
 const SUI_DECIMALS = 9;
+const SUI_MAINNET = "sui:mainnet";
 
 // Sui Wallet Standard wallets advertise chains as the short
 // `sui:mainnet` / `sui:testnet` / `sui:devnet` rather than the strict
@@ -19,7 +15,7 @@ const SUI_DECIMALS = 9;
 // Suiet and the WC Dappkit reference all exchange these names; we
 // follow suit here so the pairing handshake matches what wallets
 // expect.
-const DEFAULT_CHAINS: ReadonlyArray<string> = ["sui:mainnet"];
+const DEFAULT_CHAINS: ReadonlyArray<string> = [SUI_MAINNET];
 
 const DEFAULT_METHODS: ReadonlyArray<string> = [
   "sui_signTransaction",
@@ -75,28 +71,17 @@ const coerceTransactionToBase64 = (tx: unknown): string => {
 
 const suiNamespace: WalletConnectNamespaceBuilder = {
   buildAdapter({ chains, icon, id, name, provider }) {
-    let currentChainId = chains[0] ?? DEFAULT_CHAINS[0] ?? "sui:mainnet";
-    const currentChain = (): ChainBase => buildCaipChain(currentChainId, name, SUI_NAMESPACE);
-
-    const resolveAccounts = (): Array<Account> => {
-      const chain = currentChain();
-      return readNamespaceAccounts(provider, SUI_NAMESPACE).map((caip10) =>
-        buildAccount(parseCaip10Address(caip10), chain),
-      );
-    };
-
-    /** Pick the WC account address to route a call through. Falls back
-     *  to the first session account when the caller doesn't specify one. */
-    const resolveAddress = (account?: Account): string => {
-      if (account) {
-        return account.walletAddress;
-      }
-      const first = resolveAccounts()[0];
-      if (first === undefined) {
-        throw new Error("No connected Sui account");
-      }
-      return first.walletAddress;
-    };
+    const { resolveAddress, ...core } = createCaipAdapterCore({
+      chains,
+      events: DEFAULT_EVENTS,
+      fallbackChainId: SUI_MAINNET,
+      label: "Sui",
+      methods: DEFAULT_METHODS,
+      name,
+      namespace: SUI_NAMESPACE,
+      platform: "Sui",
+      provider,
+    });
 
     const executeTx = async (tx: unknown, account?: Account): Promise<string> => {
       const address = resolveAddress(account);
@@ -115,49 +100,9 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
     };
 
     const adapter: SuiAdapter = {
+      ...core,
       capabilities: WALLETCONNECT_SUI_CAPABILITIES,
       chainPlatform: "sui",
-
-      async connect(opts) {
-        // Live session across reloads → skip the pairing handshake.
-        if (provider.session) {
-          return;
-        }
-        if (opts?.silent === true) {
-          throw new Error("No WalletConnect session for silent reconnect");
-        }
-        await provider.connect({
-          namespaces: {
-            sui: {
-              chains: [...chains],
-              events: [...DEFAULT_EVENTS],
-              methods: [...DEFAULT_METHODS],
-            },
-          },
-        });
-      },
-
-      async disconnect() {
-        if (!provider.session) {
-          return;
-        }
-        try {
-          await provider.disconnect();
-        } catch (error) {
-          // The relay may already have dropped the session (mobile
-          // wallet uninstalled, etc.). Don't propagate; butr's
-          // reducer marks the wallet disconnected on its side
-          // regardless.
-          logWarn("[butr/walletconnect] disconnect threw:", error);
-        }
-      },
-
-      getAccount: () => {
-        const first = resolveAccounts()[0] ?? null;
-        return Promise.resolve(first);
-      },
-
-      getAccounts: () => Promise.resolve(resolveAccounts()),
 
       getBalance: () =>
         Promise.resolve({
@@ -166,10 +111,6 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
           symbol: "SUI",
           value: 0n,
         }),
-
-      getSigner: () => Promise.resolve(provider),
-
-      getTransactionReceipt: () => Promise.resolve({ status: "Pending" as const }),
 
       icon,
       id,
@@ -236,21 +177,6 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
         // the signed transaction, but it's all we got; pass it through
         // as bytes and let the consumer reconcile.
         return base64ToBytes(signatureB64);
-      },
-
-      subscribe: () => () => {},
-
-      switchChain: (chain) => {
-        if (chain.namespace !== "sui") {
-          throw new Error(
-            `Sui WC adapter received non-Sui chain "${chain.id}". Pass a chain with namespace "sui".`,
-          );
-        }
-        // Local state only; the WC session's chain list is fixed at
-        // pair time, so this updates butr's view of "active cluster"
-        // without re-negotiating with the wallet.
-        currentChainId = chain.id;
-        return Promise.resolve();
       },
     };
 

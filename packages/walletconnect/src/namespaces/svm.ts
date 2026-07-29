@@ -1,19 +1,15 @@
-import type { Account, ChainBase, SvmAdapter, WalletCapabilities } from "@usebutr/core";
-import { base64ToBytes, buildAccount, bytesToBase64, logWarn } from "@usebutr/core";
+import type { Account, SvmAdapter, WalletCapabilities } from "@usebutr/core";
+import { base64ToBytes, bytesToBase64 } from "@usebutr/core";
 
-import {
-  CAIP_WC_CAPABILITIES,
-  buildCaipChain,
-  parseCaip10Address,
-  readNamespaceAccounts,
-} from "./caip";
+import { CAIP_WC_CAPABILITIES, createCaipAdapterCore } from "./caip";
 import type { WalletConnectNamespaceBuilder } from "./types";
 import { readStringField } from "./wallet-response";
 
 const SOLANA_NAMESPACE = "solana";
 const SOLANA_DECIMALS = 9;
+const SOLANA_MAINNET = "solana:mainnet";
 
-const DEFAULT_CHAINS: ReadonlyArray<string> = ["solana:mainnet"];
+const DEFAULT_CHAINS: ReadonlyArray<string> = [SOLANA_MAINNET];
 
 const DEFAULT_METHODS: ReadonlyArray<string> = [
   "solana_signMessage",
@@ -87,28 +83,17 @@ const base58ToBytes = (input: string): Uint8Array => {
  */
 const solanaNamespace: WalletConnectNamespaceBuilder = {
   buildAdapter({ chains, icon, id, name, provider }) {
-    let currentChainId = chains[0] ?? DEFAULT_CHAINS[0] ?? "solana:mainnet";
-    const currentChain = (): ChainBase => buildCaipChain(currentChainId, name, SOLANA_NAMESPACE);
-
-    const resolveAccounts = (): Array<Account> => {
-      const chain = currentChain();
-      return readNamespaceAccounts(provider, SOLANA_NAMESPACE).map((caip10) =>
-        buildAccount(parseCaip10Address(caip10), chain),
-      );
-    };
-
-    /** Pick the WC account address to route a call through. Falls back
-     *  to the first session account when the caller doesn't specify one. */
-    const resolveAddress = (account?: Account): string => {
-      if (account) {
-        return account.walletAddress;
-      }
-      const first = resolveAccounts()[0];
-      if (first === undefined) {
-        throw new Error("No connected Solana account");
-      }
-      return first.walletAddress;
-    };
+    const { resolveAddress, ...core } = createCaipAdapterCore({
+      chains,
+      events: DEFAULT_EVENTS,
+      fallbackChainId: SOLANA_MAINNET,
+      label: "SVM",
+      methods: DEFAULT_METHODS,
+      name,
+      namespace: SOLANA_NAMESPACE,
+      platform: "Solana",
+      provider,
+    });
 
     const signAndSend = async (tx: unknown, account?: Account): Promise<string> => {
       if (!(tx instanceof Uint8Array)) {
@@ -130,49 +115,9 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
     };
 
     const adapter: SvmAdapter = {
+      ...core,
       capabilities: WALLETCONNECT_SVM_CAPABILITIES,
       chainPlatform: "svm",
-
-      async connect(opts) {
-        // Live session across reloads → skip the pairing handshake.
-        if (provider.session) {
-          return;
-        }
-        if (opts?.silent === true) {
-          throw new Error("No WalletConnect session for silent reconnect");
-        }
-        await provider.connect({
-          namespaces: {
-            solana: {
-              chains: [...chains],
-              events: [...DEFAULT_EVENTS],
-              methods: [...DEFAULT_METHODS],
-            },
-          },
-        });
-      },
-
-      async disconnect() {
-        if (!provider.session) {
-          return;
-        }
-        try {
-          await provider.disconnect();
-        } catch (error) {
-          // The relay may already have dropped the session (mobile
-          // wallet uninstalled, etc.). Don't propagate; butr's
-          // reducer marks the wallet disconnected on its side
-          // regardless.
-          logWarn("[butr/walletconnect] disconnect threw:", error);
-        }
-      },
-
-      getAccount: () => {
-        const first = resolveAccounts()[0] ?? null;
-        return Promise.resolve(first);
-      },
-
-      getAccounts: () => Promise.resolve(resolveAccounts()),
 
       getBalance: () =>
         Promise.resolve({
@@ -181,10 +126,6 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
           symbol: "SOL",
           value: 0n,
         }),
-
-      getSigner: () => Promise.resolve(provider),
-
-      getTransactionReceipt: () => Promise.resolve({ status: "Pending" as const }),
 
       icon,
       id,
@@ -250,21 +191,6 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
         // a signed transaction, but it's all we got; pass it through as
         // bytes and let the consumer reconcile.
         return base58ToBytes(signatureB58);
-      },
-
-      subscribe: () => () => {},
-
-      switchChain: (chain) => {
-        if (chain.namespace !== "solana") {
-          throw new Error(
-            `SVM WC adapter received non-Solana chain "${chain.id}". Pass a chain with namespace "solana".`,
-          );
-        }
-        // Local state only; the WC session's chain list is fixed at
-        // pair time, so this updates butr's view of "active cluster"
-        // without re-negotiating with the wallet.
-        currentChainId = chain.id;
-        return Promise.resolve();
       },
     };
 

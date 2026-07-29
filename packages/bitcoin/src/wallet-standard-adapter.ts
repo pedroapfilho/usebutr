@@ -1,18 +1,10 @@
-import type { ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
-import { logWarn, sanitizeIcon } from "@usebutr/core";
+import type { WalletAdapter } from "@usebutr/core";
 import {
-  buildAccount,
+  createWalletStandardCore,
   getFeature,
-  pickAccountByAddress,
-  pickFirstAddress,
   slugify as kitSlugify,
 } from "@usebutr/wallet-standard-shared";
-import type {
-  StandardConnectFeature,
-  StandardDisconnectFeature,
-  StandardEventsFeature,
-  WalletStandardWallet,
-} from "@usebutr/wallet-standard-shared";
+import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
 import { resolveBitcoinCapabilities } from "./capabilities";
 import type {
@@ -26,21 +18,6 @@ const BITCOIN_DECIMALS = 8;
 const BITCOIN_MAINNET_ID = "bip122:000000000019d6689c085ae165831e93";
 
 const slugify = (name: string): string => kitSlugify("btc", name);
-
-const pickBitcoinChain = (wallet: WalletStandardWallet): string | null => {
-  const mainnet = wallet.chains.find((c) => c === BITCOIN_MAINNET_ID);
-  if (mainnet) {
-    return mainnet;
-  }
-  return wallet.chains.find((c) => c.startsWith(BITCOIN_PREFIX)) ?? null;
-};
-
-const buildBitcoinChain = (chainId: string, walletName: string): ChainBase => ({
-  id: chainId,
-  name: walletName,
-  namespace: "bip122",
-  reference: chainId.slice(BITCOIN_PREFIX.length),
-});
 
 /**
  * Adapt a Bitcoin Wallet Standard `Wallet` into a butr `WalletAdapter`.
@@ -75,45 +52,24 @@ const buildBitcoinAdapter = (
    *  layer invokes it on Wallet Standard `unregister`. */
   registerDisconnector?: (emit: () => void) => void,
 ): WalletAdapter | null => {
-  const bitcoinChainId = pickBitcoinChain(wallet);
-  if (bitcoinChainId === null) {
-    return null;
-  }
-  const connect = getFeature<StandardConnectFeature>(wallet, "standard:connect");
-  if (connect === undefined) {
+  const core = createWalletStandardCore({
+    chainPrefix: BITCOIN_PREFIX,
+    id: slugify(wallet.name),
+    label: "Bitcoin",
+    namespace: "bip122",
+    platform: "Bitcoin",
+    preferredChainIds: [BITCOIN_MAINNET_ID],
+    registerDisconnector,
+    trackChainChanges: true,
+    wallet,
+  });
+  if (core === null) {
     return null;
   }
 
-  const disconnect = getFeature<StandardDisconnectFeature>(wallet, "standard:disconnect");
-  const events = getFeature<StandardEventsFeature>(wallet, "standard:events");
   const signMessage = getFeature<BitcoinSignMessageFeature>(wallet, "bitcoin:signMessage");
   const signPsbt = getFeature<BitcoinSignPsbtFeature>(wallet, "bitcoin:signPsbt");
   const sendTransfer = getFeature<BitcoinSendTransferFeature>(wallet, "bitcoin:sendTransfer");
-
-  let currentChainId = bitcoinChainId;
-  const currentChain = (): ChainBase => buildBitcoinChain(currentChainId, wallet.name);
-
-  const listeners = new Set<(event: ConnectorEvent) => void>();
-  const notifyAccountChanged = () => {
-    if (wallet.accounts.length === 0) {
-      return;
-    }
-    const chain = currentChain();
-    const built = wallet.accounts.map((a) => buildAccount(a.address, chain));
-    const first = built[0];
-    if (first === undefined) {
-      return;
-    }
-    for (const listener of listeners) {
-      listener({ account: first, accounts: built, type: "accountChanged" });
-    }
-  };
-
-  registerDisconnector?.(() => {
-    for (const listener of listeners) {
-      listener({ type: "disconnected" });
-    }
-  });
 
   const sendTransferTx = async (
     tx: unknown,
@@ -135,59 +91,27 @@ const buildBitcoinAdapter = (
       );
     }
     const { amount, recipient } = tx;
-    const wsAccount = account
-      ? pickAccountByAddress(wallet.accounts, account.walletAddress)
-      : wallet.accounts[0];
-    if (wsAccount === undefined) {
-      throw new Error("No connected account");
-    }
     const output = await sendTransfer.sendTransfer({
-      account: wsAccount,
+      account: core.resolveAccount(account),
       amount,
-      chain: currentChainId,
+      chain: core.currentChainId(),
       recipient,
     });
     return output.txid;
   };
 
   return {
+    ...core,
     capabilities: resolveBitcoinCapabilities({
-      chainCount: wallet.chains.filter((c) => c.startsWith(BITCOIN_PREFIX)).length,
+      chainCount: core.chainCount,
       features: {
-        events: Boolean(events),
+        events: core.hasEvents,
         sendTransfer: Boolean(sendTransfer),
         signMessage: Boolean(signMessage),
         signPsbt: Boolean(signPsbt),
       },
     }),
     chainPlatform: "bitcoin",
-
-    async connect(opts) {
-      await connect.connect(opts?.silent === true ? { silent: true } : undefined);
-    },
-
-    async disconnect() {
-      if (disconnect !== undefined) {
-        try {
-          await disconnect.disconnect();
-        } catch (error) {
-          logWarn("[butr] Bitcoin Wallet Standard disconnect threw:", error);
-        }
-      }
-    },
-
-    getAccount: () => {
-      const address = pickFirstAddress(wallet.accounts);
-      if (address === null) {
-        return Promise.resolve(null);
-      }
-      return Promise.resolve(buildAccount(address, currentChain()));
-    },
-
-    getAccounts: () => {
-      const chain = currentChain();
-      return Promise.resolve(wallet.accounts.map((a) => buildAccount(a.address, chain)));
-    },
 
     getBalance: () =>
       Promise.resolve({
@@ -197,19 +121,10 @@ const buildBitcoinAdapter = (
         value: 0n,
       }),
 
-    // Consumers wrap this in whatever Bitcoin signing library they use
-    // (bitcoinjs-lib's Signer, scure-btc-signer's HDWallet, etc.) or
-    // call butr's adapter directly for PSBT / send-transfer.
-    getSigner: () => Promise.resolve(wallet),
-
     getTransactionReceipt: () => Promise.resolve({ status: "Pending" as const }),
 
-    icon: sanitizeIcon(wallet.icon),
-    id: slugify(wallet.name),
-    name: wallet.name,
-
     async requestAccounts() {
-      await connect.connect();
+      await core.connect();
     },
 
     sendTx: (tx, account) => sendTransferTx(tx, account),
@@ -223,13 +138,10 @@ const buildBitcoinAdapter = (
       if (signMessage === undefined) {
         throw new Error(`Wallet ${wallet.name} does not advertise bitcoin:signMessage`);
       }
-      const wsAccount = account
-        ? pickAccountByAddress(wallet.accounts, account.walletAddress)
-        : wallet.accounts[0];
-      if (wsAccount === undefined) {
-        throw new Error("No connected account");
-      }
-      const output = await signMessage.signMessage({ account: wsAccount, message: msg });
+      const output = await signMessage.signMessage({
+        account: core.resolveAccount(account),
+        message: msg,
+      });
       return { signature: output.signature, signedMessage: output.signedMessage };
     },
 
@@ -237,12 +149,7 @@ const buildBitcoinAdapter = (
       ? {}
       : {
           async signTransaction(tx, account) {
-            const wsAccount = account
-              ? pickAccountByAddress(wallet.accounts, account.walletAddress)
-              : wallet.accounts[0];
-            if (wsAccount === undefined) {
-              throw new Error("No connected account");
-            }
+            const wsAccount = core.resolveAccount(account);
             if (!(tx instanceof Uint8Array)) {
               throw new TypeError(
                 "Bitcoin signTransaction expects a PSBT as Uint8Array (e.g. psbt.toBuffer())",
@@ -250,71 +157,12 @@ const buildBitcoinAdapter = (
             }
             const output = await signPsbt.signPsbt({
               account: wsAccount,
-              chain: currentChainId,
+              chain: core.currentChainId(),
               psbt: tx,
             });
             return output.signedPsbt;
           },
         }),
-
-    subscribe(listener) {
-      listeners.add(listener);
-      let unsubWallet: (() => void) | null = null;
-      if (events !== undefined) {
-        const unsub = events.on("change", (changes) => {
-          if (changes.chains !== undefined) {
-            const next =
-              changes.chains.find((c) => c === BITCOIN_MAINNET_ID) ??
-              changes.chains.find((c) => c.startsWith(BITCOIN_PREFIX));
-            if (next !== undefined) {
-              currentChainId = next;
-            }
-          }
-
-          if (changes.accounts !== undefined) {
-            if (changes.accounts.length === 0) {
-              listener({ type: "disconnected" });
-              return;
-            }
-            const chain = currentChain();
-            const built = changes.accounts.map((a) => buildAccount(a.address, chain));
-            const first = built[0];
-            if (first === undefined) {
-              return;
-            }
-            listener({ account: first, accounts: built, type: "accountChanged" });
-            return;
-          }
-
-          if (changes.chains !== undefined) {
-            notifyAccountChanged();
-          }
-        });
-        unsubWallet = () => {
-          unsub();
-        };
-      }
-      return () => {
-        listeners.delete(listener);
-        unsubWallet?.();
-      };
-    },
-
-    switchChain: (chain) => {
-      if (chain.namespace !== "bip122") {
-        throw new Error(
-          `Bitcoin adapter received non-Bitcoin chain "${chain.id}". Pass a chain with namespace "bip122".`,
-        );
-      }
-      if (!wallet.chains.includes(chain.id)) {
-        throw new Error(
-          `Wallet ${wallet.name} does not advertise chain "${chain.id}". Available: ${wallet.chains.join(", ")}`,
-        );
-      }
-      currentChainId = chain.id;
-      notifyAccountChanged();
-      return Promise.resolve();
-    },
   };
 };
 

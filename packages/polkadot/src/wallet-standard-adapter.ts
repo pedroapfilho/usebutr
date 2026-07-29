@@ -1,18 +1,10 @@
-import type { ChainBase, ConnectorEvent, WalletAdapter } from "@usebutr/core";
-import { logWarn, sanitizeIcon } from "@usebutr/core";
+import type { WalletAdapter } from "@usebutr/core";
 import {
-  buildAccount,
+  createWalletStandardCore,
   getFeature,
-  pickAccountByAddress,
-  pickFirstAddress,
   slugify as kitSlugify,
 } from "@usebutr/wallet-standard-shared";
-import type {
-  StandardConnectFeature,
-  StandardDisconnectFeature,
-  StandardEventsFeature,
-  WalletStandardWallet,
-} from "@usebutr/wallet-standard-shared";
+import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
 import { resolveWalletStandardPolkadotCapabilities } from "./capabilities";
 import { noRpcBalance, noRpcSendTx, noRpcSendTxToChain, noRpcTransactionReceipt } from "./no-rpc";
@@ -21,16 +13,6 @@ import type { PolkadotSignMessageFeature } from "./wallet-standard-types";
 const POLKADOT_PREFIX = "polkadot:";
 
 const slugify = (name: string): string => kitSlugify("polkadot", name);
-
-const pickPolkadotChain = (wallet: WalletStandardWallet): string | null =>
-  wallet.chains.find((c) => c.startsWith(POLKADOT_PREFIX)) ?? null;
-
-const buildChain = (chainId: string, walletName: string): ChainBase => ({
-  id: chainId,
-  name: walletName,
-  namespace: "polkadot",
-  reference: chainId.slice(POLKADOT_PREFIX.length),
-});
 
 /**
  * Adapt a Wallet Standard wallet advertising `polkadot:*` features into a
@@ -41,86 +23,41 @@ const buildChain = (chainId: string, walletName: string): ChainBase => ({
  */
 const buildPolkadotWalletStandardAdapter = (
   wallet: WalletStandardWallet,
+  /** Optional. Called with a function that pushes a synthetic
+   *  `disconnected` event to all current subscribers. The discovery
+   *  layer invokes it on Wallet Standard `unregister`. */
   registerDisconnector?: (emit: () => void) => void,
 ): WalletAdapter | null => {
-  const chainId = pickPolkadotChain(wallet);
-  if (chainId === null) {
-    return null;
-  }
-  const connect = getFeature<StandardConnectFeature>(wallet, "standard:connect");
-  if (connect === undefined) {
+  const core = createWalletStandardCore({
+    chainPrefix: POLKADOT_PREFIX,
+    id: slugify(wallet.name),
+    label: "Polkadot",
+    namespace: "polkadot",
+    platform: "Polkadot",
+    preferredChainIds: [],
+    registerDisconnector,
+    // Polkadot wallets advertise a single relay chain, so a wallet-side
+    // `chains` change has no better chain to move to.
+    trackChainChanges: false,
+    wallet,
+  });
+  if (core === null) {
     return null;
   }
 
-  const disconnect = getFeature<StandardDisconnectFeature>(wallet, "standard:disconnect");
-  const events = getFeature<StandardEventsFeature>(wallet, "standard:events");
   const signMessage = getFeature<PolkadotSignMessageFeature>(wallet, "polkadot:signMessage");
 
-  let currentChainId = chainId;
-  const currentChain = (): ChainBase => buildChain(currentChainId, wallet.name);
-
-  const listeners = new Set<(event: ConnectorEvent) => void>();
-  const notifyAccountChanged = () => {
-    if (wallet.accounts.length === 0) {
-      return;
-    }
-    const chain = currentChain();
-    const built = wallet.accounts.map((a) => buildAccount(a.address, chain));
-    const first = built[0];
-    if (first === undefined) {
-      return;
-    }
-    for (const listener of listeners) {
-      listener({ account: first, accounts: built, type: "accountChanged" });
-    }
-  };
-
-  registerDisconnector?.(() => {
-    for (const listener of listeners) {
-      listener({ type: "disconnected" });
-    }
-  });
-
   return {
+    ...core,
     capabilities: resolveWalletStandardPolkadotCapabilities({
-      chainCount: wallet.chains.filter((c) => c.startsWith(POLKADOT_PREFIX)).length,
-      features: { events: Boolean(events), signMessage: Boolean(signMessage) },
+      chainCount: core.chainCount,
+      features: { events: core.hasEvents, signMessage: Boolean(signMessage) },
     }),
     chainPlatform: "polkadot",
 
-    async connect(opts) {
-      await connect.connect(opts?.silent === true ? { silent: true } : undefined);
-    },
-
-    async disconnect() {
-      if (disconnect !== undefined) {
-        try {
-          await disconnect.disconnect();
-        } catch (error) {
-          logWarn("[butr] Polkadot Wallet Standard disconnect threw:", error);
-        }
-      }
-    },
-
-    getAccount: () => {
-      const address = pickFirstAddress(wallet.accounts);
-      return Promise.resolve(address === null ? null : buildAccount(address, currentChain()));
-    },
-
-    getAccounts: () => {
-      const chain = currentChain();
-      return Promise.resolve(wallet.accounts.map((a) => buildAccount(a.address, chain)));
-    },
-
     getBalance: noRpcBalance,
 
-    getSigner: () => Promise.resolve(wallet),
-
     getTransactionReceipt: noRpcTransactionReceipt,
-
-    icon: sanitizeIcon(wallet.icon),
-    id: slugify(wallet.name),
-    name: wallet.name,
 
     sendTx: noRpcSendTx,
 
@@ -130,58 +67,11 @@ const buildPolkadotWalletStandardAdapter = (
       if (signMessage === undefined) {
         throw new Error(`Wallet ${wallet.name} does not advertise polkadot:signMessage`);
       }
-      const wsAccount = account
-        ? pickAccountByAddress(wallet.accounts, account.walletAddress)
-        : wallet.accounts[0];
-      if (wsAccount === undefined) {
-        throw new Error("No connected account");
-      }
-      const output = await signMessage.signMessage({ account: wsAccount, message: msg });
+      const output = await signMessage.signMessage({
+        account: core.resolveAccount(account),
+        message: msg,
+      });
       return { signature: output.signature, signedMessage: output.signedMessage ?? msg };
-    },
-
-    subscribe(listener) {
-      listeners.add(listener);
-      let unsubWallet: (() => void) | null = null;
-      if (events !== undefined) {
-        const unsub = events.on("change", (changes) => {
-          if (changes.accounts !== undefined) {
-            if (changes.accounts.length === 0) {
-              listener({ type: "disconnected" });
-              return;
-            }
-            const chain = currentChain();
-            const built = changes.accounts.map((a) => buildAccount(a.address, chain));
-            const first = built[0];
-            if (first !== undefined) {
-              listener({ account: first, accounts: built, type: "accountChanged" });
-            }
-          }
-        });
-        unsubWallet = () => {
-          unsub();
-        };
-      }
-      return () => {
-        listeners.delete(listener);
-        unsubWallet?.();
-      };
-    },
-
-    switchChain: (target) => {
-      if (target.namespace !== "polkadot") {
-        throw new Error(
-          `Polkadot adapter received non-Polkadot chain "${target.id}". Pass a chain with namespace "polkadot".`,
-        );
-      }
-      if (!wallet.chains.includes(target.id)) {
-        throw new Error(
-          `Wallet ${wallet.name} does not advertise chain "${target.id}". Available: ${wallet.chains.join(", ")}`,
-        );
-      }
-      currentChainId = target.id;
-      notifyAccountChanged();
-      return Promise.resolve();
     },
   };
 };

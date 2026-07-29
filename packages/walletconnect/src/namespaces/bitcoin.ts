@@ -1,12 +1,7 @@
-import type { Account, BitcoinAdapter, ChainBase, WalletCapabilities } from "@usebutr/core";
-import { base64ToBytes, buildAccount, bytesToBase64, hexToBytes, logWarn } from "@usebutr/core";
+import type { Account, BitcoinAdapter, WalletCapabilities } from "@usebutr/core";
+import { base64ToBytes, bytesToBase64, hexToBytes } from "@usebutr/core";
 
-import {
-  CAIP_WC_CAPABILITIES,
-  buildCaipChain,
-  parseCaip10Address,
-  readNamespaceAccounts,
-} from "./caip";
+import { CAIP_WC_CAPABILITIES, createCaipAdapterCore } from "./caip";
 import type { WalletConnectNamespaceBuilder } from "./types";
 import { readStringField } from "./wallet-response";
 
@@ -97,28 +92,17 @@ const coercePsbtToBase64 = (tx: unknown): string => {
  */
 const bitcoinNamespace: WalletConnectNamespaceBuilder = {
   buildAdapter({ chains, icon, id, name, provider }) {
-    let currentChainId = chains[0] ?? DEFAULT_CHAINS[0] ?? BITCOIN_MAINNET;
-    const currentChain = (): ChainBase => buildCaipChain(currentChainId, name, BITCOIN_NAMESPACE);
-
-    const resolveAccounts = (): Array<Account> => {
-      const chain = currentChain();
-      return readNamespaceAccounts(provider, BITCOIN_NAMESPACE).map((caip10) =>
-        buildAccount(parseCaip10Address(caip10), chain),
-      );
-    };
-
-    /** Pick the WC account address to route a call through. Falls back
-     *  to the first session account when the caller doesn't specify one. */
-    const resolveAddress = (account?: Account): string => {
-      if (account) {
-        return account.walletAddress;
-      }
-      const first = resolveAccounts()[0];
-      if (first === undefined) {
-        throw new Error("No connected Bitcoin account");
-      }
-      return first.walletAddress;
-    };
+    const { resolveAddress, ...core } = createCaipAdapterCore({
+      chains,
+      events: DEFAULT_EVENTS,
+      fallbackChainId: BITCOIN_MAINNET,
+      label: "Bitcoin",
+      methods: DEFAULT_METHODS,
+      name,
+      namespace: BITCOIN_NAMESPACE,
+      platform: "Bitcoin",
+      provider,
+    });
 
     const broadcastTx = async (tx: unknown, account?: Account): Promise<string> => {
       const address = resolveAddress(account);
@@ -141,49 +125,9 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
     };
 
     const adapter: BitcoinAdapter = {
+      ...core,
       capabilities: WALLETCONNECT_BITCOIN_CAPABILITIES,
       chainPlatform: "bitcoin",
-
-      async connect(opts) {
-        // Live session across reloads → skip the pairing handshake.
-        if (provider.session) {
-          return;
-        }
-        if (opts?.silent === true) {
-          throw new Error("No WalletConnect session for silent reconnect");
-        }
-        await provider.connect({
-          namespaces: {
-            bip122: {
-              chains: [...chains],
-              events: [...DEFAULT_EVENTS],
-              methods: [...DEFAULT_METHODS],
-            },
-          },
-        });
-      },
-
-      async disconnect() {
-        if (!provider.session) {
-          return;
-        }
-        try {
-          await provider.disconnect();
-        } catch (error) {
-          // The relay may already have dropped the session (mobile
-          // wallet uninstalled, etc.). Don't propagate; butr's
-          // reducer marks the wallet disconnected on its side
-          // regardless.
-          logWarn("[butr/walletconnect] disconnect threw:", error);
-        }
-      },
-
-      getAccount: () => {
-        const first = resolveAccounts()[0] ?? null;
-        return Promise.resolve(first);
-      },
-
-      getAccounts: () => Promise.resolve(resolveAccounts()),
 
       getBalance: () =>
         Promise.resolve({
@@ -192,10 +136,6 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
           symbol: "BTC",
           value: 0n,
         }),
-
-      getSigner: () => Promise.resolve(provider),
-
-      getTransactionReceipt: () => Promise.resolve({ status: "Pending" as const }),
 
       icon,
       id,
@@ -252,21 +192,6 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
           throw new Error("signPsbt returned no psbt");
         }
         return base64ToBytes(signedPsbt);
-      },
-
-      subscribe: () => () => {},
-
-      switchChain: (chain) => {
-        if (chain.namespace !== "bip122") {
-          throw new Error(
-            `Bitcoin WC adapter received non-Bitcoin chain "${chain.id}". Pass a chain with namespace "bip122".`,
-          );
-        }
-        // Local state only; the WC session's chain list is fixed at
-        // pair time, so this updates butr's view of "active network"
-        // without re-negotiating with the wallet.
-        currentChainId = chain.id;
-        return Promise.resolve();
       },
     };
 

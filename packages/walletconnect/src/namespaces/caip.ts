@@ -1,4 +1,5 @@
-import type { ChainBase, WalletCapabilities } from "@usebutr/core";
+import type { Account, ChainBase, WalletCapabilities } from "@usebutr/core";
+import { buildAccount, logWarn } from "@usebutr/core";
 
 import type { UniversalProviderLike } from "../loader";
 
@@ -52,4 +53,146 @@ const buildCaipChain = (chainId: string, walletName: string, namespace: string):
   reference: chainId.slice(namespace.length + 1),
 });
 
-export { CAIP_WC_CAPABILITIES, buildCaipChain, parseCaip10Address, readNamespaceAccounts };
+type CaipAdapterCoreInput = {
+  /** Chains advertised to the wallet at pairing time. */
+  chains: ReadonlyArray<string>;
+  events: ReadonlyArray<string>;
+  /** Chain id to fall back to when `chains` is empty. */
+  fallbackChainId: string;
+  /** How this adapter names itself in errors (`SVM`, `Sui`, `Bitcoin`). */
+  label: string;
+  methods: ReadonlyArray<string>;
+  name: string;
+  /** CAIP-2 prefix without its colon (`solana`, `sui`, `bip122`). */
+  namespace: string;
+  /** How the chain family reads in errors (`Solana`, `Sui`, `Bitcoin`). */
+  platform: string;
+  provider: UniversalProviderLike;
+};
+
+type CaipAdapterCore = {
+  connect: (opts?: { silent?: boolean }) => Promise<void>;
+  disconnect: () => Promise<void>;
+  getAccount: () => Promise<Account | null>;
+  getAccounts: () => Promise<Array<Account>>;
+  getSigner: () => Promise<unknown>;
+  getTransactionReceipt: () => Promise<{ status: "Pending" }>;
+  /** Pick the WC account address to route a call through. Falls back
+   *  to the first session account when the caller doesn't specify one.
+   *  Not part of the adapter surface; namespace builders use it to
+   *  address their own RPC calls. */
+  resolveAddress: (account?: Account) => string;
+  subscribe: () => () => void;
+  switchChain: (chain: ChainBase) => Promise<void>;
+};
+
+/**
+ * Session plumbing every CAIP namespace builder repeats: the pairing
+ * handshake, session teardown, CAIP-10 account reads off the live
+ * session, and the local-only chain switch. Builders keep only what
+ * genuinely differs per platform: RPC method names, response decoding,
+ * and balance units.
+ */
+const createCaipAdapterCore = ({
+  chains,
+  events,
+  fallbackChainId,
+  label,
+  methods,
+  name,
+  namespace,
+  platform,
+  provider,
+}: CaipAdapterCoreInput): CaipAdapterCore => {
+  let currentChainId = chains[0] ?? fallbackChainId;
+
+  const currentChain = (): ChainBase => buildCaipChain(currentChainId, name, namespace);
+
+  const resolveAccounts = (): Array<Account> => {
+    const chain = currentChain();
+    return readNamespaceAccounts(provider, namespace).map((caip10) =>
+      buildAccount(parseCaip10Address(caip10), chain),
+    );
+  };
+
+  return {
+    async connect(opts) {
+      // Live session across reloads → skip the pairing handshake.
+      if (provider.session) {
+        return;
+      }
+      if (opts?.silent === true) {
+        throw new Error("No WalletConnect session for silent reconnect");
+      }
+      await provider.connect({
+        namespaces: {
+          [namespace]: {
+            chains: [...chains],
+            events: [...events],
+            methods: [...methods],
+          },
+        },
+      });
+    },
+
+    async disconnect() {
+      if (!provider.session) {
+        return;
+      }
+      try {
+        await provider.disconnect();
+      } catch (error) {
+        // The relay may already have dropped the session (mobile
+        // wallet uninstalled, etc.). Don't propagate; butr's
+        // reducer marks the wallet disconnected on its side
+        // regardless.
+        logWarn("[butr/walletconnect] disconnect threw:", error);
+      }
+    },
+
+    getAccount: () => {
+      const first = resolveAccounts()[0] ?? null;
+      return Promise.resolve(first);
+    },
+
+    getAccounts: () => Promise.resolve(resolveAccounts()),
+
+    getSigner: () => Promise.resolve(provider),
+
+    getTransactionReceipt: () => Promise.resolve({ status: "Pending" as const }),
+
+    resolveAddress: (account) => {
+      if (account) {
+        return account.walletAddress;
+      }
+      const first = resolveAccounts()[0];
+      if (first === undefined) {
+        throw new Error(`No connected ${platform} account`);
+      }
+      return first.walletAddress;
+    },
+
+    subscribe: () => () => {},
+
+    switchChain: (chain) => {
+      if (chain.namespace !== namespace) {
+        throw new Error(
+          `${label} WC adapter received non-${platform} chain "${chain.id}". Pass a chain with namespace "${namespace}".`,
+        );
+      }
+      // Local state only; the WC session's chain list is fixed at
+      // pair time, so this updates butr's view of the active chain
+      // without re-negotiating with the wallet.
+      currentChainId = chain.id;
+      return Promise.resolve();
+    },
+  };
+};
+
+export {
+  CAIP_WC_CAPABILITIES,
+  buildCaipChain,
+  createCaipAdapterCore,
+  parseCaip10Address,
+  readNamespaceAccounts,
+};

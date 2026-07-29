@@ -17,5 +17,8 @@ export {
   slugify,
 } from "./primitives";
 
+export type { WalletStandardCore } from "./adapter-core";
+export { createWalletStandardCore } from "./adapter-core";
+
 export type { WalletStandardAdapterBuilder } from "./discovery";
 export { discoverWalletStandard } from "./discovery";

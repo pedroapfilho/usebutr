@@ -73,7 +73,7 @@ docs/                 # Repo-level design notes (not the Fumadocs site)
 | `@usebutr/ledger`                 | yes        | Ledger connector.                                                                 |
 | `@usebutr/wallet-standard-shared` | yes        | Shared Wallet Standard helpers.                                                   |
 | `@usebutr/testing`                | yes        | Testing helpers for consumer apps.                                                |
-| `@repo/typescript-config`         | no         | Shared tsconfig bases: `base/library/nextjs/react-library/server/vite/expo.json`. |
+| `@repo/typescript-config`         | no         | Shared tsconfig bases: `base/nextjs/react-library/vite/expo.json`.                |
 | `@repo/config-vitest`             | no         | Shared Vitest config (`react.ts`, `node.ts`).                                     |
 | `@repo/wallet-extensions`         | no         | Internal registry + Playwright helpers for extension fixtures (not for e2e here). |
 

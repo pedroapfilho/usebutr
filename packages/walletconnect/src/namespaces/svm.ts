@@ -1,5 +1,5 @@
 import type { Account, SvmAdapter, WalletCapabilities } from "@usebutr/core";
-import { base64ToBytes, bytesToBase64 } from "@usebutr/core";
+import { base58ToBytes, base64ToBytes, bytesToBase64 } from "@usebutr/core";
 
 import { CAIP_WC_CAPABILITIES, createCaipAdapterCore } from "./caip";
 import type { WalletConnectNamespaceBuilder } from "./types";
@@ -22,43 +22,6 @@ const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged"
 /** Shared CAIP-WC capability surface (rationale on `CAIP_WC_CAPABILITIES`);
  *  the true flags map to the `solana_*` sign/send methods requested at pairing. */
 const WALLETCONNECT_SVM_CAPABILITIES: WalletCapabilities = { ...CAIP_WC_CAPABILITIES };
-
-const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const BASE58_INDEX = new Map<string, number>();
-for (let i = 0; i < BASE58_ALPHABET.length; i += 1) {
-  BASE58_INDEX.set(BASE58_ALPHABET[i] ?? "", i);
-}
-
-/** Decode a base58 string into raw bytes. Used to turn WC's base58
- *  signature responses into the `Uint8Array` butr's contract returns. */
-const base58ToBytes = (input: string): Uint8Array => {
-  let intVal = 0n;
-  let leadingZeros = 0;
-  let stillLeading = true;
-  for (const char of input) {
-    if (stillLeading && char === "1") {
-      leadingZeros += 1;
-    } else {
-      stillLeading = false;
-    }
-    const digit = BASE58_INDEX.get(char);
-    if (digit === undefined) {
-      throw new Error(`Invalid base58 character "${char}"`);
-    }
-    intVal = intVal * 58n + BigInt(digit);
-  }
-  const bytes: Array<number> = [];
-  // Decimal literal (= 0xFF) sidesteps an oxfmt/lint conflict on hex BigInt casing.
-  const byteMask = 255n;
-  while (intVal > 0n) {
-    bytes.unshift(Number(intVal & byteMask));
-    intVal >>= 8n;
-  }
-  for (let i = 0; i < leadingZeros; i += 1) {
-    bytes.unshift(0);
-  }
-  return Uint8Array.from(bytes);
-};
 
 /**
  * Solana (CAIP `solana:*`) namespace builder. Wraps the paired

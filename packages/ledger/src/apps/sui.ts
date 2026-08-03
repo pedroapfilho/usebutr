@@ -1,9 +1,9 @@
 import type { Account, ChainBase, WalletAdapter } from "@usebutr/core";
-import { logWarn } from "@usebutr/core";
+import { bytesToHexPrefixed } from "@usebutr/core";
 
-import { LEDGER_CAPABILITIES } from "../capabilities";
-import type { TransportFactory, TransportLike } from "../transport";
-import { loadTransport } from "../transport";
+import { createLedgerAdapterCore } from "../adapter-core";
+import { LEDGER_SIGN_TRANSACTION_CAPABILITIES } from "../capabilities";
+import type { TransportFactory } from "../transport";
 
 /**
  * Minimal type surface for `@ledgerhq/hw-app-sui` (which extends
@@ -106,23 +106,6 @@ type SuiLedgerOptions = {
   transport?: TransportFactory;
 };
 
-const DEFAULT_ICON =
-  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwMCI+PHJlY3QgeD0iMyIgeT0iNyIgd2lkdGg9IjEzIiBoZWlnaHQ9IjEwIiByeD0iMSIvPjxyZWN0IHg9IjE3IiB5PSI3IiB3aWR0aD0iNCIgaGVpZ2h0PSIzIiBmaWxsPSIjMDAwIi8+PHJlY3QgeD0iMTciIHk9IjE0IiB3aWR0aD0iNCIgaGVpZ2h0PSIzIiBmaWxsPSIjMDAwIi8+PHJlY3QgeD0iNiIgeT0iMTAiIHdpZHRoPSI3IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiLz48L3N2Zz4=";
-
-/**
- * Hex-encode the 32 address bytes returned by the device into a Sui
- * address string. Sui addresses are 32-byte values displayed as
- * `0x`-prefixed lowercase hex; the same format `@mysten/sui` and
- * explorers exchange.
- */
-const bytesToSuiAddress = (bytes: Uint8Array): string => {
-  let hex = "";
-  for (const byte of bytes) {
-    hex += byte.toString(16).padStart(2, "0");
-  }
-  return `0x${hex}`;
-};
-
 const buildSuiChain = (cluster: SuiCluster, walletName: string): ChainBase => ({
   id: `sui:${cluster}`,
   // Same stance as the EVM / SVM builders; no chain-id → name table in
@@ -137,9 +120,6 @@ const buildSuiAccount = (address: string, chain: ChainBase): Account => ({
   id: `${chain.id}:${address}`,
   walletAddress: address,
 });
-
-const SUBSCRIBE_NOT_AVAILABLE =
-  "[butr/ledger] subscribe is not implemented: device emits no events";
 
 /**
  * Build a Ledger hardware-wallet adapter wired to the **Sui app**. The
@@ -168,108 +148,64 @@ const SUBSCRIBE_NOT_AVAILABLE =
  * broadcasts the assembled transaction through their own Sui RPC client.
  */
 const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapter> => {
-  const id = options.id ?? "ledger";
-  const name = options.name ?? "Ledger";
-  const icon = options.icon ?? DEFAULT_ICON;
-  const derivationPathPrefix = options.derivationPathPrefix ?? DEFAULT_DERIVATION_PATH_PREFIX;
-  const accountCount = Math.max(1, options.accountCount ?? 1);
-
   // Sui's signMessage capability differs from EVM/SVM; the Ledger
   // Sui app doesn't expose an off-chain message signing instruction.
-  const capabilities = { ...LEDGER_CAPABILITIES, signMessage: false };
+  const capabilities = { ...LEDGER_SIGN_TRANSACTION_CAPABILITIES, signMessage: false };
 
   let cluster: SuiCluster = options.cluster ?? DEFAULT_CLUSTER;
-  let transport: TransportLike | null = null;
-  let sui: SuiAppLike | null = null;
-  let currentAddress: string | null = null;
 
-  // Sui paths are fully-hardened per Sui Wallet convention; every
-  // segment ends in `'`, including the account index.
-  const pathAt = (index: number): string => `${derivationPathPrefix}/${index}'`;
+  const core = createLedgerAdapterCore<SuiAppLike>({
+    accountCount: options.accountCount,
+    // Sui addresses are 32-byte values displayed as `0x`-prefixed lowercase
+    // hex; the same format `@mysten/sui` and explorers exchange.
+    addressAt: async (sui, path) => {
+      const result = await sui.getPublicKey(path);
+      return bytesToHexPrefixed(new Uint8Array(result.address));
+    },
+    derivationPathPrefix: options.derivationPathPrefix ?? DEFAULT_DERIVATION_PATH_PREFIX,
+    getBalanceHint: "Use @mysten/sui's SuiClient with your own RPC URL.",
+    icon: options.icon,
+    id: options.id,
+    loadApp: async () => {
+      const SuiApp = options.sui ?? (await loadSui());
+      return (transport) => new SuiApp(transport);
+    },
+    name: options.name,
+    // Sui paths are fully-hardened per Sui Wallet convention; every
+    // segment ends in `'`, including the account index.
+    pathAt: (prefix, index) => `${prefix}/${index}'`,
+    sendTxHint: "Use signTransaction + @mysten/sui's SuiClient.",
+    switchAccountHint: "signTransaction(tx, account)",
+    transport: options.transport,
+  });
+
+  const currentChain = (): ChainBase => buildSuiChain(cluster, core.name);
 
   const adapter: WalletAdapter = {
     capabilities,
     chainPlatform: "sui",
-
-    async connect(opts) {
-      if (opts?.silent === true) {
-        // Ledger connect always shows the browser's WebUSB device
-        // picker; there is no silent reconnect. Reject so eager
-        // hydration doesn't pop the chooser on page load.
-        throw new Error("Ledger requires an interactive connect");
-      }
-      const TransportFactoryImpl = options.transport ?? (await loadTransport());
-      const SuiApp = options.sui ?? (await loadSui());
-      transport = await TransportFactoryImpl.create();
-      sui = new SuiApp(transport);
-      const { address } = await sui.getPublicKey(pathAt(0));
-      currentAddress = bytesToSuiAddress(new Uint8Array(address));
-    },
-
-    async disconnect() {
-      try {
-        await transport?.close();
-      } catch (error) {
-        logWarn("[butr/ledger] transport.close threw:", error);
-      }
-      transport = null;
-      sui = null;
-      currentAddress = null;
-    },
+    connect: core.connect,
+    disconnect: core.disconnect,
 
     getAccount: () => {
-      if (currentAddress === null || currentAddress === "") {
-        return Promise.resolve(null);
-      }
-      return Promise.resolve(buildSuiAccount(currentAddress, buildSuiChain(cluster, name)));
+      const address = core.currentAddress();
+      return Promise.resolve(address === null ? null : buildSuiAccount(address, currentChain()));
     },
 
     async getAccounts() {
-      if (sui === null) {
-        return [];
-      }
-      const chain = buildSuiChain(cluster, name);
-      const accounts: Array<Account> = [];
-      // Sequential walk; the device serialises USB requests; parallel
-      // calls would deadlock the transport. Slow but correct.
-      for (let i = 0; i < accountCount; i += 1) {
-        // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
-        const { address } = await sui.getPublicKey(pathAt(i));
-        const suiAddress = bytesToSuiAddress(new Uint8Array(address));
-        accounts.push(buildSuiAccount(suiAddress, chain));
-      }
-      return accounts;
+      const chain = currentChain();
+      const addresses = await core.listAddresses();
+      return addresses.map((address) => buildSuiAccount(address, chain));
     },
 
-    getBalance: () =>
-      Promise.reject(
-        new Error(
-          "[butr/ledger] getBalance not supported: Ledger has no RPC. Use @mysten/sui's SuiClient with your own RPC URL.",
-        ),
-      ),
-
-    getSigner: () => Promise.resolve(sui),
-
-    getTransactionReceipt: () =>
-      Promise.reject(
-        new Error("[butr/ledger] getTransactionReceipt not supported: Ledger has no RPC."),
-      ),
-
-    icon,
-    id,
-    name,
-
-    sendTx: () =>
-      Promise.reject(
-        new Error(
-          "[butr/ledger] sendTx not supported: Ledger signs but doesn't broadcast. Use signTransaction + @mysten/sui's SuiClient.",
-        ),
-      ),
-
-    sendTxToChain: () =>
-      Promise.reject(
-        new Error("[butr/ledger] sendTxToChain not supported: Ledger signs but doesn't broadcast."),
-      ),
+    getBalance: core.getBalance,
+    getSigner: core.getSigner,
+    getTransactionReceipt: core.getTransactionReceipt,
+    icon: core.icon,
+    id: core.id,
+    name: core.name,
+    sendTx: core.sendTx,
+    sendTxToChain: core.sendTxToChain,
 
     // Ledger's Sui app exposes no signPersonalMessage / off-chain
     // message instruction at this app version. Capabilities flag
@@ -289,50 +225,19 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
      * helpers. Mirrors how Suiet + every Sui wallet ships this surface.
      */
     async signTransaction(tx, account) {
-      if (sui === null) {
-        throw new Error("[butr/ledger] not connected: call connect() first");
-      }
+      const sui = core.requireApp();
       if (!(tx instanceof Uint8Array)) {
         throw new TypeError(
           "[butr/ledger] signTransaction expects a Uint8Array (BCS-serialized Sui transaction).",
         );
       }
-      let path = pathAt(0);
-      if (account && account.walletAddress !== currentAddress) {
-        let matched = false;
-        for (let i = 0; i < accountCount; i += 1) {
-          const candidatePath = pathAt(i);
-          // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
-          const { address } = await sui.getPublicKey(candidatePath);
-          const candidateAddress = bytesToSuiAddress(new Uint8Array(address));
-          if (candidateAddress === account.walletAddress) {
-            path = candidatePath;
-            matched = true;
-            break;
-          }
-        }
-        if (!matched) {
-          throw new Error(
-            `[butr/ledger] address ${account.walletAddress} not found on this device within ${accountCount} derivation paths`,
-          );
-        }
-      }
+      const path = await core.resolvePath(account);
       const result = await sui.signTransaction(path, tx);
       return new Uint8Array(result.signature);
     },
 
-    subscribe: () => {
-      // No-op; Ledger emits no events. Capabilities flag is `false`.
-      void SUBSCRIBE_NOT_AVAILABLE;
-      return () => {};
-    },
-
-    switchAccount: () =>
-      Promise.reject(
-        new Error(
-          "[butr/ledger] switchAccount not supported: pick a different account via signTransaction(tx, account) using a different derivation path",
-        ),
-      ),
+    subscribe: core.subscribe,
+    switchAccount: core.switchAccount,
 
     switchChain: (chain) => {
       if (chain.namespace !== "sui") {
@@ -363,4 +268,5 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
 };
 
 export type { SuiAppConstructor, SuiAppLike, SuiCluster, SuiLedgerOptions };
-export { DEFAULT_ICON as LEDGER_SUI_DEFAULT_ICON, createSuiLedgerAdapter };
+export { LEDGER_ICON as LEDGER_SUI_DEFAULT_ICON } from "../adapter-core";
+export { createSuiLedgerAdapter };

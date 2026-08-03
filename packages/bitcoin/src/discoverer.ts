@@ -1,7 +1,7 @@
 import type { PlatformDiscoverer } from "@usebutr/core";
 
 import { discoverInjectedBitcoinAdapter } from "./injected";
-import { discoverBitcoinAdapters } from "./wallet-standard";
+import { discoverBitcoinAdapters } from "./wallet-standard-adapter";
 
 /**
  * Bitcoin's `PlatformDiscoverer`: Wallet Standard primary (Phantom,

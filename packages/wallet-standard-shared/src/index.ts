@@ -20,5 +20,8 @@ export {
 export type { WalletStandardCore } from "./adapter-core";
 export { createWalletStandardCore } from "./adapter-core";
 
+export type { WalletCapabilityProfile } from "./capabilities";
+export { buildWalletCapabilities } from "./capabilities";
+
 export type { WalletStandardAdapterBuilder } from "./discovery";
 export { discoverWalletStandard } from "./discovery";

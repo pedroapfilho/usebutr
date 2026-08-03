@@ -1,9 +1,9 @@
 import type { Account, ChainBase, WalletAdapter } from "@usebutr/core";
-import { bytesToHex, hexToBytes, logWarn } from "@usebutr/core";
+import { bytesToHex, hexToBytes } from "@usebutr/core";
 
-import { LEDGER_CAPABILITIES } from "../capabilities";
-import type { TransportFactory, TransportLike } from "../transport";
-import { loadTransport } from "../transport";
+import { createLedgerAdapterCore } from "../adapter-core";
+import { LEDGER_SIGN_TRANSACTION_CAPABILITIES } from "../capabilities";
+import type { TransportFactory } from "../transport";
 
 /**
  * Bitcoin address format, mirroring `@ledgerhq/hw-app-btc`'s `AddressFormat`.
@@ -162,9 +162,6 @@ type BitcoinLedgerOptions = {
   transport?: TransportFactory;
 };
 
-const DEFAULT_ICON =
-  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwMCI+PHJlY3QgeD0iMyIgeT0iNyIgd2lkdGg9IjEzIiBoZWlnaHQ9IjEwIiByeD0iMSIvPjxyZWN0IHg9IjE3IiB5PSI3IiB3aWR0aD0iNCIgaGVpZ2h0PSIzIiBmaWxsPSIjMDAwIi8+PHJlY3QgeD0iMTciIHk9IjE0IiB3aWR0aD0iNCIgaGVpZ2h0PSIzIiBmaWxsPSIjMDAwIi8+PHJlY3QgeD0iNiIgeT0iMTAiIHdpZHRoPSI3IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiLz48L3N2Zz4=";
-
 const buildBitcoinChain = (chainId: string, walletName: string): ChainBase => {
   // Reference is the part after the `bip122:` (or other) namespace prefix.
   // Falls back to the full id when no `:` is present so malformed inputs
@@ -185,9 +182,6 @@ const buildBitcoinAccount = (address: string, chain: ChainBase): Account => ({
   id: `${chain.id}:${address}`,
   walletAddress: address,
 });
-
-const SUBSCRIBE_NOT_AVAILABLE =
-  "[butr/ledger] subscribe is not implemented: device emits no events";
 
 /**
  * Build a Ledger hardware-wallet adapter wired to the **Bitcoin app**. The
@@ -228,141 +222,75 @@ const SUBSCRIBE_NOT_AVAILABLE =
  *    they disagree.
  */
 const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<WalletAdapter> => {
-  const id = options.id ?? "ledger";
-  const name = options.name ?? "Ledger";
-  const icon = options.icon ?? DEFAULT_ICON;
   const derivationPathPrefix = options.derivationPathPrefix ?? DEFAULT_DERIVATION_PATH_PREFIX;
-  const accountCount = Math.max(1, options.accountCount ?? 1);
   const addressFormat = options.addressFormat ?? DEFAULT_ADDRESS_FORMAT;
 
   let chainId = options.chainId ?? DEFAULT_CHAIN_ID;
-  let transport: TransportLike | null = null;
-  let btc: BtcAppLike | null = null;
-  let currentAddress: string | null = null;
 
-  const pathAt = (index: number): string => `${derivationPathPrefix}/${index}`;
+  const core = createLedgerAdapterCore<BtcAppLike>({
+    accountCount: options.accountCount,
+    addressAt: async (btc, path) => {
+      const result = await btc.getWalletPublicKey(path, { format: addressFormat });
+      return result.bitcoinAddress;
+    },
+    derivationPathPrefix,
+    getBalanceHint: "Use bitcoinjs-lib with an Esplora / Electrum client.",
+    icon: options.icon,
+    id: options.id,
+    loadApp: async () => {
+      const BtcApp = options.btc ?? (await (options.loadBtc ?? loadBtc)());
+      return (transport) => new BtcApp({ currency: "bitcoin", transport });
+    },
+    name: options.name,
+    pathAt: (prefix, index) => `${prefix}/${index}`,
+    sendTxHint: "Use signTransaction + an Esplora / Electrum client.",
+    switchAccountHint: "signMessage(msg, account)",
+    transport: options.transport,
+  });
+
+  // The PSBT signing instruction takes the ACCOUNT path (one segment above
+  // the per-address prefix), not the address path the walk resolves.
   const accountPath = (): string => {
     const lastSlash = derivationPathPrefix.lastIndexOf("/");
     return lastSlash === -1 ? derivationPathPrefix : derivationPathPrefix.slice(0, lastSlash);
   };
 
+  const currentChain = (): ChainBase => buildBitcoinChain(chainId, core.name);
+
   const adapter: WalletAdapter = {
-    capabilities: LEDGER_CAPABILITIES,
+    capabilities: LEDGER_SIGN_TRANSACTION_CAPABILITIES,
     chainPlatform: "bitcoin",
-
-    async connect(opts) {
-      if (opts?.silent === true) {
-        // Ledger connect always shows the browser's WebUSB device picker;
-        // there is no silent reconnect. Reject so eager hydration doesn't
-        // pop the chooser on page load.
-        throw new Error("Ledger requires an interactive connect");
-      }
-      const TransportFactoryImpl = options.transport ?? (await loadTransport());
-      const BtcApp = options.btc ?? (await (options.loadBtc ?? loadBtc)());
-      transport = await TransportFactoryImpl.create();
-      btc = new BtcApp({ currency: "bitcoin", transport });
-      const { bitcoinAddress } = await btc.getWalletPublicKey(pathAt(0), {
-        format: addressFormat,
-      });
-      currentAddress = bitcoinAddress;
-    },
-
-    async disconnect() {
-      try {
-        await transport?.close();
-      } catch (error) {
-        logWarn("[butr/ledger] transport.close threw:", error);
-      }
-      transport = null;
-      btc = null;
-      currentAddress = null;
-    },
+    connect: core.connect,
+    disconnect: core.disconnect,
 
     getAccount: () => {
-      if (currentAddress === null || currentAddress === "") {
-        return Promise.resolve(null);
-      }
-      return Promise.resolve(buildBitcoinAccount(currentAddress, buildBitcoinChain(chainId, name)));
+      const address = core.currentAddress();
+      return Promise.resolve(
+        address === null ? null : buildBitcoinAccount(address, currentChain()),
+      );
     },
 
     async getAccounts() {
-      if (btc === null) {
-        return [];
-      }
-      const chain = buildBitcoinChain(chainId, name);
-      const accounts: Array<Account> = [];
-      // Sequential walk; the device serialises USB requests; parallel
-      // calls would deadlock the transport. Slow but correct.
-      for (let i = 0; i < accountCount; i += 1) {
-        // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
-        const { bitcoinAddress } = await btc.getWalletPublicKey(pathAt(i), {
-          format: addressFormat,
-        });
-        accounts.push(buildBitcoinAccount(bitcoinAddress, chain));
-      }
-      return accounts;
+      const chain = currentChain();
+      const addresses = await core.listAddresses();
+      return addresses.map((address) => buildBitcoinAccount(address, chain));
     },
 
-    getBalance: () =>
-      Promise.reject(
-        new Error(
-          "[butr/ledger] getBalance not supported: Ledger has no RPC. Use bitcoinjs-lib with an Esplora / Electrum client.",
-        ),
-      ),
-
-    getSigner: () => Promise.resolve(btc),
-
-    getTransactionReceipt: () =>
-      Promise.reject(
-        new Error("[butr/ledger] getTransactionReceipt not supported: Ledger has no RPC."),
-      ),
-
-    icon,
-    id,
-    name,
-
-    sendTx: () =>
-      Promise.reject(
-        new Error(
-          "[butr/ledger] sendTx not supported: Ledger signs but doesn't broadcast. Use signTransaction + an Esplora / Electrum client.",
-        ),
-      ),
-
-    sendTxToChain: () =>
-      Promise.reject(
-        new Error("[butr/ledger] sendTxToChain not supported: Ledger signs but doesn't broadcast."),
-      ),
+    getBalance: core.getBalance,
+    getSigner: core.getSigner,
+    getTransactionReceipt: core.getTransactionReceipt,
+    icon: core.icon,
+    id: core.id,
+    name: core.name,
+    sendTx: core.sendTx,
+    sendTxToChain: core.sendTxToChain,
 
     async signMessage(message, account) {
-      if (btc === null) {
-        throw new Error("[butr/ledger] not connected: call connect() first");
-      }
-      let path = pathAt(0);
-      if (account && account.walletAddress !== currentAddress) {
-        let matched = false;
-        for (let i = 0; i < accountCount; i += 1) {
-          const candidatePath = pathAt(i);
-          // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
-          const { bitcoinAddress } = await btc.getWalletPublicKey(candidatePath, {
-            format: addressFormat,
-          });
-          if (bitcoinAddress === account.walletAddress) {
-            path = candidatePath;
-            matched = true;
-            break;
-          }
-        }
-        if (!matched) {
-          throw new Error(
-            `[butr/ledger] address ${account.walletAddress} not found on this device within ${accountCount} derivation paths`,
-          );
-        }
-      }
-      const messageHex = bytesToHex(message);
-      const { r, s, v } = await btc.signMessage(path, messageHex);
+      const btc = core.requireApp();
+      const path = await core.resolvePath(account);
+      const { r, s, v } = await btc.signMessage(path, bytesToHex(message));
       const sigHex = `${r.padStart(64, "0")}${s.padStart(64, "0")}${v.toString(16).padStart(2, "0")}`;
-      const signature = hexToBytes(sigHex);
-      return { signature, signedMessage: message };
+      return { signature: hexToBytes(sigHex), signedMessage: message };
     },
 
     /**
@@ -378,33 +306,16 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
      * device (the factory passes an empty `knownAddressDerivations` Map).
      */
     async signTransaction(tx, account) {
-      if (btc === null) {
-        throw new Error("[butr/ledger] not connected: call connect() first");
-      }
+      const btc = core.requireApp();
       if (!(tx instanceof Uint8Array)) {
         throw new TypeError(
           "[butr/ledger] signTransaction expects a Uint8Array (serialized PSBT v0 or v2).",
         );
       }
-      if (account && account.walletAddress !== currentAddress) {
-        let matched = false;
-        for (let i = 0; i < accountCount; i += 1) {
-          const candidatePath = pathAt(i);
-          // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
-          const { bitcoinAddress } = await btc.getWalletPublicKey(candidatePath, {
-            format: addressFormat,
-          });
-          if (bitcoinAddress === account.walletAddress) {
-            matched = true;
-            break;
-          }
-        }
-        if (!matched) {
-          throw new Error(
-            `[butr/ledger] address ${account.walletAddress} not found on this device within ${accountCount} derivation paths`,
-          );
-        }
-      }
+      // Discarding the resolved path is deliberate: this only proves the
+      // requested account lives on the device. The device derives the
+      // signing key itself from `accountPath()` + the PSBT's own hints.
+      await core.resolvePath(account);
       const result = await btc.signPsbtBuffer(tx, {
         accountPath: accountPath(),
         addressFormat,
@@ -414,18 +325,8 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
       return new Uint8Array(result.psbt);
     },
 
-    subscribe: () => {
-      // No-op; Ledger emits no events. Capabilities flag is `false`.
-      void SUBSCRIBE_NOT_AVAILABLE;
-      return () => {};
-    },
-
-    switchAccount: () =>
-      Promise.reject(
-        new Error(
-          "[butr/ledger] switchAccount not supported: pick a different account via signMessage(msg, account) using a different derivation path",
-        ),
-      ),
+    subscribe: core.subscribe,
+    switchAccount: core.switchAccount,
 
     switchChain: (chain) => {
       if (chain.namespace !== "bip122") {
@@ -444,4 +345,5 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
 };
 
 export type { BitcoinAddressFormat, BitcoinLedgerOptions, BtcAppConstructor, BtcAppLike };
-export { DEFAULT_ICON as LEDGER_BITCOIN_DEFAULT_ICON, createBitcoinLedgerAdapter };
+export { LEDGER_ICON as LEDGER_BITCOIN_DEFAULT_ICON } from "../adapter-core";
+export { createBitcoinLedgerAdapter };

@@ -1,4 +1,7 @@
 import type { WalletCapabilities } from "@usebutr/core";
+import { buildWalletCapabilities } from "@usebutr/wallet-standard-shared";
+
+import { POLKADOT_CHAINS_LIST } from "./chains";
 
 type WalletStandardPolkadotCapabilityInput = {
   chainCount: number;
@@ -10,42 +13,36 @@ type WalletStandardPolkadotCapabilityInput = {
 
 /**
  * injectedWeb3 capability profile. The injected `signer.signRaw` always
- * supports message signing; `accounts.subscribe` always supports events;
- * butr authors the chain list (4 chains) so local switchChain is always
- * available.
+ * supports message signing and `accounts.subscribe` always supports events,
+ * so both are unconditional. The chain count comes from butr's own registry
+ * because injectedWeb3 wallets advertise no chains of their own.
  */
-const resolveInjectedPolkadotCapabilities = (): WalletCapabilities => ({
-  getBalance: false,
-  getTransactionReceipt: false,
-  requestAccounts: false,
-  sendTransaction: false,
-  signIn: false,
-  signMessage: true,
-  signTransaction: false,
-  subscribe: true,
-  switchAccount: false,
-  switchChain: true,
-});
+const resolveInjectedPolkadotCapabilities = (): WalletCapabilities =>
+  buildWalletCapabilities({
+    chainCount: POLKADOT_CHAINS_LIST.length,
+    events: true,
+    sendTransaction: false,
+    signIn: false,
+    signMessage: true,
+    signTransaction: false,
+  });
 
 /**
- * Wallet Standard `polkadot:*` capability mapping. Mirrors the Sui/SVM
- * resolvers: features come from what the wallet advertises; switchChain
- * follows chainCount (local re-routing among advertised chains).
+ * Wallet Standard `polkadot:*` feature → butr capability mapping. No
+ * standalone `signTransaction`: building an extrinsic needs chain metadata
+ * butr doesn't fetch, so transaction signing goes through `getSigner()`.
  */
 const resolveWalletStandardPolkadotCapabilities = (
   input: WalletStandardPolkadotCapabilityInput,
-): WalletCapabilities => ({
-  getBalance: false,
-  getTransactionReceipt: false,
-  requestAccounts: false,
-  sendTransaction: false,
-  signIn: false,
-  signMessage: input.features.signMessage,
-  signTransaction: false,
-  subscribe: input.features.events,
-  switchAccount: false,
-  switchChain: input.chainCount > 1,
-});
+): WalletCapabilities =>
+  buildWalletCapabilities({
+    chainCount: input.chainCount,
+    events: input.features.events,
+    sendTransaction: false,
+    signIn: false,
+    signMessage: input.features.signMessage,
+    signTransaction: false,
+  });
 
 export type { WalletStandardPolkadotCapabilityInput };
 export { resolveInjectedPolkadotCapabilities, resolveWalletStandardPolkadotCapabilities };

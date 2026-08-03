@@ -7,8 +7,7 @@ export type {
   SolanaSignMessageOutput,
 } from "./wallet-standard-types";
 
-export { buildSvmAdapter, slugify } from "./wallet-standard-adapter";
-export { discoverSvmAdapters } from "./wallet-standard";
+export { buildSvmAdapter, discoverSvmAdapters, slugify } from "./wallet-standard-adapter";
 
 export { SVM_CHAINS, SVM_CHAINS_LIST } from "./chains";
 

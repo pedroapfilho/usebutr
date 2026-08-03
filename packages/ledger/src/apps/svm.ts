@@ -1,9 +1,9 @@
 import type { Account, ChainBase, WalletAdapter } from "@usebutr/core";
-import { logWarn } from "@usebutr/core";
+import { bytesToBase58 } from "@usebutr/core";
 
-import { LEDGER_CAPABILITIES } from "../capabilities";
-import type { TransportFactory, TransportLike } from "../transport";
-import { loadTransport } from "../transport";
+import { createLedgerAdapterCore } from "../adapter-core";
+import { LEDGER_SIGN_TRANSACTION_CAPABILITIES } from "../capabilities";
+import type { TransportFactory } from "../transport";
 
 /**
  * Minimal type surface for `@ledgerhq/hw-app-solana`. Declared inline so
@@ -97,36 +97,6 @@ type SvmLedgerOptions = {
   transport?: TransportFactory;
 };
 
-const DEFAULT_ICON =
-  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwMCI+PHJlY3QgeD0iMyIgeT0iNyIgd2lkdGg9IjEzIiBoZWlnaHQ9IjEwIiByeD0iMSIvPjxyZWN0IHg9IjE3IiB5PSI3IiB3aWR0aD0iNCIgaGVpZ2h0PSIzIiBmaWxsPSIjMDAwIi8+PHJlY3QgeD0iMTciIHk9IjE0IiB3aWR0aD0iNCIgaGVpZ2h0PSIzIiBmaWxsPSIjMDAwIi8+PHJlY3QgeD0iNiIgeT0iMTAiIHdpZHRoPSI3IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiLz48L3N2Zz4=";
-
-const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-
-/**
- * Base58-encode a byte array (Solana's address encoding). Copied
- * verbatim from the kit demo. Standalone so the package stays free of
- * runtime deps beyond `@usebutr/core`.
- */
-const bytesToBase58 = (bytes: Uint8Array): string => {
-  let intVal = 0n;
-  for (const byte of bytes) {
-    intVal = (intVal << 8n) | BigInt(byte);
-  }
-  let out = "";
-  while (intVal > 0n) {
-    const remainder = intVal % 58n;
-    intVal /= 58n;
-    out = BASE58_ALPHABET[Number(remainder)] + out;
-  }
-  for (const byte of bytes) {
-    if (byte !== 0) {
-      break;
-    }
-    out = `1${out}`;
-  }
-  return out;
-};
-
 const buildSolanaChain = (cluster: SolanaCluster, walletName: string): ChainBase => ({
   id: `solana:${cluster}`,
   // Same stance as the EVM builder; no chain-id → name table in butr;
@@ -141,9 +111,6 @@ const buildSolanaAccount = (address: string, chain: ChainBase): Account => ({
   id: `${chain.id}:${address}`,
   walletAddress: address,
 });
-
-const SUBSCRIBE_NOT_AVAILABLE =
-  "[butr/ledger] subscribe is not implemented: device emits no events";
 
 /**
  * Build a Ledger hardware-wallet adapter wired to the **Solana app**.
@@ -170,127 +137,60 @@ const SUBSCRIBE_NOT_AVAILABLE =
  * client.
  */
 const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapter> => {
-  const id = options.id ?? "ledger";
-  const name = options.name ?? "Ledger";
-  const icon = options.icon ?? DEFAULT_ICON;
-  const derivationPathPrefix = options.derivationPathPrefix ?? DEFAULT_DERIVATION_PATH_PREFIX;
-  const accountCount = Math.max(1, options.accountCount ?? 1);
-
   let cluster: SolanaCluster = options.cluster ?? DEFAULT_CLUSTER;
-  let transport: TransportLike | null = null;
-  let solana: SolanaAppLike | null = null;
-  let currentAddress: string | null = null;
 
-  const pathAt = (index: number): string => `${derivationPathPrefix}/${index}'`;
+  const core = createLedgerAdapterCore<SolanaAppLike>({
+    accountCount: options.accountCount,
+    addressAt: async (solana, path) => {
+      const result = await solana.getAddress(path);
+      return bytesToBase58(new Uint8Array(result.address));
+    },
+    derivationPathPrefix: options.derivationPathPrefix ?? DEFAULT_DERIVATION_PATH_PREFIX,
+    getBalanceHint: "Use @solana/kit or @solana/web3.js with your own RPC URL.",
+    icon: options.icon,
+    id: options.id,
+    loadApp: async () => {
+      const SolanaApp = options.solana ?? (await loadSolana());
+      return (transport) => new SolanaApp(transport);
+    },
+    name: options.name,
+    pathAt: (prefix, index) => `${prefix}/${index}'`,
+    sendTxHint: "Use signTransaction + @solana/kit / @solana/web3.js.",
+    switchAccountHint: "signMessage(msg, account)",
+    transport: options.transport,
+  });
+
+  const currentChain = (): ChainBase => buildSolanaChain(cluster, core.name);
 
   const adapter: WalletAdapter = {
-    capabilities: LEDGER_CAPABILITIES,
+    capabilities: LEDGER_SIGN_TRANSACTION_CAPABILITIES,
     chainPlatform: "svm",
-
-    async connect(opts) {
-      if (opts?.silent === true) {
-        // Ledger connect always shows the browser's WebUSB device
-        // picker; there is no silent reconnect. Reject so eager
-        // hydration doesn't pop the chooser on page load.
-        throw new Error("Ledger requires an interactive connect");
-      }
-      const TransportFactoryImpl = options.transport ?? (await loadTransport());
-      const SolanaApp = options.solana ?? (await loadSolana());
-      transport = await TransportFactoryImpl.create();
-      solana = new SolanaApp(transport);
-      const { address } = await solana.getAddress(pathAt(0));
-      currentAddress = bytesToBase58(new Uint8Array(address));
-    },
-
-    async disconnect() {
-      try {
-        await transport?.close();
-      } catch (error) {
-        logWarn("[butr/ledger] transport.close threw:", error);
-      }
-      transport = null;
-      solana = null;
-      currentAddress = null;
-    },
+    connect: core.connect,
+    disconnect: core.disconnect,
 
     getAccount: () => {
-      if (currentAddress === null || currentAddress === "") {
-        return Promise.resolve(null);
-      }
-      return Promise.resolve(buildSolanaAccount(currentAddress, buildSolanaChain(cluster, name)));
+      const address = core.currentAddress();
+      return Promise.resolve(address === null ? null : buildSolanaAccount(address, currentChain()));
     },
 
     async getAccounts() {
-      if (solana === null) {
-        return [];
-      }
-      const chain = buildSolanaChain(cluster, name);
-      const accounts: Array<Account> = [];
-      // Sequential walk; the device serialises USB requests; parallel
-      // calls would deadlock the transport. Slow but correct.
-      for (let i = 0; i < accountCount; i += 1) {
-        // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
-        const { address } = await solana.getAddress(pathAt(i));
-        const base58Address = bytesToBase58(new Uint8Array(address));
-        accounts.push(buildSolanaAccount(base58Address, chain));
-      }
-      return accounts;
+      const chain = currentChain();
+      const addresses = await core.listAddresses();
+      return addresses.map((address) => buildSolanaAccount(address, chain));
     },
 
-    getBalance: () =>
-      Promise.reject(
-        new Error(
-          "[butr/ledger] getBalance not supported: Ledger has no RPC. Use @solana/kit or @solana/web3.js with your own RPC URL.",
-        ),
-      ),
-
-    getSigner: () => Promise.resolve(solana),
-
-    getTransactionReceipt: () =>
-      Promise.reject(
-        new Error("[butr/ledger] getTransactionReceipt not supported: Ledger has no RPC."),
-      ),
-
-    icon,
-    id,
-    name,
-
-    sendTx: () =>
-      Promise.reject(
-        new Error(
-          "[butr/ledger] sendTx not supported: Ledger signs but doesn't broadcast. Use signTransaction + @solana/kit / @solana/web3.js.",
-        ),
-      ),
-
-    sendTxToChain: () =>
-      Promise.reject(
-        new Error("[butr/ledger] sendTxToChain not supported: Ledger signs but doesn't broadcast."),
-      ),
+    getBalance: core.getBalance,
+    getSigner: core.getSigner,
+    getTransactionReceipt: core.getTransactionReceipt,
+    icon: core.icon,
+    id: core.id,
+    name: core.name,
+    sendTx: core.sendTx,
+    sendTxToChain: core.sendTxToChain,
 
     async signMessage(message, account) {
-      if (solana === null) {
-        throw new Error("[butr/ledger] not connected: call connect() first");
-      }
-      let path = pathAt(0);
-      if (account && account.walletAddress !== currentAddress) {
-        let matched = false;
-        for (let i = 0; i < accountCount; i += 1) {
-          const candidatePath = pathAt(i);
-          // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
-          const { address } = await solana.getAddress(candidatePath);
-          const candidateAddress = bytesToBase58(new Uint8Array(address));
-          if (candidateAddress === account.walletAddress) {
-            path = candidatePath;
-            matched = true;
-            break;
-          }
-        }
-        if (!matched) {
-          throw new Error(
-            `[butr/ledger] address ${account.walletAddress} not found on this device within ${accountCount} derivation paths`,
-          );
-        }
-      }
+      const solana = core.requireApp();
+      const path = await core.resolvePath(account);
       const result = await solana.signOffchainMessage(path, message);
       return { signature: new Uint8Array(result.signature), signedMessage: message };
     },
@@ -305,50 +205,19 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
      * Live + every Solana wallet ships this surface.
      */
     async signTransaction(tx, account) {
-      if (solana === null) {
-        throw new Error("[butr/ledger] not connected: call connect() first");
-      }
+      const solana = core.requireApp();
       if (!(tx instanceof Uint8Array)) {
         throw new TypeError(
           "[butr/ledger] signTransaction expects a Uint8Array (serialized Solana transaction).",
         );
       }
-      let path = pathAt(0);
-      if (account && account.walletAddress !== currentAddress) {
-        let matched = false;
-        for (let i = 0; i < accountCount; i += 1) {
-          const candidatePath = pathAt(i);
-          // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
-          const { address } = await solana.getAddress(candidatePath);
-          const candidateAddress = bytesToBase58(new Uint8Array(address));
-          if (candidateAddress === account.walletAddress) {
-            path = candidatePath;
-            matched = true;
-            break;
-          }
-        }
-        if (!matched) {
-          throw new Error(
-            `[butr/ledger] address ${account.walletAddress} not found on this device within ${accountCount} derivation paths`,
-          );
-        }
-      }
+      const path = await core.resolvePath(account);
       const result = await solana.signTransaction(path, tx);
       return new Uint8Array(result.signature);
     },
 
-    subscribe: () => {
-      // No-op; Ledger emits no events. Capabilities flag is `false`.
-      void SUBSCRIBE_NOT_AVAILABLE;
-      return () => {};
-    },
-
-    switchAccount: () =>
-      Promise.reject(
-        new Error(
-          "[butr/ledger] switchAccount not supported: pick a different account via signMessage(msg, account) using a different derivation path",
-        ),
-      ),
+    subscribe: core.subscribe,
+    switchAccount: core.switchAccount,
 
     switchChain: (chain) => {
       if (chain.namespace !== "solana") {
@@ -378,4 +247,5 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
 };
 
 export type { SolanaAppConstructor, SolanaAppLike, SolanaCluster, SvmLedgerOptions };
-export { DEFAULT_ICON as LEDGER_SVM_DEFAULT_ICON, createSvmLedgerAdapter };
+export { LEDGER_ICON as LEDGER_SVM_DEFAULT_ICON } from "../adapter-core";
+export { createSvmLedgerAdapter };

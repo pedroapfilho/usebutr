@@ -82,6 +82,7 @@ describe("createSuiLedgerAdapter", () => {
     // signMessage capability is false (unlike EVM/SVM).
     expect(adapter.capabilities.signMessage).toBe(false);
     expect(adapter.capabilities.sendTransaction).toBe(false);
+    expect(adapter.capabilities.signTransaction).toBe(true);
     expect(adapter.capabilities.getBalance).toBe(false);
     expect(adapter.capabilities.subscribe).toBe(false);
     expect(adapter.capabilities.switchChain).toBe(true);

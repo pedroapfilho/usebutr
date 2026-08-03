@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { base64ToBytes, bytesToBase64, bytesToHex, bytesToHexPrefixed, hexToBytes } from "../bytes";
+import {
+  base58ToBytes,
+  base64ToBytes,
+  bytesToBase58,
+  bytesToBase64,
+  bytesToHex,
+  bytesToHexPrefixed,
+  hexToBytes,
+} from "../bytes";
 
 describe("bytesToHex / bytesToHexPrefixed", () => {
   it("encodes bare lowercase hex with zero-padding", () => {
@@ -66,5 +74,32 @@ describe("base64ToBytes / bytesToBase64", () => {
   it("handles empty input", () => {
     expect(bytesToBase64(new Uint8Array([]))).toBe("");
     expect(base64ToBytes("")).toEqual(new Uint8Array([]));
+  });
+});
+
+describe("base58ToBytes / bytesToBase58", () => {
+  it("round-trips arbitrary bytes", () => {
+    const bytes = new Uint8Array([0, 1, 2, 250, 251, 252, 253, 254, 255]);
+    expect(base58ToBytes(bytesToBase58(bytes))).toEqual(bytes);
+  });
+
+  it("encodes leading zero bytes as leading ones", () => {
+    expect(bytesToBase58(new Uint8Array([0, 0, 0]))).toBe("111");
+    expect(base58ToBytes("111")).toEqual(new Uint8Array([0, 0, 0]));
+  });
+
+  it("encodes the Bitcoin test vector", () => {
+    const bytes = new Uint8Array([104, 101, 108, 108, 111]);
+    expect(bytesToBase58(bytes)).toBe("Cn8eVZg");
+    expect(base58ToBytes("Cn8eVZg")).toEqual(bytes);
+  });
+
+  it("handles empty input", () => {
+    expect(bytesToBase58(new Uint8Array([]))).toBe("");
+    expect(base58ToBytes("")).toEqual(new Uint8Array([]));
+  });
+
+  it("throws on characters outside the alphabet", () => {
+    expect(() => base58ToBytes("0OIl")).toThrow(/Invalid base58 character/v);
   });
 });

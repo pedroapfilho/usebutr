@@ -1,5 +1,5 @@
 import type { ChainBase } from "./chain";
-import type { ChainPlatform } from "./wallet";
+import type { ChainPlatform } from "./platform";
 
 /**
  * Map of every chain platform to the list of chains the consumer wants

@@ -69,7 +69,9 @@ export { logError, logWarn } from "./logger";
 export { sanitizeIcon } from "./sanitize-icon";
 
 export {
+  base58ToBytes,
   base64ToBytes,
+  bytesToBase58,
   bytesToBase64,
   bytesToHex,
   bytesToHexPrefixed,

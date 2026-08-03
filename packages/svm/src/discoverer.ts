@@ -1,6 +1,6 @@
 import type { PlatformDiscoverer } from "@usebutr/core";
 
-import { discoverSvmAdapters } from "./wallet-standard";
+import { discoverSvmAdapters } from "./wallet-standard-adapter";
 
 /**
  * SVM's `PlatformDiscoverer`: Solana Wallet Standard announcements. No

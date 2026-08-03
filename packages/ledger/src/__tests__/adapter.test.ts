@@ -64,6 +64,7 @@ describe("createLedgerAdapter", () => {
     expect(adapter.chainPlatform).toBe("evm");
     expect(adapter.capabilities.signMessage).toBe(true);
     expect(adapter.capabilities.sendTransaction).toBe(false);
+    expect(adapter.capabilities.signTransaction).toBe(false);
     expect(adapter.capabilities.getBalance).toBe(false);
     expect(adapter.capabilities.subscribe).toBe(false);
     expect(adapter.capabilities.switchChain).toBe(true);

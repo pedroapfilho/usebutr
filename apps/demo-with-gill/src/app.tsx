@@ -1,3 +1,4 @@
+import { bytesToBase58 } from "@usebutr/core";
 import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
 import type { SolanaSignAndSendTransactionFeature, SolanaSignMessageFeature } from "@usebutr/svm";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
@@ -18,27 +19,6 @@ import { useDiscoveredWallets } from "./wallet-provider";
 const BURN_ADDRESS = address("11111111111111111111111111111111");
 
 const { rpc } = createSolanaClient({ urlOrMoniker: "devnet" });
-
-const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const bytesToBase58 = (bytes: Uint8Array): string => {
-  let intVal = 0n;
-  for (const byte of bytes) {
-    intVal = (intVal << 8n) | BigInt(byte);
-  }
-  let out = "";
-  while (intVal > 0n) {
-    const remainder = intVal % 58n;
-    intVal /= 58n;
-    out = BASE58_ALPHABET[Number(remainder)] + out;
-  }
-  for (const byte of bytes) {
-    if (byte !== 0) {
-      break;
-    }
-    out = `1${out}`;
-  }
-  return out;
-};
 
 const base64ToBytes = (b64: string): Uint8Array => {
   const binary = atob(b64);

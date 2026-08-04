@@ -10,7 +10,7 @@ export type {
   BitcoinSignPsbtOutput,
 } from "./wallet-standard-types";
 
-export { buildBitcoinAdapter, discoverBitcoinAdapters, slugify } from "./wallet-standard-adapter";
+export { buildBitcoinAdapter, discoverBitcoinAdapters } from "./wallet-standard-adapter";
 
 export { BITCOIN_CHAINS, BITCOIN_CHAINS_LIST } from "./chains";
 

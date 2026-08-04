@@ -37,12 +37,12 @@ enabled (`injected` follows `evm`, `injectedBitcoin` follows `bitcoin`,
 Composed multi-platform discovery. Calls `onAdapter` for each wallet found and
 returns an unsubscribe function.
 
-### `resolveDiscoverOptions(auto: true | false | DiscoverOptions)`
+### `resolveDiscoverOptions(auto: true | DiscoverOptions)`
 
 Normalises an options value. `true` enables everything. Object form is opt-in:
-unspecified flags default to `false`; each fallback flag defaults to `true`
-only when its primary platform is enabled. Returns
-`{ active, bitcoin, evm, injected, injectedBitcoin, polkadot, polkadotWalletStandard, sui, svm }`.
+unspecified flags default to `false` (so `{}` enables nothing); each fallback
+flag defaults to `true` only when its primary platform is enabled. Returns
+`{ bitcoin, evm, injected, injectedBitcoin, polkadot, polkadotWalletStandard, sui, svm }`.
 
 ### `KNOWN_DISCOVERERS`
 

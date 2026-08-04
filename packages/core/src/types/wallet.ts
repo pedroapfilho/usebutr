@@ -150,10 +150,6 @@ type PolkadotAdapter = Connector<"polkadot"> & PolkadotWallet;
  */
 type WalletAdapter = EvmAdapter | SvmAdapter | SuiAdapter | BitcoinAdapter | PolkadotAdapter;
 
-/** Deprecated. Use one of the per-platform `*Wallet` types or
- *  `WalletBase`. Retained as an alias so existing names resolve. */
-type Wallet = WalletBase;
-
 type ConnectedWallet = {
   /** Currently-active account on this wallet. */
   account: Account;
@@ -176,7 +172,6 @@ export type {
   SuiWallet,
   SvmAdapter,
   SvmWallet,
-  Wallet,
   WalletAdapter,
   WalletBase,
 };

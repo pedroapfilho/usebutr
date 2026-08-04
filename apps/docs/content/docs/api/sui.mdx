@@ -23,9 +23,9 @@ discovery into a multi-platform source. Wallet Standard only; no fallback.
 Wrap a Wallet Standard wallet into a butr `WalletAdapter` with
 `chainPlatform: "sui"`.
 
-### `slugify(name: string): string`
-
-Stable id derivation from a wallet name (adapter authoring).
+Adapter ids come from `slugify("sui", wallet.name)` in
+`@usebutr/wallet-standard-shared`; import it from there when authoring an
+adapter.
 
 ## Capabilities
 

@@ -9,7 +9,6 @@ import { discoverSvmAdapters } from "./wallet-standard-adapter";
  * worth shimming.
  */
 const svmDiscoverer: PlatformDiscoverer = {
-  platform: "svm",
   subscribe: discoverSvmAdapters,
 };
 

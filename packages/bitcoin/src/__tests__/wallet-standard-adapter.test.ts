@@ -5,7 +5,7 @@ import type {
 } from "@usebutr/wallet-standard-shared";
 import { describe, expect, it, vi } from "vitest";
 
-import { buildBitcoinAdapter, slugify } from "../wallet-standard-adapter";
+import { buildBitcoinAdapter } from "../wallet-standard-adapter";
 import type {
   BitcoinSendTransferFeature,
   BitcoinSignMessageFeature,
@@ -41,13 +41,6 @@ const withFeatures = (
 ): WalletStandardWallet => ({
   ...wallet,
   features: { ...wallet.features, ...features },
-});
-
-describe("slugify", () => {
-  it("lowercases, collapses non-alphanumeric, prefixes with wallet-standard:btc-", () => {
-    expect(slugify("Phantom")).toBe("wallet-standard:btc-phantom");
-    expect(slugify("Magic Eden")).toBe("wallet-standard:btc-magic-eden");
-  });
 });
 
 describe("buildBitcoinAdapter", () => {

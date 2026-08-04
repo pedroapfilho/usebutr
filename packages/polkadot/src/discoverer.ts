@@ -25,7 +25,6 @@ const polkadotDiscoverer: PlatformDiscoverer = {
       return discoverPolkadotWalletStandardAdapters(onAdapter);
     },
   },
-  platform: "polkadot",
   subscribe: discoverInjectedPolkadotAdapters,
 };
 

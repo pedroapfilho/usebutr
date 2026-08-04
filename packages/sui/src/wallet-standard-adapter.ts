@@ -4,7 +4,7 @@ import {
   createWalletStandardCore,
   discoverWalletStandard,
   getFeature,
-  slugify as kitSlugify,
+  slugify,
 } from "@usebutr/wallet-standard-shared";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
@@ -18,8 +18,6 @@ import type {
 const SUI_PREFIX = "sui:";
 const SUI_DECIMALS = 9;
 const SUI_MAINNET = "sui:mainnet";
-
-const slugify = (name: string): string => kitSlugify("sui", name);
 
 /** Coerce butr's `unknown` tx into the shape `sui:signAndExecuteTransaction`
  *  expects (an object with `toJSON()` returning a Promise<string>). When
@@ -66,7 +64,7 @@ const buildSuiAdapter = (
 ): WalletAdapter | null => {
   const core = createWalletStandardCore({
     chainPrefix: SUI_PREFIX,
-    id: slugify(wallet.name),
+    id: slugify("sui", wallet.name),
     label: "Sui",
     namespace: "sui",
     platform: "Sui",
@@ -186,4 +184,4 @@ const discoverSuiAdapters = (onAdapter: (adapter: WalletAdapter) => void): (() =
     buildSuiAdapter(wallet, registerDisconnector),
   );
 
-export { buildSuiAdapter, discoverSuiAdapters, slugify };
+export { buildSuiAdapter, discoverSuiAdapters };

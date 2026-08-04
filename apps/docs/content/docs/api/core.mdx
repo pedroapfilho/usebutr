@@ -72,7 +72,7 @@ The default `WalletPersistence` implementation. Construct with
 Store: `ConnectionStatus`, `WalletStore`, `WalletStoreState`.
 
 Wallet model: `Account`, `Balance`, `ChainBase`, `ChainPlatform`,
-`ConnectedWallet`, `Connector`, `ConnectorEvent`, `ConnectorMeta`, `Wallet`,
+`ConnectedWallet`, `Connector`, `ConnectorEvent`, `ConnectorMeta`, `WalletBase`,
 `WalletAdapter`, `WalletAvailability`, `WalletCapabilities`,
 `WalletManagerConfig`, `HydrationOutcome`.
 
@@ -87,7 +87,7 @@ Discovery seam: `WalletSource`, shaped as `{ subscribe(onAdapter): () => void }`
 ## Key shapes
 
 ```ts
-type WalletAdapter = Connector & Wallet;
+type WalletAdapter = EvmAdapter | SvmAdapter | SuiAdapter | BitcoinAdapter | PolkadotAdapter;
 
 type ConnectedWallet = {
   account: Account; // active account
@@ -119,6 +119,6 @@ type HydrationOutcome = {
 ```
 
 See [connectors and wallets](/concepts/connectors-and-wallets) for the
-full `Connector` / `Wallet` / `WalletManagerConfig` definitions.
+full `Connector` / `WalletBase` / `WalletManagerConfig` definitions.
 
 **Source:** `packages/core/src/index.ts`.

@@ -20,7 +20,6 @@ const evmDiscoverer: PlatformDiscoverer = {
         hasAnyEip6963Adapter: opts.hasAnyPrimaryAdapter,
       }),
   },
-  platform: "evm",
   subscribe: discoverEvmAdapters,
 };
 

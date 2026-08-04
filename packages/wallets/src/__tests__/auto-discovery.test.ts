@@ -8,8 +8,7 @@ type DiscoverMod = {
     onAdapter: (adapter: unknown) => void,
     options?: DiscoverOptions,
   ) => () => void;
-  resolveDiscoverOptions: (auto: true | false | DiscoverOptions | undefined) => {
-    active: boolean;
+  resolveDiscoverOptions: (auto: true | DiscoverOptions) => {
     evm: boolean;
     injected: boolean;
     svm: boolean;

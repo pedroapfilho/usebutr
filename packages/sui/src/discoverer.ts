@@ -7,7 +7,6 @@ import { discoverSuiAdapters } from "./wallet-standard-adapter";
  * legacy fallback; Sui standardised on Wallet Standard from launch.
  */
 const suiDiscoverer: PlatformDiscoverer = {
-  platform: "sui",
   subscribe: discoverSuiAdapters,
 };
 

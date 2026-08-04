@@ -24,7 +24,6 @@ export type {
   SuiWallet,
   SvmAdapter,
   SvmWallet,
-  Wallet,
   WalletAdapter,
   WalletAvailability,
   WalletBase,

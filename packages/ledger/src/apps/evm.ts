@@ -1,9 +1,9 @@
 import type { Account, ChainBase, WalletAdapter } from "@usebutr/core";
-import { logWarn } from "@usebutr/core";
+import { bytesToHex, hexToBytes } from "@usebutr/core";
 
+import { createLedgerAdapterCore } from "../adapter-core";
 import { LEDGER_CAPABILITIES } from "../capabilities";
-import type { TransportFactory, TransportLike } from "../transport";
-import { loadTransport } from "../transport";
+import type { TransportFactory } from "../transport";
 
 /**
  * Minimal type surface for `@ledgerhq/hw-app-eth`. Declared inline so
@@ -92,9 +92,6 @@ type EvmLedgerOptions = {
   transport?: TransportFactory;
 };
 
-const DEFAULT_ICON =
-  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwMCI+PHJlY3QgeD0iMyIgeT0iNyIgd2lkdGg9IjEzIiBoZWlnaHQ9IjEwIiByeD0iMSIvPjxyZWN0IHg9IjE3IiB5PSI3IiB3aWR0aD0iNCIgaGVpZ2h0PSIzIiBmaWxsPSIjMDAwIi8+PHJlY3QgeD0iMTciIHk9IjE0IiB3aWR0aD0iNCIgaGVpZ2h0PSIzIiBmaWxsPSIjMDAwIi8+PHJlY3QgeD0iNiIgeT0iMTAiIHdpZHRoPSI3IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiLz48L3N2Zz4=";
-
 const buildEvmChain = (chainId: number, walletName: string): ChainBase => ({
   id: `eip155:${chainId}`,
   // Same stance as the EIP-6963 adapter; butr doesn't ship a chain
@@ -110,9 +107,6 @@ const buildEvmAccount = (address: string, chain: ChainBase): Account => ({
   walletAddress: address,
 });
 
-const SUBSCRIBE_NOT_AVAILABLE =
-  "[butr/ledger] subscribe is not implemented: device emits no events";
-
 /**
  * Build a Ledger hardware-wallet adapter wired to the **EVM Ethereum
  * app**. The returned adapter is fully-formed but UN-paired; pairing
@@ -124,147 +118,68 @@ const SUBSCRIBE_NOT_AVAILABLE =
  * `createLedgerAdapter` in `adapter.ts`, which dispatches by platform.
  */
 const createEvmLedgerAdapter = (options: EvmLedgerOptions): Promise<WalletAdapter> => {
-  const id = options.id ?? "ledger";
-  const name = options.name ?? "Ledger";
-  const icon = options.icon ?? DEFAULT_ICON;
-  const derivationPathPrefix = options.derivationPathPrefix ?? DEFAULT_DERIVATION_PATH_PREFIX;
-  const accountCount = Math.max(1, options.accountCount ?? 1);
-
   let chainId = options.chainId ?? DEFAULT_CHAIN_ID;
-  let transport: TransportLike | null = null;
-  let eth: EthAppLike | null = null;
-  let currentAddress: string | null = null;
 
-  const pathAt = (index: number): string => `${derivationPathPrefix}/${index}`;
+  const core = createLedgerAdapterCore<EthAppLike>({
+    accountCount: options.accountCount,
+    addressAt: async (eth, path) => {
+      const result = await eth.getAddress(path);
+      return result.address;
+    },
+    addressesEqual: (a, b) => a.toLowerCase() === b.toLowerCase(),
+    derivationPathPrefix: options.derivationPathPrefix ?? DEFAULT_DERIVATION_PATH_PREFIX,
+    getBalanceHint: "Use viem/ethers with your own RPC URL.",
+    icon: options.icon,
+    id: options.id,
+    loadApp: async () => {
+      const EthApp = options.eth ?? (await loadEth());
+      return (transport) => new EthApp(transport);
+    },
+    name: options.name,
+    pathAt: (prefix, index) => `${prefix}/${index}`,
+    sendTxHint: "Use `getSigner()` + viem/ethers.",
+    switchAccountHint: "signMessage(msg, account)",
+    transport: options.transport,
+  });
+
+  const currentChain = (): ChainBase => buildEvmChain(chainId, core.name);
 
   const adapter: WalletAdapter = {
     capabilities: LEDGER_CAPABILITIES,
     chainPlatform: "evm",
-
-    async connect(opts) {
-      if (opts?.silent === true) {
-        // Ledger connect always shows the browser's WebUSB device
-        // picker; there is no silent reconnect. Reject so eager
-        // hydration doesn't pop the chooser on page load.
-        throw new Error("Ledger requires an interactive connect");
-      }
-      const TransportFactoryImpl = options.transport ?? (await loadTransport());
-      const EthApp = options.eth ?? (await loadEth());
-      transport = await TransportFactoryImpl.create();
-      eth = new EthApp(transport);
-      const { address } = await eth.getAddress(pathAt(0));
-      currentAddress = address;
-    },
-
-    async disconnect() {
-      try {
-        await transport?.close();
-      } catch (error) {
-        logWarn("[butr/ledger] transport.close threw:", error);
-      }
-      transport = null;
-      eth = null;
-      currentAddress = null;
-    },
+    connect: core.connect,
+    disconnect: core.disconnect,
 
     getAccount: () => {
-      if (currentAddress === null || currentAddress === "") {
-        return Promise.resolve(null);
-      }
-      return Promise.resolve(buildEvmAccount(currentAddress, buildEvmChain(chainId, name)));
+      const address = core.currentAddress();
+      return Promise.resolve(address === null ? null : buildEvmAccount(address, currentChain()));
     },
 
     async getAccounts() {
-      if (eth === null) {
-        return [];
-      }
-      const chain = buildEvmChain(chainId, name);
-      const accounts: Array<Account> = [];
-      // Sequential walk; the device serialises USB requests; parallel
-      // calls would deadlock the transport. Slow but correct.
-      for (let i = 0; i < accountCount; i += 1) {
-        // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
-        const { address } = await eth.getAddress(pathAt(i));
-        accounts.push(buildEvmAccount(address, chain));
-      }
-      return accounts;
+      const chain = currentChain();
+      const addresses = await core.listAddresses();
+      return addresses.map((address) => buildEvmAccount(address, chain));
     },
 
-    getBalance: () =>
-      Promise.reject(
-        new Error(
-          "[butr/ledger] getBalance not supported: Ledger has no RPC. Use viem/ethers with your own RPC URL.",
-        ),
-      ),
-
-    getSigner: () => Promise.resolve(eth),
-
-    getTransactionReceipt: () =>
-      Promise.reject(
-        new Error("[butr/ledger] getTransactionReceipt not supported: Ledger has no RPC."),
-      ),
-
-    icon,
-    id,
-    name,
-
-    sendTx: () =>
-      Promise.reject(
-        new Error(
-          "[butr/ledger] sendTx not supported: Ledger signs but doesn't broadcast. Use `getSigner()` + viem/ethers.",
-        ),
-      ),
-
-    sendTxToChain: () =>
-      Promise.reject(
-        new Error("[butr/ledger] sendTxToChain not supported: Ledger signs but doesn't broadcast."),
-      ),
+    getBalance: core.getBalance,
+    getSigner: core.getSigner,
+    getTransactionReceipt: core.getTransactionReceipt,
+    icon: core.icon,
+    id: core.id,
+    name: core.name,
+    sendTx: core.sendTx,
+    sendTxToChain: core.sendTxToChain,
 
     async signMessage(message, account) {
-      if (eth === null) {
-        throw new Error("[butr/ledger] not connected: call connect() first");
-      }
-      let path = pathAt(0);
-      if (account && account.walletAddress.toLowerCase() !== currentAddress?.toLowerCase()) {
-        let matched = false;
-        for (let i = 0; i < accountCount; i += 1) {
-          const candidatePath = pathAt(i);
-          // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
-          const { address } = await eth.getAddress(candidatePath);
-          if (address.toLowerCase() === account.walletAddress.toLowerCase()) {
-            path = candidatePath;
-            matched = true;
-            break;
-          }
-        }
-        if (!matched) {
-          throw new Error(
-            `[butr/ledger] address ${account.walletAddress} not found on this device within ${accountCount} derivation paths`,
-          );
-        }
-      }
-      const hex = [...message].map((b) => b.toString(16).padStart(2, "0")).join("");
-      const { r, s, v } = await eth.signPersonalMessage(path, hex);
+      const eth = core.requireApp();
+      const path = await core.resolvePath(account);
+      const { r, s, v } = await eth.signPersonalMessage(path, bytesToHex(message));
       const sigHex = `${r.padStart(64, "0")}${s.padStart(64, "0")}${v.toString(16).padStart(2, "0")}`;
-      const signature = new Uint8Array(sigHex.length / 2);
-      for (let i = 0; i < signature.length; i += 1) {
-        signature[i] = Number.parseInt(sigHex.slice(i * 2, i * 2 + 2), 16);
-      }
-      return { signature, signedMessage: message };
+      return { signature: hexToBytes(sigHex), signedMessage: message };
     },
 
-    subscribe: () => {
-      // No-op; Ledger emits no events. Capabilities flag is `false`.
-      void SUBSCRIBE_NOT_AVAILABLE;
-      return () => {};
-    },
-
-    switchAccount: () =>
-      Promise.reject(
-        new Error(
-          "[butr/ledger] switchAccount not supported: pick a different account via signMessage(msg, account) using a different derivation path",
-        ),
-      ),
+    subscribe: core.subscribe,
+    switchAccount: core.switchAccount,
 
     switchChain: (chain) => {
       if (chain.namespace !== "eip155") {
@@ -289,4 +204,5 @@ const createEvmLedgerAdapter = (options: EvmLedgerOptions): Promise<WalletAdapte
 };
 
 export type { EthAppConstructor, EthAppLike, EvmLedgerOptions };
-export { DEFAULT_ICON as LEDGER_DEFAULT_ICON, createEvmLedgerAdapter };
+export { LEDGER_ICON as LEDGER_DEFAULT_ICON } from "../adapter-core";
+export { createEvmLedgerAdapter };

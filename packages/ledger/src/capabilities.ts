@@ -14,4 +14,12 @@ const LEDGER_CAPABILITIES: WalletCapabilities = {
   switchChain: true,
 };
 
-export { LEDGER_CAPABILITIES };
+/** Profile for the app adapters that expose a sign-only transaction path
+ *  (Solana, Sui, Bitcoin). The EVM app adapter has none, so the base profile
+ *  keeps `signTransaction: false`. */
+const LEDGER_SIGN_TRANSACTION_CAPABILITIES: WalletCapabilities = {
+  ...LEDGER_CAPABILITIES,
+  signTransaction: true,
+};
+
+export { LEDGER_CAPABILITIES, LEDGER_SIGN_TRANSACTION_CAPABILITIES };

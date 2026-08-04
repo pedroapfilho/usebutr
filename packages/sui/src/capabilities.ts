@@ -1,4 +1,5 @@
 import type { WalletCapabilities } from "@usebutr/core";
+import { buildWalletCapabilities } from "@usebutr/wallet-standard-shared";
 
 type WalletStandardCapabilityInput = {
   chainCount: number;
@@ -11,8 +12,8 @@ type WalletStandardCapabilityInput = {
 };
 
 /**
- * Sui Wallet Standard capability mapping. Mirrors the SVM resolver:
- * butr ships no RPC, so balance/receipt always false.
+ * Sui Wallet Standard feature → butr capability mapping. The flags that hold
+ * for every namespace are documented on `buildWalletCapabilities`.
  *
  * - `sendTransaction = sui:signAndExecuteTransaction present`. The wallet
  *   broadcasts; consumers receive the digest.
@@ -20,21 +21,16 @@ type WalletStandardCapabilityInput = {
  *   broadcast with their own RPC client (`@mysten/sui`'s SuiClient).
  * - `signMessage = sui:signPersonalMessage present`.
  * - `signIn = false`. Sui has no SIWS-equivalent feature in Wallet Standard.
- * - `switchChain = chainCount > 1`. Same posture as SVM; local re-routing
- *   for `signAndExecuteTransaction`'s per-call `chain` input.
  */
-const resolveSuiCapabilities = (input: WalletStandardCapabilityInput): WalletCapabilities => ({
-  getBalance: false,
-  getTransactionReceipt: false,
-  requestAccounts: false,
-  sendTransaction: input.features.signAndExecuteTransaction,
-  signIn: false,
-  signMessage: input.features.signMessage,
-  signTransaction: input.features.signTransaction,
-  subscribe: input.features.events,
-  switchAccount: false,
-  switchChain: input.chainCount > 1,
-});
+const resolveSuiCapabilities = (input: WalletStandardCapabilityInput): WalletCapabilities =>
+  buildWalletCapabilities({
+    chainCount: input.chainCount,
+    events: input.features.events,
+    sendTransaction: input.features.signAndExecuteTransaction,
+    signIn: false,
+    signMessage: input.features.signMessage,
+    signTransaction: input.features.signTransaction,
+  });
 
 export type { WalletStandardCapabilityInput };
 export { resolveSuiCapabilities };

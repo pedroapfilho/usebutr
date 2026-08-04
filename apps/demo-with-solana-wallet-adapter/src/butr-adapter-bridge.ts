@@ -11,6 +11,7 @@ import {
   type VersionedTransaction,
 } from "@solana/web3.js";
 import type { WalletAdapter as ButrWalletAdapter } from "@usebutr/core";
+import { bytesToBase58 } from "@usebutr/core";
 import type { SolanaSignAndSendTransactionFeature, SolanaSignMessageFeature } from "@usebutr/svm";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
@@ -18,27 +19,6 @@ import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 // bodies are synchronous here; async would only trip require-await. Disable
 // file-wide so the per-method fallow-ignore comments stay adjacent to methods.
 // oxlint-disable typescript/promise-function-async
-
-const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const bytesToBase58 = (bytes: Uint8Array): string => {
-  let intVal = 0n;
-  for (const byte of bytes) {
-    intVal = (intVal << 8n) | BigInt(byte);
-  }
-  let out = "";
-  while (intVal > 0n) {
-    const remainder = intVal % 58n;
-    intVal /= 58n;
-    out = BASE58_ALPHABET[Number(remainder)] + out;
-  }
-  for (const byte of bytes) {
-    if (byte !== 0) {
-      break;
-    }
-    out = `1${out}`;
-  }
-  return out;
-};
 
 /**
  * Bridge a butr-managed Wallet Standard wallet into a

@@ -15,6 +15,14 @@
  * - {@link hexToBytes} tolerantly strips an optional `0x` (all callers).
  */
 
+/** Bitcoin/Solana alphabet; omits the visually ambiguous `0`, `O`, `I`, `l`. */
+const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+const BASE58_INDEX = new Map<string, number>();
+for (let i = 0; i < BASE58_ALPHABET.length; i += 1) {
+  BASE58_INDEX.set(BASE58_ALPHABET[i] ?? "", i);
+}
+
 /** Bare lowercase hex, no `0x` prefix (Bitcoin, Ledger). */
 const bytesToHex = (bytes: Uint8Array): string => {
   let hex = "";
@@ -70,4 +78,68 @@ const bytesToBase64 = (bytes: Uint8Array): string => {
   return btoa(binary);
 };
 
-export { base64ToBytes, bytesToBase64, bytesToHex, bytesToHexPrefixed, hexToBytes };
+/**
+ * `Uint8Array` → base58 (Solana addresses and signatures). Leading zero
+ * bytes are significant in base58 and survive the BigInt round-trip only
+ * because they're re-prefixed as `1`s afterwards.
+ */
+const bytesToBase58 = (bytes: Uint8Array): string => {
+  let intVal = 0n;
+  for (const byte of bytes) {
+    intVal = (intVal << 8n) | BigInt(byte);
+  }
+  let out = "";
+  while (intVal > 0n) {
+    const remainder = intVal % 58n;
+    intVal /= 58n;
+    out = BASE58_ALPHABET[Number(remainder)] + out;
+  }
+  for (const byte of bytes) {
+    if (byte !== 0) {
+      break;
+    }
+    out = `1${out}`;
+  }
+  return out;
+};
+
+/** Decode base58 into raw bytes. Throws on characters outside the alphabet
+ *  rather than silently dropping them. */
+const base58ToBytes = (input: string): Uint8Array => {
+  let intVal = 0n;
+  let leadingZeros = 0;
+  let stillLeading = true;
+  for (const char of input) {
+    if (stillLeading && char === "1") {
+      leadingZeros += 1;
+    } else {
+      stillLeading = false;
+    }
+    const digit = BASE58_INDEX.get(char);
+    if (digit === undefined) {
+      throw new Error(`Invalid base58 character "${char}"`);
+    }
+    intVal = intVal * 58n + BigInt(digit);
+  }
+  const bytes: Array<number> = [];
+  // Decimal literal (= 0xFF) sidesteps an oxfmt/lint conflict on hex BigInt casing.
+  const byteMask = 255n;
+  while (intVal > 0n) {
+    bytes.unshift(Number(intVal & byteMask));
+    intVal >>= 8n;
+  }
+  for (let i = 0; i < leadingZeros; i += 1) {
+    bytes.unshift(0);
+  }
+  return Uint8Array.from(bytes);
+};
+
+export {
+  base58ToBytes,
+  base64ToBytes,
+  bytesToBase58,
+  bytesToBase64,
+  bytesToHex,
+  bytesToHexPrefixed,
+  hexToBytes,
+};

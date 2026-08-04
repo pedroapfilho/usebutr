@@ -1,4 +1,5 @@
 import type { WalletCapabilities } from "@usebutr/core";
+import { buildWalletCapabilities } from "@usebutr/wallet-standard-shared";
 
 type BitcoinCapabilityInput = {
   chainCount: number;
@@ -11,7 +12,8 @@ type BitcoinCapabilityInput = {
 };
 
 /**
- * Bitcoin capability mapping.
+ * Bitcoin feature → butr capability mapping. The flags that hold for every
+ * namespace are documented on `buildWalletCapabilities`.
  *
  * - `sendTransaction = bitcoin:sendTransfer present`. The wallet handles
  *   UTXO selection, fee estimation, signing, and broadcast.
@@ -23,23 +25,16 @@ type BitcoinCapabilityInput = {
  *   message-signing oriented, not auth).
  * - `subscribe = events present`. Most Bitcoin wallets don't emit
  *   change events portably; capabilities admits the truth.
- * - `switchChain = chainCount > 1`. No portable switch RPC across
- *   Bitcoin wallets (Xverse/Unisat/Phantom each pick their own
- *   network), so the switch is local-state-only and advertised only
- *   when the wallet exposes more than one chain to switch between.
  */
-const resolveBitcoinCapabilities = (input: BitcoinCapabilityInput): WalletCapabilities => ({
-  getBalance: false,
-  getTransactionReceipt: false,
-  requestAccounts: false,
-  sendTransaction: input.features.sendTransfer,
-  signIn: false,
-  signMessage: input.features.signMessage,
-  signTransaction: input.features.signPsbt,
-  subscribe: input.features.events,
-  switchAccount: false,
-  switchChain: input.chainCount > 1,
-});
+const resolveBitcoinCapabilities = (input: BitcoinCapabilityInput): WalletCapabilities =>
+  buildWalletCapabilities({
+    chainCount: input.chainCount,
+    events: input.features.events,
+    sendTransaction: input.features.sendTransfer,
+    signIn: false,
+    signMessage: input.features.signMessage,
+    signTransaction: input.features.signPsbt,
+  });
 
 export type { BitcoinCapabilityInput };
 export { resolveBitcoinCapabilities };

@@ -1,7 +1,7 @@
 import type { PlatformDiscoverer } from "@usebutr/core";
 
 import { discoverInjectedPolkadotAdapters } from "./injected";
-import { discoverPolkadotWalletStandardAdapters } from "./wallet-standard";
+import { discoverPolkadotWalletStandardAdapters } from "./wallet-standard-adapter";
 
 /**
  * Polkadot's `PlatformDiscoverer`. Inverts the Bitcoin layout:

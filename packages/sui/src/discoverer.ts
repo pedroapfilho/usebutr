@@ -1,6 +1,6 @@
 import type { PlatformDiscoverer } from "@usebutr/core";
 
-import { discoverSuiAdapters } from "./wallet-standard";
+import { discoverSuiAdapters } from "./wallet-standard-adapter";
 
 /**
  * Sui's `PlatformDiscoverer`: Sui Wallet Standard announcements. No

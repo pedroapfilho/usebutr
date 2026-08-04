@@ -5,6 +5,7 @@ import {
   useWallet,
 } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import { bytesToBase58 } from "@usebutr/core";
 import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 import { useEffect, useMemo, useState } from "react";
@@ -14,27 +15,6 @@ import { useDiscoveredWallets } from "./wallet-provider";
 
 const DEVNET = "https://api.devnet.solana.com";
 const BURN_ADDRESS = new PublicKey("11111111111111111111111111111111");
-
-const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const toBase58 = (bytes: Uint8Array): string => {
-  let intVal = 0n;
-  for (const byte of bytes) {
-    intVal = (intVal << 8n) | BigInt(byte);
-  }
-  let out = "";
-  while (intVal > 0n) {
-    const remainder = intVal % 58n;
-    intVal /= 58n;
-    out = BASE58_ALPHABET[Number(remainder)] + out;
-  }
-  for (const byte of bytes) {
-    if (byte !== 0) {
-      break;
-    }
-    out = `1${out}`;
-  }
-  return out;
-};
 
 const formatError = (e: unknown): string => {
   if (e instanceof Error) {
@@ -101,7 +81,7 @@ const AdapterConsumer = ({
       const sig = await signMessage(
         new TextEncoder().encode("Hello from butr + @solana/wallet-adapter-react"),
       );
-      setSignature(toBase58(sig));
+      setSignature(bytesToBase58(sig));
     } catch (error) {
       setErrorMsg(formatError(error));
     }

@@ -1,4 +1,5 @@
-import type { ChainPlatform, WalletAdapter } from "./wallet";
+import type { ChainPlatform } from "./platform";
+import type { WalletAdapter } from "./wallet";
 
 /**
  * Self-describing discovery descriptor for a single chain platform.

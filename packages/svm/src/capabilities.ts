@@ -1,4 +1,5 @@
 import type { WalletCapabilities } from "@usebutr/core";
+import { buildWalletCapabilities } from "@usebutr/wallet-standard-shared";
 
 type WalletStandardCapabilityInput = {
   chainCount: number;
@@ -12,31 +13,20 @@ type WalletStandardCapabilityInput = {
 };
 
 /**
- * Wallet Standard capability mapping.
- *
- * - `getBalance` / `getTransactionReceipt`: Wallet Standard exposes no
- *   balance/receipt RPC.
- * - `requestAccounts`: no programmatic equivalent of EIP-2255; re-running
- *   `standard:connect` doesn't produce new accounts on any major Wallet
- *   Standard wallet in practice (Phantom Solana, MetaMask Snap, Solflare,
- *   Backpack).
- * - `switchChain`: true when more than one chain is advertised; with a
- *   single chain there's nothing to switch to.
+ * Solana Wallet Standard feature → butr capability mapping. The flags that
+ * hold for every namespace are documented on `buildWalletCapabilities`.
  */
 const resolveWalletStandardCapabilities = (
   input: WalletStandardCapabilityInput,
-): WalletCapabilities => ({
-  getBalance: false,
-  getTransactionReceipt: false,
-  requestAccounts: false,
-  sendTransaction: input.features.signAndSendTransaction,
-  signIn: input.features.signIn,
-  signMessage: input.features.signMessage,
-  signTransaction: input.features.signTransaction,
-  subscribe: input.features.events,
-  switchAccount: false,
-  switchChain: input.chainCount > 1,
-});
+): WalletCapabilities =>
+  buildWalletCapabilities({
+    chainCount: input.chainCount,
+    events: input.features.events,
+    sendTransaction: input.features.signAndSendTransaction,
+    signIn: input.features.signIn,
+    signMessage: input.features.signMessage,
+    signTransaction: input.features.signTransaction,
+  });
 
 export type { WalletStandardCapabilityInput };
 export { resolveWalletStandardCapabilities };

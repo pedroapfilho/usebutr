@@ -1,7 +1,7 @@
 import type { WalletAdapter } from "@usebutr/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { discoverSvmAdapters } from "../wallet-standard";
+import { discoverSvmAdapters } from "../wallet-standard-adapter";
 
 describe("discoverSvmAdapters", () => {
   afterEach(() => {
@@ -33,7 +33,7 @@ describe("discoverSvmAdapters", () => {
       getWallets: () => fakeApp,
     }));
 
-    const { discoverSvmAdapters: subject } = await import("../wallet-standard");
+    const { discoverSvmAdapters: subject } = await import("../wallet-standard-adapter");
     const seen: Array<string> = [];
     const unsubscribe = subject((adapter) => {
       seen.push(adapter.id);
@@ -68,7 +68,7 @@ describe("discoverSvmAdapters", () => {
     vi.doMock("@wallet-standard/app", () => {
       throw new Error("module not installed");
     });
-    const { discoverSvmAdapters: subject } = await import("../wallet-standard");
+    const { discoverSvmAdapters: subject } = await import("../wallet-standard-adapter");
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
     const unsubscribe = subject(onAdapter);
     await new Promise<void>((resolve) => {

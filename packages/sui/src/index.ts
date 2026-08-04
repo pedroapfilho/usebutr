@@ -10,8 +10,7 @@ export type {
   SuiSignTransactionOutput,
 } from "./wallet-standard-types";
 
-export { buildSuiAdapter, slugify } from "./wallet-standard-adapter";
-export { discoverSuiAdapters } from "./wallet-standard";
+export { buildSuiAdapter, discoverSuiAdapters, slugify } from "./wallet-standard-adapter";
 
 export { SUI_CHAINS, SUI_CHAINS_LIST } from "./chains";
 

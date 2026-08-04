@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { CHAIN_PLATFORMS } from "../types/wallet";
+import { CHAIN_PLATFORMS } from "../types/platform";
 
 const chainPlatformSchema = z.enum(CHAIN_PLATFORMS);
 

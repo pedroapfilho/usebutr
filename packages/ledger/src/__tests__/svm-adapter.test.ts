@@ -80,6 +80,7 @@ describe("createSvmLedgerAdapter", () => {
     expect(adapter.chainPlatform).toBe("svm");
     expect(adapter.capabilities.signMessage).toBe(true);
     expect(adapter.capabilities.sendTransaction).toBe(false);
+    expect(adapter.capabilities.signTransaction).toBe(true);
     expect(adapter.capabilities.getBalance).toBe(false);
     expect(adapter.capabilities.subscribe).toBe(false);
     expect(adapter.capabilities.switchChain).toBe(true);

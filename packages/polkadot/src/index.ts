@@ -16,8 +16,10 @@ export type {
   PolkadotSignMessageInput,
   PolkadotSignMessageOutput,
 } from "./wallet-standard-types";
-export { buildPolkadotWalletStandardAdapter } from "./wallet-standard-adapter";
-export { discoverPolkadotWalletStandardAdapters } from "./wallet-standard";
+export {
+  buildPolkadotWalletStandardAdapter,
+  discoverPolkadotWalletStandardAdapters,
+} from "./wallet-standard-adapter";
 
 export { polkadotDiscoverer } from "./discoverer";
 

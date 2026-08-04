@@ -6,7 +6,7 @@ import type {
 } from "@usebutr/wallet-standard-shared";
 import { describe, expect, it, vi } from "vitest";
 
-import { buildSuiAdapter, slugify } from "../wallet-standard-adapter";
+import { buildSuiAdapter } from "../wallet-standard-adapter";
 import type {
   SuiSignAndExecuteTransactionFeature,
   SuiSignPersonalMessageFeature,
@@ -39,14 +39,6 @@ const withFeatures = (
 ): WalletStandardWallet => ({
   ...wallet,
   features: { ...wallet.features, ...features },
-});
-
-describe("slugify", () => {
-  it("lowercases, collapses non-alphanumeric, prefixes with wallet-standard:sui-", () => {
-    expect(slugify("Sui Wallet")).toBe("wallet-standard:sui-sui-wallet");
-    expect(slugify("Suiet")).toBe("wallet-standard:sui-suiet");
-    expect(slugify("  Phantom  ")).toBe("wallet-standard:sui-phantom");
-  });
 });
 
 describe("buildSuiAdapter", () => {

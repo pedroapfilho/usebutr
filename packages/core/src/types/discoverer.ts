@@ -1,4 +1,3 @@
-import type { ChainPlatform } from "./platform";
 import type { WalletAdapter } from "./wallet";
 
 /**
@@ -11,7 +10,8 @@ import type { WalletAdapter } from "./wallet";
  *
  * Adding a new chain platform means writing a `PlatformDiscoverer`
  * inside the new package and adding one import to the aggregator's
- * registry. The aggregator's logic doesn't need to grow.
+ * registry, which is keyed by `ChainPlatform`. The aggregator's logic
+ * doesn't need to grow.
  *
  * Two parts:
  *  - `subscribe`: the primary discovery channel (EIP-6963 / Wallet
@@ -35,8 +35,6 @@ type PlatformDiscoverer = {
       opts: { hasAnyPrimaryAdapter: () => boolean },
     ) => () => void;
   };
-  /** Stable platform identifier. Used by the aggregator for keying. */
-  platform: ChainPlatform;
   /** Primary discovery subscription. */
   subscribe: (onAdapter: (adapter: WalletAdapter) => void) => () => void;
 };

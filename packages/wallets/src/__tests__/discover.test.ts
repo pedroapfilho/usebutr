@@ -3,23 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { KNOWN_DISCOVERERS, discoverWalletAdapters, resolveDiscoverOptions } from "../discover";
 
 describe("resolveDiscoverOptions", () => {
-  it("active=false when input is undefined", () => {
-    expect(resolveDiscoverOptions(undefined)).toEqual({
-      active: false,
-      bitcoin: false,
-      evm: false,
-      injected: false,
-      injectedBitcoin: false,
-      polkadot: false,
-      polkadotWalletStandard: false,
-      sui: false,
-      svm: false,
-    });
-  });
-
-  it("active=false when input is false", () => {
-    expect(resolveDiscoverOptions(false)).toEqual({
-      active: false,
+  it("enables nothing for the empty object form", () => {
+    expect(resolveDiscoverOptions({})).toEqual({
       bitcoin: false,
       evm: false,
       injected: false,
@@ -33,7 +18,6 @@ describe("resolveDiscoverOptions", () => {
 
   it("enables every flag when input is true", () => {
     expect(resolveDiscoverOptions(true)).toEqual({
-      active: true,
       bitcoin: true,
       evm: true,
       injected: true,
@@ -47,7 +31,6 @@ describe("resolveDiscoverOptions", () => {
 
   it("treats object form as opt-in (other platforms default off when not set)", () => {
     expect(resolveDiscoverOptions({ evm: true })).toEqual({
-      active: true,
       bitcoin: false,
       evm: true,
       injected: true,
@@ -61,7 +44,6 @@ describe("resolveDiscoverOptions", () => {
 
   it("injected defaults to true alongside evm, but to false when evm is off", () => {
     expect(resolveDiscoverOptions({ evm: false, svm: true })).toEqual({
-      active: true,
       bitcoin: false,
       evm: false,
       injected: false,
@@ -75,7 +57,6 @@ describe("resolveDiscoverOptions", () => {
 
   it("injected: false explicitly disables the fallback even with evm on", () => {
     expect(resolveDiscoverOptions({ evm: true, injected: false })).toEqual({
-      active: true,
       bitcoin: false,
       evm: true,
       injected: false,
@@ -89,7 +70,6 @@ describe("resolveDiscoverOptions", () => {
 
   it("injectedBitcoin defaults to true alongside bitcoin, off when bitcoin is off", () => {
     expect(resolveDiscoverOptions({ bitcoin: true })).toEqual({
-      active: true,
       bitcoin: true,
       evm: false,
       injected: false,
@@ -103,7 +83,6 @@ describe("resolveDiscoverOptions", () => {
 
   it("injectedBitcoin: false explicitly disables the Bitcoin fallback", () => {
     expect(resolveDiscoverOptions({ bitcoin: true, injectedBitcoin: false })).toEqual({
-      active: true,
       bitcoin: true,
       evm: false,
       injected: false,
@@ -117,7 +96,6 @@ describe("resolveDiscoverOptions", () => {
 
   it("sui can be enabled standalone", () => {
     expect(resolveDiscoverOptions({ sui: true })).toEqual({
-      active: true,
       bitcoin: false,
       evm: false,
       injected: false,
@@ -187,7 +165,7 @@ describe("discoverWalletAdapters", () => {
 
 describe("polkadot wiring", () => {
   it("registers a polkadot discoverer", () => {
-    expect(KNOWN_DISCOVERERS.polkadot.platform).toBe("polkadot");
+    expect(typeof KNOWN_DISCOVERERS.polkadot.subscribe).toBe("function");
   });
 
   it("enables polkadot + its WS fallback under auto=true", () => {

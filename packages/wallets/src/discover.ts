@@ -1,5 +1,6 @@
 import { bitcoinDiscoverer } from "@usebutr/bitcoin";
 import type { ChainPlatform, PlatformDiscoverer, WalletAdapter } from "@usebutr/core";
+import { CHAIN_PLATFORMS } from "@usebutr/core";
 import { evmDiscoverer } from "@usebutr/evm";
 import { polkadotDiscoverer } from "@usebutr/polkadot";
 import { suiDiscoverer } from "@usebutr/sui";
@@ -42,7 +43,6 @@ type DiscoverOptions = {
 };
 
 type ResolvedDiscoverOptions = {
-  active: boolean;
   bitcoin: boolean;
   evm: boolean;
   injected: boolean;
@@ -75,34 +75,17 @@ const KNOWN_DISCOVERERS: Readonly<Record<ChainPlatform, PlatformDiscoverer>> = {
  *
  * **Defaults**
  *
- *  - `true` (or omitted) → every platform enabled, both injected
- *    fallbacks on. The `<WalletManagerProvider auto>` shorthand uses
- *    this path.
- *  - `false` (or `undefined`) → discovery disabled.
+ *  - `true` → every platform enabled, every fallback on. The
+ *    `<WalletManagerProvider auto>` shorthand uses this path.
  *  - Object form → opt-in. `{ evm: true }` discovers only EVM;
- *    unspecified flags default to `false`. Each injected fallback
- *    defaults to `true` IF its primary platform is also enabled
- *    (`injected` follows `evm`; `injectedBitcoin` follows `bitcoin`).
+ *    unspecified flags default to `false`, so `{}` enables nothing.
+ *    Each fallback defaults to `true` IF its primary platform is also
+ *    enabled (`injected` follows `evm`; `injectedBitcoin` follows
+ *    `bitcoin`; `polkadotWalletStandard` follows `polkadot`).
  */
-const resolveDiscoverOptions = (
-  auto: true | false | DiscoverOptions | undefined,
-): ResolvedDiscoverOptions => {
-  if (auto === undefined || auto === false) {
-    return {
-      active: false,
-      bitcoin: false,
-      evm: false,
-      injected: false,
-      injectedBitcoin: false,
-      polkadot: false,
-      polkadotWalletStandard: false,
-      sui: false,
-      svm: false,
-    };
-  }
+const resolveDiscoverOptions = (auto: true | DiscoverOptions): ResolvedDiscoverOptions => {
   if (auto === true) {
     return {
-      active: true,
       bitcoin: true,
       evm: true,
       injected: true,
@@ -117,7 +100,6 @@ const resolveDiscoverOptions = (
   const bitcoin = auto.bitcoin === true;
   const polkadot = auto.polkadot === true;
   return {
-    active: true,
     bitcoin,
     evm,
     injected: evm && auto.injected !== false,
@@ -129,31 +111,27 @@ const resolveDiscoverOptions = (
   };
 };
 
+/**
+ * Which resolved flag gates each platform's fallback channel. Platforms
+ * absent from the map have no fallback to gate (SVM and Sui).
+ */
+const FALLBACK_FLAGS: Readonly<Partial<Record<ChainPlatform, keyof ResolvedDiscoverOptions>>> = {
+  bitcoin: "injectedBitcoin",
+  evm: "injected",
+  polkadot: "polkadotWalletStandard",
+};
+
 /** Map `ResolvedDiscoverOptions` flags to the discoverer registry. */
 const collectActiveDiscoverers = (
   resolved: ResolvedDiscoverOptions,
-): Array<{ discoverer: PlatformDiscoverer; useFallback: boolean }> => {
-  const out: Array<{ discoverer: PlatformDiscoverer; useFallback: boolean }> = [];
-  if (resolved.evm) {
-    out.push({ discoverer: KNOWN_DISCOVERERS.evm, useFallback: resolved.injected });
-  }
-  if (resolved.svm) {
-    out.push({ discoverer: KNOWN_DISCOVERERS.svm, useFallback: false });
-  }
-  if (resolved.sui) {
-    out.push({ discoverer: KNOWN_DISCOVERERS.sui, useFallback: false });
-  }
-  if (resolved.bitcoin) {
-    out.push({ discoverer: KNOWN_DISCOVERERS.bitcoin, useFallback: resolved.injectedBitcoin });
-  }
-  if (resolved.polkadot) {
-    out.push({
-      discoverer: KNOWN_DISCOVERERS.polkadot,
-      useFallback: resolved.polkadotWalletStandard,
-    });
-  }
-  return out;
-};
+): Array<{ discoverer: PlatformDiscoverer; useFallback: boolean }> =>
+  CHAIN_PLATFORMS.filter((platform) => resolved[platform]).map((platform) => {
+    const fallbackFlag = FALLBACK_FLAGS[platform];
+    return {
+      discoverer: KNOWN_DISCOVERERS[platform],
+      useFallback: fallbackFlag !== undefined && resolved[fallbackFlag],
+    };
+  });
 
 /**
  * Subscribe to every enabled discovery protocol at once. Each platform

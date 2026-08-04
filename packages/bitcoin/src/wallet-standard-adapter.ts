@@ -3,7 +3,7 @@ import {
   createWalletStandardCore,
   discoverWalletStandard,
   getFeature,
-  slugify as kitSlugify,
+  slugify,
 } from "@usebutr/wallet-standard-shared";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
@@ -17,8 +17,6 @@ import type {
 const BITCOIN_PREFIX = "bip122:";
 const BITCOIN_DECIMALS = 8;
 const BITCOIN_MAINNET_ID = "bip122:000000000019d6689c085ae165831e93";
-
-const slugify = (name: string): string => kitSlugify("btc", name);
 
 /**
  * Adapt a Bitcoin Wallet Standard `Wallet` into a butr `WalletAdapter`.
@@ -55,7 +53,7 @@ const buildBitcoinAdapter = (
 ): WalletAdapter | null => {
   const core = createWalletStandardCore({
     chainPrefix: BITCOIN_PREFIX,
-    id: slugify(wallet.name),
+    id: slugify("btc", wallet.name),
     label: "Bitcoin",
     namespace: "bip122",
     platform: "Bitcoin",
@@ -186,4 +184,4 @@ const discoverBitcoinAdapters = (onAdapter: (adapter: WalletAdapter) => void): (
     buildBitcoinAdapter(wallet, registerDisconnector),
   );
 
-export { buildBitcoinAdapter, discoverBitcoinAdapters, slugify };
+export { buildBitcoinAdapter, discoverBitcoinAdapters };

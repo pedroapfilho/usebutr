@@ -16,7 +16,6 @@ const bitcoinDiscoverer: PlatformDiscoverer = {
         hasAnyWalletStandardAdapter: opts.hasAnyPrimaryAdapter,
       }),
   },
-  platform: "bitcoin",
   subscribe: discoverBitcoinAdapters,
 };
 

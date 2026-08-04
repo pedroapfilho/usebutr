@@ -4,7 +4,7 @@ import {
   createWalletStandardCore,
   discoverWalletStandard,
   getFeature,
-  slugify as kitSlugify,
+  slugify,
 } from "@usebutr/wallet-standard-shared";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
@@ -19,8 +19,6 @@ import type {
 const SOLANA_PREFIX = "solana:";
 const SOLANA_DECIMALS = 9;
 const SOLANA_MAINNETS: ReadonlyArray<string> = ["solana:mainnet", "solana:mainnet-beta"];
-
-const slugify = (name: string): string => kitSlugify("svm", name);
 
 /**
  * Adapt a Solana Wallet Standard `Wallet` object into a butr
@@ -72,7 +70,7 @@ const buildSvmAdapter = (
 ): WalletAdapter | null => {
   const core = createWalletStandardCore({
     chainPrefix: SOLANA_PREFIX,
-    id: slugify(wallet.name),
+    id: slugify("svm", wallet.name),
     label: "SVM",
     namespace: "solana",
     platform: "Solana",
@@ -245,4 +243,4 @@ const discoverSvmAdapters = (onAdapter: (adapter: WalletAdapter) => void): (() =
     buildSvmAdapter(wallet, registerDisconnector),
   );
 
-export { buildSvmAdapter, discoverSvmAdapters, slugify };
+export { buildSvmAdapter, discoverSvmAdapters };

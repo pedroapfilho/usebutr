@@ -3,8 +3,7 @@ import { describe, expect, it } from "vitest";
 import { polkadotDiscoverer } from "../discoverer";
 
 describe("polkadotDiscoverer", () => {
-  it("is the polkadot platform with a primary subscribe and a WS fallback", () => {
-    expect(polkadotDiscoverer.platform).toBe("polkadot");
+  it("exposes a primary subscribe and a WS fallback", () => {
     expect(typeof polkadotDiscoverer.subscribe).toBe("function");
     expect(typeof polkadotDiscoverer.fallback?.subscribe).toBe("function");
   });

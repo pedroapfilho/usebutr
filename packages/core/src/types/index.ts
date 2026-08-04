@@ -25,7 +25,6 @@ export type {
   SuiWallet,
   SvmAdapter,
   SvmWallet,
-  Wallet,
   WalletAdapter,
   WalletBase,
 } from "./wallet";

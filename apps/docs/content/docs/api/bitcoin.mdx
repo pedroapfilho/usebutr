@@ -30,9 +30,9 @@ source.
 Wrap a Wallet Standard wallet into a butr `WalletAdapter` with
 `chainPlatform: "bitcoin"`.
 
-### `slugify(name: string): string`
-
-Stable id derivation from a wallet name (adapter authoring).
+Adapter ids come from `slugify("btc", wallet.name)` in
+`@usebutr/wallet-standard-shared`; import it from there when authoring an
+adapter.
 
 ## Capabilities
 

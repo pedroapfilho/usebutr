@@ -39,7 +39,10 @@ describe("slugify", () => {
     expect(slugify("svm", "Solflare Wallet")).toBe("wallet-standard:svm-solflare-wallet");
     expect(slugify("svm", "  OKX!  Wallet  ")).toBe("wallet-standard:svm-okx-wallet");
     expect(slugify("sui", "Sui Wallet")).toBe("wallet-standard:sui-sui-wallet");
+    expect(slugify("sui", "Suiet")).toBe("wallet-standard:sui-suiet");
+    expect(slugify("sui", "  Phantom  ")).toBe("wallet-standard:sui-phantom");
     expect(slugify("btc", "Phantom")).toBe("wallet-standard:btc-phantom");
+    expect(slugify("btc", "Magic Eden")).toBe("wallet-standard:btc-magic-eden");
   });
 });
 

@@ -84,9 +84,8 @@ app for the full build-and-broadcast flow with `bitcoinjs-lib`.
 ## Chains
 
 `BITCOIN_CHAINS_LIST` / `BITCOIN_CHAINS` ship mainnet, testnet, and regtest
-(keyed by CAIP-2, `bip122:<genesis block hash>`). `slugify`,
-`resolveBitcoinCapabilities`, and `GENERIC_BITCOIN_ICON` are exported for
-adapter authors.
+(keyed by CAIP-2, `bip122:<genesis block hash>`). `resolveBitcoinCapabilities`
+and `GENERIC_BITCOIN_ICON` are exported for adapter authors.
 
 <Callout type="warn">
   **Address formats vary by wallet.** Phantom advertises native SegWit (bech32) only; Xverse and

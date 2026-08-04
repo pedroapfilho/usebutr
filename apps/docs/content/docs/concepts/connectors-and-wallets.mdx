@@ -3,8 +3,9 @@ title: Connectors and wallets
 description: "Every wallet is a WalletAdapter: the Connector half is what butr calls, the Wallet half is what your app calls."
 ---
 
-A `WalletAdapter` is `Connector & Wallet`. The split is documentary: it makes
-the orchestration / capability seam explicit.
+A `WalletAdapter` is a `Connector` intersected with a platform wallet surface
+(`WalletBase`, or one of its per-platform extensions such as `SvmWallet`). The
+split is documentary: it makes the orchestration / capability seam explicit.
 
 ## Connector: what butr calls
 
@@ -31,13 +32,13 @@ type Connector = {
 bridged into butr's store; you never wire `accountsChanged` / `chainChanged`
 yourself.
 
-## Wallet: what your app calls
+## WalletBase: what your app calls
 
 These exist purely to give you a typed surface to a connected wallet. butr
 never invokes them itself.
 
 ```ts
-type Wallet = {
+type WalletBase = {
   getBalance(mint?: string): Promise<Balance>;
   getSigner(): Promise<unknown>; // cast to viem WalletClient, WalletStandardWallet, …
   getTransactionReceipt(tx: string): Promise<{ status: "Success" | "Error" | "Pending" }>;

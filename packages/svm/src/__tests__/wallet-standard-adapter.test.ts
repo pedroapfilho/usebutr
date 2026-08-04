@@ -8,7 +8,7 @@ import type {
 } from "@usebutr/wallet-standard-shared";
 import { describe, expect, it, vi } from "vitest";
 
-import { buildSvmAdapter, slugify } from "../wallet-standard-adapter";
+import { buildSvmAdapter } from "../wallet-standard-adapter";
 import type {
   SolanaSignAndSendTransactionFeature,
   SolanaSignMessageFeature,
@@ -50,14 +50,6 @@ const withFeatures = (
 ): WalletStandardWallet => ({
   ...wallet,
   features: { ...wallet.features, ...features },
-});
-
-describe("slugify", () => {
-  it("lowercases, collapses non-alphanumeric, prefixes with wallet-standard:svm-", () => {
-    expect(slugify("Phantom")).toBe("wallet-standard:svm-phantom");
-    expect(slugify("Solflare Wallet")).toBe("wallet-standard:svm-solflare-wallet");
-    expect(slugify("  OKX!  Wallet  ")).toBe("wallet-standard:svm-okx-wallet");
-  });
 });
 
 describe("buildSvmAdapter", () => {

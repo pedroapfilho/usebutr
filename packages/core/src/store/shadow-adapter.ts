@@ -23,7 +23,6 @@ class ShadowConnectorError extends Error {
   // distinguish this from generic connector errors. Read via
   // `toMatchObject({ code: "BUTR_RECONNECTING" })` in tests, which
   // static analysis can't trace.
-  // fallow-ignore-next-line unused-class-member
   readonly code = "BUTR_RECONNECTING";
   readonly connectorId: string;
   readonly method: string;

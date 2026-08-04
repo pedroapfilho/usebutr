@@ -1,5 +1,25 @@
 # @usebutr/polkadot
 
+## 1.0.0
+
+### Major Changes
+
+- f0a5116: **Breaking:** the `platform` field is gone from the `PlatformDiscoverer` type in `@usebutr/core`, and from the `evmDiscoverer`, `svmDiscoverer`, `suiDiscoverer`, `bitcoinDiscoverer` and `polkadotDiscoverer` objects that implement it. Nothing read it: the aggregator keys discoverers by `ChainPlatform` in its own registry, so the field only restated the key.
+
+  Migration: read the platform from the `KNOWN_DISCOVERERS` key in `@usebutr/wallets` (`Object.entries(KNOWN_DISCOVERERS)`), or from `adapter.chainPlatform` on a discovered adapter. Custom `PlatformDiscoverer` implementations must drop the `platform` property; keeping it is now an excess-property error.
+
+### Patch Changes
+
+- 7887cf0: Resolve capabilities through `buildWalletCapabilities` from `@usebutr/wallet-standard-shared` instead of a per-package copy of the same object literal. Resolver names, input types and returned flags are unchanged. The injected Polkadot profile now derives its chain count from `POLKADOT_CHAINS_LIST` rather than asserting `switchChain: true` directly; the result is the same.
+- 7887cf0: Move each package's `discover*Adapters` function next to the adapter builder it wraps and drop the single-function `wallet-standard.ts` module. The functions are still exported from the package root under the same names; only an internal file boundary went away.
+- Updated dependencies [7887cf0]
+- Updated dependencies [7887cf0]
+- Updated dependencies [f0a5116]
+- Updated dependencies [f0a5116]
+- Updated dependencies [7887cf0]
+  - @usebutr/core@1.0.0
+  - @usebutr/wallet-standard-shared@0.4.0
+
 ## 0.1.4
 
 ### Patch Changes

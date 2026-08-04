@@ -1,5 +1,26 @@
 # @usebutr/ledger
 
+## 0.3.0
+
+### Minor Changes
+
+- 7887cf0: Fix `capabilities.signTransaction` on the Solana, Sui and Bitcoin Ledger adapters. All three implement `signTransaction` but advertised `signTransaction: false`, so consumers gating their UI on the capability flag hid a working sign-only path.
+
+  This changes what a capability query returns: `createLedgerAdapter({ platform: "svm" | "sui" | "bitcoin" })` now reports `signTransaction: true`. Code that branches on the flag will start taking the sign-only branch on those three platforms. The EVM adapter has no `signTransaction` method and keeps `signTransaction: false`, and the exported `LEDGER_CAPABILITIES` constant is unchanged.
+
+### Patch Changes
+
+- 7887cf0: Use `@usebutr/core`'s base58 and hex helpers instead of per-package copies. Encoded output is identical.
+- 7887cf0: Share the device plumbing behind the four Ledger app adapters. A new internal `createLedgerAdapterCore` owns the transport and app-instance lifecycle, the derivation-path walk that maps an `Account` back to the path the device signs with, and the rejections for the RPC-backed methods Ledger has no answer for. The EVM, Solana, Sui and Bitcoin adapters keep only their chain shape, device instructions and encodings. Every exported factory, option type and icon constant is unchanged.
+
+  Hex packing in the EVM adapter now goes through `@usebutr/core`'s `bytesToHex` / `hexToBytes` (the Bitcoin adapter already did). One consequence: a malformed hex signature from the device now throws instead of silently decoding to zero bytes.
+
+- Updated dependencies [7887cf0]
+- Updated dependencies [7887cf0]
+- Updated dependencies [f0a5116]
+- Updated dependencies [f0a5116]
+  - @usebutr/core@1.0.0
+
 ## 0.2.7
 
 ### Patch Changes

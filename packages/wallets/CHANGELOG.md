@@ -1,5 +1,38 @@
 # @usebutr/wallets
 
+## 1.0.0
+
+### Major Changes
+
+- f0a5116: **Breaking:** the `platform` field is gone from the `PlatformDiscoverer` type in `@usebutr/core`, and from the `evmDiscoverer`, `svmDiscoverer`, `suiDiscoverer`, `bitcoinDiscoverer` and `polkadotDiscoverer` objects that implement it. Nothing read it: the aggregator keys discoverers by `ChainPlatform` in its own registry, so the field only restated the key.
+
+  Migration: read the platform from the `KNOWN_DISCOVERERS` key in `@usebutr/wallets` (`Object.entries(KNOWN_DISCOVERERS)`), or from `adapter.chainPlatform` on a discovered adapter. Custom `PlatformDiscoverer` implementations must drop the `platform` property; keeping it is now an excess-property error.
+
+- f0a5116: **Breaking:** two changes to `resolveDiscoverOptions`.
+
+  The returned object no longer carries `active`. Nothing consumed it; whether discovery does anything is already implied by the per-platform flags.
+
+  The parameter type narrowed from `true | false | DiscoverOptions | undefined` to `true | DiscoverOptions`. `discoverWalletAdapters` always passed `options ?? true`, so the `false` / `undefined` branch was unreachable through every code path this package ships.
+
+  Migration: replace `resolveDiscoverOptions(false)` and `resolveDiscoverOptions(undefined)` with `resolveDiscoverOptions({})`, which returns the same all-flags-false result. Drop any read of `resolved.active`. `autoDiscovery()` and `discoverWalletAdapters()` are unchanged: calling either with no options still enables every platform.
+
+### Patch Changes
+
+- Updated dependencies [7887cf0]
+- Updated dependencies [7887cf0]
+- Updated dependencies [f0a5116]
+- Updated dependencies [7887cf0]
+- Updated dependencies [7887cf0]
+- Updated dependencies [f0a5116]
+- Updated dependencies [f0a5116]
+  - @usebutr/core@1.0.0
+  - @usebutr/bitcoin@1.0.0
+  - @usebutr/evm@1.0.0
+  - @usebutr/polkadot@1.0.0
+  - @usebutr/sui@1.0.0
+  - @usebutr/svm@1.0.0
+  - @usebutr/react@0.1.9
+
 ## 0.2.4
 
 ### Patch Changes

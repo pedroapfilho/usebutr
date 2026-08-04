@@ -1,5 +1,19 @@
 # @usebutr/wallet-standard-shared
 
+## 0.4.0
+
+### Minor Changes
+
+- 7887cf0: Export `buildWalletCapabilities`, the Wallet Standard capability mapping that `@usebutr/svm`, `@usebutr/sui`, `@usebutr/bitcoin` and `@usebutr/polkadot` each re-implemented. It takes a flat feature profile and owns the flags that are constant across every namespace, so only the feature-name mapping stays per-package.
+
+### Patch Changes
+
+- Updated dependencies [7887cf0]
+- Updated dependencies [7887cf0]
+- Updated dependencies [f0a5116]
+- Updated dependencies [f0a5116]
+  - @usebutr/core@1.0.0
+
 ## 0.3.0
 
 ### Minor Changes

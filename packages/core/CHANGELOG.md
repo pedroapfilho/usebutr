@@ -1,5 +1,25 @@
 # @usebutr/core
 
+## 1.0.0
+
+### Major Changes
+
+- f0a5116: **Breaking:** the `platform` field is gone from the `PlatformDiscoverer` type in `@usebutr/core`, and from the `evmDiscoverer`, `svmDiscoverer`, `suiDiscoverer`, `bitcoinDiscoverer` and `polkadotDiscoverer` objects that implement it. Nothing read it: the aggregator keys discoverers by `ChainPlatform` in its own registry, so the field only restated the key.
+
+  Migration: read the platform from the `KNOWN_DISCOVERERS` key in `@usebutr/wallets` (`Object.entries(KNOWN_DISCOVERERS)`), or from `adapter.chainPlatform` on a discovered adapter. Custom `PlatformDiscoverer` implementations must drop the `platform` property; keeping it is now an excess-property error.
+
+- f0a5116: **Breaking:** the deprecated `Wallet` type alias is removed from `@usebutr/core`.
+
+  Migration: import `WalletBase` instead (`type Wallet = WalletBase` was all the alias ever was), or the per-platform surface you actually mean: `EvmWallet`, `SvmWallet`, `SuiWallet`, `BitcoinWallet`, `PolkadotWallet`.
+
+### Minor Changes
+
+- 7887cf0: Add `bytesToBase58` and `base58ToBytes` to the shared encoding module, alongside the existing hex and base64 helpers. Base58 was hand-rolled in eight places across the connector packages and the demo apps; a single tested implementation removes the drift surface on Solana addresses and signatures.
+
+### Patch Changes
+
+- 7887cf0: Split the 497-line `types/wallet.ts` into focused modules (platform, account, capabilities, connector, wallet, manager) behind the same barrel. Pure file motion: every exported name and type is unchanged.
+
 ## 0.5.0
 
 ### Minor Changes

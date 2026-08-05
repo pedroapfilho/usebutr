@@ -1,5 +1,22 @@
 # demo-with-solana-web3js
 
+## 0.0.9
+
+### Patch Changes
+
+- Updated dependencies [7887cf0]
+- Updated dependencies [7887cf0]
+- Updated dependencies [f0a5116]
+- Updated dependencies [7887cf0]
+- Updated dependencies [7887cf0]
+- Updated dependencies [f0a5116]
+- Updated dependencies [f0a5116]
+- Updated dependencies [7887cf0]
+  - @usebutr/core@1.0.0
+  - @usebutr/svm@1.0.0
+  - @usebutr/wallet-standard-shared@0.4.0
+  - @usebutr/react@0.1.9
+
 ## 0.0.8
 
 ### Patch Changes

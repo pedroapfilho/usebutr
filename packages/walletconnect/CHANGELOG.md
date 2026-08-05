@@ -1,5 +1,17 @@
 # @usebutr/walletconnect
 
+## 0.2.8
+
+### Patch Changes
+
+- 7887cf0: Use `@usebutr/core`'s base58 and hex helpers instead of per-package copies. Encoded output is identical.
+- Updated dependencies [7887cf0]
+- Updated dependencies [7887cf0]
+- Updated dependencies [f0a5116]
+- Updated dependencies [f0a5116]
+  - @usebutr/core@1.0.0
+  - @usebutr/evm@1.0.0
+
 ## 0.2.7
 
 ### Patch Changes

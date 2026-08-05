@@ -1,5 +1,17 @@
 # demo-next
 
+## 0.0.9
+
+### Patch Changes
+
+- Updated dependencies [7887cf0]
+- Updated dependencies [7887cf0]
+- Updated dependencies [f0a5116]
+- Updated dependencies [f0a5116]
+  - @usebutr/core@1.0.0
+  - @usebutr/evm@1.0.0
+  - @usebutr/react@0.1.9
+
 ## 0.0.8
 
 ### Patch Changes

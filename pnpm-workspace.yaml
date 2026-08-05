@@ -14,36 +14,28 @@ allowBuilds:
   utf-8-validate: true
 
 minimumReleaseAgeExclude:
-  - "@ledgerhq/hw-app-btc@11.0.0"
-  - cnfast@0.0.8
   - "@oxlint-tsgolint/darwin-arm64@7.0.2001"
   - "@oxlint-tsgolint/darwin-x64@7.0.2001"
   - "@oxlint-tsgolint/linux-arm64@7.0.2001"
   - "@oxlint-tsgolint/linux-x64@7.0.2001"
   - "@oxlint-tsgolint/win32-arm64@7.0.2001"
   - "@oxlint-tsgolint/win32-x64@7.0.2001"
-  - "@oxlint/binding-android-arm-eabi@1.75.0"
-  - "@oxlint/binding-android-arm64@1.75.0"
-  - "@oxlint/binding-darwin-arm64@1.75.0"
-  - "@oxlint/binding-darwin-x64@1.75.0"
-  - "@oxlint/binding-freebsd-x64@1.75.0"
-  - "@oxlint/binding-linux-arm-gnueabihf@1.75.0"
-  - "@oxlint/binding-linux-arm-musleabihf@1.75.0"
-  - "@oxlint/binding-linux-arm64-gnu@1.75.0"
-  - "@oxlint/binding-linux-arm64-musl@1.75.0"
-  - "@oxlint/binding-linux-ppc64-gnu@1.75.0"
-  - "@oxlint/binding-linux-riscv64-gnu@1.75.0"
-  - "@oxlint/binding-linux-riscv64-musl@1.75.0"
-  - "@oxlint/binding-linux-s390x-gnu@1.75.0"
-  - "@oxlint/binding-linux-x64-gnu@1.75.0"
-  - "@oxlint/binding-linux-x64-musl@1.75.0"
-  - "@oxlint/binding-openharmony-arm64@1.75.0"
-  - "@oxlint/binding-win32-arm64-msvc@1.75.0"
-  - "@oxlint/binding-win32-ia32-msvc@1.75.0"
-  - "@oxlint/binding-win32-x64-msvc@1.75.0"
   - oxlint-tsgolint@7.0.2001
-  - oxlint@1.75.0
   - oxlint-config-awesomeness@3.2.0
+  - "@tanstack/react-router-devtools@1.167.1"
+  - "@tanstack/react-router@1.170.19"
+  - "@tanstack/react-start-client@1.168.17"
+  - "@tanstack/react-start-rsc@0.1.35"
+  - "@tanstack/react-start-server@1.167.24"
+  - "@tanstack/react-start@1.168.36"
+  - "@tanstack/router-core@1.171.16"
+  - "@tanstack/router-devtools-core@1.168.1"
+  - "@tanstack/router-generator@1.167.22"
+  - "@tanstack/router-plugin@1.168.24"
+  - "@tanstack/start-client-core@1.170.15"
+  - "@tanstack/start-plugin-core@1.171.27"
+  - "@tanstack/start-server-core@1.169.19"
+  - "@tanstack/start-storage-context@1.167.18"
 
 onlyBuiltDependencies:
   - "@parcel/watcher"

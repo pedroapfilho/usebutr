@@ -55,6 +55,8 @@ used in custom discovery wiring).
 | `useIsPlatformConnected(platform)` | `boolean`                                                  |
 | `useAccounts(connectorId?)`        | `ReadonlyArray<Account>` (active wallet if omitted)        |
 | `useDiscoveredWallets()`           | `ReadonlyArray<WalletAdapter>` (empty without `discovery`) |
+| `useDiscoveredWalletsByPlatform()` | `Map<ChainPlatform, Array<WalletAdapter>>`                 |
+| `useConnectedWalletsByPlatform()`  | `Map<ChainPlatform, Array<ConnectedWallet>>`               |
 
 ### Stable accessors (return functions, safe in callbacks/deps)
 
@@ -73,6 +75,32 @@ const wallets = useDiscoveredWallets();
 
 Live list of adapters announced via the `discovery` source since the provider
 mounted. Sourced from `@usebutr/react`.
+
+### `useDiscoveredWalletsByPlatform()` and `useConnectedWalletsByPlatform()`
+
+A multi-chain wallet announces one adapter per platform it speaks, so the flat
+list above repeats a brand once per chain. These return the same wallets bucketed
+by platform, in `CHAIN_PLATFORMS` order, with empty platforms omitted, so the map
+is directly renderable as well as addressable.
+
+```tsx
+import { useDiscoveredWalletsByPlatform } from "@usebutr/react";
+
+const byPlatform = useDiscoveredWalletsByPlatform();
+
+return [...byPlatform].map(([platform, wallets]) => (
+  <section key={platform}>
+    <h3>{platform}</h3>
+    {wallets.map((w) => (
+      <WalletButton key={w.id} adapter={w} />
+    ))}
+  </section>
+));
+```
+
+The result is memoised on the source list, so it's stable across re-renders.
+For a non-hook context, `groupByPlatform(items, getPlatform)` from
+[`@usebutr/core`](/api/core) does the same bucketing on any list.
 
 ### `useWalletStore(selector)`
 

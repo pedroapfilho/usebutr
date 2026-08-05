@@ -48,6 +48,40 @@ const config: WalletManagerConfig = {
 };
 ```
 
+## `createFakeConnectedWallet(options?): ConnectedWallet`
+
+A pool entry: what `usePool`, `useActiveWallet`, and `useConnectedWallets` hand
+your components, and therefore what UI tests render. Accounts are built through
+core's `buildAccount`, so the `<chain>:<address>` id format stays in one place
+instead of being restated in every fixture.
+
+```tsx
+import { createFakeConnectedWallet } from "@usebutr/testing";
+
+const wallet = createFakeConnectedWallet({ chainPlatform: "svm", id: "phantom" });
+render(<WalletCard wallet={wallet} />);
+```
+
+### `FakeConnectedWalletOptions`
+
+Every [`FakeAdapterOptions`](#fakeadapteroptions) field, plus:
+
+| Field       | Default                                                                 |
+| ----------- | ----------------------------------------------------------------------- |
+| `chain`     | the platform's mainnet (`eip155:1`, `solana:mainnet`, `sui:mainnet`, …) |
+| `addresses` | one deterministic address for the platform                              |
+| `adapter`   | built from the adapter options                                          |
+
+`accounts[0]` is always `account`, matching the invariant on `ConnectedWallet`.
+Pass `adapter` to wrap a connector you already built, in which case the entry
+takes its `chainPlatform` and the adapter-shaping options are ignored:
+
+```ts
+const adapter = createFakeAdapter({ id: "phantom", chainPlatform: "svm" });
+adapter.signMessage = () => Promise.reject(new Error("user rejected"));
+const wallet = createFakeConnectedWallet({ adapter });
+```
+
 ## `createFakePersistence(seed?): WalletPersistence`
 
 In-memory `WalletPersistence` mirroring `WalletStorage`'s shape: no
@@ -65,6 +99,7 @@ const persistence = createFakePersistence({
       accounts: [seedAccount],
       chainPlatform: "evm",
       connectorId: "fake",
+      name: "Fake Wallet",
     },
   },
   selection: { evm: "fake" },

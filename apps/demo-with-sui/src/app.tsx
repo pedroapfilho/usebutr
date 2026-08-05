@@ -1,4 +1,4 @@
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Transaction } from "@mysten/sui/transactions";
 import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
@@ -8,7 +8,7 @@ import { useDiscoveredWallets } from "./wallet-provider";
 
 const RPC_URL = "https://fullnode.testnet.sui.io:443";
 
-const client = new SuiJsonRpcClient({ network: "testnet", url: RPC_URL });
+const client = new SuiGrpcClient({ baseUrl: RPC_URL, network: "testnet" });
 
 const formatError = (e: unknown): string => {
   if (e instanceof Error) {
@@ -67,7 +67,7 @@ const Connected = ({
       try {
         const result = await client.getBalance({ owner: addr });
         if (!cancelled) {
-          const sui = Number(result.totalBalance) / 1_000_000_000;
+          const sui = Number(result.balance.balance) / 1_000_000_000;
           setBalance(`${sui} SUI`);
         }
       } catch (error) {
@@ -129,13 +129,15 @@ const Connected = ({
           Disconnect
         </button>
       </div>
-      <Row label="Network">Sui Testnet (via @mysten/sui SuiJsonRpcClient)</Row>
+      <Row label="Network">Sui Testnet (via @mysten/sui SuiGrpcClient)</Row>
       <Row label="Balance">{balance}</Row>
       <div className="flex flex-wrap gap-2">
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
           disabled={!walletStd}
-          onClick={() => void handleSign()}
+          onClick={() => {
+            void handleSign();
+          }}
           type="button"
         >
           Sign &quot;Hello from butr + @mysten/sui&quot;
@@ -143,7 +145,9 @@ const Connected = ({
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
           disabled={!walletStd}
-          onClick={() => void handleSendTx()}
+          onClick={() => {
+            void handleSendTx();
+          }}
           type="button"
         >
           Send 0-MIST self-transfer

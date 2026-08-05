@@ -131,7 +131,9 @@ const PendingTransfers = () => {
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
           disabled={state === "scanning" || noWallets}
-          onClick={() => void rescan()}
+          onClick={() => {
+            void rescan();
+          }}
           type="button"
         >
           {state === "scanning" ? "Scanning…" : "Scan"}
@@ -219,7 +221,9 @@ const PendingTransfers = () => {
                 <button
                   className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
                   disabled={blocked || row.kind === "redeeming"}
-                  onClick={() => void handleComplete(item)}
+                  onClick={() => {
+                    void handleComplete(item);
+                  }}
                   type="button"
                 >
                   {row.kind === "redeeming"

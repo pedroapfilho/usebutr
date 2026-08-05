@@ -161,14 +161,18 @@ const Connected = ({
       <div className="flex flex-wrap gap-2">
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
-          onClick={() => void handleSign()}
+          onClick={() => {
+            void handleSign();
+          }}
           type="button"
         >
           Sign &quot;Hello from butr + Polkadot&quot;
         </button>
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
-          onClick={() => void handleTransfer()}
+          onClick={() => {
+            void handleTransfer();
+          }}
           type="button"
         >
           Self-transfer 0.1 PAS

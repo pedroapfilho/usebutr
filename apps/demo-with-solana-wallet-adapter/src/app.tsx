@@ -132,7 +132,9 @@ const AdapterConsumer = ({
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
           disabled={!signMessage}
-          onClick={() => void handleSign()}
+          onClick={() => {
+            void handleSign();
+          }}
           type="button"
         >
           Sign &quot;Hello from butr + adapter&quot;
@@ -140,7 +142,9 @@ const AdapterConsumer = ({
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
           disabled={!pubkey}
-          onClick={() => void handleSendTx()}
+          onClick={() => {
+            void handleSendTx();
+          }}
           type="button"
         >
           Send 0 SOL to System Program

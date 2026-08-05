@@ -1,6 +1,6 @@
 import { bitcoinDiscoverer } from "@usebutr/bitcoin";
 import type { ChainPlatform, PlatformDiscoverer, WalletAdapter } from "@usebutr/core";
-import { CHAIN_PLATFORMS } from "@usebutr/core";
+import { CHAIN_PLATFORMS, logWarn } from "@usebutr/core";
 import { evmDiscoverer } from "@usebutr/evm";
 import { polkadotDiscoverer } from "@usebutr/polkadot";
 import { suiDiscoverer } from "@usebutr/sui";
@@ -9,19 +9,23 @@ import { svmDiscoverer } from "@usebutr/svm";
 import { createDiscoveryBus } from "./discovery-bus";
 
 /**
- * Which platforms to discover. Omitting a flag (or setting it to
- * `false`) skips that platform entirely; useful for apps that target
- * only one chain so unused listeners don't fire and unused adapters
- * don't appear in the provider's `discovery` source.
+ * Which platforms to discover, as an allowlist: a platform is discovered
+ * only if its flag is explicitly `true`. Every unlisted platform is off,
+ * so `{}` enables nothing. Passing no options at all is the separate
+ * "everything" case.
  *
- * Default when omitted: every platform enabled (`evm`, `svm`, `sui`,
- * `bitcoin`, `polkadot`), plus the fallbacks (`injected` for EVM,
- * `injectedBitcoin` for Bitcoin, `polkadotWalletStandard` for
- * Polkadot).
+ * Restricting platforms means unused listeners don't fire and unused
+ * adapters don't appear in the provider's `discovery` source.
  *
- * The legacy fallbacks emit only when their primary path has not
- * already produced an adapter by the settle deadline. Disable when
- * targeting only standards-compliant wallets to skip the timer.
+ * The three fallback flags invert that rule: each defaults to `true`
+ * when its primary platform is enabled, and is only consulted then.
+ * They emit only if the primary path produced no adapter by the settle
+ * deadline; disable them when targeting standards-compliant wallets
+ * only, to skip the timer.
+ *
+ * Prefer the array form (`autoDiscovery(["evm", "svm"])`) when you don't
+ * need the fallback flags: it reads as the allowlist it is, and an empty
+ * array is visibly empty in a way `{}` is not.
  */
 type DiscoverOptions = {
   bitcoin?: boolean;
@@ -69,21 +73,48 @@ const KNOWN_DISCOVERERS: Readonly<Record<ChainPlatform, PlatformDiscoverer>> = {
 };
 
 /**
+ * The three input forms `autoDiscovery` accepts. `true` is internal: it
+ * is what an omitted argument resolves to.
+ */
+type DiscoverInput = true | DiscoverOptions | ReadonlyArray<ChainPlatform>;
+
+/** `Array.isArray` alone leaves the object branch un-narrowed against a
+ *  `ReadonlyArray` member, so the union is discriminated through an
+ *  explicit predicate rather than a cast. */
+const isPlatformList = (
+  auto: DiscoverOptions | ReadonlyArray<ChainPlatform>,
+): auto is ReadonlyArray<ChainPlatform> => Array.isArray(auto);
+
+/** Widen an allowlist array into the equivalent object form, so the
+ *  resolver below has one shape to interpret. `["evm"]` is exactly
+ *  `{ evm: true }`, fallbacks included. */
+const platformsToOptions = (platforms: ReadonlyArray<ChainPlatform>): DiscoverOptions => {
+  const options: DiscoverOptions = {};
+  for (const platform of platforms) {
+    options[platform] = true;
+  }
+  return options;
+};
+
+/**
  * Resolve an `auto` prop input into a concrete set of enabled
- * platforms. The single place where the `true | DiscoverOptions`
- * union is interpreted.
+ * platforms. The single place where the `DiscoverInput` union is
+ * interpreted.
  *
  * **Defaults**
  *
  *  - `true` → every platform enabled, every fallback on. The
- *    `<WalletManagerProvider auto>` shorthand uses this path.
+ *    `<WalletManagerProvider auto>` shorthand and the bare
+ *    `autoDiscovery()` call use this path.
+ *  - Array form → allowlist. `["evm", "svm"]` discovers exactly those,
+ *    with each platform's fallback on.
  *  - Object form → opt-in. `{ evm: true }` discovers only EVM;
  *    unspecified flags default to `false`, so `{}` enables nothing.
  *    Each fallback defaults to `true` IF its primary platform is also
  *    enabled (`injected` follows `evm`; `injectedBitcoin` follows
  *    `bitcoin`; `polkadotWalletStandard` follows `polkadot`).
  */
-const resolveDiscoverOptions = (auto: true | DiscoverOptions): ResolvedDiscoverOptions => {
+const resolveDiscoverOptions = (auto: DiscoverInput): ResolvedDiscoverOptions => {
   if (auto === true) {
     return {
       bitcoin: true,
@@ -96,18 +127,19 @@ const resolveDiscoverOptions = (auto: true | DiscoverOptions): ResolvedDiscoverO
       svm: true,
     };
   }
-  const evm = auto.evm === true;
-  const bitcoin = auto.bitcoin === true;
-  const polkadot = auto.polkadot === true;
+  const options = isPlatformList(auto) ? platformsToOptions(auto) : auto;
+  const evm = options.evm === true;
+  const bitcoin = options.bitcoin === true;
+  const polkadot = options.polkadot === true;
   return {
     bitcoin,
     evm,
-    injected: evm && auto.injected !== false,
-    injectedBitcoin: bitcoin && auto.injectedBitcoin !== false,
+    injected: evm && options.injected !== false,
+    injectedBitcoin: bitcoin && options.injectedBitcoin !== false,
     polkadot,
-    polkadotWalletStandard: polkadot && auto.polkadotWalletStandard !== false,
-    sui: auto.sui === true,
-    svm: auto.svm === true,
+    polkadotWalletStandard: polkadot && options.polkadotWalletStandard !== false,
+    sui: options.sui === true,
+    svm: options.svm === true,
   };
 };
 
@@ -147,12 +179,24 @@ const collectActiveDiscoverers = (
  */
 const discoverWalletAdapters = (
   onAdapter: (adapter: WalletAdapter) => void,
-  options?: DiscoverOptions,
+  options?: DiscoverOptions | ReadonlyArray<ChainPlatform>,
 ): (() => void) => {
   const resolved = resolveDiscoverOptions(options ?? true);
   const bus = createDiscoveryBus(onAdapter);
+  const active = collectActiveDiscoverers(resolved);
 
-  for (const { discoverer, useFallback } of collectActiveDiscoverers(resolved)) {
+  // An allowlist built at runtime (from an env var, a filter, a config
+  // object) can come back empty, and the result is indistinguishable
+  // from "the user has no wallets installed": zero listeners, zero
+  // announcements, no error. Only reachable when options were passed;
+  // the omitted-argument path enables everything.
+  if (active.length === 0) {
+    logWarn(
+      '[butr] autoDiscovery was given options that enable no platforms, so no wallets will be discovered. Pass an allowlist such as autoDiscovery(["evm", "svm"]), or call autoDiscovery() with no arguments to discover every platform.',
+    );
+  }
+
+  for (const { discoverer, useFallback } of active) {
     bus.register(discoverer.subscribe);
     if (useFallback && discoverer.fallback) {
       const fallback = discoverer.fallback;
@@ -165,5 +209,5 @@ const discoverWalletAdapters = (
   };
 };
 
-export type { DiscoverOptions };
+export type { DiscoverInput, DiscoverOptions };
 export { KNOWN_DISCOVERERS, discoverWalletAdapters, resolveDiscoverOptions };

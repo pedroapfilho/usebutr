@@ -4,6 +4,7 @@ import {
   useBalance,
   useConnectWallet,
   useConnectedWallets,
+  useConnectedWalletsByPlatform,
   useConnectionError,
   useConnectionStatus,
   useConnectingConnectorId,
@@ -255,56 +256,35 @@ const PLATFORM_LABELS: Record<ChainPlatform, string> = {
   svm: "SVM",
 };
 
-const PLATFORM_ORDER: ReadonlyArray<ChainPlatform> = ["evm", "svm", "sui", "bitcoin", "polkadot"];
-
-type PlatformGroup = {
-  platform: ChainPlatform;
-  wallets: Array<ConnectedWallet>;
+const ConnectedList = ({ count }: { count: number }) => {
+  const byPlatform = useConnectedWalletsByPlatform();
+  return (
+    <section>
+      <h2 className="mb-4 flex items-center gap-2 font-semibold">
+        Connected
+        <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-xs text-neutral-500">
+          {count}
+        </span>
+      </h2>
+      <div className="space-y-6">
+        {[...byPlatform].map(([platform, wallets]) => (
+          <div key={platform}>
+            <h3 className="mb-2 font-mono text-xs tracking-wide text-neutral-500 uppercase">
+              {PLATFORM_LABELS[platform]} · {wallets.length}
+            </h3>
+            <ul className="space-y-3">
+              {wallets.map((wallet) => (
+                <li key={wallet.connector.id}>
+                  <ConnectedWalletCard wallet={wallet} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 };
-
-const groupByPlatform = (wallets: ReadonlyArray<ConnectedWallet>): Array<PlatformGroup> => {
-  const byPlatform = new Map<ChainPlatform, Array<ConnectedWallet>>();
-  for (const wallet of wallets) {
-    const platform = wallet.connector.chainPlatform;
-    const existing = byPlatform.get(platform);
-    if (existing) {
-      existing.push(wallet);
-    } else {
-      byPlatform.set(platform, [wallet]);
-    }
-  }
-  return PLATFORM_ORDER.flatMap((platform) => {
-    const group = byPlatform.get(platform);
-    return group ? [{ platform, wallets: group }] : [];
-  });
-};
-
-const ConnectedList = ({ wallets }: { wallets: ReadonlyArray<ConnectedWallet> }) => (
-  <section>
-    <h2 className="mb-4 flex items-center gap-2 font-semibold">
-      Connected
-      <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-xs text-neutral-500">
-        {wallets.length}
-      </span>
-    </h2>
-    <div className="space-y-6">
-      {groupByPlatform(wallets).map((group) => (
-        <div key={group.platform}>
-          <h3 className="mb-2 font-mono text-xs tracking-wide text-neutral-500 uppercase">
-            {PLATFORM_LABELS[group.platform]} · {group.wallets.length}
-          </h3>
-          <ul className="space-y-3">
-            {group.wallets.map((wallet) => (
-              <li key={wallet.connector.id}>
-                <ConnectedWalletCard wallet={wallet} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
-  </section>
-);
 
 const StatusBar = ({ status }: { status: string }) => (
   <div className="flex items-center gap-2 text-sm text-neutral-600">
@@ -457,7 +437,7 @@ const Content = () => {
   return (
     <div className="space-y-6">
       <StatusBar status={status} />
-      {connected.length > 0 ? <ConnectedList wallets={connected} /> : null}
+      {connected.length > 0 ? <ConnectedList count={connected.length} /> : null}
       <WalletPicker available={available} hasConnected={connected.length > 0} />
       {hasWalletConnectProjectId ? null : (
         <p className="text-xs text-neutral-400">

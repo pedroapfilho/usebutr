@@ -73,7 +73,15 @@ type Connector<P extends ChainPlatform = ChainPlatform> = {
   /** Optional. Wallet logo as a URL or data URI. Adapters built via butr's
    *  auto-discovery (EIP-6963, Wallet Standard) populate this from the
    *  wallet's announced metadata; hand-rolled adapters can leave it
-   *  unset and supply icons separately via `ConnectorMeta`. */
+   *  unset and supply icons separately via `ConnectorMeta`.
+   *
+   *  **Already sanitized on discovered adapters.** Discovery runs
+   *  `sanitizeIcon` at construction, so the value is either a trimmed,
+   *  non-empty string or `undefined`: never blank, never whitespace-led.
+   *  Render it directly, including into strict consumers like
+   *  `next/image`. No second `sanitizeIcon` call and no `icon !== ""`
+   *  guard is needed. Hand-rolled adapters set this field themselves and
+   *  own the guarantee. */
   icon?: string;
   /** Stable key: "metamask", "phantom", etc. Pool entries are keyed by this. */
   id: string;
@@ -103,7 +111,10 @@ type ConnectorMeta = {
    *  this at render time to gate the "Connect" button. */
   availability?: () => WalletAvailability;
   chainPlatform: ChainPlatform;
-  /** Optional image URL or data URI for wallet selection UIs. */
+  /** Optional image URL or data URI for wallet selection UIs. Unlike
+   *  `Connector.icon`, this one is consumer-supplied and butr does not
+   *  sanitize it; run it through `sanitizeIcon` if the value came from
+   *  wallet metadata rather than your own assets. */
   icon?: string;
   id: string;
   name: string;

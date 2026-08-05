@@ -61,6 +61,11 @@ export {
   WalletStorage,
 } from "./storage";
 
+export { groupByPlatform } from "./group-by-platform";
+
+export type { SignInFlowOptions, SignInMessageContext, SignInResult } from "./sign-in";
+export { SignInUnsupportedError, createSignInFlow } from "./sign-in";
+
 export { walletEqual } from "./wallet-equal";
 
 export { logError, logWarn } from "./logger";

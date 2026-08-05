@@ -131,7 +131,9 @@ const Connected = ({
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
           disabled={!wallet.connector.capabilities.signMessage}
-          onClick={() => void handleSign()}
+          onClick={() => {
+            void handleSign();
+          }}
           type="button"
         >
           Sign &quot;Hello from butr + bitcoinjs-lib&quot;
@@ -139,7 +141,9 @@ const Connected = ({
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
           disabled={!wallet.connector.capabilities.signTransaction}
-          onClick={() => void handleSignPsbt()}
+          onClick={() => {
+            void handleSignPsbt();
+          }}
           type="button"
         >
           Sign empty PSBT round-trip

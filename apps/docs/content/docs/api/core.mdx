@@ -45,6 +45,30 @@ Identity comparison used by the async hooks (compares connector id + active
 account address + chain id). Stable wallets don't re-trigger
 `useSigner`/`useBalance`.
 
+### `groupByPlatform(items, getPlatform): Map<ChainPlatform, Array<T>>`
+
+Buckets a flat list by chain platform, keyed in `CHAIN_PLATFORMS` order with
+empty platforms omitted. `getPlatform` reads the discriminant, which sits at a
+different depth depending on the input: `adapter.chainPlatform` on a discovered
+wallet, `wallet.connector.chainPlatform` on a pool entry.
+
+```ts
+import { groupByPlatform } from "@usebutr/core";
+
+const byPlatform = groupByPlatform(adapters, (a) => a.chainPlatform);
+```
+
+React consumers should reach for
+[`useDiscoveredWalletsByPlatform` / `useConnectedWalletsByPlatform`](/api/react)
+instead, which bind the accessor and memoise the result.
+
+### `sanitizeIcon(icon: string | undefined): string | undefined`
+
+Trims a wallet-announced icon and treats an all-whitespace value as absent.
+Discovery already applies this at adapter construction, so `Connector.icon` is
+safe to render as-is; reach for this only when building adapter or
+`ConnectorMeta` metadata yourself.
+
 ## Storage
 
 ### `createBrowserStorageDriver(): StorageDriver`

@@ -1,6 +1,6 @@
 export { CHAINS, CHAINS_BY_PLATFORM } from "./chains";
 
-export type { DiscoverOptions } from "./discover";
+export type { DiscoverInput, DiscoverOptions } from "./discover";
 export { KNOWN_DISCOVERERS, discoverWalletAdapters, resolveDiscoverOptions } from "./discover";
 
 export type { DiscoveryBus, DiscoveryPath } from "./discovery-bus";

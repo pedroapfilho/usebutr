@@ -29,6 +29,8 @@ export {
   useWalletStore,
 } from "./hooks/selectors";
 
+export { useConnectedWalletsByPlatform, useDiscoveredWalletsByPlatform } from "./hooks/grouped";
+
 export {
   useConnectWallet,
   useDisconnectWallet,

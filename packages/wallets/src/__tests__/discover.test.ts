@@ -1,6 +1,13 @@
+import { logWarn } from "@usebutr/core";
+import type * as ButrCore from "@usebutr/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { KNOWN_DISCOVERERS, discoverWalletAdapters, resolveDiscoverOptions } from "../discover";
+
+vi.mock("@usebutr/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof ButrCore>();
+  return { ...actual, logWarn: vi.fn() };
+});
 
 describe("resolveDiscoverOptions", () => {
   it("enables nothing for the empty object form", () => {
@@ -106,11 +113,35 @@ describe("resolveDiscoverOptions", () => {
       svm: false,
     });
   });
+
+  it("array form is equivalent to the object form it names", () => {
+    expect(resolveDiscoverOptions(["evm", "svm"])).toEqual(
+      resolveDiscoverOptions({ evm: true, svm: true }),
+    );
+  });
+
+  it("array form turns each platform's fallback on with it", () => {
+    expect(resolveDiscoverOptions(["evm", "bitcoin", "polkadot"])).toEqual({
+      bitcoin: true,
+      evm: true,
+      injected: true,
+      injectedBitcoin: true,
+      polkadot: true,
+      polkadotWalletStandard: true,
+      sui: false,
+      svm: false,
+    });
+  });
+
+  it("the empty array enables nothing, like the empty object", () => {
+    expect(resolveDiscoverOptions([])).toEqual(resolveDiscoverOptions({}));
+  });
 });
 
 describe("discoverWalletAdapters", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.mocked(logWarn).mockClear();
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -160,6 +191,38 @@ describe("discoverWalletAdapters", () => {
     expect(() => {
       unsubscribe();
     }).not.toThrow();
+  });
+
+  it("accepts the array form without throwing", () => {
+    const unsubscribe = discoverWalletAdapters(() => {}, ["sui", "svm"]);
+    expect(() => {
+      unsubscribe();
+    }).not.toThrow();
+  });
+
+  it("warns when the given options enable no platforms", () => {
+    discoverWalletAdapters(() => {}, {})();
+
+    expect(logWarn).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(logWarn).mock.calls[0]?.[0]).toContain("no platforms");
+  });
+
+  it("warns on an empty allowlist array", () => {
+    discoverWalletAdapters(() => {}, [])();
+
+    expect(logWarn).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays silent when called with no options (the everything path)", () => {
+    discoverWalletAdapters(() => {})();
+
+    expect(logWarn).not.toHaveBeenCalled();
+  });
+
+  it("stays silent when at least one platform is enabled", () => {
+    discoverWalletAdapters(() => {}, ["svm"])();
+
+    expect(logWarn).not.toHaveBeenCalled();
   });
 });
 

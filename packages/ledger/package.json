@@ -38,14 +38,14 @@
     "@usebutr/core": "workspace:*"
   },
   "devDependencies": {
-    "@ledgerhq/hw-app-btc": "^11.2.1",
-    "@ledgerhq/hw-app-eth": "^7.8.8",
-    "@ledgerhq/hw-app-solana": "^7.10.5",
-    "@ledgerhq/hw-app-sui": "^1.11.3",
+    "@ledgerhq/hw-app-btc": "^11.3.1",
+    "@ledgerhq/hw-app-eth": "^7.8.12",
+    "@ledgerhq/hw-app-solana": "^7.10.7",
+    "@ledgerhq/hw-app-sui": "^1.11.4",
     "@ledgerhq/hw-transport-webusb": "^6.35.0",
     "@repo/config-vitest": "workspace:*",
     "@repo/typescript-config": "workspace:*",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
   "peerDependencies": {

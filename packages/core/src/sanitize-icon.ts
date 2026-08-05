@@ -12,6 +12,11 @@
  * icon as absent, so consumers get either a usable string or
  * `undefined`: never a blank or malformed one. `undefined` passes
  * through untouched.
+ *
+ * **Discovery already applies this.** Every adapter butr discovers has
+ * had its icon sanitized at construction, so `Connector.icon` is safe to
+ * render as-is. Reach for this helper only when building adapter or
+ * `ConnectorMeta` metadata yourself from a source butr didn't produce.
  */
 const sanitizeIcon = (icon: string | undefined): string | undefined => {
   if (icon === undefined) {

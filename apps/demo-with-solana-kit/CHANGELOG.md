@@ -1,5 +1,15 @@
 # demo-with-solana-kit
 
+## 0.0.10
+
+### Patch Changes
+
+- Updated dependencies [8ecaf89]
+  - @usebutr/core@1.1.0
+  - @usebutr/react@0.2.0
+  - @usebutr/svm@1.0.1
+  - @usebutr/wallet-standard-shared@0.4.1
+
 ## 0.0.9
 
 ### Patch Changes

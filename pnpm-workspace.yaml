@@ -21,7 +21,7 @@ minimumReleaseAgeExclude:
   - "@oxlint-tsgolint/win32-arm64@7.0.2001"
   - "@oxlint-tsgolint/win32-x64@7.0.2001"
   - oxlint-tsgolint@7.0.2001
-  - oxlint-config-awesomeness@3.2.0
+  - oxlint-config-awesomeness@3.3.0
   - "@tanstack/react-router-devtools@1.167.1"
   - "@tanstack/react-router@1.170.19"
   - "@tanstack/react-start-client@1.168.17"
@@ -36,6 +36,7 @@ minimumReleaseAgeExclude:
   - "@tanstack/start-plugin-core@1.171.27"
   - "@tanstack/start-server-core@1.169.19"
   - "@tanstack/start-storage-context@1.167.18"
+  - oxlint-plugin-react-doctor@0.9.6
 
 onlyBuiltDependencies:
   - "@parcel/watcher"

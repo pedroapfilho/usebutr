@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/svm",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Wallet Standard adapter for butr (Solana / SVM).",
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",

@@ -1,5 +1,12 @@
 # @usebutr/evm
 
+## 1.0.1
+
+### Patch Changes
+
+- Updated dependencies [8ecaf89]
+  - @usebutr/core@1.1.0
+
 ## 1.0.0
 
 ### Major Changes

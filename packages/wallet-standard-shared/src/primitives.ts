@@ -61,8 +61,5 @@ const pickAccountByAddress = (
 ): WalletStandardWalletAccount | undefined =>
   accounts.find((a) => a.address === address) ?? accounts[0];
 
-// Re-exported so this package's public surface keeps offering the shared
-// account builder now that the implementation lives in @usebutr/core
-// (next to `Account` and the reducer that relies on its id format).
 export { buildAccount } from "@usebutr/core";
 export { getFeature, pickAccountByAddress, pickFirstAddress, slugify };

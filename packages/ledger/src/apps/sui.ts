@@ -108,8 +108,6 @@ type SuiLedgerOptions = {
 
 const buildSuiChain = (cluster: SuiCluster, walletName: string): ChainBase => ({
   id: `sui:${cluster}`,
-  // Same stance as the EVM / SVM builders; no chain-id → name table in
-  // butr; we surface the wallet name and let consumers overlay structurally.
   name: walletName,
   namespace: "sui",
   reference: cluster,
@@ -148,16 +146,12 @@ const buildSuiAccount = (address: string, chain: ChainBase): Account => ({
  * broadcasts the assembled transaction through their own Sui RPC client.
  */
 const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapter> => {
-  // Sui's signMessage capability differs from EVM/SVM; the Ledger
-  // Sui app doesn't expose an off-chain message signing instruction.
   const capabilities = { ...LEDGER_SIGN_TRANSACTION_CAPABILITIES, signMessage: false };
 
   let cluster: SuiCluster = options.cluster ?? DEFAULT_CLUSTER;
 
   const core = createLedgerAdapterCore<SuiAppLike>({
     accountCount: options.accountCount,
-    // Sui addresses are 32-byte values displayed as `0x`-prefixed lowercase
-    // hex; the same format `@mysten/sui` and explorers exchange.
     addressAt: async (sui, path) => {
       const result = await sui.getPublicKey(path);
       return bytesToHexPrefixed(new Uint8Array(result.address));
@@ -171,8 +165,6 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
       return (transport) => new SuiApp(transport);
     },
     name: options.name,
-    // Sui paths are fully-hardened per Sui Wallet convention; every
-    // segment ends in `'`, including the account index.
     pathAt: (prefix, index) => `${prefix}/${index}'`,
     sendTxHint: "Use signTransaction + @mysten/sui's SuiClient.",
     switchAccountHint: "signTransaction(tx, account)",
@@ -207,9 +199,6 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
     sendTx: core.sendTx,
     sendTxToChain: core.sendTxToChain,
 
-    // Ledger's Sui app exposes no signPersonalMessage / off-chain
-    // message instruction at this app version. Capabilities flag
-    // already reflects this; this rejection is defence-in-depth.
     signMessage: () =>
       Promise.reject(
         new Error(

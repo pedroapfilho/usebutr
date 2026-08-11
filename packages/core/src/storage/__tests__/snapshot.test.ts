@@ -121,7 +121,6 @@ describe("readWalletSnapshot", () => {
       "butr-active": "phantom",
       "butr-pool": poolCookieValue,
     });
-    // Phantom isn't in the pool; fall back to first pool member.
     expect(snapshot.activeConnectorId).toBe("metamask");
   });
 

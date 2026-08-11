@@ -46,7 +46,6 @@ const evmNamespace: WalletConnectNamespaceBuilder = {
       ...base,
       capabilities: WALLETCONNECT_CAPABILITIES,
       async connect(opts) {
-        // Live session across reloads → skip the pairing handshake.
         if (provider.session) {
           return;
         }
@@ -70,10 +69,6 @@ const evmNamespace: WalletConnectNamespaceBuilder = {
         try {
           await provider.disconnect();
         } catch (error) {
-          // The relay may already have dropped the session (mobile
-          // wallet uninstalled, etc.). Don't propagate; butr's
-          // reducer marks the wallet disconnected on its side
-          // regardless.
           logWarn("[butr/walletconnect] disconnect threw:", error);
         }
       },

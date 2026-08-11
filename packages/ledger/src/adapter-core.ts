@@ -115,9 +115,6 @@ const createLedgerAdapterCore = <TApp>({
   return {
     async connect(opts) {
       if (opts?.silent === true) {
-        // Ledger connect always shows the browser's WebUSB device picker;
-        // there is no silent reconnect. Reject so eager hydration doesn't
-        // pop the chooser on page load.
         throw new Error("Ledger requires an interactive connect");
       }
       const factory = transportFactory ?? (await loadTransport());
@@ -161,8 +158,6 @@ const createLedgerAdapterCore = <TApp>({
         return [];
       }
       const addresses: Array<string> = [];
-      // Sequential walk; the device serialises USB requests; parallel
-      // calls would deadlock the transport. Slow but correct.
       for (let i = 0; i < accountCount; i += 1) {
         // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
         addresses.push(await addressAt(app, pathAtIndex(i)));

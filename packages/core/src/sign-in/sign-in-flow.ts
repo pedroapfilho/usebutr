@@ -115,9 +115,6 @@ const createSignInFlow = (
 
     const nonce = await options.getNonce({ account: signingAccount, wallet });
 
-    // Narrowed on the discriminant, not on `capabilities.signIn` alone:
-    // `signIn` exists only on the SVM variant of the adapter union, and
-    // is optional even there.
     if (
       options.preferSignMessage !== true &&
       connector.chainPlatform === "svm" &&

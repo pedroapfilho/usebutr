@@ -9,12 +9,6 @@ const SUI_NAMESPACE = "sui";
 const SUI_DECIMALS = 9;
 const SUI_MAINNET = "sui:mainnet";
 
-// Sui Wallet Standard wallets advertise chains as the short
-// `sui:mainnet` / `sui:testnet` / `sui:devnet` rather than the strict
-// CAIP-2 form (genesis-checkpoint hash). Phantom (Sui), Sui Wallet,
-// Suiet and the WC Dappkit reference all exchange these names; we
-// follow suit here so the pairing handshake matches what wallets
-// expect.
 const DEFAULT_CHAINS: ReadonlyArray<string> = [SUI_MAINNET];
 
 const DEFAULT_METHODS: ReadonlyArray<string> = [
@@ -90,8 +84,6 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
         method: "sui_signAndExecuteTransaction",
         params: { address, transaction },
       });
-      // Spec says `{ digest }`. Tolerate a bare string too; some wallets
-      // short-circuit to the digest directly.
       const digest = typeof result === "string" ? result : readStringField(result, "digest");
       if (digest === undefined || digest === "") {
         throw new Error("sui_signAndExecuteTransaction returned no digest");
@@ -119,17 +111,12 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
       sendTx: (tx, account) => executeTx(tx, account),
 
       sendTxToChain: (tx, _targetChainId, account, cb) => {
-        // WC Sui's signAndExecute doesn't take a per-call chain
-        // parameter; the cluster is baked into the pairing. Honour
-        // the current chain and let consumers route per-chain higher
-        // up if they need multi-cluster support.
         cb?.();
         return executeTx(tx, account);
       },
 
       async signMessage(msg, account) {
         const address = resolveAddress(account);
-        // Encode as base64: WC mobile wallets expect it, and plain-text wallets still decode (base64 ⊂ UTF-8).
         const result: unknown = await provider.request({
           method: "sui_signPersonalMessage",
           params: { address, message: bytesToBase64(msg) },
@@ -139,11 +126,6 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
         if (signatureB64 === undefined || signatureB64 === "") {
           throw new Error("sui_signPersonalMessage returned no signature");
         }
-        // Wallets are inconsistent: some echo the signed bytes back
-        // (Wallet Standard's `signPersonalMessage` does); WC's reference
-        // spec lists only `signature`. Prefer the wallet's `bytes` if
-        // present (lets verifiers check against what the wallet actually
-        // signed), otherwise fall through to the original input.
         const echoedBytes = readStringField(result, "bytes");
         const echoed =
           echoedBytes === undefined || echoedBytes === "" ? msg : base64ToBytes(echoedBytes);
@@ -157,11 +139,6 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
           method: "sui_signTransaction",
           params: { address, transaction },
         });
-        // The Reown docs spell the key `transactionBytes`. The older
-        // Mysten Dappkit reference (and some wallets) use
-        // `transactionBlockBytes`. Accept either; both are the
-        // base64-encoded signed transaction bytes butr's
-        // `SuiWallet.signTransaction` contract returns.
         const bytesB64 =
           readStringField(result, "transactionBytes") ??
           readStringField(result, "transactionBlockBytes");
@@ -173,9 +150,6 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
         if (signatureB64 === undefined || signatureB64 === "") {
           throw new Error("sui_signTransaction returned no transaction or signature");
         }
-        // Fallback: a few wallets return just the signature. That's not
-        // the signed transaction, but it's all we got; pass it through
-        // as bytes and let the consumer reconcile.
         return base64ToBytes(signatureB64);
       },
     };

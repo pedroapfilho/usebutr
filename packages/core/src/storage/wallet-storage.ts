@@ -54,10 +54,6 @@ class WalletStorage implements WalletPersistence {
 
   /** Chain `fn` after the in-flight pool mutation. */
   private async serializePoolMutation<T>(fn: () => Promise<T>): Promise<T> {
-    // Capture and advance the queue synchronously so concurrent
-    // callers serialize against the same head; awaiting the queue
-    // first would let two callers both observe the pre-advance head
-    // and run in parallel.
     const previous = this.poolMutationQueue;
     // oxlint-disable-next-line unicorn/consistent-function-scoping -- assigned by Promise constructor below
     let resolve: () => void = () => {};
@@ -130,12 +126,6 @@ class WalletStorage implements WalletPersistence {
             icon: wallet.connector.icon,
             name: wallet.connector.name,
           };
-          // The runtime's reducer state is the source of truth; a
-          // malformed entry here means a programming error inside butr,
-          // not data drift. Throw loudly so the bug surfaces at the
-          // write site rather than silently corrupting storage and
-          // re-emerging as a "wallet didn't restore" puzzle on the next
-          // page load.
           if (parseStoredPoolEntry(connectorId, entry) === null) {
             throw new Error(`[butr] refusing to persist invalid pool entry for ${connectorId}`);
           }
@@ -225,10 +215,6 @@ class WalletStorage implements WalletPersistence {
   }
 
   async clearAll(): Promise<void> {
-    // Pool removal goes through the mutation queue so it can't race
-    // with an in-flight `setPool` / `removePoolEntry`. The selection
-    // and active keys have no read-modify-write writers, so they can
-    // remove concurrently.
     await Promise.all([
       this.clearPool(),
       this.persistent.removeItem(this.selectionKey),

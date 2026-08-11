@@ -99,8 +99,6 @@ type SvmLedgerOptions = {
 
 const buildSolanaChain = (cluster: SolanaCluster, walletName: string): ChainBase => ({
   id: `solana:${cluster}`,
-  // Same stance as the EVM builder; no chain-id → name table in butr;
-  // we surface the wallet name and let consumers overlay structurally.
   name: walletName,
   namespace: "solana",
   reference: cluster,

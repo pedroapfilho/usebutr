@@ -57,8 +57,6 @@ const Connected = ({
     [wallet.account.walletAddress],
   );
 
-  // Wire viem on top of butr's connector. getSigner() on the EVM adapter
-  // returns the raw EIP-1193 provider; exactly what `custom()` wants.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -89,7 +87,6 @@ const Connected = ({
     };
   }, [account, wallet.connector]);
 
-  // Read balance via viem's public client (its own RPC, not the wallet's).
   useEffect(() => {
     let cancelled = false;
     void (async () => {

@@ -8,12 +8,6 @@ import { readStringField } from "./wallet-response";
 const BITCOIN_NAMESPACE = "bip122";
 const BITCOIN_DECIMALS = 8;
 
-// Canonical CAIP-2 chain references for Bitcoin (genesis block hash,
-// truncated to 32 chars per CAIP-122). Sourced from Reown's bip122
-// namespace docs and matches what mobile wallets exchange today.
-//   mainnet: bip122:000000000019d6689c085ae165831e93
-//   testnet: bip122:000000000933ea01ad0ee984209779ba
-//   regtest: bip122:0f9188f13cb7b2c71f2a335e3a4fc328
 const BITCOIN_MAINNET = "bip122:000000000019d6689c085ae165831e93";
 
 const DEFAULT_CHAINS: ReadonlyArray<string> = [BITCOIN_MAINNET];
@@ -107,16 +101,10 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
     const broadcastTx = async (tx: unknown, account?: Account): Promise<string> => {
       const address = resolveAddress(account);
       const psbt = coercePsbtToBase64(tx);
-      // Map sendTx to signPsbt with broadcast:true. `sendTransfer` is
-      // the wrong primitive here; it asks for a recipient + amount
-      // rather than a pre-built tx, which doesn't fit butr's
-      // `sendTx(tx: unknown)` contract. See namespace docblock.
       const result: unknown = await provider.request({
         method: "signPsbt",
         params: { account: address, broadcast: true, psbt, signInputs: [] },
       });
-      // Spec says `{ psbt, txid? }`. Tolerate a bare string too; some
-      // wallets short-circuit to the txid directly.
       const txid = typeof result === "string" ? result : readStringField(result, "txid");
       if (txid === undefined || txid === "") {
         throw new Error("signPsbt with broadcast:true returned no txid");
@@ -144,20 +132,12 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
       sendTx: (tx, account) => broadcastTx(tx, account),
 
       sendTxToChain: (tx, _targetChainId, account, cb) => {
-        // WC Bitcoin's signPsbt doesn't take a per-call chain
-        // parameter; the network is baked into the pairing. Honour
-        // the current chain and let consumers route per-chain higher
-        // up if they need multi-network support.
         cb?.();
         return broadcastTx(tx, account);
       },
 
       async signMessage(msg, account) {
         const address = resolveAddress(account);
-        // bip122 `signMessage` takes a plain string `message`. butr's
-        // contract is `Uint8Array`; encode to a UTF-8 string when the
-        // bytes are valid UTF-8, otherwise fall back to base64 so the
-        // wallet can still receive arbitrary binary input.
         let message: string;
         try {
           message = new TextDecoder("utf-8", { fatal: true }).decode(msg);
@@ -179,10 +159,6 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
       async signTransaction(tx, account) {
         const address = resolveAddress(account);
         const psbt = coercePsbtToBase64(tx);
-        // signInputs left empty: wallets default to signing every
-        // input the active address owns. Callers that need fine-
-        // grained per-input control can pre-encode the PSBT with the
-        // appropriate inputs and route through `getSigner()` later.
         const result: unknown = await provider.request({
           method: "signPsbt",
           params: { account: address, broadcast: false, psbt, signInputs: [] },

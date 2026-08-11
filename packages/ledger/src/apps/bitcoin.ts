@@ -163,9 +163,6 @@ type BitcoinLedgerOptions = {
 };
 
 const buildBitcoinChain = (chainId: string, walletName: string): ChainBase => {
-  // Reference is the part after the `bip122:` (or other) namespace prefix.
-  // Falls back to the full id when no `:` is present so malformed inputs
-  // don't crash the chain builder.
   const colonIndex = chainId.indexOf(":");
   const namespace = colonIndex === -1 ? "bip122" : chainId.slice(0, colonIndex);
   const reference = colonIndex === -1 ? chainId : chainId.slice(colonIndex + 1);
@@ -248,8 +245,6 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
     transport: options.transport,
   });
 
-  // The PSBT signing instruction takes the ACCOUNT path (one segment above
-  // the per-address prefix), not the address path the walk resolves.
   const accountPath = (): string => {
     const lastSlash = derivationPathPrefix.lastIndexOf("/");
     return lastSlash === -1 ? derivationPathPrefix : derivationPathPrefix.slice(0, lastSlash);
@@ -312,9 +307,6 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
           "[butr/ledger] signTransaction expects a Uint8Array (serialized PSBT v0 or v2).",
         );
       }
-      // Discarding the resolved path is deliberate: this only proves the
-      // requested account lives on the device. The device derives the
-      // signing key itself from `accountPath()` + the PSBT's own hints.
       await core.resolvePath(account);
       const result = await btc.signPsbtBuffer(tx, {
         accountPath: accountPath(),

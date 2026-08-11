@@ -97,10 +97,6 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
       sendTx: (tx, account) => signAndSend(tx, account),
 
       sendTxToChain: (tx, _targetChainId, account, cb) => {
-        // WC Solana's signAndSendTransaction doesn't take a chain
-        // parameter; the cluster is baked into the pairing. Honour the
-        // current chain and let consumers route per-chain higher up if
-        // they need multi-cluster support.
         cb?.();
         return signAndSend(tx, account);
       },
@@ -119,9 +115,6 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
         if (signatureB58 === undefined || signatureB58 === "") {
           throw new Error("solana_signMessage returned no signature");
         }
-        // butr's contract returns the raw signature bytes. WC speaks
-        // base58 for Solana signatures; decode here so consumers don't
-        // have to know about the wire format.
         return { signature: base58ToBytes(signatureB58), signedMessage: msg };
       },
 
@@ -137,10 +130,6 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
             transaction: bytesToBase64(tx),
           },
         });
-        // The Solana WC spec leaves room for two return shapes: a base64
-        // `transaction` (the fully-signed bytes) or a base58 `signature`
-        // alone. Prefer the base64 transaction; that's the contract
-        // butr's SvmWallet.signTransaction returns.
         const transactionB64 = readStringField(result, "transaction");
         if (transactionB64 !== undefined && transactionB64 !== "") {
           return base64ToBytes(transactionB64);
@@ -150,9 +139,6 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
         if (signatureB58 === undefined || signatureB58 === "") {
           throw new Error("solana_signTransaction returned no transaction or signature");
         }
-        // Fallback: a few wallets return just the signature. That's not
-        // a signed transaction, but it's all we got; pass it through as
-        // bytes and let the consumer reconcile.
         return base58ToBytes(signatureB58);
       },
     };

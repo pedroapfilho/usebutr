@@ -117,7 +117,6 @@ const createCaipAdapterCore = ({
 
   return {
     async connect(opts) {
-      // Live session across reloads → skip the pairing handshake.
       if (provider.session) {
         return;
       }
@@ -142,10 +141,6 @@ const createCaipAdapterCore = ({
       try {
         await provider.disconnect();
       } catch (error) {
-        // The relay may already have dropped the session (mobile
-        // wallet uninstalled, etc.). Don't propagate; butr's
-        // reducer marks the wallet disconnected on its side
-        // regardless.
         logWarn("[butr/walletconnect] disconnect threw:", error);
       }
     },
@@ -180,9 +175,6 @@ const createCaipAdapterCore = ({
           `${label} WC adapter received non-${platform} chain "${chain.id}". Pass a chain with namespace "${namespace}".`,
         );
       }
-      // Local state only; the WC session's chain list is fixed at
-      // pair time, so this updates butr's view of the active chain
-      // without re-negotiating with the wallet.
       currentChainId = chain.id;
       return Promise.resolve();
     },

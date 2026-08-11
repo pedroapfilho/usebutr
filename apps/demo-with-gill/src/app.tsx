@@ -138,9 +138,6 @@ const Connected = ({
     }
     setErrorMsg(null);
     try {
-      // 1. Build the transaction with gill. The wallet (not gill) signs, so
-      //    the fee payer is a no-op signer over butr's connected address;
-      //    gill's program helpers stay fully typed.
       const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
       const feePayer = createNoopSigner(addr);
       const tx = createTransaction({
@@ -151,7 +148,6 @@ const Connected = ({
         latestBlockhash,
         version: 0,
       });
-      // 2. Compile to a wire transaction and hand it to the wallet.
       const compiled = compileTransaction(tx);
       const wire = getBase64EncodedWireTransaction(compiled);
       const bytes = base64ToBytes(wire);

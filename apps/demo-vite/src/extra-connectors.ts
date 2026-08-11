@@ -16,8 +16,6 @@ const createLedgerSafe = async (
   platform: (typeof LEDGER_PLATFORMS)[number],
 ): Promise<Array<WalletAdapter>> => {
   try {
-    // Default id is "ledger" for every platform; unique ids keep all
-    // four adapters in the pool at once.
     return [await createLedgerAdapter({ id: `ledger-${platform}`, platform })];
   } catch (error) {
     console.error(`[demo] failed to create Ledger ${platform} adapter:`, error);
@@ -32,7 +30,6 @@ const createWalletConnectSafe = async (): Promise<Array<WalletAdapter>> => {
   try {
     return await createWalletConnectAdapters({
       metadata: { name: "butr · Vite demo", url: window.location.origin },
-      // Empty arrays request each namespace builder's default chains.
       namespaces: { bitcoin: [], evm: [], sui: [], svm: [] },
       onPairingUri: setPairingUri,
       projectId: WC_PROJECT_ID,
@@ -52,9 +49,6 @@ const emitWhenReady = async (
   }
 };
 
-// Factories run once per page load; repeat provider subscriptions
-// (React StrictMode's double effect in dev) reuse the same promises
-// instead of re-initializing the WalletConnect relay.
 let extraSources: Array<Promise<Array<WalletAdapter>>> | null = null;
 
 /**

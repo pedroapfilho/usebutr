@@ -13,8 +13,6 @@ if (!root) {
   throw new Error("#root not found");
 }
 
-// framework-kit's client is the reactive RPC/data layer. butr owns wallet
-// discovery + connection, so no walletConnectors are passed here.
 const client = createClient({ cluster: "devnet", commitment: "confirmed" });
 
 ReactDOM.createRoot(root).render(

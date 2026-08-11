@@ -64,8 +64,6 @@ type LedgerOptions = EvmLedgerOptions | SvmLedgerOptions | SuiLedgerOptions | Bi
  * your own RPC client to complete the send.
  */
 const createLedgerAdapter = (options: LedgerOptions): Promise<WalletAdapter> => {
-  // Read before the switch narrows `options` away, so the exhaustiveness branch
-  // can still name the platform an untyped caller passed.
   const requestedPlatform: string = options.platform;
   switch (options.platform) {
     case "evm": {
@@ -81,9 +79,6 @@ const createLedgerAdapter = (options: LedgerOptions): Promise<WalletAdapter> => 
       return createBitcoinLedgerAdapter(options);
     }
     default: {
-      // Exhaustiveness check; every `ChainPlatform` variant ships a
-      // Ledger app today. Adding a new platform to `ChainPlatform`
-      // turns this into a typecheck error until the case is added.
       const _exhaustive: never = options;
       void _exhaustive;
       return Promise.reject(

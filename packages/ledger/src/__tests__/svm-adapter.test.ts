@@ -8,8 +8,6 @@ import type {
 } from "../adapter";
 import { createLedgerAdapter, createSvmLedgerAdapter } from "../adapter";
 
-// Three distinct 32-byte ed25519 pubkeys filled with the index so each
-// derivation path produces a distinguishable base58 address.
 const buildFakePubkey = (index: number): Uint8Array => {
   const buf = new Uint8Array(32);
   buf.fill(index + 1);
@@ -99,7 +97,6 @@ describe("createSvmLedgerAdapter", () => {
     expect(account).not.toBeNull();
     expect(account?.chain.id).toBe("solana:mainnet");
     expect(account?.chain.namespace).toBe("solana");
-    // Base58 of 32 bytes filled with 1; known constant we can sanity-check.
     expect(account?.walletAddress).toMatch(/^[1-9A-HJ-NP-Za-km-z]+$/v);
   });
 
@@ -134,7 +131,6 @@ describe("createSvmLedgerAdapter", () => {
     await adapter.connect();
     const accounts = await adapter.getAccounts!();
     expect(accounts).toHaveLength(3);
-    // Each path produces a unique pubkey -> unique base58 address
     const addresses = accounts.map((a) => a.walletAddress);
     expect(new Set(addresses).size).toBe(3);
     for (const account of accounts) {

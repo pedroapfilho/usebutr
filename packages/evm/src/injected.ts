@@ -43,8 +43,6 @@ const isEip1193Provider = (value: unknown): value is Eip1193Provider =>
   typeof value.request === "function";
 
 const readEthereum = (target: InjectedDiscoveryOptions["target"]): Eip1193Provider | null => {
-  // Resolve the host object: use the caller's override if given, otherwise
-  // fall back to the global window (or null in SSR environments).
   const globalWindow: unknown = typeof window === "undefined" ? null : window;
   const host: unknown = target === undefined ? globalWindow : target;
   if (typeof host !== "object" || host === null || !("ethereum" in host)) {

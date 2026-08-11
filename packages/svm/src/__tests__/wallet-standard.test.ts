@@ -41,7 +41,6 @@ describe("discoverSvmAdapters", () => {
     await new Promise<void>((resolve) => {
       setTimeout(resolve, 0);
     });
-    // Simulate a wallet announcing itself.
     const fakeWallet = {
       accounts: [
         {

@@ -153,9 +153,6 @@ const readWalletSnapshot = (
   if (rawActive !== undefined && rawActive.length > 0 && pool[rawActive] !== undefined) {
     activeConnectorId = rawActive;
   } else {
-    // Mirror `HydrationCoordinator.hydrate` selection-fallback: when no
-    // explicit active is stored, surface any pool member so the render
-    // shell can still show "connected" instead of "disconnected".
     const firstKey = Object.keys(pool)[0];
     if (firstKey) {
       activeConnectorId = firstKey;

@@ -1,15 +1,3 @@
-//   1. Connect EVM wallet (e.g. MetaMask via EIP-6963).
-//   2. Connect SVM wallet (e.g. Phantom via Wallet Standard).
-//   3. Reload.
-//   4. Expect BOTH wallets restored.
-//
-// The reload step is simulated by tearing down the first store and
-// creating a fresh one against the same WalletPersistence. SVM is
-// modeled as a "late-registered" adapter; its createConnector
-// returns null at hydration time and resolves later via
-// tryRestoreFromPending, mirroring how @usebutr/wallets'
-// DiscoverySubscriber drives the real auto-discovery path.
-
 import { describe, expect, it, vi } from "vitest";
 
 import { createMockAccount, createMockChain, createMockConnector } from "../../__tests__/helpers";
@@ -149,9 +137,6 @@ describe("multi-platform hydration (EVM + SVM)", () => {
     await firstStore.getState().connectWallet(evmAdapter.id);
     await firstStore.getState().connectWallet(svmAdapter.id);
 
-    // Stage 2: simulated reload. ONLY the EVM adapter is registered at
-    // hydration time; SVM is announced after a delay, mirroring the
-    // real `@wallet-standard/app` dynamic-import timing.
     const lateAdapters = new Map<string, WalletAdapter>([[evmAdapter.id, evmAdapter]]);
     const reloadedStore = createWalletStore({
       connectors: [],
@@ -171,11 +156,6 @@ describe("multi-platform hydration (EVM + SVM)", () => {
   });
 
   it("preserves entries added by CONNECT_SUCCEEDED that races with HYDRATED (regression: HYDRATED merges, not replaces)", async () => {
-    // Reproduces the user-reported "only one chain per wallet auto-connects"
-    // bug. Setup: hydrate parks SVM, awaits EVM restores. While waiting,
-    // a late-restore via tryRestoreFromPending dispatches CONNECT_SUCCEEDED
-    // for an SVM entry, putting it in state.pool. Then HYDRATED fires with
-    // event.pool containing only EVM. The reducer must MERGE, not REPLACE.
     const storage = buildSharedStorage();
     const evmAdapter = buildEvmAdapter();
     const svmAdapter = buildSvmAdapter();
@@ -211,7 +191,6 @@ describe("multi-platform hydration (EVM + SVM)", () => {
   });
 
   it("restores EVM wallet via tryRestoreFromPending when its adapter arrives late (inverse race)", async () => {
-    // Less common (usually EIP-6963 is fast) but provable in principle.
     const storage = buildSharedStorage();
     const evmAdapter = buildEvmAdapter();
     const svmAdapter = buildSvmAdapter();

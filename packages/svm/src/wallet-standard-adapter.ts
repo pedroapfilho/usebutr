@@ -113,9 +113,6 @@ const buildSvmAdapter = (
   return {
     ...core,
     capabilities: resolveWalletStandardCapabilities({
-      // Deliberately the wallet's whole chain list, not the Solana-only
-      // slice: a wallet advertising a single `solana:` cluster alongside
-      // other namespaces can still switch clusters from butr's side.
       chainCount: wallet.chains.length,
       features: {
         events: core.hasEvents,
@@ -127,9 +124,6 @@ const buildSvmAdapter = (
     }),
     chainPlatform: "svm",
 
-    // Wallet Standard exposes no balance feature. Consumers wrap their
-    // own RPC client; this default keeps the type signature honoured
-    // without lying about a value we don't have.
     getBalance: () =>
       Promise.resolve({
         decimals: SOLANA_DECIMALS,
@@ -141,25 +135,12 @@ const buildSvmAdapter = (
     getTransactionReceipt: () => Promise.resolve({ status: "Pending" as const }),
 
     async requestAccounts() {
-      // Wallet Standard has no equivalent of EIP-2255's
-      // `wallet_requestPermissions`. The closest we can do is re-run
-      // `standard:connect`, which prompts the user on wallets that
-      // surface their picker each time and silently returns the
-      // existing list on wallets that remember authorisations.
-      // butr's runtime calls `getAccounts()` afterwards to refresh
-      // the pool entry, so newly-exposed addresses appear either way.
       await core.connect();
     },
 
     sendTx: (tx, account) => signAndSend(tx, account),
 
     sendTxToChain: (tx, _targetChainId, account, cb) => {
-      // Solana Wallet Standard's signAndSendTransaction takes the
-      // target chain directly. `targetChainId` is the decimal-string
-      // form butr uses, but the wallet expects a CAIP-2 chain string.
-      // For now we honour the connector's current chain and let
-      // consumers route per-chain at a higher level if they need
-      // multi-cluster support.
       cb?.();
       return signAndSend(tx, account);
     },

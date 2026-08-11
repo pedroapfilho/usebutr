@@ -33,10 +33,6 @@ if (globalThis.window === undefined) {
     writable: true,
   });
 
-  // Newer Node ships native globalThis.sessionStorage (Web Storage), so a
-  // `=== undefined` guard would leave the storage driver on the native storage
-  // while tests spy on the window mock. Alias unconditionally so both are the
-  // same object regardless of Node version.
   Object.defineProperty(globalThis, "localStorage", {
     configurable: true,
     value: localStorage,

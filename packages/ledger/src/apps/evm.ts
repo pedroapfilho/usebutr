@@ -94,8 +94,6 @@ type EvmLedgerOptions = {
 
 const buildEvmChain = (chainId: number, walletName: string): ChainBase => ({
   id: `eip155:${chainId}`,
-  // Same stance as the EIP-6963 adapter; butr doesn't ship a chain
-  // id → name table. Consumers overlay via structural typing.
   name: walletName,
   namespace: "eip155",
   reference: chainId.toString(),

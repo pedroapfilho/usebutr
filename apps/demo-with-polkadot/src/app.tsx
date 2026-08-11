@@ -8,9 +8,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { useDiscoveredWallets } from "./wallet-provider";
 
-// butr owns discovery + connection state; polkadot-api owns the RPC and
-// the transaction builder. The connected wallet's injected signer is
-// bridged to a PAPI PolkadotSigner via pjs-signer's connectInjectedExtension.
 const PASEO_WS = "wss://paseo.rpc.amforc.com";
 const PASEO_DECIMALS = 10;
 
@@ -64,8 +61,6 @@ const Connected = ({
 
   const addr = wallet.account.walletAddress;
 
-  // Tear down any in-flight transaction watch when the component unmounts,
-  // so its callbacks don't update state after we're gone.
   useEffect(() => () => txSubRef.current?.unsubscribe(), []);
 
   useEffect(() => {
@@ -95,7 +90,6 @@ const Connected = ({
         new TextEncoder().encode("Hello from butr + Polkadot"),
       );
       setSignature(toHex(result.signature));
-      // signedMessage is the <Bytes>-wrapped payload sent to the wallet's signRaw
       setSignedMessage(toHex(result.signedMessage));
     } catch (error) {
       setErrorMsg(formatError(error));

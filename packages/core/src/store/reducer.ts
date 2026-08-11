@@ -185,8 +185,6 @@ const reducer = (state: State, event: Event): State => {
         ? new Set([...state.reconnectingIds].filter((id) => id !== connectorId))
         : state.reconnectingIds;
 
-      // Same connector + same address: only flip the status, keep object refs stable
-      // so reactive selectors don't churn.
       if (
         existing &&
         existing.account.walletAddress.toLowerCase() === entry.account.walletAddress.toLowerCase()
@@ -197,10 +195,6 @@ const reducer = (state: State, event: Event): State => {
           connectingConnectorId: null,
           connectionStatus: "success",
           pool:
-            // When the existing entry was a shadow, the address may
-            // match but the connector reference is the placeholder.
-            // Swap in the live entry so subsequent calls don't throw
-            // ShadowConnectorError.
             existing.connector === entry.connector
               ? state.pool
               : new Map([...state.pool, [connectorId, entry] as const]),
@@ -277,12 +271,6 @@ const reducer = (state: State, event: Event): State => {
       if (!wallet) {
         return state;
       }
-      // Pick the new active address. Three policies in priority order:
-      //  1. Explicit `event.active` (wallet event or manual update knows
-      //     what should be active).
-      //  2. Preserve current active if it's still in the new list.
-      //  3. Fall back to `accounts[0]` so the pool entry doesn't end up
-      //     pointing at an address the wallet no longer exposes.
       let nextAccount: Account;
       if (event.active) {
         nextAccount = event.active;
@@ -294,11 +282,6 @@ const reducer = (state: State, event: Event): State => {
         );
         nextAccount = stillHasCurrent ? wallet.account : (event.accounts[0] ?? wallet.account);
       }
-      // No-op short-circuit: when the wallet event echoes the current
-      // active and the accounts array hasn't changed shape, skip the
-      // Map clone so `useSyncExternalStore` subscribers don't re-render.
-      // (Cheap heuristic; equality by reference for `accounts` would
-      // miss content changes; we compare by length + address set.)
       const sameAccount =
         nextAccount.walletAddress === wallet.account.walletAddress &&
         nextAccount.chain.id === wallet.account.chain.id;

@@ -66,8 +66,6 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
       if (!connector.subscribe) {
         return;
       }
-      // Idempotent install; drop any prior subscription first so a
-      // re-attach doesn't leak listeners on the wallet side.
       detach(connectorId);
       try {
         const unsub = connector.subscribe((event) => {
@@ -77,9 +75,6 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
               break;
             }
             case "disconnected": {
-              // Clear the subscription before notifying so the handler
-              // sees a clean state and can't re-enter via dispatch
-              // chains.
               detach(connectorId);
               handlers.onDisconnected(connectorId, connector.chainPlatform);
               break;

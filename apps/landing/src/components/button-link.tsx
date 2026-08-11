@@ -13,8 +13,6 @@ const BASE_CLASSES =
 const VARIANT_CLASSES: Record<NonNullable<ButtonLinkProps["variant"]>, string> = {
   primary: "bg-primary text-primary-foreground hover:brightness-95 dark:hover:brightness-110",
   secondary: "border border-border bg-background text-foreground hover:bg-muted",
-  // `text-foreground` rather than `text-primary`: amber on a 15% amber tint
-  // fails contrast, while foreground inverts correctly in dark mode.
   soft: "bg-primary/15 text-foreground hover:bg-primary/25",
 };
 

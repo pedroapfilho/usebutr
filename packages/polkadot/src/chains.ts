@@ -1,9 +1,5 @@
 import type { ChainBase } from "@usebutr/core";
 
-// CAIP-2 for Polkadot is `polkadot:{first-32-hex-of-genesis-hash}`.
-// injectedWeb3 doesn't advertise chains (accounts are chain-agnostic
-// across Substrate), so this registry is butr-authored. Wallet Standard
-// polkadot wallets advertise these same CAIP-2 ids.
 const POLKADOT_CHAINS = {
   kusama: {
     id: "polkadot:b0a8d493285c2df73290dfb7e61f870f",

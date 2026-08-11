@@ -15,8 +15,6 @@ const formatError = (error: unknown): string => {
   if (typeof error === "string") {
     return error;
   }
-  // SDK / wallet errors are often plain objects; surface their message
-  // instead of a useless "unknown error".
   if (error !== null && typeof error === "object") {
     if ("message" in error && typeof error.message === "string") {
       return error.message;
@@ -40,7 +38,6 @@ type RowStatus =
   | { destTxHash: string; kind: "done" }
   | { kind: "error"; message: string };
 
-// Why the "Complete mint" button can't be used yet, if anything.
 const DestHint = ({
   destLabel,
   destPlatform,

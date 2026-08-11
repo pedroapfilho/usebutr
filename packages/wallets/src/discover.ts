@@ -185,11 +185,6 @@ const discoverWalletAdapters = (
   const bus = createDiscoveryBus(onAdapter);
   const active = collectActiveDiscoverers(resolved);
 
-  // An allowlist built at runtime (from an env var, a filter, a config
-  // object) can come back empty, and the result is indistinguishable
-  // from "the user has no wallets installed": zero listeners, zero
-  // announcements, no error. Only reachable when options were passed;
-  // the omitted-argument path enables everything.
   if (active.length === 0) {
     logWarn(
       '[butr] autoDiscovery was given options that enable no platforms, so no wallets will be discovered. Pass an allowlist such as autoDiscovery(["evm", "svm"]), or call autoDiscovery() with no arguments to discover every platform.',

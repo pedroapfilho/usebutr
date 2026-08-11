@@ -226,7 +226,6 @@ describe("suiNamespace", () => {
       address: "0xabc1234567890abcdef",
       message: btoa(String.fromCodePoint(1, 2, 3)),
     });
-    // "Zm9v" base64 = "foo" = [102, 111, 111]
     expect(result.signature).toEqual(new Uint8Array([102, 111, 111]));
     expect(result.signedMessage).toEqual(echoedBytes);
   });
@@ -512,8 +511,6 @@ describe("suiNamespace", () => {
     let active = await adapter.getAccount();
     expect(active?.walletAddress).toBe("0xaaa111");
 
-    // Simulate the wallet exposing a different account after a
-    // session_update (WC mutates the session in place).
     accounts = ["sui:mainnet:0xbbb222"];
     active = await adapter.getAccount();
     expect(active?.walletAddress).toBe("0xbbb222");

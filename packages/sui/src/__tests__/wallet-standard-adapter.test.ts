@@ -133,7 +133,6 @@ describe("buildSuiAdapter", () => {
 
   it("signMessage() bridges through sui:signPersonalMessage and decodes base64 output", async () => {
     const account = buildAccount("0xSuiAddress1");
-    // base64 for [1, 2, 3] and [10, 20]
     const signatureB64 = btoa(String.fromCodePoint(1, 2, 3));
     const bytesB64 = btoa(String.fromCodePoint(10, 20));
     const signFeature: SuiSignPersonalMessageFeature = {

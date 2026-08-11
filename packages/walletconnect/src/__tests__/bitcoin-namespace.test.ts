@@ -498,8 +498,6 @@ describe("bitcoinNamespace", () => {
     let active = await adapter.getAccount();
     expect(active?.walletAddress).toBe("bc1qaaa");
 
-    // Simulate the wallet exposing a different account after a
-    // session_update (WC mutates the session in place).
     accounts = [`${MAINNET}:bc1qbbb`];
     active = await adapter.getAccount();
     expect(active?.walletAddress).toBe("bc1qbbb");

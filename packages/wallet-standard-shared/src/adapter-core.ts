@@ -105,8 +105,6 @@ const createWalletStandardCore = ({
   let currentChainId = initialChainId;
   const toChain = (): ChainBase => ({
     id: currentChainId,
-    // butr ships no chain-id → display-name table; the wallet name stands
-    // in and consumers overlay their own labels via structural typing.
     name: wallet.name,
     namespace,
     reference: currentChainId.slice(chainPrefix.length),
@@ -138,9 +136,6 @@ const createWalletStandardCore = ({
     chainCount: wallet.chains.filter((c) => c.startsWith(chainPrefix)).length,
 
     async connect(opts) {
-      // Forward `silent` so eager hydration restores already-authorized
-      // accounts without re-opening the wallet's approval UI. Wallets
-      // that don't honour `silent` fall back to their normal behaviour.
       await connect.connect(opts?.silent === true ? { silent: true } : undefined);
     },
 
@@ -189,9 +184,6 @@ const createWalletStandardCore = ({
       let unsubWallet: (() => void) | null = null;
       if (events !== undefined) {
         const unsub = events.on("change", (changes) => {
-          // Chain change: the wallet switched network. Re-point
-          // currentChainId so subsequent per-call `chain` inputs route
-          // through it, mirroring `switchChain`'s local-state model.
           if (trackChainChanges && changes.chains !== undefined) {
             const next = pickChain(changes.chains);
             if (next !== null) {
@@ -204,12 +196,6 @@ const createWalletStandardCore = ({
               listener({ type: "disconnected" });
               return;
             }
-            // Forward the FULL accounts list; Wallet Standard's
-            // change.accounts reflects the wallet's current exposure
-            // set. Mirroring it into the pool entry keeps the array in
-            // sync with what the wallet actually allows us to sign with,
-            // so single-account-exposure wallets (Phantom Solana,
-            // MetaMask Snap) don't accumulate stale addresses.
             const chain = toChain();
             const built = changes.accounts.map((a) => buildAccount(a.address, chain));
             const first = built[0];
@@ -240,16 +226,12 @@ const createWalletStandardCore = ({
           `${label} adapter received non-${platform} chain "${chain.id}". Pass a chain with namespace "${namespace}".`,
         );
       }
-      // The wallet must advertise this chain; otherwise the per-call
-      // `chain` input would be rejected by the wallet later.
       if (!wallet.chains.includes(chain.id)) {
         throw new Error(
           `Wallet ${wallet.name} does not advertise chain "${chain.id}". Available: ${wallet.chains.join(", ")}`,
         );
       }
       currentChainId = chain.id;
-      // Synthesise an `accountChanged` so butr's reducer updates the pool
-      // entry's chain; the wallet itself has no event to fire here.
       notifyAccountChanged();
       return Promise.resolve();
     },

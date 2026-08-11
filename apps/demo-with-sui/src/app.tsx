@@ -105,7 +105,6 @@ const Connected = ({
       const [coin] = tx.splitCoins(tx.gas, [0]);
       tx.transferObjects([coin], addr);
 
-      // Use the wallet's chain-side broadcast.
       const digest = await wallet.connector.sendTx(tx);
       setTxDigest(digest);
     } catch (error) {

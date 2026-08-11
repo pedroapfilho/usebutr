@@ -55,9 +55,6 @@ const buildSatsConnectAdapter = (
   };
 
   const loadAccounts = async (): Promise<ReadonlyArray<string>> => {
-    // `callRequest` only asserts the caller's shape onto an untyped RPC
-    // payload, so a wallet that answers without a `result` lands here as
-    // null/undefined and has to be read through an optional chain.
     const result = await callRequest<{
       addresses?: ReadonlyArray<{ address: string; purpose?: string }>;
     } | null>("getAccounts", {
@@ -165,8 +162,6 @@ const buildSatsConnectAdapter = (
           "Bitcoin signTransaction expects a PSBT as Uint8Array (e.g. psbt.toBuffer())",
         );
       }
-      // sats-connect's signPsbt takes a base64 PSBT; encode our bytes
-      // and decode the response back to bytes.
       const result = await callRequest<{ psbt: string }>("signPsbt", {
         psbt: bytesToBase64(tx),
       });

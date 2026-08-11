@@ -84,8 +84,6 @@ const initProvider = async (
     projectId: options.projectId,
   });
 
-  // Forward pairing URIs to the consumer so they can render a QR code
-  // or deep-link the user's mobile wallet.
   let cleanup = NOOP_CLEANUP;
   if (options.onPairingUri) {
     const onDisplayUri: Eip1193Listener = (...args) => {
@@ -97,8 +95,6 @@ const initProvider = async (
     provider.on("display_uri", onDisplayUri);
     let removed = false;
     cleanup = () => {
-      // Idempotent: calling removeListener twice (or after teardown) is
-      // a no-op, and the guard keeps it cheap.
       if (removed) {
         return;
       }
@@ -171,9 +167,6 @@ const createWalletConnectAdapters = async (
       "[butr/walletconnect] createWalletConnectAdapters needs at least one namespace",
     );
   }
-  // Validate every requested namespace has a registered builder before
-  // we open a WC session; fail loudly upfront rather than after the
-  // user has scanned the QR.
   const unsupported = requested.filter(([platform]) => !KNOWN_NAMESPACES[platform]);
   if (unsupported.length > 0) {
     throw new Error(
@@ -197,8 +190,6 @@ const createWalletConnectAdapters = async (
     const adapter = builder.buildAdapter({
       chains: chains.length > 0 ? chains : builder.defaultChains,
       icon,
-      // Suffix the id when more than one namespace is in play so each
-      // adapter has a unique pool key.
       id: multiNamespace ? `${baseId}-${platform}` : baseId,
       name: multiNamespace ? `${baseName} (${platform.toUpperCase()})` : baseName,
       provider,

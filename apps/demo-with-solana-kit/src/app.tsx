@@ -167,7 +167,6 @@ const Connected = ({
         (m) =>
           appendTransactionMessageInstruction(buildTransferInstruction(addr, BURN_ADDRESS, 0n), m),
       );
-      // 2. Compile to a wire transaction and hand it to the wallet.
       const compiled = compileTransaction(message);
       const wire = getBase64EncodedWireTransaction(compiled);
       const bytes = base64ToBytes(wire);

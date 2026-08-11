@@ -37,8 +37,6 @@ const buildPolkadotWalletStandardAdapter = (
     platform: "Polkadot",
     preferredChainIds: [],
     registerDisconnector,
-    // Polkadot wallets advertise a single relay chain, so a wallet-side
-    // `chains` change has no better chain to move to.
     trackChainChanges: false,
     wallet,
   });

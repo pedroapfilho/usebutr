@@ -9,7 +9,7 @@ import "./index.css";
 // oxlint-disable-next-line unicorn/prefer-node-protocol -- intentionally the npm browser polyfill, not the Node built-in
 import { Buffer } from "buffer";
 
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- attaching the browser Buffer polyfill onto the untyped global scope
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- attaching the browser Buffer polyfill onto the untyped global scope
 const globalScope = globalThis as unknown as { Buffer?: typeof Buffer };
 globalScope.Buffer ??= Buffer;
 

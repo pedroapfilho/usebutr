@@ -91,7 +91,7 @@ const DEFAULT_DERIVATION_PATH_PREFIX = "84'/0'/0'/0";
 const DEFAULT_ADDRESS_FORMAT: BitcoinAddressFormat = "bech32";
 
 const loadBtc = async (): Promise<BtcAppConstructor> => {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped optional peer-dep module boundary
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- untyped optional peer-dep module boundary
   const mod = (await import("@ledgerhq/hw-app-btc")) as unknown as {
     Btc?: BtcAppConstructor;
     default?: BtcAppConstructor;

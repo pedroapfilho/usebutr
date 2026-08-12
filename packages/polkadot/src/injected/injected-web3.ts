@@ -64,7 +64,7 @@ const readInjectedWindow = (target?: InjectedWindow | null): InjectedWindow | nu
   }
   // `window.injectedWeb3` is the untyped Polkadot extension registry; the
   // DOM lib doesn't declare it, so this boundary assertion is unavoidable.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped window.injectedWeb3 extension registry
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- untyped window.injectedWeb3 extension registry
   return window as unknown as InjectedWindow;
 };
 

@@ -61,7 +61,7 @@ const readEvmUsdc = async (spec: ChainSpec, owner: string): Promise<string> => {
     headers: { "content-type": "application/json" },
     method: "POST",
   });
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON-RPC response is untyped `any`; this is the typed boundary
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- JSON-RPC response is untyped `any`; this is the typed boundary
   const json = (await response.json()) as { error?: { message: string }; result?: string };
   if (json.error !== undefined) {
     throw new Error(json.error.message);
@@ -85,7 +85,7 @@ const readSvmUsdc = async (spec: ChainSpec, owner: string): Promise<string> => {
   type ParsedTokenData = {
     parsed?: { info?: { tokenAmount?: { uiAmount?: number; uiAmountString?: string } } };
   };
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- jsonParsed SPL token account shape is untyped at the RPC boundary
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- jsonParsed SPL token account shape is untyped at the RPC boundary
   const parsedData = first.account.data as unknown as ParsedTokenData;
   const info = parsedData.parsed?.info?.tokenAmount;
   return info?.uiAmountString ?? String(info?.uiAmount ?? 0);

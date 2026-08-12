@@ -155,7 +155,7 @@ const scanSolanaBurns = async (
           maxSupportedTransactionVersion: 0,
         })
         .send();
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- jsonParsed transaction shape is untyped at the RPC boundary
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- jsonParsed transaction shape is untyped at the RPC boundary
       const keys = (tx as unknown as ParsedTx)?.transaction?.message?.accountKeys;
       return Boolean(keys?.some((k) => programSet.has(k.pubkey)));
     } catch {

@@ -62,7 +62,7 @@ const loadUniversalProvider = async (): Promise<UniversalProviderConstructor> =>
       "@walletconnect/universal-provider exposes no UniversalProvider constructor",
     );
   }
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- validated the export is callable; the untyped WC module is otherwise opaque
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- validated the export is callable; the untyped WC module is otherwise opaque
   return ctor as unknown as UniversalProviderConstructor;
 };
 

@@ -40,7 +40,7 @@ const DEFAULT_DERIVATION_PATH_PREFIX = "44'/501'/0'";
 const DEFAULT_CLUSTER: SolanaCluster = "mainnet";
 
 const loadSolana = async (): Promise<SolanaAppConstructor> => {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped optional peer-dep module boundary
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- untyped optional peer-dep module boundary
   const mod = (await import("@ledgerhq/hw-app-solana")) as unknown as {
     default?: SolanaAppConstructor;
     Solana?: SolanaAppConstructor;

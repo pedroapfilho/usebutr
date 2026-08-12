@@ -35,7 +35,7 @@ const readHost = (target: InjectedBitcoinDiscoveryOptions["target"]): InjectedHo
   // `window` carries the injected wallet globals (`unisat`, `okxwallet`,
   // etc.) as an untyped host object; `InjectedHost` names the four keys
   // butr probes, all optional and read defensively in `probeProviders`.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped injected-wallet window globals
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- untyped injected-wallet window globals
   return window as unknown as InjectedHost;
 };
 

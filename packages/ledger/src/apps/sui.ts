@@ -48,7 +48,7 @@ const DEFAULT_DERIVATION_PATH_PREFIX = "44'/784'/0'/0'";
 const DEFAULT_CLUSTER: SuiCluster = "mainnet";
 
 const loadSui = async (): Promise<SuiAppConstructor> => {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped optional peer-dep module boundary
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- untyped optional peer-dep module boundary
   const mod = (await import("@ledgerhq/hw-app-sui")) as unknown as {
     default?: SuiAppConstructor;
     Sui?: SuiAppConstructor;

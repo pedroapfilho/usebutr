@@ -33,7 +33,7 @@ const DEFAULT_DERIVATION_PATH_PREFIX = "44'/60'/0'/0";
 const DEFAULT_CHAIN_ID = 1;
 
 const loadEth = async (): Promise<EthAppConstructor> => {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped optional peer-dep module boundary
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- untyped optional peer-dep module boundary
   const mod = (await import("@ledgerhq/hw-app-eth")) as unknown as {
     default?: EthAppConstructor;
     Eth?: EthAppConstructor;

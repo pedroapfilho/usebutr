@@ -16,4 +16,8 @@
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+
+  html {
+    scrollbar-gutter: stable;
+  }
 }

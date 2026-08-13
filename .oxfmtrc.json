@@ -26,7 +26,6 @@
     "preserveWhitespace": false
   },
   "ignorePatterns": [
-    ".github/workflows/pullfrog.yml",
     ".context/**",
     "dist/**",
     ".next/**",

@@ -3,10 +3,9 @@ import { bytesToHexPrefixed as bytesToHex, hexToBytes, sanitizeIcon } from "@use
 
 import { resolveEip6963Capabilities } from "./capabilities";
 import type { Eip1193Listener, Eip1193Provider, Eip6963ProviderInfo } from "./eip1193";
+import { readEvmBalance } from "./evm-balance";
 
 const HEX_PREFIX = "0x";
-const ETH_DECIMALS = 18n;
-const ETH_UNIT = 10n ** ETH_DECIMALS;
 
 /** `provider.request` is typed `unknown` by design; these helpers
  *  narrow the well-known EVM RPC shapes at the boundary with runtime
@@ -42,72 +41,6 @@ const withFrom = (tx: unknown, from: string): unknown =>
 const chainIdHexToDecimal = (hex: string): string => BigInt(hex).toString(10);
 const chainIdDecimalToHex = (dec: string): string => `${HEX_PREFIX}${BigInt(dec).toString(16)}`;
 
-/** Pure 18-decimal wei → ether formatter. Trims trailing zeros so
- *  `1.0` stays `1` and `1.5` stays `1.5`. */
-const formatEther = (wei: bigint): string => {
-  const integer = wei / ETH_UNIT;
-  const remainder = wei % ETH_UNIT;
-  if (remainder === 0n) {
-    return integer.toString();
-  }
-  const fraction = remainder.toString().padStart(Number(ETH_DECIMALS), "0").replace(/0+$/v, "");
-  return fraction.length > 0 ? `${integer}.${fraction}` : integer.toString();
-};
-
-/** General-purpose `value / 10^decimals` formatter that trims trailing
- *  zeros. Mirrors `formatEther` but for arbitrary token decimals. */
-const formatTokenUnits = (raw: bigint, decimals: number): string => {
-  if (decimals === 0) {
-    return raw.toString();
-  }
-  const unit = 10n ** BigInt(decimals);
-  const integer = raw / unit;
-  const remainder = raw % unit;
-  if (remainder === 0n) {
-    return integer.toString();
-  }
-  const fraction = remainder.toString().padStart(decimals, "0").replace(/0+$/v, "");
-  return fraction.length > 0 ? `${integer}.${fraction}` : integer.toString();
-};
-
-const ERC20_BALANCE_OF_SELECTOR = "0x70a08231";
-const ERC20_DECIMALS_SELECTOR = "0x313ce567";
-const ERC20_SYMBOL_SELECTOR = "0x95d89b41";
-
-const padAddressForCall = (address: string): string =>
-  address.replace(/^0x/v, "").toLowerCase().padStart(64, "0");
-
-/**
- * Decode an ABI-encoded `string` return value. Layout:
- *   bytes 0–31  : offset to the data (always 0x20 for a single string)
- *   bytes 32–63 : string length (big-endian uint256)
- *   bytes 64+   : UTF-8 bytes, right-padded to a 32-byte boundary
- *
- * Some non-standard tokens (early MakerDAO, etc.) return a `bytes32`
- * directly instead of a length-prefixed string; the fallback strips
- * trailing nulls and decodes the raw bytes.
- */
-const decodeAbiString = (hex: string): string => {
-  const clean = hex.startsWith(HEX_PREFIX) ? hex.slice(2) : hex;
-  if (clean.length === 0) {
-    return "";
-  }
-  if (clean.length >= 128) {
-    const lengthHex = clean.slice(64, 128);
-    const length = Number(BigInt(`0x${lengthHex}`));
-    if (length > 0 && clean.length >= 128 + length * 2) {
-      const dataHex = clean.slice(128, 128 + length * 2);
-      return new TextDecoder().decode(hexToBytes(dataHex));
-    }
-  }
-  const buf = hexToBytes(clean.slice(0, 64));
-  let end = buf.length;
-  while (end > 0 && buf[end - 1] === 0) {
-    end -= 1;
-  }
-  return new TextDecoder().decode(buf.subarray(0, end));
-};
-
 const buildEvmChain = (chainIdHex: string, walletName: string): ChainBase => {
   const reference = chainIdHexToDecimal(chainIdHex);
   return {
@@ -123,6 +56,37 @@ const buildEvmAccount = (address: string, chain: ChainBase): Account => ({
   id: `${chain.id}:${address.toLowerCase()}`,
   walletAddress: address,
 });
+
+type AccountStateOptions = {
+  accounts?: Array<string>;
+  chainIdHex?: string;
+};
+
+const readAccountState = async (
+  provider: Eip1193Provider,
+  walletName: string,
+  options: AccountStateOptions = {},
+) => {
+  const [accountsResult, chainIdResult] = await Promise.allSettled([
+    options.accounts === undefined
+      ? requestStringArray(provider, { method: "eth_accounts" })
+      : Promise.resolve(options.accounts),
+    options.chainIdHex === undefined
+      ? requestString(provider, { method: "eth_chainId" })
+      : Promise.resolve(options.chainIdHex),
+  ]);
+  if (accountsResult.status === "rejected" || chainIdResult.status === "rejected") {
+    return null;
+  }
+  const accounts = accountsResult.value;
+  if (accounts.length === 0) {
+    return null;
+  }
+  const chain = buildEvmChain(chainIdResult.value, walletName);
+  const builtAccounts = accounts.map((address) => buildEvmAccount(address, chain));
+  const account = builtAccounts[0];
+  return account === undefined ? null : { account, accounts: builtAccounts };
+};
 
 /**
  * Adapt an EIP-1193 provider (announced via EIP-6963) into a butr
@@ -215,43 +179,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       if (first === undefined) {
         throw new Error("No connected account");
       }
-      if (mint === undefined || mint === "") {
-        const balanceHex = await requestString(provider, {
-          method: "eth_getBalance",
-          params: [first, "latest"],
-        });
-        const value = BigInt(balanceHex);
-        return {
-          decimals: Number(ETH_DECIMALS),
-          formatted: formatEther(value),
-          symbol: "ETH",
-          value,
-        };
-      }
-      const balanceCallData = `${ERC20_BALANCE_OF_SELECTOR}${padAddressForCall(first)}`;
-      const [balanceHex, decimalsHex, symbolHex] = await Promise.all([
-        requestString(provider, {
-          method: "eth_call",
-          params: [{ data: balanceCallData, to: mint }, "latest"],
-        }),
-        requestString(provider, {
-          method: "eth_call",
-          params: [{ data: ERC20_DECIMALS_SELECTOR, to: mint }, "latest"],
-        }),
-        requestString(provider, {
-          method: "eth_call",
-          params: [{ data: ERC20_SYMBOL_SELECTOR, to: mint }, "latest"],
-        }),
-      ]);
-      const value = BigInt(balanceHex);
-      const decimals = Number(BigInt(decimalsHex));
-      const symbol = decodeAbiString(symbolHex);
-      return {
-        decimals,
-        formatted: formatTokenUnits(value, decimals),
-        symbol,
-        value,
-      };
+      return readEvmBalance(provider, first, mint);
     },
 
     getSigner: () => Promise.resolve(provider),
@@ -349,57 +277,29 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     },
 
     subscribe(listener) {
+      const synchronizeAccount = async (options?: AccountStateOptions) => {
+        try {
+          const state = await readAccountState(provider, info.name, options);
+          if (state !== null) {
+            listener({ ...state, type: "accountChanged" });
+          }
+        } catch {
+          // EIP-1193 event reads are best-effort; a later event retries synchronization.
+        }
+      };
+
       const onAccountsChanged: Eip1193Listener = (...args) => {
         const accs = toStringArray(args[0]);
         if (accs.length === 0) {
           listener({ type: "disconnected" });
           return;
         }
-        void provider
-          .request({ method: "eth_chainId" })
-          // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async
-          .then((chainIdHex) => {
-            const chain = buildEvmChain(
-              typeof chainIdHex === "string" ? chainIdHex : "",
-              info.name,
-            );
-            const accounts = accs.map((addr) => buildEvmAccount(addr, chain));
-            const first = accounts[0];
-            if (first === undefined) {
-              return undefined;
-            }
-            listener({ account: first, accounts, type: "accountChanged" });
-            return undefined;
-          })
-          // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async
-          .catch(() => {
-            // Drop silently; next event will retry the read.
-          });
+        void synchronizeAccount({ accounts: accs });
       };
 
       const onChainChanged: Eip1193Listener = (...args) => {
         const chainIdHex = typeof args[0] === "string" ? args[0] : "";
-        void provider
-          .request({ method: "eth_accounts" })
-          // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async
-          .then((accounts) => {
-            const accs = toStringArray(accounts);
-            if (accs.length === 0) {
-              return undefined;
-            }
-            const chain = buildEvmChain(chainIdHex, info.name);
-            const built = accs.map((addr) => buildEvmAccount(addr, chain));
-            const first = built[0];
-            if (first === undefined) {
-              return undefined;
-            }
-            listener({ account: first, accounts: built, type: "accountChanged" });
-            return undefined;
-          })
-          // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async
-          .catch(() => {
-            // Drop silently.
-          });
+        void synchronizeAccount({ chainIdHex });
       };
 
       const onDisconnect: Eip1193Listener = () => {
@@ -407,32 +307,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       };
 
       const onConnect: Eip1193Listener = () => {
-        void Promise.all([
-          provider.request({ method: "eth_accounts" }),
-          provider.request({ method: "eth_chainId" }),
-        ])
-          // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async
-          .then(([accountsRaw, chainIdHex]) => {
-            const accs = toStringArray(accountsRaw);
-            if (accs.length === 0) {
-              return undefined;
-            }
-            const chain = buildEvmChain(
-              typeof chainIdHex === "string" ? chainIdHex : "",
-              info.name,
-            );
-            const built = accs.map((addr) => buildEvmAccount(addr, chain));
-            const first = built[0];
-            if (first === undefined) {
-              return undefined;
-            }
-            listener({ account: first, accounts: built, type: "accountChanged" });
-            return undefined;
-          })
-          // oxlint-disable-next-line promise/prefer-await-to-then -- callback context, not async
-          .catch(() => {
-            // Drop silently; a later event will resync.
-          });
+        void synchronizeAccount();
       };
 
       provider.on("accountsChanged", onAccountsChanged);
@@ -458,4 +333,5 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
 };
 
 export { bytesToHexPrefixed as bytesToHex, hexToBytes } from "@usebutr/core";
-export { buildEvmAdapter, chainIdDecimalToHex, chainIdHexToDecimal, formatEther };
+export { formatEther } from "./evm-balance";
+export { buildEvmAdapter, chainIdDecimalToHex, chainIdHexToDecimal };

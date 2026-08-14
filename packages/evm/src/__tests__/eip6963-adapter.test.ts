@@ -334,6 +334,70 @@ describe("buildEvmAdapter", () => {
     unsub?.();
   });
 
+  it("subscribe() normalizes accountsChanged without reading accounts again", async () => {
+    const provider = createMockProvider();
+    provider.setHandler("eth_chainId", () => "0x89");
+    const adapter = buildEvmAdapter(INFO, provider);
+    const listener = vi.fn<() => void>();
+    const unsub = adapter.subscribe?.(listener);
+
+    provider.emit("accountsChanged", ["0xAAA", 42, "0xBBB"]);
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+
+    expect(provider.requests.filter(({ method }) => method === "eth_accounts")).toHaveLength(0);
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accounts: [
+          expect.objectContaining({ walletAddress: "0xAAA" }),
+          expect.objectContaining({ walletAddress: "0xBBB" }),
+        ],
+      }),
+    );
+    unsub?.();
+  });
+
+  it("subscribe() uses chainChanged payload without reading the chain again", async () => {
+    const provider = createMockProvider();
+    provider.setHandler("eth_accounts", () => ["0xAAA"]);
+    const adapter = buildEvmAdapter(INFO, provider);
+    const listener = vi.fn<() => void>();
+    const unsub = adapter.subscribe?.(listener);
+
+    provider.emit("chainChanged", "0x89");
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+
+    expect(provider.requests.filter(({ method }) => method === "eth_chainId")).toHaveLength(0);
+    const expectedChain = expect.objectContaining({ id: "eip155:137" });
+    const expectedAccount = expect.objectContaining({ chain: expectedChain });
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({ account: expectedAccount, type: "accountChanged" }),
+    );
+    unsub?.();
+  });
+
+  it("subscribe() ignores malformed and rejected synchronization reads", async () => {
+    const provider = createMockProvider();
+    provider.setHandler("eth_accounts", () => ({ address: "0xAAA" }));
+    provider.setHandler("eth_chainId", () => {
+      throw new Error("wallet unavailable");
+    });
+    const adapter = buildEvmAdapter(INFO, provider);
+    const listener = vi.fn<() => void>();
+    const unsub = adapter.subscribe?.(listener);
+
+    provider.emit("connect");
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+
+    expect(listener).not.toHaveBeenCalled();
+    unsub?.();
+  });
+
   it("subscribe() bridges empty-accounts to disconnected", () => {
     const provider = createMockProvider();
     const adapter = buildEvmAdapter(INFO, provider);

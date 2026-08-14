@@ -1,10 +1,5 @@
 @import "tailwindcss";
 
-/*
- * butr brand theme; the same amber/OKLch tokens used by the docs site
- * (apps/docs/app/global.css), but dark mode is driven by the OS via
- * `prefers-color-scheme` so the landing page needs no theme provider.
- */
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -75,6 +70,32 @@ body {
 
 ::selection {
   background-color: color-mix(in oklab, var(--primary) 35%, transparent);
+}
+
+.wallet-network-hero {
+  background-image:
+    radial-gradient(
+      circle at 78% 30%,
+      color-mix(in oklab, var(--primary) 18%, transparent),
+      transparent 25rem
+    ),
+    linear-gradient(color-mix(in oklab, var(--border) 45%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--border) 45%, transparent) 1px, transparent 1px);
+  background-size:
+    auto,
+    2.5rem 2.5rem,
+    2.5rem 2.5rem;
+}
+
+.network-map::before {
+  position: absolute;
+  top: 5.75rem;
+  bottom: 4.5rem;
+  left: 50%;
+  z-index: -1;
+  width: 1px;
+  background: color-mix(in oklab, var(--primary) 55%, transparent);
+  content: "";
 }
 
 /*

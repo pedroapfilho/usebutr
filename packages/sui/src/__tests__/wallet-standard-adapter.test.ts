@@ -1,3 +1,4 @@
+import { base64ToBytes } from "@usebutr/core";
 import type {
   StandardConnectFeature,
   StandardDisconnectFeature,
@@ -10,7 +11,17 @@ import { buildSuiAdapter } from "../wallet-standard-adapter";
 import type {
   SuiSignAndExecuteTransactionFeature,
   SuiSignPersonalMessageFeature,
+  SuiSignTransactionFeature,
 } from "../wallet-standard-types";
+
+/** Narrows the WalletAdapter union; `signTransaction` only exists on the sui
+ *  variant. */
+const expectSuiAdapter = (adapter: ReturnType<typeof buildSuiAdapter>) => {
+  if (adapter?.chainPlatform !== "sui") {
+    throw new Error("expected a sui adapter");
+  }
+  return adapter;
+};
 
 const buildAccount = (
   address: string,
@@ -194,6 +205,71 @@ describe("buildSuiAdapter", () => {
       transaction: tx,
     });
     expect(digest).toBe("DigEst123");
+  });
+
+  // Sui's executeTransactionBlock needs { transactionBlock, signature }, so a
+  // bare Uint8Array cannot express the result of a sign-only call.
+  it("signTransaction() returns both the bytes and the signature", async () => {
+    const account = buildAccount("0xSuiAddress1");
+    const signFeature: SuiSignTransactionFeature = {
+      signTransaction: vi.fn().mockResolvedValue({ bytes: "AQID", signature: "BAUG" }),
+    };
+    const wallet = withFeatures(buildWallet({ accounts: [account] }), {
+      "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+      "sui:signTransaction": signFeature,
+    });
+    const adapter = expectSuiAdapter(buildSuiAdapter(wallet));
+
+    const result = await adapter.signTransaction?.({ toJSON: () => Promise.resolve("{}") });
+
+    expect(result?.bytes).toEqual(base64ToBytes("AQID"));
+    expect(result?.signature).toEqual(base64ToBytes("BAUG"));
+  });
+
+  it("signTransaction() is absent when sui:signTransaction is not advertised", () => {
+    const wallet = withFeatures(buildWallet(), {
+      "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+    });
+    const adapter = expectSuiAdapter(buildSuiAdapter(wallet));
+    expect(adapter.signTransaction).toBeUndefined();
+  });
+
+  it("wraps a base64 string into the toJSON shape wallets actually accept", async () => {
+    const account = buildAccount("0xSuiAddress1");
+    const sendFeature: SuiSignAndExecuteTransactionFeature = {
+      signAndExecuteTransaction: vi
+        .fn()
+        .mockResolvedValue({ bytes: "", digest: "d", effects: "", signature: "" }),
+    };
+    const wallet = withFeatures(buildWallet({ accounts: [account] }), {
+      "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+      "sui:signAndExecuteTransaction": sendFeature,
+    });
+    const adapter = buildSuiAdapter(wallet);
+
+    await adapter?.sendTx("AQID");
+
+    const passed = vi.mocked(sendFeature.signAndExecuteTransaction).mock.calls[0]?.[0];
+    await expect(passed?.transaction.toJSON()).resolves.toBe("AQID");
+  });
+
+  it("wraps BCS bytes into the toJSON shape", async () => {
+    const account = buildAccount("0xSuiAddress1");
+    const sendFeature: SuiSignAndExecuteTransactionFeature = {
+      signAndExecuteTransaction: vi
+        .fn()
+        .mockResolvedValue({ bytes: "", digest: "d", effects: "", signature: "" }),
+    };
+    const wallet = withFeatures(buildWallet({ accounts: [account] }), {
+      "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+      "sui:signAndExecuteTransaction": sendFeature,
+    });
+    const adapter = buildSuiAdapter(wallet);
+
+    await adapter?.sendTx(new Uint8Array([1, 2, 3]));
+
+    const passed = vi.mocked(sendFeature.signAndExecuteTransaction).mock.calls[0]?.[0];
+    await expect(passed?.transaction.toJSON()).resolves.toBe("AQID");
   });
 
   it("sendTx() rejects when transaction isn't a Transaction nor a string", async () => {

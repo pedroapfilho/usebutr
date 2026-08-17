@@ -5,6 +5,7 @@ import type {
 } from "@usebutr/wallet-standard-shared";
 import { describe, expect, it, vi } from "vitest";
 
+import { POLKADOT_CHAINS } from "../chains";
 import { buildPolkadotWalletStandardAdapter } from "../wallet-standard-adapter";
 import type { PolkadotSignMessageFeature } from "../wallet-standard-types";
 
@@ -130,6 +131,18 @@ describe("buildPolkadotWalletStandardAdapter", () => {
         reference: "polkadot",
       }),
     ).toThrow(/does not advertise chain/v);
+  });
+
+  it("resolves the Polkadot chain even when the wallet lists a testnet first", async () => {
+    const wallet = withFeatures(
+      buildWallet({
+        chains: [POLKADOT_CHAINS.westend.id, POLKADOT_CHAINS.polkadot.id],
+      }),
+      { "standard:connect": baseConnect },
+    );
+    const adapter = buildPolkadotWalletStandardAdapter(wallet);
+    const account = await adapter?.getAccount();
+    expect(account?.chain.id).toBe(POLKADOT_CHAINS.polkadot.id);
   });
 
   it("getSigner() returns the wallet object", async () => {

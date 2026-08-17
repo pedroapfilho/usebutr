@@ -32,6 +32,9 @@ const DEFAULT_CAPABILITIES: WalletCapabilities = {
  * adapter.connect = () => Promise.reject(new Error("user rejected"));
  * ```
  */
+const signBytes = (tx: unknown) =>
+  Promise.resolve(tx instanceof Uint8Array ? tx : new Uint8Array());
+
 const createFakeAdapter = (options: FakeAdapterOptions = {}): WalletAdapter => {
   const id = options.id ?? "fake";
   const name = options.name ?? "Fake Wallet";
@@ -40,9 +43,8 @@ const createFakeAdapter = (options: FakeAdapterOptions = {}): WalletAdapter => {
   const account = accounts[0] ?? null;
   const icon = options.icon;
 
-  return {
+  const base = {
     capabilities: { ...DEFAULT_CAPABILITIES, ...options.capabilities },
-    chainPlatform,
     connect: () => Promise.resolve(),
     disconnect: () => Promise.resolve(),
     getAccount: () => Promise.resolve(account),
@@ -62,22 +64,59 @@ const createFakeAdapter = (options: FakeAdapterOptions = {}): WalletAdapter => {
     requestAccounts: () => Promise.resolve(),
     sendTx: () => Promise.resolve("0xfakehash"),
     sendTxToChain: () => Promise.resolve("0xfakehash"),
-    signIn: () =>
-      Promise.resolve({
-        account: account ?? {
-          chain: { id: "", name: "", namespace: "", reference: "" },
-          id: "",
-          walletAddress: "",
-        },
-        signature: new Uint8Array(),
-        signedMessage: new Uint8Array(),
-      }),
-    signMessage: (msg) => Promise.resolve({ signature: msg, signedMessage: msg }),
-    signTransaction: (tx) => Promise.resolve(tx instanceof Uint8Array ? tx : new Uint8Array()),
+    signMessage: (msg: Uint8Array) => Promise.resolve({ signature: msg, signedMessage: msg }),
     subscribe: () => () => {},
     switchAccount: () => Promise.resolve(),
     switchChain: () => Promise.resolve(),
   };
+
+  // Each platform's sign-only surface differs, so the fake is built per variant
+  // rather than spread into one shape: Sui returns the bytes/signature pair its
+  // RPC needs, EVM and Polkadot have no sign-only path at all.
+  switch (chainPlatform) {
+    case "bitcoin": {
+      return { ...base, chainPlatform: "bitcoin", signTransaction: signBytes };
+    }
+    case "evm": {
+      return { ...base, chainPlatform: "evm" };
+    }
+    case "polkadot": {
+      return { ...base, chainPlatform: "polkadot" };
+    }
+    case "sui": {
+      return {
+        ...base,
+        chainPlatform: "sui",
+        signTransaction: (tx: unknown) =>
+          Promise.resolve({
+            bytes: tx instanceof Uint8Array ? tx : new Uint8Array(),
+            signature: new Uint8Array(),
+          }),
+      };
+    }
+    case "svm": {
+      return {
+        ...base,
+        chainPlatform: "svm",
+        signIn: () =>
+          Promise.resolve({
+            account: account ?? {
+              chain: { id: "", name: "", namespace: "", reference: "" },
+              id: "",
+              walletAddress: "",
+            },
+            signature: new Uint8Array(),
+            signedMessage: new Uint8Array(),
+          }),
+        signTransaction: signBytes,
+      };
+    }
+    default: {
+      const exhaustiveCheck: never = chainPlatform;
+      void exhaustiveCheck;
+      return { ...base, chainPlatform: "evm" };
+    }
+  }
 };
 
 export type { FakeAdapterOptions };

@@ -207,11 +207,11 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
       ),
 
     /**
-     * Sign a serialized Sui transaction. Returns the raw 64-byte ed25519
-     * signature. The consumer is responsible for assembling the final
-     * signed transaction by wrapping this signature with the public key
-     * into Sui's signature envelope; use `@mysten/sui`'s signature
-     * helpers. Mirrors how Suiet + every Sui wallet ships this surface.
+     * Sign a serialized Sui transaction. Returns the BCS bytes that were
+     * signed plus the raw 64-byte ed25519 signature, which is what
+     * `SuiClient.executeTransactionBlock` consumes. Wrapping the signature
+     * with the public key into Sui's signature envelope stays the
+     * consumer's job; use `@mysten/sui`'s signature helpers.
      */
     async signTransaction(tx, account) {
       const sui = core.requireApp();
@@ -222,7 +222,7 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
       }
       const path = await core.resolvePath(account);
       const result = await sui.signTransaction(path, tx);
-      return new Uint8Array(result.signature);
+      return { bytes: tx, signature: new Uint8Array(result.signature) };
     },
 
     subscribe: core.subscribe,

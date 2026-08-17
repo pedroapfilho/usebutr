@@ -166,9 +166,9 @@ describe("createSuiLedgerAdapter", () => {
     await adapter.connect();
     const tx = new Uint8Array([1, 2, 3, 4]);
     const signed = await adapter.signTransaction!(tx);
-    expect(signed).toBeInstanceOf(Uint8Array);
-    expect(signed.length).toBe(64);
-    expect(signed[0]).toBe(0xcd);
+    expect(signed.bytes).toBe(tx);
+    expect(signed.signature.length).toBe(64);
+    expect(signed.signature[0]).toBe(0xcd);
   });
 
   it("signTransaction() rejects non-Uint8Array input", async () => {
@@ -210,7 +210,7 @@ describe("createSuiLedgerAdapter", () => {
     }
     const tx = new Uint8Array([9, 9, 9]);
     const signed = await adapter.signTransaction!(tx, targetAccount);
-    expect(signed.length).toBe(64);
+    expect(signed.signature.length).toBe(64);
   });
 
   it("signTransaction() throws when the address isn't on any known path", async () => {

@@ -30,7 +30,7 @@ type SuiSignPersonalMessageFeature = {
 type SuiSignTransactionInput = {
   account: WalletStandardWalletAccount;
   chain: string;
-  transaction: { toJSON: () => Promise<string> } | string;
+  transaction: { toJSON: () => Promise<string> };
 };
 
 type SuiSignTransactionOutput = {
@@ -45,7 +45,7 @@ type SuiSignTransactionFeature = {
 type SuiSignAndExecuteTransactionInput = {
   account: WalletStandardWalletAccount;
   chain: string;
-  transaction: { toJSON: () => Promise<string> } | string;
+  transaction: { toJSON: () => Promise<string> };
 };
 
 type SuiSignAndExecuteTransactionOutput = {

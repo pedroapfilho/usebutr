@@ -16,7 +16,7 @@ import {
   useSetActiveConnector,
 } from "@usebutr/react";
 import Image from "next/image";
-import { type ReactNode, useState } from "react";
+import { type ChangeEvent, type ReactNode, useState } from "react";
 
 import { useDiscoveredWallets } from "../wallet-provider";
 
@@ -105,6 +105,24 @@ const AccountPicker = ({ wallet }: { wallet: ConnectedWallet }) => (
 const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
   const chains = CHAINS_BY_PLATFORM[wallet.connector.chainPlatform];
   const selectId = `chain-picker-${wallet.connector.id}`;
+  const [switchError, setSwitchError] = useState<string | null>(null);
+
+  // switchChain rejects on user rejection (4001) and unknown network (4902),
+  // both routine. The select is controlled on the wallet's current chain, so
+  // an unhandled rejection would silently snap it back with no explanation.
+  const handleChange = async (event: ChangeEvent<HTMLSelectElement>) => {
+    const target = chains.find((c) => c.id === event.target.value);
+    if (!target) {
+      return;
+    }
+    setSwitchError(null);
+    try {
+      await wallet.connector.switchChain(target);
+    } catch (error) {
+      setSwitchError(error instanceof Error ? error.message : "Failed to switch chain");
+    }
+  };
+
   return (
     <div>
       <label className="sr-only" htmlFor={selectId}>
@@ -113,11 +131,8 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
       <select
         className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs"
         id={selectId}
-        onChange={(e) => {
-          const target = chains.find((c) => c.id === e.target.value);
-          if (target) {
-            void wallet.connector.switchChain(target);
-          }
+        onChange={(event) => {
+          void handleChange(event);
         }}
         value={wallet.account.chain.id}
       >
@@ -130,6 +145,11 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
           </option>
         ))}
       </select>
+      {switchError === null ? null : (
+        <p className="mt-1 text-xs text-red-600" role="alert">
+          {switchError}
+        </p>
+      )}
     </div>
   );
 };

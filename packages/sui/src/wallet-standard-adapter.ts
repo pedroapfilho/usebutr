@@ -1,5 +1,5 @@
 import type { WalletAdapter } from "@usebutr/core";
-import { base64ToBytes } from "@usebutr/core";
+import { base64ToBytes, bytesToBase64 } from "@usebutr/core";
 import {
   createWalletStandardCore,
   discoverWalletStandard,
@@ -19,21 +19,24 @@ const SUI_PREFIX = "sui:";
 const SUI_DECIMALS = 9;
 const SUI_MAINNET = "sui:mainnet";
 
-/** Coerce butr's `unknown` tx into the shape `sui:signAndExecuteTransaction`
- *  expects (an object with `toJSON()` returning a Promise<string>). When
- *  consumers pass a base64 string directly, we wrap it in a stub object so
- *  the feature contract stays satisfied without us depending on
- *  `@mysten/sui`. */
-const coerceSuiTransaction = (tx: unknown): { toJSON: () => Promise<string> } | string => {
+/** Coerce butr's `unknown` tx into the shape the Sui Wallet Standard features
+ *  expect: an object with `toJSON()` returning a Promise<string>. A raw string
+ *  or BCS byte array is wrapped, because wallets accept only the `toJSON()`
+ *  form and a bare string reaches them as a shape they cannot consume. */
+const coerceSuiTransaction = (tx: unknown): { toJSON: () => Promise<string> } => {
   if (typeof tx === "string") {
-    return tx;
+    return { toJSON: () => Promise.resolve(tx) };
+  }
+  if (tx instanceof Uint8Array) {
+    const encoded = bytesToBase64(tx);
+    return { toJSON: () => Promise.resolve(encoded) };
   }
   if (typeof tx === "object" && tx !== null && "toJSON" in tx && typeof tx.toJSON === "function") {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- validated toJSON() above; @mysten/sui Transaction is otherwise untyped here
     return tx as { toJSON: () => Promise<string> };
   }
   throw new TypeError(
-    "Sui sendTx/signTransaction expects a @mysten/sui Transaction (with toJSON()) or a base64-encoded string",
+    "Sui sendTx/signTransaction expects a @mysten/sui Transaction (with toJSON()), a base64-encoded string, or BCS bytes",
   );
 };
 
@@ -157,7 +160,10 @@ const buildSuiAdapter = (
               chain: core.currentChainId(),
               transaction,
             });
-            return base64ToBytes(output.bytes);
+            return {
+              bytes: base64ToBytes(output.bytes),
+              signature: base64ToBytes(output.signature),
+            };
           },
         }),
   };

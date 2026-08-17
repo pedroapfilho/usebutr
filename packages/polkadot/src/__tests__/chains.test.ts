@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { POLKADOT_CHAINS, POLKADOT_CHAINS_LIST } from "../chains";
+import {
+  POLKADOT_CHAIN_BY_ID,
+  POLKADOT_CHAINS,
+  POLKADOT_CHAINS_LIST,
+  POLKADOT_MAINNET_IDS,
+} from "../chains";
 
 describe("POLKADOT_CHAINS", () => {
   it("uses CAIP-2 genesis-hash ids under the polkadot namespace", () => {
@@ -23,5 +28,19 @@ describe("POLKADOT_CHAINS", () => {
       "polkadot",
       "polkadot",
     ]);
+  });
+
+  it("indexes every listed chain by id", () => {
+    expect(POLKADOT_CHAIN_BY_ID.size).toBe(POLKADOT_CHAINS_LIST.length);
+    for (const chain of POLKADOT_CHAINS_LIST) {
+      expect(POLKADOT_CHAIN_BY_ID.get(chain.id)).toBe(chain);
+    }
+    expect(POLKADOT_CHAIN_BY_ID.get("polkadot:unknown")).toBeUndefined();
+  });
+
+  it("prefers Polkadot and Kusama, never the testnets", () => {
+    expect(POLKADOT_MAINNET_IDS).toEqual([POLKADOT_CHAINS.polkadot.id, POLKADOT_CHAINS.kusama.id]);
+    expect(POLKADOT_MAINNET_IDS).not.toContain(POLKADOT_CHAINS.westend.id);
+    expect(POLKADOT_MAINNET_IDS).not.toContain(POLKADOT_CHAINS.paseo.id);
   });
 });

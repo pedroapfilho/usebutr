@@ -8,6 +8,7 @@ import {
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
 import { resolveWalletStandardPolkadotCapabilities } from "./capabilities";
+import { POLKADOT_MAINNET_IDS } from "./chains";
 import { noRpcBalance, noRpcSendTx, noRpcSendTxToChain, noRpcTransactionReceipt } from "./no-rpc";
 import type { PolkadotSignMessageFeature } from "./wallet-standard-types";
 
@@ -35,7 +36,7 @@ const buildPolkadotWalletStandardAdapter = (
     label: "Polkadot",
     namespace: "polkadot",
     platform: "Polkadot",
-    preferredChainIds: [],
+    preferredChainIds: POLKADOT_MAINNET_IDS,
     registerDisconnector,
     trackChainChanges: false,
     wallet,

@@ -98,7 +98,14 @@ type SvmWallet = WalletBase & {
  * consumer via `@mysten/sui`'s SuiClient.
  */
 type SuiWallet = WalletBase & {
-  signTransaction?: (tx: unknown, account?: Account) => Promise<Uint8Array>;
+  /** Sign a Sui transaction WITHOUT executing it. Returns BOTH halves the
+   *  chain requires: `SuiClient.executeTransactionBlock` needs
+   *  `{ transactionBlock, signature }`, so a bare `Uint8Array` cannot express
+   *  the result and a consumer holding one cannot tell which half they have. */
+  signTransaction?: (
+    tx: unknown,
+    account?: Account,
+  ) => Promise<{ bytes: Uint8Array; signature: Uint8Array }>;
 };
 
 /**

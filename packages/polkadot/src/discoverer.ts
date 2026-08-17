@@ -9,10 +9,11 @@ import { discoverPolkadotWalletStandardAdapters } from "./wallet-standard-adapte
  *    Polkadot standard (polkadot-js, Talisman, SubWallet, Nova, Enkrypt).
  *  - FALLBACK is Wallet Standard `polkadot:*`. It defers when the primary
  *    channel already produced an adapter for the session
- *    (`hasAnyPrimaryAdapter`). Since Wallet Standard support is always
- *    additive on Polkadot today (Talisman/SubWallet expose both), the
- *    discovery-bus also dedups overlaps and the defer prevents
- *    double-listing.
+ *    (`hasAnyPrimaryAdapter`). The defer is the ONLY thing preventing
+ *    double-listing: a wallet exposing both channels (Talisman, SubWallet)
+ *    mints two unrelated ids (`injected:polkadot:<slug>` and
+ *    `wallet-standard:polkadot-<slug>`) that the discovery bus cannot
+ *    collapse.
  */
 const polkadotDiscoverer: PlatformDiscoverer = {
   fallback: {

@@ -10,6 +10,23 @@ const LEDGER_ICON =
 
 const NOT_CONNECTED = "[butr/ledger] not connected: call connect() first";
 
+const closeTransport = async (handle: TransportLike): Promise<void> => {
+  try {
+    await handle.close();
+  } catch (error) {
+    logWarn("[butr/ledger] transport.close threw:", error);
+  }
+};
+
+/** The device state that only exists between a successful `connect()` and
+ *  `disconnect()`. One value so no reader can see an open transport whose
+ *  address read failed, or an address whose transport is already closed. */
+type LedgerSession<TApp> = {
+  address: string;
+  app: TApp;
+  transport: TransportLike;
+};
+
 type LedgerAdapterCoreInput<TApp> = {
   accountCount?: number;
   /** Read the address the device derives at `path`. Every Ledger app has its
@@ -98,44 +115,71 @@ const createLedgerAdapterCore = <TApp>({
   const accountCount = Math.max(1, requestedAccountCount ?? 1);
   const pathAtIndex = (index: number): string => pathAt(derivationPathPrefix, index);
 
-  let transport: TransportLike | null = null;
-  let app: TApp | null = null;
-  let currentAddress: string | null = null;
+  let session: LedgerSession<TApp> | null = null;
+  let connecting: { generation: number; promise: Promise<void> } | null = null;
+  /** Bumped by every `disconnect()`. An in-flight `connect()` compares it
+   *  across its awaits and discards its transport when it moved, so a
+   *  disconnect issued mid-connect can't be undone by the late address. */
+  let generation = 0;
 
-  const requireApp = (): TApp => {
-    if (app === null) {
+  const requireSession = (): LedgerSession<TApp> => {
+    if (session === null) {
       throw new Error(NOT_CONNECTED);
     }
-    return app;
+    return session;
   };
 
-  const matchesCurrent = (address: string): boolean =>
-    currentAddress !== null && addressesEqual(address, currentAddress);
+  const requireApp = (): TApp => requireSession().app;
+
+  const openSession = async (): Promise<void> => {
+    const openedAt = generation;
+    const factory = transportFactory ?? (await loadTransport());
+    const bindApp = await loadApp();
+    const transport = await factory.create();
+    try {
+      const app = bindApp(transport);
+      const address = await addressAt(app, pathAtIndex(0));
+      if (generation !== openedAt) {
+        await closeTransport(transport);
+        return;
+      }
+      session = { address, app, transport };
+    } catch (error) {
+      await closeTransport(transport);
+      throw error;
+    }
+  };
 
   return {
     async connect(opts) {
       if (opts?.silent === true) {
         throw new Error("Ledger requires an interactive connect");
       }
-      const factory = transportFactory ?? (await loadTransport());
-      const bindApp = await loadApp();
-      transport = await factory.create();
-      app = bindApp(transport);
-      currentAddress = await addressAt(app, pathAtIndex(0));
+      if (connecting === null || connecting.generation !== generation) {
+        connecting = { generation, promise: openSession() };
+      }
+      const inFlight = connecting;
+      try {
+        await inFlight.promise;
+      } catch (error) {
+        // A failed attempt must not be replayed: unlocking the device and
+        // calling connect() again has to reach the hardware.
+        if (connecting === inFlight) {
+          connecting = null;
+        }
+        throw error;
+      }
     },
 
-    currentAddress: () =>
-      currentAddress === null || currentAddress === "" ? null : currentAddress,
+    currentAddress: () => (session === null || session.address === "" ? null : session.address),
 
     async disconnect() {
-      try {
-        await transport?.close();
-      } catch (error) {
-        logWarn("[butr/ledger] transport.close threw:", error);
+      generation += 1;
+      const active = session;
+      session = null;
+      if (active !== null) {
+        await closeTransport(active.transport);
       }
-      transport = null;
-      app = null;
-      currentAddress = null;
     },
 
     getBalance: () =>
@@ -143,7 +187,7 @@ const createLedgerAdapterCore = <TApp>({
         new Error(`[butr/ledger] getBalance not supported: Ledger has no RPC. ${getBalanceHint}`),
       ),
 
-    getSigner: () => Promise.resolve(app),
+    getSigner: () => Promise.resolve(session?.app ?? null),
 
     getTransactionReceipt: () =>
       Promise.reject(
@@ -154,13 +198,14 @@ const createLedgerAdapterCore = <TApp>({
     id,
 
     async listAddresses() {
-      if (app === null) {
+      const active = session;
+      if (active === null) {
         return [];
       }
       const addresses: Array<string> = [];
       for (let i = 0; i < accountCount; i += 1) {
         // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
-        addresses.push(await addressAt(app, pathAtIndex(i)));
+        addresses.push(await addressAt(active.app, pathAtIndex(i)));
       }
       return addresses;
     },
@@ -169,14 +214,14 @@ const createLedgerAdapterCore = <TApp>({
     requireApp,
 
     async resolvePath(account) {
-      const instance = requireApp();
-      if (!account || matchesCurrent(account.walletAddress)) {
+      const active = requireSession();
+      if (!account || addressesEqual(account.walletAddress, active.address)) {
         return pathAtIndex(0);
       }
       for (let i = 0; i < accountCount; i += 1) {
         const candidatePath = pathAtIndex(i);
         // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
-        const candidateAddress = await addressAt(instance, candidatePath);
+        const candidateAddress = await addressAt(active.app, candidatePath);
         if (addressesEqual(candidateAddress, account.walletAddress)) {
           return candidatePath;
         }

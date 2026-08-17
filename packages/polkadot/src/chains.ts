@@ -29,4 +29,16 @@ const POLKADOT_CHAINS = {
 
 const POLKADOT_CHAINS_LIST: ReadonlyArray<ChainBase> = Object.values(POLKADOT_CHAINS);
 
-export { POLKADOT_CHAINS, POLKADOT_CHAINS_LIST };
+const POLKADOT_CHAIN_BY_ID: ReadonlyMap<string, ChainBase> = new Map(
+  POLKADOT_CHAINS_LIST.map((chain) => [chain.id, chain]),
+);
+
+/** Chains a wallet advertising several networks should resolve to first.
+ *  Kusama sits alongside Polkadot because it carries real value; Westend
+ *  and Paseo are faucet testnets and must never win the default. */
+const POLKADOT_MAINNET_IDS: ReadonlyArray<string> = [
+  POLKADOT_CHAINS.polkadot.id,
+  POLKADOT_CHAINS.kusama.id,
+];
+
+export { POLKADOT_CHAIN_BY_ID, POLKADOT_CHAINS, POLKADOT_CHAINS_LIST, POLKADOT_MAINNET_IDS };

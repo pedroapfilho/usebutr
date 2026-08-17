@@ -21,4 +21,4 @@ jobs:
       # build: the workspace .d.ts files, plus demo-tanstack-start's generated
       # route tree. Narrowing this to ./packages/* breaks that demo's lint.
       - run: pnpm build
-      - run: pnpm lint --format=github
+      - run: pnpm oxlint --format=github .

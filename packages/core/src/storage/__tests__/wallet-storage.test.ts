@@ -11,6 +11,15 @@ import type { ChainPlatform, ConnectedWallet } from "../../types";
 import type { StorageDriver } from "../persistence";
 import { WalletStorage } from "../wallet-storage";
 
+const buildQueueWallet = (connectorId: string): ConnectedWallet => {
+  const account = createMockAccount();
+  return {
+    account,
+    accounts: [account],
+    connector: createMockConnector({ id: connectorId }),
+  };
+};
+
 const createStorage = (overrides?: { persistent?: StorageDriver; session?: StorageDriver }) => {
   const persistent = overrides?.persistent ?? createMockStorageDriver();
   const session = overrides?.session ?? createMockStorageDriver();
@@ -163,6 +172,52 @@ describe("WalletStorage", () => {
 
       expect(await storage.getPool()).toEqual({});
       expect(persistent.removeItem).toHaveBeenCalledWith("test-pool");
+    });
+  });
+
+  // The mutation queue is not reentrant. A queued mutation that read through
+  // the repairing `getPool` would re-acquire the queue and hang forever,
+  // taking every later pool write with it.
+  describe("mutation queue reentrancy", () => {
+    const poolOf = (connectorId: string) => new Map([[connectorId, buildQueueWallet(connectorId)]]);
+
+    const corruptStorage = async () => {
+      const persistent = createMockStorageDriver();
+      await persistent.setItem("test-pool", "{invalid json");
+      return createStorage({ persistent });
+    };
+
+    it("setPool completes over a corrupt pool payload", async () => {
+      const { storage } = await corruptStorage();
+
+      await expect(storage.setPool(poolOf("wallet-a"))).resolves.toBeUndefined();
+      expect(Object.keys(await storage.getPool())).toEqual(["wallet-a"]);
+    });
+
+    it("removePoolEntry completes over a corrupt pool payload", async () => {
+      const { storage } = await corruptStorage();
+
+      await expect(storage.removePoolEntry("wallet-a")).resolves.toBeUndefined();
+    });
+
+    it("a corrupt payload does not jam later writes", async () => {
+      const { storage } = await corruptStorage();
+
+      await storage.setPool(poolOf("wallet-a"));
+      await storage.setPool(poolOf("wallet-b"));
+
+      const ids = Object.keys(await storage.getPool());
+      expect(ids.toSorted()).toEqual(["wallet-a", "wallet-b"]);
+    });
+
+    it("concurrent setPool calls both land", async () => {
+      const persistent = createAsyncMockStorageDriver();
+      const { storage } = createStorage({ persistent });
+
+      await Promise.all([storage.setPool(poolOf("wallet-a")), storage.setPool(poolOf("wallet-b"))]);
+
+      const ids = Object.keys(await storage.getPool());
+      expect(ids.toSorted()).toEqual(["wallet-a", "wallet-b"]);
     });
   });
 

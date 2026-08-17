@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { createMockStorageDriver } from "../../__tests__/helpers";
 import { readWalletSnapshot } from "../snapshot";
+import { WalletStorage } from "../wallet-storage";
 
 const validPoolEntry = {
   account: {
@@ -130,5 +132,39 @@ describe("readWalletSnapshot", () => {
     });
     expect(snapshot.selection.evm).toBe("metamask");
     expect((snapshot.selection as Record<string, string>).martian).toBeUndefined();
+  });
+
+  // ADR 0003 makes the server decode and the client decode load-bearing on
+  // being identical: one seeds the store, the other feeds the silent
+  // reconnect that must agree with it. Drift here is an SSR/CSR mismatch.
+  describe("decodes identically to WalletStorage", () => {
+    const selectionValue = JSON.stringify({ evm: "metamask" });
+
+    it.each([
+      ["a valid payload", poolCookieValue],
+      ["malformed JSON", "{invalid json"],
+      ["a non-record payload", JSON.stringify([1, 2, 3])],
+      [
+        "an entry whose connectorId disagrees with its key",
+        JSON.stringify({ a: { connectorId: "b" } }),
+      ],
+      ["an empty payload", ""],
+    ])("%s", async (_label, poolPayload) => {
+      const persistent = createMockStorageDriver();
+      await persistent.setItem("butr-pool", poolPayload);
+      await persistent.setItem("butr-selection", selectionValue);
+      const storage = new WalletStorage({
+        persistent,
+        session: createMockStorageDriver(),
+      });
+
+      const snapshot = readWalletSnapshot({
+        "butr-pool": poolPayload,
+        "butr-selection": selectionValue,
+      });
+
+      expect(snapshot.pool).toEqual(await storage.getPool());
+      expect(snapshot.selection).toEqual(await storage.getSelection());
+    });
   });
 });

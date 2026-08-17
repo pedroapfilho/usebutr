@@ -1,7 +1,5 @@
-import { logWarn } from "../logger";
-
 import type { StoredPoolRecord, StoredSelectionRecord } from "./persistence";
-import { chainPlatformSchema, parseStoredPoolEntry, recordSchema } from "./validation";
+import { decodePool, decodeSelection, storageKeys } from "./validation";
 
 /**
  * Server-safe view of a butr-persisted session; everything you can
@@ -60,55 +58,7 @@ const toCookieMap = (input: CookieSource): Map<string, string> => {
   return out;
 };
 
-const parsePool = (raw: string | undefined): StoredPoolRecord => {
-  if (raw === undefined || raw === "") {
-    return {};
-  }
-  try {
-    const value: unknown = JSON.parse(raw);
-    const parsed = recordSchema.safeParse(value);
-    if (!parsed.success) {
-      return {};
-    }
-    const result: StoredPoolRecord = {};
-    for (const [key, entryValue] of Object.entries(parsed.data)) {
-      const entry = parseStoredPoolEntry(key, entryValue);
-      if (entry === null) {
-        logWarn(`[butr] readWalletSnapshot: dropping invalid pool entry for ${key}`);
-      } else {
-        result[key] = entry;
-      }
-    }
-    return result;
-  } catch (error) {
-    logWarn("[butr] readWalletSnapshot: failed to parse pool cookie:", error);
-    return {};
-  }
-};
-
-const parseSelection = (raw: string | undefined): StoredSelectionRecord => {
-  if (raw === undefined || raw === "") {
-    return {};
-  }
-  try {
-    const value: unknown = JSON.parse(raw);
-    const parsed = recordSchema.safeParse(value);
-    if (!parsed.success) {
-      return {};
-    }
-    const result: StoredSelectionRecord = {};
-    for (const [key, selectionValue] of Object.entries(parsed.data)) {
-      const platform = chainPlatformSchema.safeParse(key);
-      if (platform.success && typeof selectionValue === "string" && selectionValue.length > 0) {
-        result[platform.data] = selectionValue;
-      }
-    }
-    return result;
-  } catch (error) {
-    logWarn("[butr] readWalletSnapshot: failed to parse selection cookie:", error);
-    return {};
-  }
-};
+const SNAPSHOT_LABEL = "[butr] readWalletSnapshot:";
 
 /**
  * Parse a cookie source into a server-safe `WalletSnapshot`.
@@ -141,14 +91,13 @@ const readWalletSnapshot = (
   source: CookieSource,
   options: SnapshotOptions = {},
 ): WalletSnapshot => {
-  const keyPrefix =
-    options.keyPrefix === undefined || options.keyPrefix === "" ? "butr" : options.keyPrefix;
+  const keys = storageKeys(options.keyPrefix);
   const cookies = toCookieMap(source);
 
-  const pool = parsePool(cookies.get(`${keyPrefix}-pool`));
-  const selection = parseSelection(cookies.get(`${keyPrefix}-selection`));
+  const pool = decodePool(cookies.get(keys.pool), SNAPSHOT_LABEL);
+  const selection = decodeSelection(cookies.get(keys.selection), SNAPSHOT_LABEL);
 
-  const rawActive = cookies.get(`${keyPrefix}-active`);
+  const rawActive = cookies.get(keys.active);
   let activeConnectorId: string | null = null;
   if (rawActive !== undefined && rawActive.length > 0 && pool[rawActive] !== undefined) {
     activeConnectorId = rawActive;

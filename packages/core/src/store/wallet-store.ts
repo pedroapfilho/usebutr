@@ -102,11 +102,7 @@ type WalletStore = ReturnType<typeof createWalletStore>;
 type WalletStoreState = ExtractState<WalletStore>;
 
 const createWalletStore = (config: WalletManagerConfig) => {
-  const storageKeyPrefix =
-    config.storageKeyPrefix === undefined || config.storageKeyPrefix === ""
-      ? "butr"
-      : config.storageKeyPrefix;
-  const storage = config.storage ?? new WalletStorage({ keyPrefix: storageKeyPrefix });
+  const storage = config.storage ?? new WalletStorage({ keyPrefix: config.storageKeyPrefix });
 
   const reportStorageError = (context: string) => (error: unknown) => {
     if (config.onStorageError) {

@@ -15,21 +15,14 @@ const DEFAULT_SETTLE_MS = 150;
 
 type InjectedDiscoveryOptions = {
   /**
-   * Predicate the fallback consults before emitting; if any EIP-6963
-   * adapter has been registered by the time the settle timer fires,
-   * the injected fallback is skipped (the wallet is already covered
-   * via the standards path; we don't want a duplicate).
-   *
-   * `discoverWalletAdapters` wires this to the shared `seen` set so
-   * the dedupe is automatic. Callers using `discoverInjectedAdapter`
-   * directly should pass their own check or omit it (always emit).
+   * Consulted before emitting: an already-registered EIP-6963 adapter means
+   * the wallet is covered by the standards path and emitting would duplicate
+   * it. Omit to always emit.
    */
   hasAnyEip6963Adapter?: () => boolean;
   /**
-   * How long to wait for EIP-6963 announcements before falling back
-   * to `window.ethereum`. Most wallets announce within the first
-   * frame; 150ms is a conservative settle window that keeps the
-   * picker responsive while giving slow announcements time to land.
+   * Most wallets announce within the first frame; 150ms leaves room for slow
+   * announcements without stalling the picker.
    */
   settleMs?: number;
   /** Override the global `window` reference (tests, iframes). */
@@ -53,22 +46,9 @@ const readEthereum = (target: InjectedDiscoveryOptions["target"]): Eip1193Provid
 };
 
 /**
- * Last-resort discovery path for EVM wallets that DON'T announce via
- * EIP-6963. Most modern wallets (MetaMask, Rabby, Coinbase, Phantom,
- * Brave, etc.) do announce, so the standards-based path
- * (`discoverEvmAdapters`) covers them. This module catches the long
- * tail: regional wallets (KuCoin, Bitget, BitKeep, Okto, Frontier)
- * and older builds that only expose `window.ethereum`.
- *
- * **Coordination**: the fallback waits `settleMs` (default 150ms)
- * after subscription, then consults `hasAnyEip6963Adapter` if
- * provided. If any EIP-6963 adapter has already been registered, we
- * skip emission; assume the same wallet is also speaking standards
- * and we'd just be duplicating. If no EIP-6963 adapter showed up but
- * `window.ethereum` does, we emit a generic adapter.
- *
- * The emitted adapter has `rdns: "injected:legacy"` so consumers can
- * distinguish it from EIP-6963 adapters in the picker UI.
+ * Last-resort path for the long tail of EVM wallets that expose only
+ * `window.ethereum` and never announce via EIP-6963. The emitted adapter
+ * carries `rdns: "injected:legacy"` so consumers can tell it apart.
  */
 const discoverInjectedAdapter = (
   onAdapter: (adapter: WalletAdapter) => void,

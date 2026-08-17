@@ -2,15 +2,13 @@ import type { Account, ChainBase, WalletCapabilities } from "@usebutr/core";
 import { buildAccount, logWarn } from "@usebutr/core";
 
 import type { UniversalProviderLike } from "../loader";
+import type { WalletConnectSession } from "../session";
+import { createSingleNamespaceSession, missingNamespaceError } from "../session";
 
 /**
- * Runtime capability flags shared by every CAIP-based WalletConnect v2
- * namespace (`solana`, `sui`, `bip122`). All three advertise the same
- * surface at pairing time: sign/send RPC methods are requested, while
- * balance/receipt reads, account requests, sign-in and wallet-side
- * subscriptions are not available over WC today. Per-platform builders
- * spread this into their own exported constant so each keeps a distinct
- * object identity.
+ * `solana`, `sui` and `bip122` advertise the same surface at pairing: sign
+ * and send are requested, while balance/receipt reads, account requests,
+ * sign-in and wallet-side subscriptions have no WC equivalent today.
  */
 const CAIP_WC_CAPABILITIES: WalletCapabilities = {
   getBalance: false,
@@ -25,11 +23,44 @@ const CAIP_WC_CAPABILITIES: WalletCapabilities = {
   switchChain: true,
 };
 
-/** Parse a CAIP-10 string (`<namespace>:<chain>:<address>`) into its
- *  address segment. The address is the trailing part after the last `:`. */
-const parseCaip10Address = (caip10: string): string => {
+type Caip2 = {
+  namespace: string;
+  reference: string;
+};
+
+type Caip10 = Caip2 & {
+  address: string;
+  chainId: string;
+};
+
+/** Parse a CAIP-2 chain id (`<namespace>:<reference>`). */
+const parseCaip2 = (chainId: string): Caip2 | null => {
+  const colon = chainId.indexOf(":");
+  if (colon <= 0 || colon !== chainId.lastIndexOf(":")) {
+    return null;
+  }
+  const namespace = chainId.slice(0, colon);
+  const reference = chainId.slice(colon + 1);
+  return reference === "" ? null : { namespace, reference };
+};
+
+/** Parse a CAIP-10 account (`<namespace>:<reference>:<address>`). The
+ *  chain id is load-bearing: a session can carry accounts on several
+ *  chains at once, and an address is only valid on the chain it came
+ *  with. CAIP-2 references and CAIP-10 addresses both exclude `:`, so a
+ *  well-formed account has exactly three segments. */
+const parseCaip10 = (caip10: string): Caip10 | null => {
   const lastColon = caip10.lastIndexOf(":");
-  return lastColon === -1 ? caip10 : caip10.slice(lastColon + 1);
+  if (lastColon <= 0) {
+    return null;
+  }
+  const chainId = caip10.slice(0, lastColon);
+  const address = caip10.slice(lastColon + 1);
+  const chain = parseCaip2(chainId);
+  if (chain === null || address === "") {
+    return null;
+  }
+  return { address, chainId, namespace: chain.namespace, reference: chain.reference };
 };
 
 /** Read the accounts of one namespace from the live WC session without
@@ -42,15 +73,17 @@ const readNamespaceAccounts = (
   return provider.session?.namespaces?.[namespace]?.accounts ?? [];
 };
 
-/** Build a butr `ChainBase` for a CAIP-2 chain id. butr ships no
- *  chain-id → display-name map, so the wallet name is surfaced as the
- *  chain name and consumers overlay their own labels. `namespace` is the
- *  CAIP prefix without its colon (`solana`, `sui`, `bip122`). */
-const buildCaipChain = (chainId: string, walletName: string, namespace: string): ChainBase => ({
-  id: chainId,
+/** Build a butr `ChainBase` from an already-parsed CAIP-2 chain. butr
+ *  ships no chain-id → display-name map, so the wallet name is surfaced
+ *  as the chain name and consumers overlay their own labels. */
+const buildCaipChain = (
+  chain: { chainId: string; namespace: string; reference: string },
+  walletName: string,
+): ChainBase => ({
+  id: chain.chainId,
   name: walletName,
-  namespace,
-  reference: chainId.slice(namespace.length + 1),
+  namespace: chain.namespace,
+  reference: chain.reference,
 });
 
 type CaipAdapterCoreInput = {
@@ -68,6 +101,10 @@ type CaipAdapterCoreInput = {
   /** How the chain family reads in errors (`Solana`, `Sui`, `Bitcoin`). */
   platform: string;
   provider: UniversalProviderLike;
+  /** Pairing state shared with the sibling adapters of the same
+   *  factory call. Absent when the builder is driven on its own, in
+   *  which case the core pairs for this namespace alone. */
+  session?: WalletConnectSession;
 };
 
 type CaipAdapterCore = {
@@ -86,13 +123,6 @@ type CaipAdapterCore = {
   switchChain: (chain: ChainBase) => Promise<void>;
 };
 
-/**
- * Session plumbing every CAIP namespace builder repeats: the pairing
- * handshake, session teardown, CAIP-10 account reads off the live
- * session, and the local-only chain switch. Builders keep only what
- * genuinely differs per platform: RPC method names, response decoding,
- * and balance units.
- */
 const createCaipAdapterCore = ({
   chains,
   events,
@@ -103,52 +133,52 @@ const createCaipAdapterCore = ({
   namespace,
   platform,
   provider,
+  session,
 }: CaipAdapterCoreInput): CaipAdapterCore => {
-  let currentChainId = chains[0] ?? fallbackChainId;
+  const wc =
+    session ?? createSingleNamespaceSession({ chains, events, methods, namespace, provider });
 
-  const currentChain = (): ChainBase => buildCaipChain(currentChainId, name, namespace);
+  const chainFromId = (chainId: string): ChainBase =>
+    buildCaipChain(
+      { chainId, namespace, reference: parseCaip2(chainId)?.reference ?? chainId },
+      name,
+    );
+
+  let currentChain = chainFromId(chains[0] ?? fallbackChainId);
 
   const resolveAccounts = (): Array<Account> => {
-    const chain = currentChain();
-    return readNamespaceAccounts(provider, namespace).map((caip10) =>
-      buildAccount(parseCaip10Address(caip10), chain),
-    );
+    const accounts: Array<Account> = [];
+    for (const caip10 of readNamespaceAccounts(provider, namespace)) {
+      const parsed = parseCaip10(caip10);
+      if (parsed === null) {
+        logWarn(`[butr/walletconnect] ignoring malformed CAIP-10 account "${caip10}"`);
+        continue;
+      }
+      accounts.push(buildAccount(parsed.address, buildCaipChain(parsed, name)));
+    }
+    return accounts;
   };
+
+  const accountOnCurrentChain = (): Account | undefined =>
+    resolveAccounts().find((account) => account.chain.id === currentChain.id);
 
   return {
     async connect(opts) {
-      if (provider.session) {
+      if (wc.hasNamespace(namespace)) {
         return;
       }
-      if (opts?.silent === true) {
+      if (opts?.silent === true && !wc.hasSession()) {
         throw new Error("No WalletConnect session for silent reconnect");
       }
-      await provider.connect({
-        namespaces: {
-          [namespace]: {
-            chains: [...chains],
-            events: [...events],
-            methods: [...methods],
-          },
-        },
-      });
-    },
-
-    async disconnect() {
-      if (!provider.session) {
-        return;
-      }
-      try {
-        await provider.disconnect();
-      } catch (error) {
-        logWarn("[butr/walletconnect] disconnect threw:", error);
+      await wc.ensurePaired();
+      if (!wc.hasNamespace(namespace)) {
+        throw missingNamespaceError(namespace, platform);
       }
     },
 
-    getAccount: () => {
-      const first = resolveAccounts()[0] ?? null;
-      return Promise.resolve(first);
-    },
+    disconnect: () => wc.disconnect(),
+
+    getAccount: () => Promise.resolve(accountOnCurrentChain() ?? null),
 
     getAccounts: () => Promise.resolve(resolveAccounts()),
 
@@ -160,11 +190,11 @@ const createCaipAdapterCore = ({
       if (account) {
         return account.walletAddress;
       }
-      const first = resolveAccounts()[0];
-      if (first === undefined) {
-        throw new Error(`No connected ${platform} account`);
+      const match = accountOnCurrentChain();
+      if (match === undefined) {
+        throw new Error(`No connected ${platform} account on chain "${currentChain.id}"`);
       }
-      return first.walletAddress;
+      return match.walletAddress;
     },
 
     subscribe: () => () => {},
@@ -175,7 +205,7 @@ const createCaipAdapterCore = ({
           `${label} WC adapter received non-${platform} chain "${chain.id}". Pass a chain with namespace "${namespace}".`,
         );
       }
-      currentChainId = chain.id;
+      currentChain = chainFromId(chain.id);
       return Promise.resolve();
     },
   };

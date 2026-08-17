@@ -1,19 +1,10 @@
-import { logWarn } from "../logger";
-
 import type { StoredPoolRecord, StoredSelectionRecord } from "./persistence";
-import { chainPlatformSchema, parseStoredPoolEntry, recordSchema } from "./validation";
+import { decodePool, decodeSelection, storageKeys } from "./validation";
 
 /**
- * Server-safe view of a butr-persisted session; everything you can
- * know about a user's connected wallets from the cookie payload alone,
- * without instantiating a `Connector`.
- *
- * Notably absent: the `Connector` instance. A wallet extension exists
- * only in the browser, so a server render can know *which* wallet was
- * connected and *what address* it held, but cannot dispatch
- * `signMessage`/`sendTransaction` on it. Splitting display from action
- * along this seam keeps the impossibility expressed in the types
- * rather than hidden inside a runtime check.
+ * Carries no `Connector` by design: a wallet extension exists only in
+ * the browser, so a server render can name the wallet and its address
+ * but can never dispatch on it.
  */
 type WalletSnapshot = {
   activeConnectorId: string | null;
@@ -60,95 +51,24 @@ const toCookieMap = (input: CookieSource): Map<string, string> => {
   return out;
 };
 
-const parsePool = (raw: string | undefined): StoredPoolRecord => {
-  if (raw === undefined || raw === "") {
-    return {};
-  }
-  try {
-    const value: unknown = JSON.parse(raw);
-    const parsed = recordSchema.safeParse(value);
-    if (!parsed.success) {
-      return {};
-    }
-    const result: StoredPoolRecord = {};
-    for (const [key, entryValue] of Object.entries(parsed.data)) {
-      const entry = parseStoredPoolEntry(key, entryValue);
-      if (entry === null) {
-        logWarn(`[butr] readWalletSnapshot: dropping invalid pool entry for ${key}`);
-      } else {
-        result[key] = entry;
-      }
-    }
-    return result;
-  } catch (error) {
-    logWarn("[butr] readWalletSnapshot: failed to parse pool cookie:", error);
-    return {};
-  }
-};
-
-const parseSelection = (raw: string | undefined): StoredSelectionRecord => {
-  if (raw === undefined || raw === "") {
-    return {};
-  }
-  try {
-    const value: unknown = JSON.parse(raw);
-    const parsed = recordSchema.safeParse(value);
-    if (!parsed.success) {
-      return {};
-    }
-    const result: StoredSelectionRecord = {};
-    for (const [key, selectionValue] of Object.entries(parsed.data)) {
-      const platform = chainPlatformSchema.safeParse(key);
-      if (platform.success && typeof selectionValue === "string" && selectionValue.length > 0) {
-        result[platform.data] = selectionValue;
-      }
-    }
-    return result;
-  } catch (error) {
-    logWarn("[butr] readWalletSnapshot: failed to parse selection cookie:", error);
-    return {};
-  }
-};
+const SNAPSHOT_LABEL = "[butr] readWalletSnapshot:";
 
 /**
- * Parse a cookie source into a server-safe `WalletSnapshot`.
- *
- * Pure, sync, no `document`, no React; runnable in any environment
- * (Server Component, route handler, edge middleware, even client
- * code). Pair with `createCookieStorageDriver({ initialCookies })`
- * and `<WalletManagerProvider initialSnapshot={…} />` to render a
- * connected shell server-side without a hydration flash.
- *
- * **Stale-snapshot semantics.** The snapshot reflects whatever the
- * browser most recently persisted. If the user has since uninstalled
- * the wallet, switched accounts, or disconnected in another tab, the
- * client-side hydration will reconcile reality and the live store
- * will diverge from the snapshot. Treat the snapshot as an
- * *optimistic* shell; accurate enough to avoid a paint flicker,
- * authoritative only after `useIsHydrated()` is true.
- *
- * **Inputs.** Accepts the three shapes Next.js / Express / Hono /
- * generic-Node cookie code naturally produces:
- *  - A plain object: `{ "butr-pool": "{...}", … }`
- *  - An array of `{ name, value }` (Next.js' `cookies().getAll()`)
- *  - An iterable of `[name, value]` tuples
- *
- * Malformed entries are dropped with a `logWarn` (same policy as
- * `WalletStorage.getPool`); a cross-tab corruption shouldn't crash
- * the server render.
+ * Optimistic: only what the browser last persisted, so an uninstall or
+ * other-tab disconnect makes it stale. Authoritative once the entry
+ * leaves `reconnectingIds`; `isHydrated` is true from render one.
  */
 const readWalletSnapshot = (
   source: CookieSource,
   options: SnapshotOptions = {},
 ): WalletSnapshot => {
-  const keyPrefix =
-    options.keyPrefix === undefined || options.keyPrefix === "" ? "butr" : options.keyPrefix;
+  const keys = storageKeys(options.keyPrefix);
   const cookies = toCookieMap(source);
 
-  const pool = parsePool(cookies.get(`${keyPrefix}-pool`));
-  const selection = parseSelection(cookies.get(`${keyPrefix}-selection`));
+  const pool = decodePool(cookies.get(keys.pool), SNAPSHOT_LABEL);
+  const selection = decodeSelection(cookies.get(keys.selection), SNAPSHOT_LABEL);
 
-  const rawActive = cookies.get(`${keyPrefix}-active`);
+  const rawActive = cookies.get(keys.active);
   let activeConnectorId: string | null = null;
   if (rawActive !== undefined && rawActive.length > 0 && pool[rawActive] !== undefined) {
     activeConnectorId = rawActive;

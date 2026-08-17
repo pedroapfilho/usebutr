@@ -21,14 +21,9 @@ import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 // oxlint-disable typescript/promise-function-async
 
 /**
- * Bridge a butr-managed Wallet Standard wallet into a
- * `BaseMessageSignerWalletAdapter` so the @solana/wallet-adapter-react
- * ecosystem (and every dapp/lib that consumes that interface) can read it
- * via `useWallet()` without changing a line of consumer code.
- *
- * The bridge is constructed AFTER butr selects a wallet. The adapter's
- * `connected` flag is wired to butr's pool, so the adapter library's
- * autoConnect + UI work out of the box.
+ * Constructed only after butr has already connected, so `connect()` is a
+ * no-op re-emit; @solana/wallet-adapter-react's autoConnect and UI then
+ * resolve without a second connection handshake.
  */
 class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
   // fallow-ignore-next-line unused-class-member

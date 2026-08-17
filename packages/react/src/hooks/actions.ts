@@ -3,20 +3,11 @@ import { useStore } from "zustand";
 import { useWalletStoreContext } from "../context";
 
 /**
- * Action hooks: dispatchers that mutate the wallet store. Each
- * returns a stable function reference (Zustand's `useStore` against
- * action selectors is identity-stable across renders), safe to pass
- * to event handlers or effects without `useCallback`.
- *
- * No reactive subscription beyond identity stability; these don't
- * re-render the component when store state changes. For reactive
- * reads, see `./selectors.ts`.
+ * Every hook here returns an identity-stable reference, so passing one to an
+ * effect or handler needs no `useCallback`, and none of them re-render on
+ * store changes.
  */
 
-/** Begin the connect flow for a connector id. Routes through the
- *  store's connect handler, which calls the connector's `connect()`,
- *  reads accounts, and writes the resulting `ConnectedWallet` into
- *  the pool. */
 const useConnectWallet = () => {
   const store = useWalletStoreContext();
   return useStore(store, (state) => state.connectWallet);
@@ -53,14 +44,9 @@ const useRefreshWallet = () => {
 };
 
 /**
- * Open the wallet's account-selection UI (if the connector supports it),
- * then re-read `getAccounts()` and update the pool entry's `accounts`
- * array. EVM wallets call `wallet_requestPermissions` under the hood;
- * Wallet Standard wallets that don't expose a picker just refresh.
- *
- * Consumers should hide the trigger when
- * `wallet.connector.requestAccounts` is undefined; the action still
- * resolves cleanly, but no picker will open.
+ * Opens the wallet's account picker, then refreshes the pool entry's accounts.
+ * Wallet Standard wallets without a picker only refresh, so hide the trigger
+ * when `wallet.connector.requestAccounts` is undefined.
  */
 const useRequestAccounts = () => {
   const store = useWalletStoreContext();

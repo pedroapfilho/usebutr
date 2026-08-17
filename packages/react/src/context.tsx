@@ -18,10 +18,9 @@ const DiscoveredWalletsContext: React.Context<ReadonlyArray<WalletAdapter>> =
   createContext<ReadonlyArray<WalletAdapter>>(EMPTY_DISCOVERED);
 
 /**
- * All props (especially `on*` lifecycle callbacks, `storage`, and `discovery`)
- * are captured once at mount via `useState` lazy initializers and are authoritative
- * for the provider's lifetime. Later prop changes are silently ignored, so consumers
- * must pass stable references: module-level values, `useRef`, or `useCallback`.
+ * Every prop is captured once at mount and is authoritative for the provider's
+ * lifetime. Later prop changes are silently ignored, so consumers must pass
+ * stable references.
  */
 type WalletManagerProviderProps = {
   children: React.ReactNode;
@@ -33,18 +32,9 @@ type WalletManagerProviderProps = {
    *  protocol code enters the bundle. */
   discovery?: WalletSource;
   /**
-   * Seed the store synchronously with persisted wallet state; typically
-   * the return value of `readWalletSnapshot(cookies, { keyPrefix })`
-   * called from a Server Component. With `initialState`, the store
-   * starts with `isHydrated: true`, the pool populated with shadow
-   * adapters, and every connector id in `reconnectingIds`. The
-   * primary hooks (`useActiveWallet`, `useConnectedWallets`, …)
-   * return values from render zero on both server and client.
-   *
-   * Pass `undefined` to fall back to the legacy async hydration path
-   * (`isHydrated` starts `false`, flips `true` after `hydrateWallets`
-   * resolves on mount). Apps that don't render server-side typically
-   * leave this unset.
+   * Seeds the store synchronously so hooks return values from render zero on
+   * server and client; typically `readWalletSnapshot(cookies, { keyPrefix })`
+   * from a Server Component. Omit it to hydrate asynchronously on mount.
    */
   initialState?: WalletSnapshot;
   onConnect?: WalletManagerConfig["onConnect"];
@@ -83,14 +73,9 @@ const buildInitialConfig = (
 };
 
 /**
- * The butr provider. Pass `discovery` (a `WalletSource` such as
- * `autoDiscovery()` from `@usebutr/wallets`) for auto-discovered wallets,
- * and/or `createConnector` to register explicit adapters
- * (WalletConnect, Ledger, custom). When both are present an id is
- * resolved from discovered adapters first, then `createConnector`.
- *
- * The store and the discovery subscription are created once for the
- * provider's lifetime; props captured at mount are authoritative.
+ * The butr provider. When both `discovery` and `createConnector` are present,
+ * an id resolves against discovered adapters first. The store and the
+ * discovery subscription are created once for the provider's lifetime.
  */
 const WalletManagerProvider: React.FC<WalletManagerProviderProps> = (props) => {
   const { children, discovery: discoveryProp } = props;

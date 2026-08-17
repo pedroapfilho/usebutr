@@ -7,13 +7,9 @@ import { useDiscoveredWallets } from "../context";
 import { useConnectedWallets } from "./selectors";
 
 /**
- * Discovered wallets bucketed by platform, in `CHAIN_PLATFORMS` order
- * with empty platforms omitted.
- *
- * A multi-chain wallet announces one adapter per platform, so the flat
- * list from `useDiscoveredWallets` repeats a brand once per chain it
- * speaks. Every multi-chain app therefore writes this bucketing loop in
- * its first hour; this is that loop, once.
+ * Discovered wallets bucketed by platform, in `CHAIN_PLATFORMS` order with
+ * empty platforms omitted. A multi-chain wallet announces one adapter per
+ * platform, so the flat list repeats a brand once per chain it speaks.
  */
 const useDiscoveredWalletsByPlatform = (): Map<ChainPlatform, Array<WalletAdapter>> => {
   const discovered = useDiscoveredWallets();

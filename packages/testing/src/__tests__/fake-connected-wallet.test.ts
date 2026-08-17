@@ -77,4 +77,11 @@ describe("createFakeConnectedWallet", () => {
   it("throws rather than returning an entry with no active account", () => {
     expect(() => createFakeConnectedWallet({ accounts: [] })).toThrow(/at least one account/v);
   });
+
+  it("rejects an adapter combined with explicit addresses, which cannot agree", () => {
+    const adapter = createFakeAdapter({ chainPlatform: "evm", id: "metamask" });
+    expect(() => createFakeConnectedWallet({ adapter, addresses: ["0xdead"] })).toThrow(
+      /not both/v,
+    );
+  });
 });

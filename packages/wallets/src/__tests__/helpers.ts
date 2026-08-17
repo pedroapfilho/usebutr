@@ -1,7 +1,6 @@
 import type {
   Account,
   ChainBase,
-  ChainPlatform,
   StorageDriver,
   WalletAdapter,
   WalletManagerConfig,
@@ -36,7 +35,7 @@ const createMockConnector = (overrides?: Partial<WalletAdapter>): WalletAdapter 
     switchAccount: false,
     switchChain: true,
   },
-  chainPlatform: "evm" as ChainPlatform,
+  chainPlatform: "evm",
   connect: vi.fn().mockResolvedValue(undefined),
   disconnect: vi.fn().mockResolvedValue(undefined),
   getAccount: vi.fn().mockResolvedValue(createMockAccount()),

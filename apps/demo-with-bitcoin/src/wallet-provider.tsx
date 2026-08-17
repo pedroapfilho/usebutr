@@ -4,14 +4,9 @@ import { WalletManagerProvider } from "@usebutr/react";
 import type { ReactNode } from "react";
 
 /**
- * Compose Bitcoin's Wallet Standard discovery with the injected
- * fallback (sats-connect / Unisat / OKX / window.btc). The fallback
- * only emits if the Wallet Standard path hasn't already produced an
- * adapter for the same browser session; same posture as the EVM
- * package's `injected` fallback.
- *
- * Inline `createWalletSource` so the demo doesn't depend on
- * `@usebutr/wallets`; the composition stays explicit.
+ * Composed by hand rather than via `@usebutr/wallets` so this demo depends
+ * only on `@usebutr/bitcoin`. The injected path (sats-connect / Unisat / OKX
+ * / `window.btc`) stays a fallback behind Wallet Standard discovery.
  */
 const bitcoinDiscovery: WalletSource = {
   subscribe: (onAdapter) => {

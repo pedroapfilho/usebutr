@@ -30,13 +30,9 @@ type InjectedPolkadotDiscoveryOptions = {
 const DEFAULT_POLLS: ReadonlyArray<number> = [250, 750];
 
 /**
- * Primary Polkadot discovery: enumerate `window.injectedWeb3` keys and
- * emit one `PolkadotAdapter` per extension. Adapters are built WITHOUT
- * calling `enable()` (no prompt at discovery time); `connect()` enables
- * lazily.
- *
- * Extensions inject at different times during page load, so we read
- * immediately and re-check on a short poll schedule, deduping by key.
+ * Adapters are built without calling `enable()`, which would raise the
+ * extension's authorization prompt at discovery time. Extensions inject at
+ * different points during page load, hence the poll schedule.
  */
 const discoverInjectedPolkadotAdapters = (
   onAdapter: (adapter: WalletAdapter) => void,

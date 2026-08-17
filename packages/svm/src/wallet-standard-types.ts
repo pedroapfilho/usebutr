@@ -1,12 +1,6 @@
 /**
- * Solana-specific Wallet Standard feature shapes. Shared protocol
- * types (`WalletStandardWallet`, `standard:*` features) come from
- * `@usebutr/wallet-standard-shared`.
- *
- * Spec: https://github.com/anza-xyz/wallet-standard (Solana features)
- *
- * These shapes intentionally narrow the spec; they describe only the
- * fields butr's adapter actually reads.
+ * Solana-specific feature shapes, narrowed to the fields the adapter reads.
+ * Spec: https://github.com/anza-xyz/wallet-standard
  */
 
 import type { WalletStandardWalletAccount } from "@usebutr/wallet-standard-shared";

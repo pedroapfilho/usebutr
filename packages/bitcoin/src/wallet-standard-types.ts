@@ -1,15 +1,7 @@
 /**
- * Bitcoin-specific Wallet Standard feature shapes. Shared protocol
- * types (`WalletStandardWallet`, `standard:*` features) come from
- * `@usebutr/wallet-standard-shared`.
- *
- * Spec references:
- *  - https://github.com/orangecat-network/wallet-standard-bitcoin
- *  - https://github.com/MagicEden/wallet-standard (Bitcoin features)
- *
- * Phantom, Magic Eden, OKX (Bitcoin), Leather and a growing list of
- * wallets advertise these `bitcoin:*` features over the same
- * `@wallet-standard/app` bus that SVM and Sui consume.
+ * Bitcoin-specific Wallet Standard feature shapes. Specs:
+ * https://github.com/orangecat-network/wallet-standard-bitcoin,
+ * https://github.com/MagicEden/wallet-standard
  */
 
 import type { WalletStandardWalletAccount } from "@usebutr/wallet-standard-shared";

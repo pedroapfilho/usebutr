@@ -23,34 +23,8 @@ const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged"
  *  the true flags map to the `sui_*` sign/send methods requested at pairing. */
 const WALLETCONNECT_SUI_CAPABILITIES: WalletCapabilities = { ...CAIP_WC_CAPABILITIES };
 
-/**
- * Sui (CAIP `sui:*`) namespace builder. Wraps the paired
- * `UniversalProvider` and routes calls through the WalletConnect v2
- * Sui RPC methods:
- *
- *  - `sui_signPersonalMessage`       → `signMessage`
- *  - `sui_signTransaction`           → `signTransaction`
- *  - `sui_signAndExecuteTransaction` → `sendTx` / `sendTxToChain`
- *
- * **Caveats.** Mobile-wallet support for these methods varies. The Sui
- * WC reference (Reown docs + Mysten's Dappkit) defines a stable shape,
- * but wallets drift on response keys (`transactionBytes` vs
- * `transactionBlockBytes`, `{ signature, bytes }` vs `{ signature }`).
- * The adapter is lenient about response shapes; verify end-to-end
- * against your target wallets before relying on this in production.
- *
- * `signTransaction` returns the signed transaction BYTES (base64-decoded).
- * butr ships no Sui RPC, so the consumer broadcasts those bytes through
- * `@mysten/sui`'s `SuiClient`.
- *
- * `subscribe` is a no-op for v0; wallet events over WC are mediated by
- * the provider and need per-wallet quirks the namespace builder
- * shouldn't own. Consumers wire native events themselves until we
- * land a follow-up.
- */
-/** Coerce butr's `unknown` tx into the base64 string the Sui WC methods
- *  expect. Consumers pass either a base64 string (already BCS-serialized
- *  by `@mysten/sui`) or a `Uint8Array` of BCS bytes. */
+/** Consumers pass either a base64 string (already BCS-serialized by
+ *  `@mysten/sui`) or a `Uint8Array` of BCS bytes. */
 const coerceTransactionToBase64 = (tx: unknown): string => {
   if (typeof tx === "string") {
     return tx;
@@ -63,8 +37,13 @@ const coerceTransactionToBase64 = (tx: unknown): string => {
   );
 };
 
+/**
+ * Wallets drift on the Sui WC response keys (`transactionBytes` vs
+ * `transactionBlockBytes`, `{ signature, bytes }` vs `{ signature }`), so
+ * decoding stays lenient and `signTransaction` hands back raw bytes.
+ */
 const suiNamespace: WalletConnectNamespaceBuilder = {
-  buildAdapter({ chains, icon, id, name, provider }) {
+  buildAdapter({ chains, icon, id, name, provider, session }) {
     const { resolveAddress, ...core } = createCaipAdapterCore({
       chains,
       events: DEFAULT_EVENTS,
@@ -75,6 +54,7 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
       namespace: SUI_NAMESPACE,
       platform: "Sui",
       provider,
+      session,
     });
 
     const executeTx = async (tx: unknown, account?: Account): Promise<string> => {
@@ -139,18 +119,21 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
           method: "sui_signTransaction",
           params: { address, transaction },
         });
-        const bytesB64 =
-          readStringField(result, "transactionBytes") ??
-          readStringField(result, "transactionBlockBytes");
-        if (bytesB64 !== undefined && bytesB64 !== "") {
-          return base64ToBytes(bytesB64);
-        }
         const signatureB64 =
           typeof result === "string" ? result : readStringField(result, "signature");
         if (signatureB64 === undefined || signatureB64 === "") {
-          throw new Error("sui_signTransaction returned no transaction or signature");
+          throw new Error("sui_signTransaction returned no signature");
         }
-        return base64ToBytes(signatureB64);
+        // Wallets vary on the key, and some echo no bytes at all. The bytes the
+        // signature covers are the ones we submitted, so fall back to those
+        // rather than returning a pair whose halves disagree.
+        const bytesB64 =
+          readStringField(result, "transactionBytes") ??
+          readStringField(result, "transactionBlockBytes");
+        return {
+          bytes: base64ToBytes(bytesB64 === undefined || bytesB64 === "" ? transaction : bytesB64),
+          signature: base64ToBytes(signatureB64),
+        };
       },
     };
 

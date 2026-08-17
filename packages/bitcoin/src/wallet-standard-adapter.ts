@@ -19,30 +19,9 @@ const BITCOIN_DECIMALS = 8;
 const BITCOIN_MAINNET_ID = "bip122:000000000019d6689c085ae165831e93";
 
 /**
- * Adapt a Bitcoin Wallet Standard `Wallet` into a butr `WalletAdapter`.
- *
- * Returns `null` if the wallet doesn't advertise any `bip122:` chain or
- * doesn't expose `standard:connect`. Same posture as the SVM/Sui
- * adapters: gate features on what each wallet advertises, return
- * placeholders for RPC reads, forward `subscribe` through
- * `standard:events`.
- *
- * **Known limitations**
- *
- *  - `getBalance` returns `{ value: 0n, symbol: "BTC" }`. Bitcoin
- *    balance lookups require an Esplora/Electrum/RPC client outside
- *    butr's scope.
- *  - `getTransactionReceipt` returns `"Pending"` for the same reason.
- *  - `sendTx` expects the consumer to pass `{ amount: bigint, recipient: string }`
- *    via butr's `unknown` tx parameter; the simplest mental model that
- *    maps onto `bitcoin:sendTransfer`. PSBT-shaped flows go through
- *    `signTransaction`.
- *  - `signTransaction` expects a `Uint8Array` PSBT (raw bytes); the
- *    same shape `bitcoin:signPsbt` accepts. Consumers building with
- *    `bitcoinjs-lib` get bytes via `psbt.toBuffer()`.
- *  - `switchChain` is local-state-only; the capability flag is `false`
- *    when only one chain is advertised. Wallets that ship a real switch
- *    primitive (none today, portably) would need their own adapter.
+ * `sendTx` takes `{ amount, recipient }` for `bitcoin:sendTransfer` and
+ * `signTransaction` takes raw PSBT bytes for `bitcoin:signPsbt`. Balance
+ * and receipt reads would need an Esplora/Electrum client butr doesn't ship.
  */
 const buildBitcoinAdapter = (
   wallet: WalletStandardWallet,
@@ -70,9 +49,24 @@ const buildBitcoinAdapter = (
   const signPsbt = getFeature<BitcoinSignPsbtFeature>(wallet, "bitcoin:signPsbt");
   const sendTransfer = getFeature<BitcoinSendTransferFeature>(wallet, "bitcoin:sendTransfer");
 
+  /** Resolve a caller-supplied target into a chain the wallet advertises,
+   *  accepting either a full CAIP-2 id or a bare genesis-hash reference. */
+  const resolveTargetChain = (targetChainId: string): string => {
+    const candidate = targetChainId.startsWith(BITCOIN_PREFIX)
+      ? targetChainId
+      : `${BITCOIN_PREFIX}${targetChainId}`;
+    if (!wallet.chains.includes(candidate)) {
+      throw new Error(
+        `Wallet ${wallet.name} does not advertise chain "${candidate}". Available: ${wallet.chains.join(", ")}`,
+      );
+    }
+    return candidate;
+  };
+
   const sendTransferTx = async (
     tx: unknown,
     account?: { walletAddress: string },
+    chain?: string,
   ): Promise<string> => {
     if (sendTransfer === undefined) {
       throw new Error(`Wallet ${wallet.name} does not advertise bitcoin:sendTransfer`);
@@ -93,7 +87,7 @@ const buildBitcoinAdapter = (
     const output = await sendTransfer.sendTransfer({
       account: core.resolveAccount(account),
       amount,
-      chain: core.currentChainId(),
+      chain: chain ?? core.currentChainId(),
       recipient,
     });
     return output.txid;
@@ -128,9 +122,15 @@ const buildBitcoinAdapter = (
 
     sendTx: (tx, account) => sendTransferTx(tx, account),
 
-    sendTxToChain: (tx, _targetChainId, account, cb) => {
-      cb?.();
-      return sendTransferTx(tx, account);
+    // Async so an unadvertised chain surfaces as a rejection rather than a
+    // synchronous throw; the declared return type is a promise either way.
+    async sendTxToChain(tx, targetChainId, account, cb) {
+      const target = resolveTargetChain(targetChainId);
+      if (target !== core.currentChainId()) {
+        cb?.();
+      }
+      const txid = await sendTransferTx(tx, account, target);
+      return txid;
     },
 
     async signMessage(msg, account) {
@@ -165,20 +165,7 @@ const buildBitcoinAdapter = (
   };
 };
 
-/**
- * Subscribe to Bitcoin Wallet Standard announcements.
- *
- * Phantom (Bitcoin), Magic Eden, OKX Wallet (Bitcoin), and Leather
- * advertise `bitcoin:*` features over the same `getWallets()` bus that
- * SVM and Sui consume. `buildBitcoinAdapter` returns `null` for wallets
- * that don't advertise any `bip122:` chain, so multi-chain wallets
- * (Phantom: EVM + SVM + Sui + Bitcoin) produce one adapter per platform.
- *
- * Requires the **optional peer dependency** `@wallet-standard/app`.
- *
- * The discovery loop (dynamic import, dedupe, register / unregister
- * bridge) lives in `@usebutr/wallet-standard-shared`.
- */
+/** Requires the optional `@wallet-standard/app` peer dep. */
 const discoverBitcoinAdapters = (onAdapter: (adapter: WalletAdapter) => void): (() => void) =>
   discoverWalletStandard(onAdapter, (wallet, registerDisconnector) =>
     buildBitcoinAdapter(wallet, registerDisconnector),

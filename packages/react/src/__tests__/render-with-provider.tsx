@@ -34,6 +34,7 @@ const buildConfig = ({
 const configToProps = (config: WalletManagerConfig) => ({
   connectors: config.connectors,
   createConnector: config.createConnector,
+  initialState: config.initialState,
   onConnect: config.onConnect,
   onConnectError: config.onConnectError,
   onDisconnect: config.onDisconnect,

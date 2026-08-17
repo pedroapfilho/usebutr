@@ -1,22 +1,7 @@
 /**
- * Capability flags describing what an adapter can actually do at
- * runtime. Populated by each adapter (the auto-built ones derive
- * these from the underlying protocol's feature advertisements;
- * hand-rolled adapters declare them explicitly). Consumers branch on
- * these to gate UI affordances:
- *
- * ```tsx
- * {wallet.connector.capabilities.requestAccounts ? (
- *   <button onClick={() => requestAccounts(wallet.connector.id)}>
- *     Request more accounts
- *   </button>
- * ) : null}
- * ```
- *
- * Each flag means "can this work right now," not "is the method
- * defined": `signMessage: false` means calling `signMessage()` would
- * reject; `switchChain: false` means switching is a no-op regardless
- * of which chain is passed.
+ * Each flag means "can this work right now", not "is the method
+ * defined": `signMessage: false` means the call would reject,
+ * `switchChain: false` means switching is a no-op for every chain.
  */
 type WalletCapabilities = {
   /** `getBalance` returns a real on-chain value (vs. a 0n placeholder). */

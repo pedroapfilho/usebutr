@@ -1,9 +1,7 @@
 /**
- * Canonical list of supported chain platforms. The single runtime source
- * of truth: `ChainPlatform` is derived from it, and storage validators
- * build their allowlists from it, so the type and the runtime checks can
- * never drift (a missing platform here was why Polkadot connections failed
- * to persist).
+ * Single runtime source of truth: `ChainPlatform` and the storage
+ * validators' allowlists both derive from it. Omitting a platform here
+ * silently stops its connections from persisting.
  */
 const CHAIN_PLATFORMS = ["evm", "svm", "sui", "bitcoin", "polkadot"] as const;
 

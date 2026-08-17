@@ -74,8 +74,9 @@ Pull the chain list from `@usebutr/svm` directly. `CHAINS_BY_PLATFORM` from
 `@usebutr/wallets` would re-introduce the bundle you just avoided.
 
 ```tsx
+import { buildChainsByPlatform } from "@usebutr/core";
 import { SVM_CHAINS_LIST } from "@usebutr/svm";
-const CHAINS_BY_PLATFORM = { evm: [] as const, svm: SVM_CHAINS_LIST };
+const CHAINS_BY_PLATFORM = buildChainsByPlatform({ svm: SVM_CHAINS_LIST });
 ```
 
 `SVM_CHAINS` (keyed: `mainnet`, `devnet`, `testnet`) and `SVM_CHAINS_LIST` (the

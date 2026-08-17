@@ -1,4 +1,5 @@
 import type { SuiAdapter, WalletAdapter } from "@usebutr/core";
+import { base64ToBytes } from "@usebutr/core";
 import { describe, expect, it } from "vitest";
 
 import type { UniversalProviderLike } from "../adapter";
@@ -19,6 +20,17 @@ type Session = {
   namespaces?: Record<string, { accounts?: ReadonlyArray<string> }>;
 } | null;
 
+/** A wallet approving everything the dapp asked for: the resulting
+ *  session carries one entry per requested namespace. */
+const approvedSession = (opts: ConnectArgs): Session => ({
+  namespaces: Object.fromEntries(
+    Object.keys({ ...opts.namespaces, ...opts.optionalNamespaces }).map((prefix) => [
+      prefix,
+      { accounts: [] },
+    ]),
+  ),
+});
+
 const createFakeProvider = (overrides?: {
   request?: (args: RequestArgs) => Promise<unknown>;
   session?: Session;
@@ -29,10 +41,12 @@ const createFakeProvider = (overrides?: {
   const listeners = new Map<string, Set<(...args: ReadonlyArray<unknown>) => void>>();
   const connectCalls: Array<ConnectArgs> = [];
   const requestCalls: Array<RequestArgs> = [];
+  let session: Session = overrides?.session ?? null;
 
   return {
     connect(opts) {
       connectCalls.push(opts);
+      session = approvedSession(opts);
       return Promise.resolve();
     },
     connectCalls,
@@ -55,7 +69,9 @@ const createFakeProvider = (overrides?: {
       return overrides?.request ? overrides.request(args) : Promise.resolve(null);
     },
     requestCalls,
-    session: overrides?.session ?? null,
+    get session() {
+      return session;
+    },
   };
 };
 
@@ -117,8 +133,8 @@ describe("suiNamespace", () => {
     expect(namespace?.events).toContain("accountsChanged");
   });
 
-  it("connect() short-circuits when a session already exists", async () => {
-    const provider = createFakeProvider({ session: { namespaces: {} } });
+  it("connect() short-circuits when a session already carries the sui namespace", async () => {
+    const provider = createFakeProvider({ session: { namespaces: { sui: { accounts: [] } } } });
     const adapter = suiNamespace.buildAdapter({
       chains: ["sui:mainnet"],
       icon: "x",
@@ -191,6 +207,9 @@ describe("suiNamespace", () => {
     const accounts = await adapter.getAccounts?.();
     expect(accounts).toHaveLength(2);
     expect(accounts?.map((a) => a.walletAddress)).toEqual(["0xaaa111", "0xbbb222"]);
+    expect(accounts?.map((a) => a.chain.id)).toEqual(["sui:mainnet", "sui:testnet"]);
+    expect(accounts?.map((a) => a.chain.reference)).toEqual(["mainnet", "testnet"]);
+    expect(accounts?.map((a) => a.id)).toEqual(["sui:mainnet:0xaaa111", "sui:testnet:0xbbb222"]);
   });
 
   it("signMessage routes through sui_signPersonalMessage and decodes base64 signature + bytes", async () => {
@@ -283,7 +302,8 @@ describe("suiNamespace", () => {
       address: "0xabc1234567890abcdef",
       transaction: btoa(String.fromCodePoint(1, 2, 3)),
     });
-    expect(out).toEqual(signedBytes);
+    expect(out?.bytes).toEqual(signedBytes);
+    expect(out?.signature).toEqual(base64ToBytes("Zm9v"));
   });
 
   it("signTransaction also accepts the legacy `transactionBlockBytes` key from older Dappkit wallets", async () => {
@@ -310,7 +330,8 @@ describe("suiNamespace", () => {
     });
 
     const out = await expectSuiAdapter(adapter).signTransaction?.(new Uint8Array([1, 2, 3]));
-    expect(out).toEqual(signedBytes);
+    expect(out?.bytes).toEqual(signedBytes);
+    expect(out?.signature).toEqual(base64ToBytes("Zm9v"));
   });
 
   it("signTransaction accepts a base64 string tx input as well as Uint8Array", async () => {
@@ -338,7 +359,8 @@ describe("suiNamespace", () => {
 
     const out = await expectSuiAdapter(adapter).signTransaction?.("AAEC");
     expect(provider.requestCalls[0]?.params).toMatchObject({ transaction: "AAEC" });
-    expect(out).toEqual(signedBytes);
+    expect(out?.bytes).toEqual(signedBytes);
+    expect(out?.signature).toEqual(base64ToBytes("Zm9v"));
   });
 
   it("sendTx routes through sui_signAndExecuteTransaction and returns the digest", async () => {
@@ -477,6 +499,7 @@ describe("suiNamespace", () => {
 
     const first = await adapter.getAccount();
     expect(first?.chain.id).toBe("sui:testnet");
+    expect(first?.walletAddress).toBe("0xbbb222");
 
     expect(() =>
       adapter.switchChain({

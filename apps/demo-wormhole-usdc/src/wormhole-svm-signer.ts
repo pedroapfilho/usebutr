@@ -1,5 +1,5 @@
 /* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-argument, typescript/no-unsafe-call -- Wormhole SDK types UnsignedTransaction.transaction as `any`; this file is the typed boundary that narrows it */
-import { type Signature, createSolanaRpc, getBase58Decoder, getBase64Encoder } from "@solana/kit";
+import { type Signature, createSolanaRpc } from "@solana/kit";
 import type { WalletAdapter } from "@usebutr/core";
 import type {
   Chain,
@@ -18,9 +18,6 @@ const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
-
-const toBase58Signature = (base64: string): string =>
-  getBase58Decoder().decode(getBase64Encoder().encode(base64));
 
 const confirmSignature = async (rpc: SolanaRpc, sig: string): Promise<void> => {
   const deadline = Date.now() + CONFIRM_TIMEOUT_MS;
@@ -71,17 +68,9 @@ const isVersioned = (tx: LegacyTx | VersionedTx): tx is VersionedTx =>
   "message" in tx && typeof tx.message === "object";
 
 /**
- * Routes Wormhole-built Solana transactions through butr's SVM adapter,
- * which signs and broadcasts via Wallet Standard's
- * `solana:signAndSendTransaction`. The adapter expects serialized bytes.
- *
- * The SDK builds redeem transactions WITHOUT a `recentBlockhash`; it
- * expects the signer to attach a fresh one at send time (a stale
- * blockhash would expire before the user approves). So we fetch the
- * latest blockhash from the destination chain's RPC, set it, apply any
- * program signers the SDK supplied, then serialize. Skipping this step
- * makes `Transaction.serialize()` throw "Transaction recentBlockhash
- * required".
+ * The SDK builds redeem transactions without a `recentBlockhash`, expecting
+ * the signer to attach a fresh one at send time; without it
+ * `Transaction.serialize()` throws "Transaction recentBlockhash required".
  */
 class ButrSvmWormholeSigner<N extends Network, C extends Chain> implements SignAndSendSigner<N, C> {
   private readonly _chain: C;
@@ -131,8 +120,7 @@ class ButrSvmWormholeSigner<N extends Network, C extends Chain> implements SignA
         });
       }
       // oxlint-disable-next-line no-await-in-loop
-      const rawSignature = await this._connector.sendTx(serialized);
-      const signature = toBase58Signature(rawSignature);
+      const signature = await this._connector.sendTx(serialized);
       // oxlint-disable-next-line no-await-in-loop
       await confirmSignature(rpc, signature);
       hashes.push(signature);

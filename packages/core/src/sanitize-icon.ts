@@ -1,22 +1,7 @@
 /**
- * Normalize a wallet-announced icon string.
- *
- * Wallets announce their icon through external metadata; EIP-6963
- * `providerInfo.icon`, Wallet Standard `wallet.icon`. That value is
- * not under butr's control, and some wallets ship data-URI icons with
- * surrounding whitespace (a newline left over from a pretty-printed
- * manifest). Strict consumers reject it: Next.js's `<Image>` throws
- * because `src` must not start with a control character.
- *
- * Trims surrounding whitespace and treats an all-whitespace (or empty)
- * icon as absent, so consumers get either a usable string or
- * `undefined`: never a blank or malformed one. `undefined` passes
- * through untouched.
- *
- * **Discovery already applies this.** Every adapter butr discovers has
- * had its icon sanitized at construction, so `Connector.icon` is safe to
- * render as-is. Reach for this helper only when building adapter or
- * `ConnectorMeta` metadata yourself from a source butr didn't produce.
+ * Some wallets announce data-URI icons wrapped in whitespace, which
+ * makes Next.js `<Image>` throw on a leading control character.
+ * Discovery already applies this; only hand-built metadata needs it.
  */
 const sanitizeIcon = (icon: string | undefined): string | undefined => {
   if (icon === undefined) {

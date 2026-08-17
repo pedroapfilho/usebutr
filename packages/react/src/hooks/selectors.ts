@@ -7,22 +7,6 @@ import { useStoreWithEqualityFn } from "zustand/traditional";
 
 import { useWalletStoreContext } from "../context";
 
-/**
- * Selector hooks: pure reactive reads of the wallet store. Each
- * subscribes via `useSyncExternalStore` (through Zustand's `useStore`)
- * and returns the value directly; no `AsyncState` wrapper, no
- * mutation side effects.
- *
- * Three sub-groups in this file:
- *  - **Connection-state** scalars (status, error, flags)
- *  - **Pool / selection / accounts** (reactive structures)
- *  - **Stable accessors** (return functions safe for callbacks)
- *
- * The classification is "what's returned" rather than "is it async."
- * For dispatchers, see `./actions.ts`. For async resources
- * (`useSigner`, `useBalance`), see `./async-resources.ts`.
- */
-
 const EMPTY_ACCOUNTS: ReadonlyArray<Account> = [];
 
 const accountsEqual = (a: ReadonlyArray<Account>, b: ReadonlyArray<Account>) => {
@@ -46,28 +30,37 @@ const accountsEqual = (a: ReadonlyArray<Account>, b: ReadonlyArray<Account>) => 
 };
 
 /**
- * Connection status of the **active** wallet; wagmi-aligned vocabulary:
- *
- * - `"idle"` / `"connecting"` / `"success"` / `"error"`: the
- *   user-initiated connect attempt's state, as written by the
- *   reducer.
- * - `"reconnecting"`: derived. Returned when the active wallet is
- *   still backed by a shadow adapter (its connector id appears in
- *   `state.reconnectingIds`). Indicates "we have the data, the
- *   silent reconnect hasn't verified the live wallet yet."
- *
- * The derivation lives here rather than in the reducer so the state
- * machine stays a narrow tracker of the in-flight connect attempt
- * while the public hook gives consumers the broader vocabulary they
- * need to render.
+ * Connection status of the active wallet, wagmi-aligned. `"reconnecting"` is
+ * derived here rather than written by the reducer: the active wallet is still
+ * backed by a shadow adapter awaiting the silent reconnect.
  */
 const useConnectionStatus = () => {
   const store = useWalletStoreContext();
   return useStore(store, (state) => {
+    // A live connect attempt outranks the derived value. The two answer
+    // different questions ("how is the user's attempt going" vs "is the active
+    // wallet still a placeholder"), and letting the derivation win hid an
+    // in-flight spinner and, worse, a connection error.
+    if (state.connectionStatus === "connecting" || state.connectionStatus === "error") {
+      return state.connectionStatus;
+    }
     if (state.activeConnectorId !== null && state.reconnectingIds.has(state.activeConnectorId)) {
       return "reconnecting" as const;
     }
     return state.connectionStatus;
+  });
+};
+
+/**
+ * Whether a wallet is still backed by a shadow adapter, seeded from
+ * `initialState` and awaiting the silent reconnect. Shadow adapters reject
+ * every call, so this gates any use of the connector.
+ */
+const useIsReconnecting = (connectorId?: string | null) => {
+  const store = useWalletStoreContext();
+  return useStore(store, (state) => {
+    const id = connectorId ?? state.activeConnectorId;
+    return id !== null && id !== undefined && state.reconnectingIds.has(id);
   });
 };
 
@@ -167,11 +160,8 @@ const useIsPlatformConnected = (chainPlatform: ChainPlatform): boolean => {
 };
 
 /**
- * All known accounts on a wallet. Defaults to the active wallet when
- * `connectorId` is omitted. Re-renders only when the accounts list
- * actually changes (by address + chain id), so wallet-side
- * `accountChanged` events bridged via `Connector.subscribe` flow through
- * cleanly.
+ * All known accounts on a wallet; the active wallet when `connectorId` is
+ * omitted. Re-renders only when the list changes by address + chain id.
  */
 const useAccounts = (connectorId?: string | null): ReadonlyArray<Account> => {
   const store = useWalletStoreContext();
@@ -187,14 +177,8 @@ const useAccounts = (connectorId?: string | null): ReadonlyArray<Account> => {
 };
 
 /**
- * Subscribe to the pool entry for a `connectorId`. Defaults to the
- * active wallet when omitted. Re-renders only when the resolved
- * wallet's identity (connectorId / address / chainId) changes.
- *
- * This used to live alongside the async hooks because `useSigner` /
- * `useBalance` consume it internally; it belongs with the other
- * selectors since its return shape is `ConnectedWallet | undefined`
- * with no async wrapper.
+ * Pool entry for a `connectorId`; the active wallet when omitted. Re-renders
+ * only when the resolved wallet's connectorId / address / chainId changes.
  */
 const useWalletEntry = (connectorId: string | null | undefined): ConnectedWallet | undefined => {
   const store = useWalletStoreContext();
@@ -234,16 +218,8 @@ const useGetConnectorInstance = () => {
 };
 
 /**
- * Direct access to the Zustand store for custom selectors. Uses shallow
- * equality on the selector result, so returning an inline object or array
- * is safe; no infinite re-render loop. Primitive selectors are
- * unaffected (shallow falls back to `Object.is`).
- *
- * @example
- * const { pool, activeConnectorId } = useWalletStore((state) => ({
- *   pool: state.pool,
- *   activeConnectorId: state.activeConnectorId,
- * }));
+ * Direct store access for custom selectors. Shallow equality on the result, so
+ * returning an inline object or array does not loop.
  */
 const useWalletStore = <T>(selector: (state: WalletStoreState) => T) => {
   const store = useWalletStoreContext();
@@ -264,6 +240,7 @@ export {
   useIsConnecting,
   useIsHydrated,
   useIsPlatformConnected,
+  useIsReconnecting,
   useIsUserDisconnected,
   usePool,
   useSelectedWallet,

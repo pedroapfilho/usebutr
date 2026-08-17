@@ -2,11 +2,8 @@ import { logWarn } from "../logger";
 import type { Account, ChainPlatform, Connector } from "../types";
 
 /**
- * Side-effect callbacks the lifecycle bridge invokes when the
- * underlying wallet emits an event. The bridge owns event-to-action
- * mapping and the unsubscribe handle; the runtime owns what those
- * actions actually do (dispatch reducer events, persist, notify
- * consumer callbacks).
+ * The bridge owns event-to-handler mapping and the unsubscribe handle;
+ * the runtime owns the effects (dispatch, persist, consumer callbacks).
  */
 type LifecycleHandlers = {
   /** Wallet exposed a new accounts list (or active account swap). The
@@ -24,18 +21,13 @@ type LifecycleHandlers = {
 };
 
 /**
- * Owns the "exactly one subscription per connector" invariant plus the
- * event-to-handler choreography. Replaces three previously-scattered
- * call sites in the runtime (`hydrate`, `tryRestoreFromPending`,
- * `connectWallet`) and the matching teardown sites
- * (`disconnectWallet`, `reset`, the disconnect-event handler).
+ * Owns the "exactly one subscription per connector" invariant for the
+ * whole runtime; nothing else may call `connector.subscribe`.
  */
 type ConnectorLifecycle = {
   /**
-   * Subscribe to the connector's events. Idempotent; calling `attach`
-   * twice for the same `connectorId` detaches the previous subscription
-   * before installing the new one, preserving the "exactly one"
-   * invariant. No-op for connectors without a `subscribe` method.
+   * Idempotent: a second `attach` for the same id detaches the previous
+   * subscription first. No-op for connectors without `subscribe`.
    */
   attach: (connectorId: string, connector: Connector) => void;
   /** Detach a single connector. Safe to call when no subscription is

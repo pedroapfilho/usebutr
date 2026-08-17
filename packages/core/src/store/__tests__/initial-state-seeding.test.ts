@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { createMockConfig } from "../../__tests__/helpers";
+import { createMockConfig, createMockConnector } from "../../__tests__/helpers";
+import { createMemoryStorageDriver, WalletStorage } from "../../storage";
 import type { StoredPoolEntry } from "../../storage/persistence";
 import type { WalletSnapshot } from "../../storage/snapshot";
 import { isShadowAdapter, ShadowConnectorError } from "../shadow-adapter";
@@ -130,5 +131,40 @@ describe("reducer — reconnectingIds lifecycle", () => {
       reconnectingIds: new Set(),
     }));
     expect(store.getState().reconnectingIds.has("metamask")).toBe(false);
+  });
+
+  // A seeded entry whose reconnect fails is shadow-backed: every method
+  // rejects. Left in the pool it would strand there, since nothing else clears
+  // it, so consumers would read a permanently erroring wallet stuck in
+  // "reconnecting" for the page's life. A locked wallet is the most common
+  // cause of a dropped restore.
+  it("evicts a seeded entry whose silent reconnect failed", async () => {
+    const driver = createMemoryStorageDriver();
+    const storage = new WalletStorage({ persistent: driver, session: driver });
+    await driver.setItem("butr-pool", JSON.stringify(baseSnapshot.pool));
+    await driver.setItem("butr-selection", JSON.stringify(baseSnapshot.selection));
+    await driver.setItem("butr-active", "metamask");
+
+    // The wallet is installed but locked, so the silent reconnect rejects.
+    const locked = createMockConnector({ chainPlatform: "evm", id: "metamask" });
+    locked.connect = () => Promise.reject(new Error("wallet is locked"));
+
+    const store = createWalletStore(
+      createMockConfig({
+        createConnector: () => locked,
+        initialState: baseSnapshot,
+        storage,
+      }),
+    );
+    expect(store.getState().pool.has("metamask")).toBe(true);
+    expect(store.getState().reconnectingIds.has("metamask")).toBe(true);
+
+    await store.getState().hydrateWallets();
+
+    const state = store.getState();
+    expect(state.pool.has("metamask")).toBe(false);
+    expect(state.reconnectingIds.has("metamask")).toBe(false);
+    expect(state.selection.get("evm")).toBeUndefined();
+    expect(state.activeConnectorId).toBeNull();
   });
 });

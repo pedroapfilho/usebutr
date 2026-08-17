@@ -18,17 +18,14 @@ const STORAGE_KEY_PREFIX = "butr-demo";
 type WalletProviderProps = {
   children: ReactNode;
   /**
-   * Cookie snapshot read from the request in a Server Component
-   * (`cookies()` in `next/headers`). Feeds the cookie storage driver
-   * during the SSR pass so `getItem` returns the same values the
-   * client will read from `document.cookie` after hydration.
+   * Read via `cookies()` from `next/headers` in a Server Component, so the SSR
+   * pass sees the same values the client reads from `document.cookie`.
    */
   initialCookies?: Readonly<Record<string, string>>;
   /**
-   * Typed view of the persisted pool, parsed via `readWalletSnapshot`
-   * in the Server Component layout. Synchronously seeds the wallet
-   * store so `useActiveWallet` etc. return values from render zero;
-   * no flash, no `isHydrated` gate.
+   * Parsed with `readWalletSnapshot` in the Server Component layout. Seeds the
+   * store synchronously, so hooks have values at render zero and consumers
+   * need no `isHydrated` gate.
    */
   initialState?: WalletSnapshot;
 };

@@ -62,8 +62,12 @@ EVM-only setups don't bundle `@usebutr/wallets`. Pull the chain list from
 `@usebutr/evm` directly:
 
 ```tsx
+import { buildChainsByPlatform } from "@usebutr/core";
 import { EVM_CHAINS_LIST } from "@usebutr/evm";
-const CHAINS_BY_PLATFORM = { evm: EVM_CHAINS_LIST, svm: [] as const };
+
+// buildChainsByPlatform fills in every platform butr knows about, so this
+// keeps compiling as new chains are added.
+const CHAINS_BY_PLATFORM = buildChainsByPlatform({ evm: EVM_CHAINS_LIST });
 ```
 
 Why this keeps Solana out of the bundle is covered in

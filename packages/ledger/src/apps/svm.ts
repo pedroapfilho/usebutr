@@ -6,24 +6,9 @@ import { LEDGER_SIGN_TRANSACTION_CAPABILITIES } from "../capabilities";
 import type { TransportFactory } from "../transport";
 
 /**
- * Minimal type surface for `@ledgerhq/hw-app-solana`. Declared inline so
- * butr's typecheck pipeline doesn't depend on the optional peer dep
- * being installed. Real Ledger Solana app instances satisfy this shape.
- *
- * Notes:
- *  - The real SDK returns a Node `Buffer`, but `Buffer extends Uint8Array`
- *    so the narrower `Uint8Array` type works in both browser and Node
- *    contexts without requiring `@types/node` (we ship a browser-first
- *    package; Buffer isn't a global in browsers).
- *  - `getAddress` returns the raw 32-byte Solana public key. The caller
- *    base58-encodes it to produce the wallet address string Solana RPCs /
- *    explorers use.
- *  - `signTransaction` signs a pre-serialized transaction message. The
- *    device returns ONLY the signature; assembling the final signed tx
- *    (slotting the signature into the transaction's signatures array) is
- *    on the consumer; same as Ledger Live and most Solana wallets.
- *  - `signOffchainMessage` is the off-chain message signing path; it's
- *    what `signMessage` routes through.
+ * Declared inline so butr's typecheck doesn't depend on the optional peer dep.
+ * The SDK's Node `Buffer`s are typed as `Uint8Array` so this browser-first
+ * package needs no `@types/node`. `getAddress` yields a raw 32-byte key.
  */
 type SolanaAppLike = {
   getAddress: (path: string, display?: boolean) => Promise<{ address: Uint8Array }>;
@@ -54,28 +39,16 @@ const loadSolana = async (): Promise<SolanaAppConstructor> => {
   return ctor;
 };
 
-/**
- * SVM-specific Ledger adapter options. Each option is **fully typed
- * for the Solana platform**; no opaque DI bag, no `unknown` chain hints.
- */
+/** SVM-specific Ledger adapter options. */
 type SvmLedgerOptions = {
-  /**
-   * How many accounts to enumerate via `getAccounts()`. Each path walk
-   * hits the device (~1-2 s per address), so larger values are slow.
-   * Default: 1.
-   */
+  /** Each path walk hits the device (~1-2 s per address), so larger values are
+   *  slow. Default: 1. */
   accountCount?: number;
-  /**
-   * Solana cluster shortname. Stored locally; Ledger has no internal
-   * "current cluster" concept; the cluster only affects the ChainBase
-   * id butr surfaces to consumers. `switchChain` updates this value.
-   * Default: `"mainnet"`.
-   */
+  /** Ledger has no internal "current cluster", so this is stored locally and
+   *  only affects the ChainBase id butr surfaces. Default: `"mainnet"`. */
   cluster?: SolanaCluster;
-  /**
-   * BIP-32 derivation path *prefix*. `getAccounts(n)` appends `/N'`
-   * (fully-hardened per Solana convention). Default: `"44'/501'/0'"`.
-   */
+  /** `getAccounts(n)` appends `/N'`, fully-hardened per Solana convention.
+   *  Default: `"44'/501'/0'"`. */
   derivationPathPrefix?: string;
   /** Override the wallet icon shown in pickers. */
   icon?: string;
@@ -111,28 +84,9 @@ const buildSolanaAccount = (address: string, chain: ChainBase): Account => ({
 });
 
 /**
- * Build a Ledger hardware-wallet adapter wired to the **Solana app**.
- * The returned adapter is fully-formed but UN-paired; pairing happens
- * when butr's runtime calls `adapter.connect()`, at which point the
- * browser shows the WebUSB permission prompt and the user unlocks
- * their Ledger and opens the Solana app.
- *
- * Most consumers go through `createLedgerAdapter` in `adapter.ts`,
- * which dispatches by `platform` field.
- *
- * **Signing model.** `signMessage` routes through Solana's off-chain
- * message signing (`signOffchainMessage`) and returns
- * `{ signature, signedMessage }` as butr expects. `signTransaction`
- * returns ONLY the 64-byte ed25519 signature bytes; the consumer
- * assembles the final signed transaction by slotting that signature
- * into the transaction's `signatures` array (use `@solana/kit`'s
- * `partiallySignTransaction` or the legacy `Transaction.addSignature`
- * on `@solana/web3.js`). This matches how Ledger Live and most Solana
- * wallets work.
- *
- * **No broadcast.** `sendTx` rejects; Ledger has no RPC. The consumer
- * broadcasts the assembled transaction through their own Solana RPC
- * client.
+ * The returned adapter is UN-paired: pairing happens on `adapter.connect()`,
+ * when the browser prompts for WebUSB and the user opens the Solana app.
+ * Ledger has no RPC, so `sendTx` rejects and the consumer broadcasts.
  */
 const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapter> => {
   let cluster: SolanaCluster = options.cluster ?? DEFAULT_CLUSTER;
@@ -194,13 +148,9 @@ const createSvmLedgerAdapter = (options: SvmLedgerOptions): Promise<WalletAdapte
     },
 
     /**
-     * Sign a serialized Solana transaction. Returns the raw 64-byte
-     * ed25519 signature. The consumer is responsible for assembling
-     * the final signed transaction by slotting this signature into
-     * the transaction's signatures array: `@solana/kit`'s
-     * `partiallySignTransaction(...)` or `@solana/web3.js`'s
-     * `Transaction.addSignature` both do this. Mirrors how Ledger
-     * Live + every Solana wallet ships this surface.
+     * Returns only the raw 64-byte ed25519 signature, as Ledger Live and every
+     * Solana wallet do. The consumer assembles the signed transaction by
+     * slotting it into the signatures array.
      */
     async signTransaction(tx, account) {
       const solana = core.requireApp();

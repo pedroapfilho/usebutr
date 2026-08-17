@@ -2,15 +2,9 @@ import type { Account, ChainPlatform, ConnectedWallet } from "../types";
 import type { ConnectionError } from "../types/errors";
 
 /**
- * Public connection-status enum. `state.connectionStatus` in the
- * reducer only takes the first four values ("idle" | "connecting" |
- * "success" | "error"); those track the user-initiated connect
- * attempt. The fifth value, `"reconnecting"`, is *derived* by
- * `useConnectionStatus` when the active wallet is still backed by a
- * shadow adapter (its id is in `state.reconnectingIds`). The
- * derivation lives in the React selector so the reducer can stay a
- * narrow state machine while the public API matches wagmi's
- * vocabulary.
+ * The reducer never writes `"reconnecting"`; `useConnectionStatus`
+ * derives it from `reconnectingIds` so the state machine stays narrow
+ * while the public vocabulary matches wagmi's.
  */
 type ConnectionStatus = "idle" | "connecting" | "success" | "error" | "reconnecting";
 
@@ -23,13 +17,9 @@ type State = {
   isUserDisconnected: boolean;
   pool: Map<string, ConnectedWallet>;
   /**
-   * Connector IDs whose pool entry is currently backed by a shadow
-   * adapter: created from `WalletManagerConfig.initialState` and
-   * waiting for the live adapter to be announced (via discovery) and
-   * the silent reconnect to succeed. The set shrinks as entries
-   * upgrade (`HYDRATED` / `CONNECT_SUCCEEDED` clear matching ids) or
-   * drop (`DISCONNECTED` / `RESET`). Empty for stores constructed
-   * without `initialState`.
+   * Ids still backed by a shadow adapter from `initialState`. Empty
+   * without `initialState`; shrinks on `HYDRATED` / `CONNECT_SUCCEEDED`
+   * and on `DISCONNECTED` / `RESET`.
    */
   reconnectingIds: ReadonlySet<string>;
   selection: Map<ChainPlatform, string>;
@@ -42,6 +32,10 @@ type State = {
 type LifecycleEvent =
   | {
       activeConnectorId: string | null;
+      /** Connector ids that were seeded from `initialState` but whose silent
+       *  reconnect failed. Their pool entries are still shadow-backed, so they
+       *  are evicted rather than left permanently unusable. */
+      dropped: ReadonlyArray<string>;
       isUserDisconnected: boolean;
       pool: Map<string, ConnectedWallet>;
       selection: Map<ChainPlatform, string>;
@@ -51,15 +45,13 @@ type LifecycleEvent =
   | { type: "USER_DISCONNECTED_SET"; value: boolean };
 
 /**
- * Connection status events: the transitions of the in-flight connect
- * attempt: start, success/failure, status/error reset. None of these
- * mutate the pool directly; `CONNECT_SUCCEEDED` is the bridge to
- * `PoolMutationEvent`.
+ * None of these mutate the pool; `CONNECT_SUCCEEDED` is the only bridge
+ * across to `PoolMutationEvent`.
  */
 type ConnectionStatusEvent =
   | { connectorId: string; type: "CONNECT_STARTED" }
   | { connectorId: string; entry: ConnectedWallet; type: "CONNECT_SUCCEEDED" }
-  | { error: ConnectionError; type: "CONNECT_FAILED" }
+  | { connectorId: string; error: ConnectionError; type: "CONNECT_FAILED" }
   | { error: ConnectionError | null; type: "ERROR_SET" }
   | { type: "STATUS_RESET" };
 
@@ -69,6 +61,16 @@ type ConnectionStatusEvent =
  * the refresh events update an existing one in-place.
  */
 type PoolMutationEvent =
+  | {
+      /**
+       * Deliberately not `CONNECT_SUCCEEDED`: discovery fires this at an
+       * arbitrary time, so it must not overwrite the connect-attempt
+       * status that the user's own action owns.
+       */
+      connectorId: string;
+      entry: ConnectedWallet;
+      type: "ENTRY_RESTORED";
+    }
   | {
       /** When set, becomes the new active account. Used by paths that
        *  know which account should be active (wallet event, manual
@@ -131,6 +133,13 @@ const reducer = (state: State, event: Event): State => {
       for (const [id, entry] of event.pool) {
         pool.set(id, entry);
       }
+      // A seeded entry whose reconnect failed is still backed by a shadow
+      // adapter whose every method rejects. Leaving it in the pool would strand
+      // it: nothing else ever clears it, so consumers would read a permanently
+      // erroring wallet that reports itself as reconnecting forever.
+      for (const id of event.dropped) {
+        pool.delete(id);
+      }
       const selection = new Map<ChainPlatform, string>(state.selection);
       for (const [platform, id] of event.selection) {
         selection.set(platform, id);
@@ -144,13 +153,26 @@ const reducer = (state: State, event: Event): State => {
         activeConnectorId = pool.keys().next().value ?? null;
       }
       let nextReconnecting: ReadonlySet<string> = state.reconnectingIds;
-      if (state.reconnectingIds.size > 0 && event.pool.size > 0) {
+      if (state.reconnectingIds.size > 0) {
         const next = new Set(state.reconnectingIds);
         for (const id of event.pool.keys()) {
           next.delete(id);
         }
+        for (const id of event.dropped) {
+          next.delete(id);
+        }
         if (next.size !== state.reconnectingIds.size) {
           nextReconnecting = next;
+        }
+      }
+      const selectionAfterDrop = new Map(selection);
+      for (const [platform, id] of selectionAfterDrop) {
+        if (!pool.has(id)) {
+          selectionAfterDrop.delete(platform);
+          const fallback = findConnectorForPlatform(pool, platform);
+          if (fallback !== undefined) {
+            selectionAfterDrop.set(platform, fallback);
+          }
         }
       }
       return {
@@ -160,7 +182,7 @@ const reducer = (state: State, event: Event): State => {
         isUserDisconnected: event.isUserDisconnected,
         pool,
         reconnectingIds: nextReconnecting,
-        selection,
+        selection: selectionAfterDrop,
       };
     }
 
@@ -193,6 +215,7 @@ const reducer = (state: State, event: Event): State => {
           ...state,
           activeConnectorId: connectorId,
           connectingConnectorId: null,
+          connectionError: null,
           connectionStatus: "success",
           pool:
             existing.connector === entry.connector
@@ -212,6 +235,7 @@ const reducer = (state: State, event: Event): State => {
         ...state,
         activeConnectorId: connectorId,
         connectingConnectorId: null,
+        connectionError: null,
         connectionStatus: "success",
         pool: newPool,
         reconnectingIds: nextReconnecting,
@@ -219,7 +243,35 @@ const reducer = (state: State, event: Event): State => {
       };
     }
 
+    case "ENTRY_RESTORED": {
+      const { connectorId, entry } = event;
+      const nextReconnecting: ReadonlySet<string> = state.reconnectingIds.has(connectorId)
+        ? new Set([...state.reconnectingIds].filter((id) => id !== connectorId))
+        : state.reconnectingIds;
+
+      const platform = entry.connector.chainPlatform;
+      const selection = state.selection.has(platform)
+        ? state.selection
+        : new Map([...state.selection, [platform, connectorId] as const]);
+
+      return {
+        ...state,
+        // Only adopt the restored wallet as active when nothing else is. A
+        // background restore must not steal focus from an explicit selection
+        // or from the seeded active id.
+        activeConnectorId: state.activeConnectorId ?? connectorId,
+        pool: new Map([...state.pool, [connectorId, entry] as const]),
+        reconnectingIds: nextReconnecting,
+        selection,
+      };
+    }
+
     case "CONNECT_FAILED": {
+      // Ignore a failure from a superseded attempt; only the connect currently
+      // in flight owns the status triple.
+      if (state.connectingConnectorId !== event.connectorId) {
+        return state;
+      }
       return {
         ...state,
         connectingConnectorId: null,

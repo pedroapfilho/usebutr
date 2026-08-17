@@ -52,22 +52,9 @@ const resolveTarget = (target?: EventTarget): EventTarget | null => {
 };
 
 /**
- * Subscribe to EIP-6963 wallet announcements. Spec:
- * https://eips.ethereum.org/EIPS/eip-6963
- *
- * Flow:
- *  1. Page registers a listener for `eip6963:announceProvider`.
- *  2. Page dispatches `eip6963:requestProvider` to kick wallets that
- *     have already loaded.
- *  3. Wallets that load later still dispatch their own announcement
- *     when they boot, so the listener stays attached for the lifetime
- *     of the discovery session.
- *  4. Dedup by `info.rdns`; wallets occasionally re-announce, and
- *     `info.uuid` is regenerated per page load so it's not stable.
- *
- * Returns an unsubscribe function that removes the listener.
- * In non-browser environments (SSR, tests with no window) returns
- * a noop unsubscribe and never fires the callback.
+ * Spec: https://eips.ethereum.org/EIPS/eip-6963. Dedupe is by `info.rdns`
+ * because `info.uuid` is regenerated per page load. The listener stays
+ * attached for the session so wallets that boot late still register.
  */
 const discoverEvmAdapters = (
   onAdapter: AdapterCallback,

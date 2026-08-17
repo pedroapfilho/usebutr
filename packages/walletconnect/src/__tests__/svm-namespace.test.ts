@@ -9,6 +9,17 @@ type Session = {
   namespaces?: Record<string, { accounts?: ReadonlyArray<string> }>;
 } | null;
 
+/** A wallet approving everything the dapp asked for: the resulting
+ *  session carries one entry per requested namespace. */
+const approvedSession = (opts: ConnectArgs): Session => ({
+  namespaces: Object.fromEntries(
+    Object.keys({ ...opts.namespaces, ...opts.optionalNamespaces }).map((prefix) => [
+      prefix,
+      { accounts: [] },
+    ]),
+  ),
+});
+
 const createFakeProvider = (overrides?: {
   request?: (args: RequestArgs) => Promise<unknown>;
   session?: Session;
@@ -19,10 +30,12 @@ const createFakeProvider = (overrides?: {
   const listeners = new Map<string, Set<(...args: ReadonlyArray<unknown>) => void>>();
   const connectCalls: Array<ConnectArgs> = [];
   const requestCalls: Array<RequestArgs> = [];
+  let session: Session = overrides?.session ?? null;
 
   return {
     connect(opts) {
       connectCalls.push(opts);
+      session = approvedSession(opts);
       return Promise.resolve();
     },
     connectCalls,
@@ -45,7 +58,9 @@ const createFakeProvider = (overrides?: {
       return overrides?.request ? overrides.request(args) : Promise.resolve(null);
     },
     requestCalls,
-    session: overrides?.session ?? null,
+    get session() {
+      return session;
+    },
   };
 };
 
@@ -102,8 +117,8 @@ describe("solanaNamespace", () => {
     expect(namespace?.events).toContain("accountsChanged");
   });
 
-  it("connect() short-circuits when a session already exists", async () => {
-    const provider = createFakeProvider({ session: { namespaces: {} } });
+  it("connect() short-circuits when a session already carries the solana namespace", async () => {
+    const provider = createFakeProvider({ session: { namespaces: { solana: { accounts: [] } } } });
     const adapter = solanaNamespace.buildAdapter({
       chains: ["solana:mainnet"],
       icon: "x",

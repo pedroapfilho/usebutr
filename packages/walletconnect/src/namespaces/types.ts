@@ -1,31 +1,12 @@
 import type { ChainPlatform, WalletAdapter } from "@usebutr/core";
 
 import type { UniversalProviderLike } from "../loader";
+import type { WalletConnectSession } from "../session";
 
 /**
- * Self-describing builder for one CAIP-2 namespace in a WalletConnect
- * pairing. Each `WalletConnectNamespaceBuilder` is a complete recipe
- * for "WC speaks this chain platform": which CAIP prefix, which
- * methods to request, which events to subscribe to, and how to wrap
- * the resulting RPC surface as a butr `WalletAdapter`.
- *
- * **Why this seam exists.** WC v2's `UniversalProvider` exposes a
- * single `request(method, params)` interface that spans every
- * namespace the session was paired with. butr's `WalletAdapter` is a
- * per-platform contract. Bridging the two is per-namespace work:
- *
- *  - `eip155` → `eth_sendTransaction`, `personal_sign`, etc.
- *  - `solana` → `solana_signMessage`, `solana_signAndSendTransaction`, etc.
- *  - `sui`    → `sui_signPersonalMessage`, `sui_signAndExecuteTransaction`, etc.
- *  - `bip122` → `signMessage`, `signPsbt`, `sendTransfer`, etc.
- *
- * Adding a new platform = add one file under `src/namespaces/` exporting
- * a `WalletConnectNamespaceBuilder`. The factory iterates the registered
- * builders; no changes elsewhere.
- *
- * The EVM, SVM (Solana), Sui, and Bitcoin (bip122) builders all ship
- * under `src/namespaces/`, each registered in the adapter's
- * `KNOWN_NAMESPACES`.
+ * WC v2's `UniversalProvider` exposes one `request(method, params)` across
+ * every paired namespace, while butr's `WalletAdapter` is a per-platform
+ * contract, so bridging the two is per-namespace work.
  */
 type WalletConnectNamespaceBuilder = {
   /**
@@ -39,6 +20,10 @@ type WalletConnectNamespaceBuilder = {
     id: string;
     name: string;
     provider: UniversalProviderLike;
+    /** Pairing state shared with the sibling adapters built in the same
+     *  factory call. Omit it to drive the builder standalone, in which
+     *  case it pairs for its own namespace only. */
+    session?: WalletConnectSession;
   }) => WalletAdapter;
   /** CAIP-2 namespace prefix (`eip155`, `solana`, `sui`, `bip122`). */
   caipPrefix: string;

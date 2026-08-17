@@ -25,13 +25,9 @@ const VALID_CHAIN_PLATFORMS: ReadonlySet<string> = new Set(CHAIN_PLATFORMS);
 const isChainPlatform = (value: string): value is ChainPlatform => VALID_CHAIN_PLATFORMS.has(value);
 
 /**
- * Build a synchronously-populated `State` from `config.initialState`.
- * Each pool entry becomes a `ConnectedWallet` whose `connector` is a
- * shadow adapter; every connector id enters `reconnectingIds` so
- * consumers can branch on "is this connection verified" without
- * waiting for the async silent reconnect. `isHydrated` flips true
- * synchronously: the consumer's first render sees the persisted
- * state in the live store, not undefined.
+ * `isHydrated` is true from the first render on this path, so
+ * `reconnectingIds` (not `isHydrated`) is the "is this connection
+ * verified" signal until silent reconnect lands.
  */
 const seedStateFromSnapshot = (snapshot: WalletSnapshot): State => {
   const pool = new Map<string, ConnectedWallet>();
@@ -102,11 +98,7 @@ type WalletStore = ReturnType<typeof createWalletStore>;
 type WalletStoreState = ExtractState<WalletStore>;
 
 const createWalletStore = (config: WalletManagerConfig) => {
-  const storageKeyPrefix =
-    config.storageKeyPrefix === undefined || config.storageKeyPrefix === ""
-      ? "butr"
-      : config.storageKeyPrefix;
-  const storage = config.storage ?? new WalletStorage({ keyPrefix: storageKeyPrefix });
+  const storage = config.storage ?? new WalletStorage({ keyPrefix: config.storageKeyPrefix });
 
   const reportStorageError = (context: string) => (error: unknown) => {
     if (config.onStorageError) {
@@ -152,6 +144,14 @@ const createWalletStore = (config: WalletManagerConfig) => {
         refreshPoolEntry(connectorId, [...accounts], active);
       },
       onDisconnected: (connectorId, chainPlatform) => {
+        // Tear the connector down as well as dropping it from the pool. The
+        // adapter instance is cached by discovery and handed back on the next
+        // connect, so an adapter that reported itself disconnected while
+        // holding a live session would be reused in that state.
+        const wallet = get().pool.get(connectorId);
+        if (wallet) {
+          void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), logError);
+        }
         dispatch({ connectorId, type: "DISCONNECTED" });
         config.onDisconnect?.(chainPlatform);
       },
@@ -223,7 +223,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
           onSuccess?.(entry);
         } catch (error) {
           const normalised = mapConnectionError(error);
-          dispatch({ error: normalised, type: "CONNECT_FAILED" });
+          dispatch({ connectorId, error: normalised, type: "CONNECT_FAILED" });
           try {
             await connector.disconnect?.();
           } catch (disconnectError: unknown) {
@@ -283,6 +283,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
         const result = await hydration.hydrate();
         dispatch({
           activeConnectorId: result.activeConnectorId,
+          dropped: result.dropped.map((d) => d.connectorId),
           isUserDisconnected: result.isUserDisconnected,
           pool: result.pool,
           selection: result.selection,
@@ -394,7 +395,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
           logWarn(`[butr] late restore failed for ${connectorId}:`, outcome.error);
           return;
         }
-        dispatch({ connectorId, entry: outcome.entry, type: "CONNECT_SUCCEEDED" });
+        dispatch({ connectorId, entry: outcome.entry, type: "ENTRY_RESTORED" });
         lifecycle.attach(connectorId, outcome.entry.connector);
         await Promise.all([persistPool(), persistSelection(), persistActive()]);
         config.onConnect?.(outcome.entry);

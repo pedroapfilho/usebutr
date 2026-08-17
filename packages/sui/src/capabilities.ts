@@ -12,15 +12,9 @@ type WalletStandardCapabilityInput = {
 };
 
 /**
- * Sui Wallet Standard feature → butr capability mapping. The flags that hold
- * for every namespace are documented on `buildWalletCapabilities`.
- *
- * - `sendTransaction = sui:signAndExecuteTransaction present`. The wallet
- *   broadcasts; consumers receive the digest.
- * - `signTransaction = sui:signTransaction present`. Sign-only; consumers
- *   broadcast with their own RPC client (`@mysten/sui`'s SuiClient).
- * - `signMessage = sui:signPersonalMessage present`.
- * - `signIn = false`. Sui has no SIWS-equivalent feature in Wallet Standard.
+ * `signIn` is false: Sui Wallet Standard has no Sign-In-With-Sui feature.
+ * `signAndExecuteTransaction` means the wallet broadcasts, while
+ * `signTransaction` is sign-only and leaves the broadcast to the consumer.
  */
 const resolveSuiCapabilities = (input: WalletStandardCapabilityInput): WalletCapabilities =>
   buildWalletCapabilities({

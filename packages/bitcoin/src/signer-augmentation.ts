@@ -1,19 +1,9 @@
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
 /**
- * Augment `@usebutr/core`'s `SignerForPlatform` registry with the Bitcoin
- * entry. Bitcoin's signer surface is fragmented: `getSigner()` may
- * return one of three shapes depending on which adapter discovered the
- * wallet:
- *
- *  - `WalletStandardWallet`: for Phantom, Magic Eden, Leather, OKX
- *    (modern Wallet Standard path).
- *  - A UniSat-shaped provider; for Unisat, OKX legacy, `window.btc`
- *    (injected path).
- *  - A sats-connect `BitcoinProvider`; for Xverse (sats-connect path).
- *
- * The registry surfaces the union honestly so consumers know they need
- * to runtime-narrow.
+ * Bitcoin's signer surface is fragmented: `getSigner()` returns a
+ * `WalletStandardWallet`, a UniSat-shaped provider, or a sats-connect
+ * `BitcoinProvider` depending on which adapter discovered the wallet.
  */
 type UnisatLike = {
   getAccounts: () => Promise<ReadonlyArray<string>>;

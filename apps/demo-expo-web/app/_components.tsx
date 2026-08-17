@@ -1,4 +1,4 @@
-import type { Account, ConnectedWallet, WalletAdapter } from "@usebutr/core";
+import type { Account, ChainBase, ConnectedWallet, WalletAdapter } from "@usebutr/core";
 import {
   useActiveWallet,
   useBalance,
@@ -127,6 +127,20 @@ const AccountPicker = ({ wallet }: { wallet: ConnectedWallet }) => (
 
 const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
   const chains = CHAINS_BY_PLATFORM[wallet.connector.chainPlatform];
+  const [switchError, setSwitchError] = useState<string | null>(null);
+
+  // switchChain rejects on user rejection (4001) and unknown network (4902),
+  // both routine. The chip list reflects the wallet's current chain, so an
+  // unhandled rejection would leave the tap looking like it did nothing.
+  const handleSwitch = async (chain: ChainBase) => {
+    setSwitchError(null);
+    try {
+      await wallet.connector.switchChain(chain);
+    } catch (error) {
+      setSwitchError(error instanceof Error ? error.message : "Failed to switch chain");
+    }
+  };
+
   return (
     <View style={styles.chainList}>
       {chains.map((chain) => {
@@ -135,7 +149,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
           <Pressable
             key={chain.id}
             onPress={() => {
-              void wallet.connector.switchChain(chain);
+              void handleSwitch(chain);
             }}
             style={[styles.chainChip, isCurrent ? styles.chainChipCurrent : null]}
           >
@@ -145,6 +159,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
           </Pressable>
         );
       })}
+      {switchError === null ? null : <Text style={styles.signError}>{switchError}</Text>}
     </View>
   );
 };

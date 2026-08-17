@@ -4,7 +4,7 @@ Guidance for AI coding agents working in the **usebutr** monorepo — a multi-ch
 
 ## Stack
 
-- **Runtime:** Node ≥24, pnpm 11.1.3.
+- **Runtime:** Node ≥24, pnpm 11.13.1.
 - **Monorepo:** pnpm workspaces + Turborepo (`turbo.json`).
 - **Library packages:** built with [`tsdown`](https://tsdown.dev), published to npm under `@usebutr/*` via Changesets (`access: public`, `baseBranch: main`).
 - **Lint / format:** `oxlint` (config in `oxlint.config.ts`, presets from `oxlint-config-awesomeness`) + `oxfmt`.

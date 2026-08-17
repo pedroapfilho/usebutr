@@ -9,11 +9,9 @@ type CodeBlockProps = {
 };
 
 /**
- * Server-rendered syntax highlighting via shiki. We convert shiki's HAST into
- * real React elements (instead of dangerouslySetInnerHTML) so the highlighted
- * markup is rendered as ordinary children. `defaultColor: false` makes shiki
- * emit both palettes as CSS variables, which globals.css resolves against
- * `prefers-color-scheme` so the panel tracks the page rather than pinning dark.
+ * `defaultColor: false` makes shiki emit both palettes as CSS variables, which
+ * globals.css resolves against `prefers-color-scheme` so the panel tracks the
+ * page rather than pinning dark.
  */
 const CodeBlock = async ({ code, lang = "tsx" }: CodeBlockProps) => {
   const hast = await codeToHast(code, {

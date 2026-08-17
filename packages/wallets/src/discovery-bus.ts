@@ -1,38 +1,19 @@
 import type { WalletAdapter } from "@usebutr/core";
 import { logWarn } from "@usebutr/core";
 
-/**
- * A discovery path registers itself by accepting an `emit` callback and
- * returning an unsubscribe function. The path calls `emit(adapter)`
- * each time it finds one; the bus handles dedup. This is the only
- * shape every discovery transport needs to satisfy.
- */
+/** The path calls `emit` per adapter it finds; the bus handles dedup. */
 type DiscoveryPath = (emit: (adapter: WalletAdapter) => void) => () => void;
 
 /**
- * Coordinates one or more discovery paths behind a single dedup +
- * fan-out layer. Each registered path emits adapters; the bus drops
- * duplicates by `adapter.id` and forwards the rest to the consumer
- * `onAdapter` callback exactly once per id.
- *
- * The bus exposes `hasAny` so paths whose contract depends on the
- * presence of earlier paths (the injected EVM fallback, which only
- * emits if no EIP-6963 wallet has fired) can query without the
- * orchestrator having to hand them a private closure over its dedup
- * set.
+ * Dedups adapters by `adapter.id` across every registered path, so `onAdapter`
+ * fires exactly once per id. `hasAny` is public so a fallback path can gate on
+ * earlier paths without the orchestrator handing it the dedup set.
  */
 type DiscoveryBus = {
-  /** True iff at least one adapter has been emitted by any registered
-   *  path since this bus was created. Used by the injected fallback
-   *  to skip emitting when standards-based discovery has already
-   *  surfaced a wallet. */
+  /** True once any registered path has emitted. The injected fallback reads it
+   *  to skip emitting when standards-based discovery already found a wallet. */
   hasAny: () => boolean;
-  /**
-   * Register a discovery path with the bus. The path receives the
-   * bus's dedup-aware `emit` function and returns its own unsubscribe
-   * handle, which the bus tracks so `unsubscribeAll` can tear them
-   * down together. No-op if `path` is `null`.
-   */
+  /** No-op if `path` is `null`. */
   register: (path: DiscoveryPath | null) => void;
   /** Tear down every registered path. */
   unsubscribeAll: () => void;

@@ -1,18 +1,7 @@
 /**
- * Shared byte-encoding helpers for the connector packages.
- *
- * These functions sit directly on the signing/address path of every
- * chain. They used to be hand-reimplemented in ~10 connector files; a
- * single tested module removes the drift surface (a `padStart` omission
- * or base64 variant mismatch corrupts signatures/addresses for one chain
- * only, and the divergence is invisible because the copies look "the
- * same").
- *
- * Hex prefixing diverges across chains, so the module exposes **explicit
- * variants** rather than one function:
- * - {@link bytesToHex} returns bare hex (Bitcoin, Ledger).
- * - {@link bytesToHexPrefixed} returns `0x`-prefixed hex (EVM, Polkadot).
- * - {@link hexToBytes} tolerantly strips an optional `0x` (all callers).
+ * Hex prefixing diverges by chain (bare for Bitcoin and Ledger, `0x` for
+ * EVM and Polkadot), so the variants stay explicit: these sit on the
+ * signing path, where a silent mismatch corrupts one chain's signatures.
  */
 
 /** Bitcoin/Solana alphabet; omits the visually ambiguous `0`, `O`, `I`, `l`. */

@@ -1,7 +1,18 @@
 ---
 title: Hydration
-description: Restoring the previous session is asynchronous because wallet adapters announce themselves asynchronously.
+description: butr restores the previous session either asynchronously on mount, or synchronously from a server-rendered snapshot.
 ---
+
+butr has two hydration modes, and which one you get depends on whether you pass
+`initialState` to the provider:
+
+| Mode                   | How you opt in                                        | First render sees                              |
+| ---------------------- | ----------------------------------------------------- | ---------------------------------------------- |
+| Asynchronous (default) | nothing                                               | an empty pool, until the restore pass finishes |
+| Synchronous seeding    | `initialState` from [`readWalletSnapshot`](/api/core) | the persisted pool, on both server and client  |
+
+Everything below describes the asynchronous default. Jump to
+[synchronous seeding](#synchronous-seeding-ssr) for the other one.
 
 On mount, butr tries to restore the wallets from the last session. The catch:
 wallet adapters announce themselves _asynchronously_ (EIP-6963 dispatches
@@ -45,14 +56,70 @@ const discovery = autoDiscovery();
 
 ## Why `useIsHydrated()` matters
 
-Until the first hydration pass finishes, the pool is empty. If you render based
-on "is anything connected" before that, you flash a logged-out UI on every
-reload. Every reference app does this:
+In the asynchronous mode the pool is empty until the first hydration pass
+finishes. If you render based on "is anything connected" before that, you flash
+a logged-out UI on every reload, so gate on it:
 
 ```tsx
 const isHydrated = useIsHydrated();
 if (!isHydrated) return <p>Loading…</p>;
 ```
+
+This gate is only needed in the asynchronous mode. With `initialState` the store
+is already hydrated on the first render, and the gate would hide a shell you
+could have painted immediately.
+
+## Synchronous seeding (SSR)
+
+Pass `initialState` and the store starts with `isHydrated: true`, the pool
+populated, and every seeded connector id in `reconnectingIds`. The primary
+selectors (`useActiveWallet`, `useConnectedWallets`, `useAccounts`) return
+values from render zero on both server and client, so a server-rendered page can
+paint the user's address with no flash.
+
+Read the snapshot on the server with `readWalletSnapshot`, which parses butr's
+own cookies without needing a `Connector` (impossible on a server):
+
+```tsx
+// app/layout.tsx
+import { readWalletSnapshot } from "@usebutr/core";
+import { cookies } from "next/headers";
+
+const RootLayout = async ({ children }: { children: ReactNode }) => {
+  const cookieStore = await cookies();
+  // Forward only butr's own keys. This object crosses into a client component,
+  // so anything here is serialized into the page and readable from JS.
+  const initialCookies: Record<string, string> = {};
+  for (const { name, value } of cookieStore.getAll()) {
+    if (name.startsWith(`${STORAGE_KEY_PREFIX}-`)) {
+      initialCookies[name] = value;
+    }
+  }
+  const initialState = readWalletSnapshot(initialCookies, {
+    keyPrefix: STORAGE_KEY_PREFIX,
+  });
+
+  return (
+    <WalletProvider initialCookies={initialCookies} initialState={initialState}>
+      {children}
+    </WalletProvider>
+  );
+};
+```
+
+The seeded entries are backed by placeholder connectors until the real wallet
+announces itself, so they can hold data but cannot sign. Two things follow:
+
+- `useSigner()` and `useBalance()` stay `idle` for a seeded wallet rather than
+  reporting an error, and start loading once the live adapter arrives.
+- `useConnectionStatus()` returns `"reconnecting"`, and `useIsReconnecting(id)`
+  answers the same question per wallet. Gate any "sign" affordance on it.
+
+If a seeded wallet's silent reconnect fails, which a locked wallet will do, butr
+drops the entry from the pool rather than leaving an unusable placeholder in it.
+
+The full walkthrough, including the cookie storage driver, is in
+[SSR without a flash](/guides/ssr-no-flash).
 
 ## Late restore merges, never replaces
 

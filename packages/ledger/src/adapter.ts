@@ -9,59 +9,14 @@ import { createSuiLedgerAdapter } from "./apps/sui";
 import type { SvmLedgerOptions } from "./apps/svm";
 import { createSvmLedgerAdapter } from "./apps/svm";
 
-/**
- * Discriminated-union options for the unified `createLedgerAdapter`
- * factory. Each variant is **fully typed for its platform**; no
- * opaque DI bag.
- *
- * All four supported platforms ship today: EVM, SVM, Sui, Bitcoin.
- * Every caller passes `platform` explicitly; the discriminant is the
- * only safe way to route the heterogeneous option types past TypeScript.
- *
- * Adding a new platform is three touches:
- *   1. Create `src/apps/<platform>.ts` with a `createXxxLedgerAdapter`
- *      and its own `XxxLedgerOptions` type.
- *   2. Extend this union with `| XxxLedgerOptions`.
- *   3. Add a `case` in the dispatch below.
- */
+/** Each variant is fully typed for its platform, so `platform` is the only
+ *  discriminant that routes the heterogeneous option types past TypeScript. */
 type LedgerOptions = EvmLedgerOptions | SvmLedgerOptions | SuiLedgerOptions | BitcoinLedgerOptions;
 
 /**
- * Unified Ledger adapter factory. Dispatches to the per-platform
- * factory based on `options.platform`.
- *
- * @example
- * ```ts
- * // EVM
- * const ledger = await createLedgerAdapter({ platform: "evm", chainId: 1 });
- *
- * // Solana
- * const ledger = await createLedgerAdapter({ platform: "svm", cluster: "mainnet" });
- *
- * // Sui
- * const ledger = await createLedgerAdapter({ platform: "sui", cluster: "mainnet" });
- *
- * // Bitcoin
- * const ledger = await createLedgerAdapter({
- *   platform: "bitcoin",
- *   addressFormat: "bech32",
- * });
- * ```
- *
- * **Why the dispatch lives here.** Each platform's factory has its own
- * fully-typed options (no `unknown`, no opaque DI bag). The dispatch
- * is the only place that observes the heterogeneous union. Adding a
- * new platform: write the factory in `apps/<platform>.ts`, extend
- * `LedgerOptions`, add the `case`. Three touches.
- *
- * **Browser support.** WebUSB works in Chromium-based browsers
- * (Chrome, Edge, Brave, Arc). Firefox and Safari don't ship WebUSB.
- *
- * **Signing only.** Ledger signs but doesn't broadcast. `sendTx` /
- * `sendTxToChain` / `getBalance` / `getTransactionReceipt` throw;
- * capability flags are `false`. Wrap the signer (via `getSigner()`)
- * with viem / ethers / @solana/kit / @mysten/sui / bitcoinjs-lib and
- * your own RPC client to complete the send.
+ * Requires a Chromium-based browser: Firefox and Safari ship no WebUSB. Ledger
+ * signs but never broadcasts, so `sendTx`, `sendTxToChain`, `getBalance`, and
+ * `getTransactionReceipt` throw and their capabilities are `false`.
  */
 const createLedgerAdapter = (options: LedgerOptions): Promise<WalletAdapter> => {
   const requestedPlatform: string = options.platform;

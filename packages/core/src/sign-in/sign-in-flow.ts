@@ -2,13 +2,9 @@ import { bytesToBase64 } from "../encoding/bytes";
 import type { Account, ConnectedWallet } from "../types";
 
 /**
- * What the wallet produced, encoded for transport. Both byte fields are
- * base64 because that is what survives `JSON.stringify` intact; the raw
- * `Uint8Array`s are kept alongside for callers verifying in-process.
- *
- * Verify against `signedMessage`, not `message`. Solana Wallet Standard
- * wallets may prefix or re-encode what they sign, so the bytes that carry
- * the signature are the wallet's, not yours.
+ * Verify against `signedMessage`, not `message`: Solana Wallet Standard
+ * wallets may prefix or re-encode what they sign. Base64 mirrors exist
+ * because `Uint8Array` does not survive `JSON.stringify`.
  */
 type SignInResult = {
   account: Account;
@@ -33,15 +29,9 @@ type SignInMessageContext = {
 
 type SignInFlowOptions = {
   /**
-   * Compose the message to sign. Defaults to a plain
-   * `<address> signs in. Nonce: <nonce>` line.
-   *
-   * butr deliberately does not ship a wire format here: a message a
-   * server must parse is an authentication spec, and SIWE / SIWS already
-   * fill that role. Pass the formatter your backend expects.
-   *
-   * Unused on the SIWS path, where the wallet composes the message from
-   * the input fields.
+   * butr ships no wire format: a server-parsed message is an auth spec,
+   * and SIWE / SIWS already fill that role. Pass what your backend
+   * expects. Unused on the SIWS path, where the wallet composes it.
    */
   buildMessage?: (ctx: SignInMessageContext) => string;
   /** Fetch a single-use nonce from your backend. */
@@ -75,30 +65,9 @@ const defaultBuildMessage = ({ account, nonce }: SignInMessageContext): string =
   `${account.walletAddress} signs in.\nNonce: ${nonce}`;
 
 /**
- * Build a reusable sign-in flow: nonce, capability gate, signature,
- * encoding, verification.
- *
- * Every wallet-auth app writes this same sequence, and the parts that
- * are easy to get wrong are the ones that aren't about the app: which
- * capability flag gates the attempt, whether a Solana wallet should take
- * the SIWS path instead, and which bytes to base64 for the server (the
- * wallet's `signedMessage`, not the input). This owns those; you own the
- * nonce endpoint, the message format, and the verifier.
- *
- * ```ts
- * const { signIn } = createSignInFlow({
- *   getNonce: () => fetch("/api/nonce").then((r) => r.text()),
- *   verify: (result) =>
- *     fetch("/api/verify", { body: JSON.stringify(result), method: "POST" }).then(() => {}),
- * });
- *
- * await signIn(wallet);
- * ```
- *
- * Solana wallets advertising `solana:signIn` take the SIWS path
- * automatically, so `result.signedMessage` holds the wallet-composed
- * SIWS statement and `result.message` is absent. Set
- * `preferSignMessage` to opt out.
+ * Solana wallets advertising `solana:signIn` take the SIWS path, so
+ * `result.signedMessage` holds the wallet-composed statement and
+ * `result.message` is absent. `preferSignMessage` opts out.
  */
 const createSignInFlow = (
   options: SignInFlowOptions,

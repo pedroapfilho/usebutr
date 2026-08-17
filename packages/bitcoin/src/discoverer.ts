@@ -4,10 +4,9 @@ import { discoverInjectedBitcoinAdapter } from "./injected";
 import { discoverBitcoinAdapters } from "./wallet-standard-adapter";
 
 /**
- * Bitcoin's `PlatformDiscoverer`: Wallet Standard primary (Phantom,
- * Magic Eden, Leather, OKX); legacy fallback covers sats-connect
- * (Xverse), `window.unisat`, OKX legacy, and `window.btc`. The
- * fallback defers to Wallet Standard via `hasAnyPrimaryAdapter`.
+ * Wallet Standard is primary; the legacy fallback covers sats-connect
+ * (Xverse), `window.unisat`, OKX legacy and `window.btc`, and defers to
+ * the primary channel via `hasAnyPrimaryAdapter`.
  */
 const bitcoinDiscoverer: PlatformDiscoverer = {
   fallback: {

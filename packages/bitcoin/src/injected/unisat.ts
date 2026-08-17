@@ -1,4 +1,4 @@
-import type { ChainBase, ConnectorEvent, WalletAdapter, WalletCapabilities } from "@usebutr/core";
+import type { ChainBase, WalletAdapter, WalletCapabilities } from "@usebutr/core";
 import { base64ToBytes, bytesToHex, hexToBytes } from "@usebutr/core";
 import { buildAccount } from "@usebutr/wallet-standard-shared";
 
@@ -40,22 +40,18 @@ const CAPS_UNISAT: WalletCapabilities = {
   switchChain: false,
 };
 
-/**
- * Wrap a UniSat-style provider (`window.unisat`, `window.okxwallet.bitcoin`,
- * `window.btc`) into a butr `WalletAdapter`.
- *
- * The UniSat shape is consistent enough that one adapter handles every
- * derivative. Differences (network names, `sendBitcoin` presence) are
- * gated by feature detection per call.
- */
 const toStringArray = (value: unknown): Array<string> =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
+/**
+ * The UniSat shape is consistent enough across `window.unisat`,
+ * `window.okxwallet.bitcoin` and `window.btc` that one adapter covers all
+ * three; the differences (network names, `sendBitcoin`) are probed per call.
+ */
 const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider): WalletAdapter => {
   let chain: ChainBase = BITCOIN_CHAINS.mainnet;
-  const listenersSet = new Set<(event: ConnectorEvent) => void>();
 
-  const sendBitcoinTx = (tx: unknown): Promise<string> => {
+  const sendBitcoinTx = async (tx: unknown): Promise<string> => {
     if (typeof provider.sendBitcoin !== "function") {
       throw new TypeError(`Wallet ${name} does not expose sendBitcoin`);
     }
@@ -72,7 +68,8 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
       );
     }
     const { amount, recipient } = tx;
-    return provider.sendBitcoin(recipient, Number(amount));
+    const txid = await provider.sendBitcoin(recipient, Number(amount));
+    return txid;
   };
 
   const refreshChain = async () => {
@@ -176,7 +173,6 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     },
 
     subscribe(listener) {
-      listenersSet.add(listener);
       const onAccountsChanged = (...args: ReadonlyArray<unknown>) => {
         const accounts = toStringArray(args[0]);
         if (accounts.length === 0) {
@@ -198,19 +194,22 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
       return () => {
         provider.removeListener?.("accountsChanged", onAccountsChanged);
         provider.removeListener?.("networkChanged", onNetworkChanged);
-        listenersSet.delete(listener);
       };
     },
 
-    switchChain: (target) => {
+    // `capabilities.switchChain` is false: UniSat exposes no way to ask the
+    // wallet to change network, so the wallet's own setting is authoritative
+    // and every account read re-reads it. This validates the request and then
+    // reports what the wallet actually says, rather than assigning the target
+    // locally and having the next read silently contradict it.
+    async switchChain(target) {
       if (target.namespace !== "bip122") {
         throw new Error(
           `Bitcoin adapter received non-Bitcoin chain "${target.id}". Pass a chain with namespace "bip122".`,
         );
       }
       chain = target;
-      void refreshChain();
-      return Promise.resolve();
+      await refreshChain();
     },
   };
 };

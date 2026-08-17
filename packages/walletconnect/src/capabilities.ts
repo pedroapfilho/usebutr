@@ -1,14 +1,9 @@
 import type { WalletCapabilities } from "@usebutr/core";
 
 /**
- * WalletConnect capabilities are fixed once paired; the adapter speaks
- * EIP-1193 against the relay. No transport-specific input.
- *
- * - `requestAccounts`: no EIP-2255 equivalent; "request more accounts"
- *   means tearing down the session and re-pairing.
- * - `switchChain`: true regardless of session-namespace chain count; a
- *   single-chain session can still route `wallet_switchEthereumChain` to
- *   the wallet's UI for re-selection.
+ * WC has no EIP-2255 equivalent, so more accounts means re-pairing.
+ * `switchChain` holds even for a single-chain session, which can still
+ * route `wallet_switchEthereumChain` to the wallet's UI for re-selection.
  */
 const WALLETCONNECT_CAPABILITIES: WalletCapabilities = {
   getBalance: true,

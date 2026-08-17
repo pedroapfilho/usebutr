@@ -4,15 +4,9 @@ import { discoverInjectedPolkadotAdapters } from "./injected";
 import { discoverPolkadotWalletStandardAdapters } from "./wallet-standard-adapter";
 
 /**
- * Polkadot's `PlatformDiscoverer`. Inverts the Bitcoin layout:
- *  - PRIMARY (`subscribe`) is injectedWeb3; the dominant, broadest
- *    Polkadot standard (polkadot-js, Talisman, SubWallet, Nova, Enkrypt).
- *  - FALLBACK is Wallet Standard `polkadot:*`. It defers when the primary
- *    channel already produced an adapter for the session
- *    (`hasAnyPrimaryAdapter`). Since Wallet Standard support is always
- *    additive on Polkadot today (Talisman/SubWallet expose both), the
- *    discovery-bus also dedups overlaps and the defer prevents
- *    double-listing.
+ * Primary is injectedWeb3; Wallet Standard `polkadot:*` is the fallback. Its
+ * defer is the only thing preventing double-listing: a wallet on both
+ * channels mints two unrelated ids the discovery bus cannot collapse.
  */
 const polkadotDiscoverer: PlatformDiscoverer = {
   fallback: {

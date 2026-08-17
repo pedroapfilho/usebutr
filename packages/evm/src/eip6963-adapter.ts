@@ -3,31 +3,10 @@ import { bytesToHexPrefixed as bytesToHex, hexToBytes, sanitizeIcon } from "@use
 
 import { resolveEip6963Capabilities } from "./capabilities";
 import type { Eip1193Listener, Eip1193Provider, Eip6963ProviderInfo } from "./eip1193";
+import { requestString, requestStringArray } from "./eip1193";
 import { readEvmBalance } from "./evm-balance";
 
 const HEX_PREFIX = "0x";
-
-/** `provider.request` is typed `unknown` by design; these helpers
- *  narrow the well-known EVM RPC shapes at the boundary with runtime
- *  guards so call sites stay assertion-free. Malformed responses
- *  collapse to an empty/blank value rather than throwing. */
-const requestStringArray = async (
-  provider: Eip1193Provider,
-  args: { method: string; params?: ReadonlyArray<unknown> },
-): Promise<Array<string>> => {
-  const result = await provider.request(args);
-  return Array.isArray(result)
-    ? result.filter((item): item is string => typeof item === "string")
-    : [];
-};
-
-const requestString = async (
-  provider: Eip1193Provider,
-  args: { method: string; params?: ReadonlyArray<unknown> },
-): Promise<string> => {
-  const result = await provider.request(args);
-  return typeof result === "string" ? result : "";
-};
 
 const toStringArray = (value: unknown): Array<string> =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
@@ -62,62 +41,34 @@ type AccountStateOptions = {
   chainIdHex?: string;
 };
 
+/** Rejections propagate: `getAccount`/`getAccounts` surface the wallet's
+ *  own provider error, while the `subscribe` bridge swallows it because a
+ *  later event retries synchronization. */
 const readAccountState = async (
   provider: Eip1193Provider,
   walletName: string,
   options: AccountStateOptions = {},
 ) => {
-  const [accountsResult, chainIdResult] = await Promise.allSettled([
-    options.accounts === undefined
-      ? requestStringArray(provider, { method: "eth_accounts" })
-      : Promise.resolve(options.accounts),
-    options.chainIdHex === undefined
-      ? requestString(provider, { method: "eth_chainId" })
-      : Promise.resolve(options.chainIdHex),
-  ]);
-  if (accountsResult.status === "rejected" || chainIdResult.status === "rejected") {
-    return null;
-  }
-  const accounts = accountsResult.value;
+  const accounts =
+    options.accounts ?? (await requestStringArray(provider, { method: "eth_accounts" }));
   if (accounts.length === 0) {
     return null;
   }
-  const chain = buildEvmChain(chainIdResult.value, walletName);
+  const chainIdHex =
+    options.chainIdHex ?? (await requestString(provider, { method: "eth_chainId" }));
+  if (chainIdHex === null) {
+    throw new Error("Wallet returned a malformed eth_chainId response");
+  }
+  const chain = buildEvmChain(chainIdHex, walletName);
   const builtAccounts = accounts.map((address) => buildEvmAccount(address, chain));
   const account = builtAccounts[0];
   return account === undefined ? null : { account, accounts: builtAccounts };
 };
 
 /**
- * Adapt an EIP-1193 provider (announced via EIP-6963) into a butr
- * `WalletAdapter`. The returned adapter covers the full `Connector +
- * Wallet` surface; consumers can pass it through `createConnector` like
- * any hand-written adapter.
- *
- * **Caveats**
- *
- *  - `disconnect` calls `wallet_revokePermissions`. Many wallets don't
- *    implement that method and silently ignore the call. The reducer
- *    will still mark the wallet as disconnected on butr's side; the
- *    wallet's own auto-reconnect heuristic may or may not honour it.
- *  - `switchAccount` is intentionally unimplemented because EIP-1193 has
- *    no silent "use address X" RPC. The active account is whichever one
- *    the wallet exposes first; the user changes it through the wallet's
- *    own UI. butr's `subscribe` bridge auto-updates the pool entry when
- *    `accountsChanged` fires. Call `requestAccounts` if you want the
- *    wallet to expose more accounts.
- *  - `getBalance()` returns the native ETH balance with symbol `"ETH"`
- *    regardless of which EVM chain the wallet is currently on. Consumers
- *    that target multiple EVM chains should overlay the symbol via
- *    their own logic.
- *  - `getBalance(tokenAddress)` reads the ERC20 balance for the active
- *    account on the currently-connected chain. The token's own
- *    `decimals()` and `symbol()` are queried for accurate formatting;
- *    if `symbol()` is non-standard (bytes32) it's decoded as best-
- *    effort. Routed through `eth_call` on the wallet's own provider;
- *    the demo doesn't ship a separate RPC.
- *  - `getSigner` returns the raw EIP-1193 provider. Wrap it in viem's
- *    `createWalletClient` or ethers' `BrowserProvider` at the call site.
+ * `disconnect` calls `wallet_revokePermissions`, which many wallets don't
+ * implement and silently ignore, so their own auto-reconnect may outlive it.
+ * `getBalance()` labels the native balance `"ETH"` on every EVM chain.
  */
 const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): WalletAdapter => {
   return {
@@ -150,27 +101,13 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     },
 
     async getAccount() {
-      const accounts = await requestStringArray(provider, { method: "eth_accounts" });
-      if (accounts.length === 0) {
-        return null;
-      }
-      const chainIdHex = await requestString(provider, { method: "eth_chainId" });
-      const chain = buildEvmChain(chainIdHex, info.name);
-      const first = accounts[0];
-      if (first === undefined) {
-        return null;
-      }
-      return buildEvmAccount(first, chain);
+      const state = await readAccountState(provider, info.name);
+      return state?.account ?? null;
     },
 
     async getAccounts() {
-      const accounts = await requestStringArray(provider, { method: "eth_accounts" });
-      if (accounts.length === 0) {
-        return [];
-      }
-      const chainIdHex = await requestString(provider, { method: "eth_chainId" });
-      const chain = buildEvmChain(chainIdHex, info.name);
-      return accounts.map((addr) => buildEvmAccount(addr, chain));
+      const state = await readAccountState(provider, info.name);
+      return state?.accounts ?? [];
     },
 
     async getBalance(mint) {
@@ -239,13 +176,16 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         method: "eth_sendTransaction",
         params: [txWithFrom],
       });
+      if (hash === null) {
+        throw new Error("Wallet returned no transaction hash");
+      }
       return hash;
     },
 
     async sendTxToChain(tx, targetChainIdDecimal, account, cb) {
       const current = await requestString(provider, { method: "eth_chainId" });
       const targetHex = chainIdDecimalToHex(targetChainIdDecimal);
-      if (current.toLowerCase() !== targetHex.toLowerCase()) {
+      if (current?.toLowerCase() !== targetHex.toLowerCase()) {
         await provider.request({
           method: "wallet_switchEthereumChain",
           params: [{ chainId: targetHex }],
@@ -257,6 +197,9 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         method: "eth_sendTransaction",
         params: [txWithFrom],
       });
+      if (hash === null) {
+        throw new Error("Wallet returned no transaction hash");
+      }
       return hash;
     },
 
@@ -273,6 +216,9 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         method: "personal_sign",
         params: [bytesToHex(msg), signer],
       });
+      if (signatureHex === null) {
+        throw new Error("Wallet returned a malformed personal_sign response");
+      }
       return { signature: hexToBytes(signatureHex), signedMessage: msg };
     },
 
@@ -298,7 +244,10 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       };
 
       const onChainChanged: Eip1193Listener = (...args) => {
-        const chainIdHex = typeof args[0] === "string" ? args[0] : "";
+        const [chainId] = args;
+        // Some wallets emit a decimal number here instead of the EIP-1193
+        // hex string; leaving it absent re-engages the eth_chainId read.
+        const chainIdHex = typeof chainId === "string" && chainId.length > 0 ? chainId : undefined;
         void synchronizeAccount({ chainIdHex });
       };
 
@@ -324,9 +273,14 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     },
 
     async switchChain(chain) {
+      const targetHex = chainIdDecimalToHex(chain.reference);
+      const current = await requestString(provider, { method: "eth_chainId" });
+      if (current?.toLowerCase() === targetHex.toLowerCase()) {
+        return;
+      }
       await provider.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: chainIdDecimalToHex(chain.reference) }],
+        params: [{ chainId: targetHex }],
       });
     },
   };

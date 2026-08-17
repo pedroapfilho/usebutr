@@ -1,13 +1,18 @@
 import type { ChainPlatform, WalletAdapter } from "@usebutr/core";
-import type { Eip1193Listener } from "@usebutr/evm";
 
-import type { UniversalProviderConstructor, UniversalProviderLike } from "./loader";
+import type {
+  UniversalProviderConstructor,
+  UniversalProviderLike,
+  WcNamespaceRequest,
+} from "./loader";
 import { loadUniversalProvider } from "./loader";
 import { bitcoinNamespace } from "./namespaces/bitcoin";
 import { evmNamespace } from "./namespaces/evm";
 import { suiNamespace } from "./namespaces/sui";
 import { solanaNamespace } from "./namespaces/svm";
 import type { WalletConnectNamespaceBuilder } from "./namespaces/types";
+import type { PairingRequest } from "./session";
+import { createWalletConnectSession } from "./session";
 
 type WalletConnectMetadata = {
   description?: string;
@@ -34,20 +39,15 @@ type WalletConnectOptions = {
   /** Override the wallet's display name. Default `"WalletConnect"`. */
   name?: string;
   /**
-   * Per-namespace chain requests. Each key is a `ChainPlatform`; each
-   * value is the CAIP-2 chains to advertise for that namespace.
-   *
-   * Omit a key to skip that namespace entirely. Pass an empty array
-   * to use the namespace builder's `defaultChains`.
+   * Each key is a `ChainPlatform`, each value the CAIP-2 chains to
+   * advertise. Omit a key to skip that namespace; pass an empty array to
+   * fall back to the builder's `defaultChains`.
    */
   namespaces: Partial<Record<ChainPlatform, ReadonlyArray<string>>>;
   /**
-   * Called with the WalletConnect pairing URI whenever the provider
-   * needs the user to scan a QR code (or open a mobile deep link).
-   * butr ships no QR renderer by design; consumers wire their own
-   * (`@walletconnect/modal`, `qrcode`, hand-rolled). On mobile,
-   * forward the URI to `window.location` to trigger the OS's wallet
-   * selection sheet.
+   * butr ships no QR renderer by design, so wire your own
+   * (`@walletconnect/modal`, `qrcode`). On mobile, forward the URI to
+   * `window.location` to trigger the OS's wallet selection sheet.
    */
   onPairingUri?: (uri: string) => void;
   /**
@@ -66,13 +66,9 @@ type WalletConnectOptions = {
 const DEFAULT_ICON =
   "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzNiOTlmYyI+PHBhdGggZD0iTTQuOTEzIDcuNTE5YzMuOTI0LTMuODQyIDEwLjI1Mi0zLjg0MiAxNC4xNzYgMGwuNDcyLjQ2MmEuNDgzLjQ4MyAwIDAgMSAwIC42OWwtMS42MTUgMS41ODFhLjI1NC4yNTQgMCAwIDEtLjM1NCAwbC0uNjUtLjYzN2MtMi43MzgtMi42OC03LjE3Ny0yLjY4LTkuOTE1IDBsLS42OTYuNjgyYS4yNTQuMjU0IDAgMCAxLS4zNTQgMEw0LjM2MyA4LjcxNmEuNDgzLjQ4MyAwIDAgMSAwLS42OXptMTcuNTA0IDMuMjY1IDEuNDM3IDEuNDA2YS40ODMuNDgzIDAgMCAxIDAgLjY5bC02LjQ4MiA2LjM0OWEuNTA4LjUwOCAwIDAgMS0uNzA4IDBsLTQuNjAyLTQuNTA1YS4xMjcuMTI3IDAgMCAwLS4xNzcgMGwtNC42MDIgNC41MDVhLjUwOC41MDggMCAwIDEtLjcwOCAwTC4wOTMgMTIuODhhLjQ4My40ODMgMCAwIDEgMC0uNjlsMS40MzctMS40MDZhLjUwOC41MDggMCAwIDEgLjcwOCAwbDQuNjAyIDQuNTA1Yy4wNDkuMDQ4LjEyOC4wNDguMTc3IDBsNC42MDItNC41MDVhLjUwOC41MDggMCAwIDEgLjcwOCAwbDQuNjAyIDQuNTA1Yy4wNDkuMDQ4LjEyOC4wNDguMTc3IDBsNC42MDItNC41MDVhLjUwOC41MDggMCAwIDEgLjcwOCAweiIvPjwvc3ZnPg==";
 
-const NOOP_CLEANUP = (): void => {};
-
-const initProvider = async (
-  options: WalletConnectOptions,
-): Promise<{ cleanup: () => void; provider: UniversalProviderLike }> => {
+const initProvider = async (options: WalletConnectOptions): Promise<UniversalProviderLike> => {
   const UniversalProvider = options.universalProvider ?? (await loadUniversalProvider());
-  const provider = await UniversalProvider.init({
+  return UniversalProvider.init({
     metadata: options.metadata
       ? {
           description: options.metadata.description,
@@ -83,28 +79,16 @@ const initProvider = async (
       : undefined,
     projectId: options.projectId,
   });
-
-  let cleanup = NOOP_CLEANUP;
-  if (options.onPairingUri) {
-    const onDisplayUri: Eip1193Listener = (...args) => {
-      const uri = args[0];
-      if (typeof uri === "string") {
-        options.onPairingUri?.(uri);
-      }
-    };
-    provider.on("display_uri", onDisplayUri);
-    let removed = false;
-    cleanup = () => {
-      if (removed) {
-        return;
-      }
-      removed = true;
-      provider.removeListener("display_uri", onDisplayUri);
-    };
-  }
-
-  return { cleanup, provider };
 };
+
+const namespaceRequest = (
+  builder: WalletConnectNamespaceBuilder,
+  chains: ReadonlyArray<string>,
+): WcNamespaceRequest => ({
+  chains: [...chains],
+  events: [...builder.defaultEvents],
+  methods: [...builder.defaultMethods],
+});
 
 /**
  * Registry of known per-namespace builders. Adding a new namespace =
@@ -119,39 +103,9 @@ const KNOWN_NAMESPACES: Readonly<Record<string, WalletConnectNamespaceBuilder | 
 };
 
 /**
- * WalletConnect v2 factory. Accepts a per-platform `chains` map and
- * returns one adapter per requested namespace from a single paired
- * session. Each returned adapter has its own id (with a platform suffix
- * when more than one namespace is requested) so butr's pool can hold
- * them simultaneously.
- *
- * EVM, SVM (Solana), Sui, and Bitcoin (bip122) namespace builders all
- * ship with the package. The factory is shaped this way so adding a
- * platform = adding one file under `src/namespaces/` and one entry to
- * {@link KNOWN_NAMESPACES}, with no API change elsewhere.
- *
- * @example Single namespace
- * ```ts
- * const [wc] = await createWalletConnectAdapters({
- *   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
- *   namespaces: { evm: ["eip155:1"] },
- *   onPairingUri: (uri) => setQrUri(uri),
- * });
- * ```
- *
- * @example Multi-namespace
- * ```ts
- * const wcs = await createWalletConnectAdapters({
- *   projectId,
- *   namespaces: {
- *     evm: ["eip155:1"],
- *     svm: ["solana:mainnet"],
- *     sui: ["sui:mainnet"],
- *     bitcoin: ["bip122:000000000019d6689c085ae165831e93"],
- *   },
- *   onPairingUri: (uri) => setQrUri(uri),
- * });
- * ```
+ * A WC v2 session's namespaces are fixed at approval time, so the pairing
+ * declares the union up front: first namespace required, the rest optional.
+ * Adapters for a declined namespace reject on `connect()`.
  */
 const createWalletConnectAdapters = async (
   options: WalletConnectOptions,
@@ -176,31 +130,59 @@ const createWalletConnectAdapters = async (
     );
   }
 
-  const { cleanup, provider } = await initProvider(options);
-  const baseId = options.id ?? "walletconnect";
-  const baseName = options.name ?? "WalletConnect";
-  const icon = options.icon ?? DEFAULT_ICON;
-  const multiNamespace = requested.length > 1;
-
-  return requested.map(([platform, chains]) => {
+  const selected = requested.map(([platform, chains]) => {
     const builder = KNOWN_NAMESPACES[platform];
     if (!builder) {
       throw new Error(`Unreachable: builder missing for ${platform}`);
     }
+    return { builder, chains: chains.length > 0 ? chains : builder.defaultChains, platform };
+  });
+
+  const [primary, ...secondary] = selected;
+  if (primary === undefined) {
+    throw new Error("Unreachable: empty namespace selection");
+  }
+  const namespaces: PairingRequest = {
+    [primary.builder.caipPrefix]: namespaceRequest(primary.builder, primary.chains),
+  };
+  const optionalNamespaces: PairingRequest = Object.fromEntries(
+    secondary.map(({ builder, chains }) => [builder.caipPrefix, namespaceRequest(builder, chains)]),
+  );
+
+  const provider = await initProvider(options);
+  const session = createWalletConnectSession({
+    namespaces,
+    onPairingUri: options.onPairingUri,
+    optionalNamespaces,
+    provider,
+  });
+  const baseId = options.id ?? "walletconnect";
+  const baseName = options.name ?? "WalletConnect";
+  const icon = options.icon ?? DEFAULT_ICON;
+  const multiNamespace = selected.length > 1;
+  const connectedAdapters = new Set<WalletAdapter>();
+
+  return selected.map(({ builder, chains, platform }) => {
     const adapter = builder.buildAdapter({
-      chains: chains.length > 0 ? chains : builder.defaultChains,
+      chains,
       icon,
       id: multiNamespace ? `${baseId}-${platform}` : baseId,
       name: multiNamespace ? `${baseName} (${platform.toUpperCase()})` : baseName,
       provider,
+      session,
     });
-    const innerDisconnect = adapter.disconnect?.bind(adapter);
+    const release = session.retain();
+    const innerConnect = adapter.connect.bind(adapter);
     return Object.assign(adapter, {
+      connect: async (connectOptions?: { silent?: boolean }) => {
+        await innerConnect(connectOptions);
+        connectedAdapters.add(adapter);
+      },
       disconnect: async () => {
-        try {
-          await innerDisconnect?.();
-        } finally {
-          cleanup();
+        connectedAdapters.delete(adapter);
+        release();
+        if (connectedAdapters.size === 0) {
+          await session.disconnect();
         }
       },
     });

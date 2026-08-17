@@ -1,22 +1,25 @@
 import type { Eip1193Provider } from "@usebutr/evm";
 
 /**
- * Minimal type surface for `@walletconnect/universal-provider`. We
- * declare what we use rather than imposing the full peer-dep types on
- * butr's own type-check pipeline (the peer dep is optional). Real
- * provider instances satisfy this shape.
+ * Declared here rather than imported, so butr's type-check never requires
+ * the optional `@walletconnect/universal-provider` peer dep.
  */
+type WcNamespaceRequest = {
+  chains: ReadonlyArray<string>;
+  events: ReadonlyArray<string>;
+  methods: ReadonlyArray<string>;
+  rpcMap?: Record<string, string>;
+};
+
 type UniversalProviderLike = Eip1193Provider & {
   connect: (opts: {
-    namespaces: Record<
-      string,
-      {
-        chains: ReadonlyArray<string>;
-        events: ReadonlyArray<string>;
-        methods: ReadonlyArray<string>;
-        rpcMap?: Record<string, string>;
-      }
-    >;
+    namespaces: Record<string, WcNamespaceRequest>;
+    /**
+     * Namespaces the wallet may decline without failing the pairing. WC v2
+     * sessions cannot be extended after approval, so everything butr will
+     * ever need has to be declared in the first `connect` call.
+     */
+    optionalNamespaces?: Record<string, WcNamespaceRequest>;
   }) => Promise<unknown>;
   disconnect: () => Promise<void>;
   session: WcSession | null | undefined;
@@ -41,13 +44,9 @@ type UniversalProviderConstructor = {
 };
 
 /**
- * Dynamic-import `@walletconnect/universal-provider`. Keeping it
- * dynamic preserves the optional-peer-dep posture: consumers who
- * don't ship WC pay no bundle cost, and `pnpm install` works without
- * the dep present.
- *
- * Two export shapes show up across WC v2 minor versions
- * (`{ UniversalProvider }` vs `default`); we accept either.
+ * Dynamic so consumers who don't ship WC pay no bundle cost and can install
+ * without the peer dep. WC v2 minors expose either `{ UniversalProvider }`
+ * or `default`, so both are accepted.
  */
 const loadUniversalProvider = async (): Promise<UniversalProviderConstructor> => {
   const mod: unknown = await import("@walletconnect/universal-provider");
@@ -66,5 +65,10 @@ const loadUniversalProvider = async (): Promise<UniversalProviderConstructor> =>
   return ctor as unknown as UniversalProviderConstructor;
 };
 
-export type { UniversalProviderConstructor, UniversalProviderInitOptions, UniversalProviderLike };
+export type {
+  UniversalProviderConstructor,
+  UniversalProviderInitOptions,
+  UniversalProviderLike,
+  WcNamespaceRequest,
+};
 export { loadUniversalProvider };

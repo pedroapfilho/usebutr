@@ -16,6 +16,8 @@ export {
   suiNamespace,
 } from "./adapter";
 
+export type { WalletConnectSession } from "./session";
+
 export { WALLETCONNECT_CAPABILITIES } from "./capabilities";
 export { WALLETCONNECT_BITCOIN_CAPABILITIES } from "./namespaces/bitcoin";
 export { WALLETCONNECT_SUI_CAPABILITIES } from "./namespaces/sui";

@@ -9,15 +9,15 @@ const FAKE_ADDRESSES = [
   "0xc1a5d63d0eb1c52e0e0006c3a7a3a3d52a3a3a3a",
 ] as const;
 
-const buildFakeEthCtor = (addresses: ReadonlyArray<string> = FAKE_ADDRESSES): EthAppConstructor => {
+const buildEthCtorWithAddress = (
+  getAddress: (path: string) => Promise<{ address: string; publicKey: string }>,
+): EthAppConstructor => {
   return class FakeEth implements EthAppLike {
     constructor(private readonly _transport: unknown) {
       void _transport;
     }
     getAddress(path: string): Promise<{ address: string; publicKey: string }> {
-      const idx = Math.trunc(Number(path.split("/").pop() ?? "0"));
-      const address = addresses[idx] ?? addresses[0];
-      return Promise.resolve({ address: address ?? "0x0", publicKey: "0xpubkey" });
+      return getAddress(path);
     }
     signPersonalMessage(_path: string, _hex: string): Promise<{ r: string; s: string; v: number }> {
       return Promise.resolve({ r: "a".repeat(64), s: "b".repeat(64), v: 27 });
@@ -28,24 +28,33 @@ const buildFakeEthCtor = (addresses: ReadonlyArray<string> = FAKE_ADDRESSES): Et
   };
 };
 
+const buildFakeEthCtor = (addresses: ReadonlyArray<string> = FAKE_ADDRESSES): EthAppConstructor =>
+  buildEthCtorWithAddress((path) => {
+    const idx = Math.trunc(Number(path.split("/").pop() ?? "0"));
+    const address = addresses[idx] ?? addresses[0];
+    return Promise.resolve({ address: address ?? "0x0", publicKey: "0xpubkey" });
+  });
+
 const buildFakeTransport = (): {
+  created: ReadonlyArray<TransportLike>;
   factory: TransportFactory;
   lastTransport: TransportLike | null;
 } => {
-  let lastTransport: TransportLike | null = null;
+  const created: Array<TransportLike> = [];
   const factory: TransportFactory = {
     create(): Promise<TransportLike> {
       const t: TransportLike = {
         close: vi.fn().mockResolvedValue(undefined),
       };
-      lastTransport = t;
+      created.push(t);
       return Promise.resolve(t);
     },
   };
   return {
+    created,
     factory,
     get lastTransport() {
-      return lastTransport;
+      return created.at(-1) ?? null;
     },
   };
 };
@@ -101,6 +110,61 @@ describe("createLedgerAdapter", () => {
 
     const account = await adapter.getAccount();
     expect(account).toBeNull();
+  });
+
+  it("connect() rejects, closes the transport, and stays account-less when the address read fails", async () => {
+    const fake = buildFakeTransport();
+    const adapter = await createLedgerAdapter({
+      eth: buildEthCtorWithAddress(() => Promise.reject(new Error("Ledger device is locked"))),
+      platform: "evm",
+      transport: fake.factory,
+    });
+
+    await expect(adapter.connect()).rejects.toThrow(/locked/v);
+    expect(fake.lastTransport?.close).toHaveBeenCalled();
+    expect(await adapter.getAccount()).toBeNull();
+    await expect(adapter.signMessage(new TextEncoder().encode("hello"))).rejects.toThrow(
+      /not connected/v,
+    );
+  });
+
+  it("disconnect() during an in-flight connect() wins over the late address", async () => {
+    const fake = buildFakeTransport();
+    let releaseAddress: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => {
+      releaseAddress = resolve;
+    });
+    const adapter = await createLedgerAdapter({
+      eth: buildEthCtorWithAddress(async () => {
+        await pending;
+        return { address: FAKE_ADDRESSES[0] ?? "0x0", publicKey: "0xpubkey" };
+      }),
+      platform: "evm",
+      transport: fake.factory,
+    });
+
+    const connecting = adapter.connect();
+    await adapter.disconnect?.();
+    releaseAddress?.();
+    await connecting;
+
+    expect(await adapter.getAccount()).toBeNull();
+    expect(fake.lastTransport?.close).toHaveBeenCalled();
+  });
+
+  it("two concurrent connect() calls open exactly one transport", async () => {
+    const fake = buildFakeTransport();
+    const adapter = await createLedgerAdapter({
+      eth: buildFakeEthCtor(),
+      platform: "evm",
+      transport: fake.factory,
+    });
+
+    await Promise.all([adapter.connect(), adapter.connect()]);
+
+    expect(fake.created).toHaveLength(1);
+    const account = await adapter.getAccount();
+    expect(account?.walletAddress).toBe(FAKE_ADDRESSES[0]);
   });
 
   it("getAccounts() walks the derivation path up to accountCount", async () => {

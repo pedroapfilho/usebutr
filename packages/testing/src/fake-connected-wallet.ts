@@ -9,13 +9,9 @@ import { buildAccount } from "@usebutr/core";
 
 import { type FakeAdapterOptions, createFakeAdapter } from "./fake-adapter";
 
-/**
- * Mainnet `ChainBase` per platform, mirroring the per-platform registries
- * in `@usebutr/evm`, `@usebutr/svm`, and friends. Duplicated rather than
- * imported so `@usebutr/testing` keeps its single `@usebutr/core`
- * dependency and consumers testing one chain don't pull five chain
- * tables into their test bundle.
- */
+/** Mirrors the per-platform registries in `@usebutr/evm` and friends.
+ *  Duplicated rather than imported so `@usebutr/testing` keeps its single
+ *  `@usebutr/core` dependency. */
 const DEFAULT_CHAINS: Readonly<Record<ChainPlatform, ChainBase>> = {
   bitcoin: {
     id: "bip122:000000000019d6689c085ae165831e93",
@@ -57,20 +53,9 @@ type FakeConnectedWalletOptions = FakeAdapterOptions & {
 };
 
 /**
- * Build a `ConnectedWallet` pool entry: what `usePool`, `useActiveWallet`,
- * and `useConnectedWallets` hand your components, and therefore what UI
- * tests need to render.
- *
- * `createFakeAdapter` covers the connector half; assembling the entry
- * around it meant hand-writing `{ account, accounts, connector }` and,
- * with it, the `<chain>:<address>` account id whose format `buildAccount`
- * exists to own. This builds accounts through `buildAccount` so that
- * format is never restated downstream.
- *
- * ```ts
- * const wallet = createFakeConnectedWallet({ chainPlatform: "svm", id: "phantom" });
- * render(<WalletCard wallet={wallet} />);
- * ```
+ * Builds a `ConnectedWallet` pool entry, the shape `usePool` and
+ * `useActiveWallet` hand components. Accounts go through `buildAccount` so the
+ * `<chain>:<address>` id format is never restated here.
  */
 const createFakeConnectedWallet = (options: FakeConnectedWalletOptions = {}): ConnectedWallet => {
   const { adapter, addresses, chain, ...adapterOptions } = options;
@@ -88,6 +73,16 @@ const createFakeConnectedWallet = (options: FakeConnectedWalletOptions = {}): Co
   if (account === undefined) {
     throw new Error(
       "createFakeConnectedWallet needs at least one account: pass `addresses` or `accounts`, or omit both for the default.",
+    );
+  }
+
+  // A supplied adapter carries its own accounts, and the entry must agree with
+  // it: real pool entries are always built from the connector's own
+  // `getAccount()`/`getAccounts()`, so an entry whose account the adapter has
+  // never heard of is a state production cannot reach.
+  if (adapter && (addresses !== undefined || adapterOptions.accounts !== undefined)) {
+    throw new Error(
+      "createFakeConnectedWallet: pass either `adapter` or `addresses`/`accounts`, not both. The entry's accounts must come from the adapter that serves them.",
     );
   }
 

@@ -1,26 +1,46 @@
-import type { ChainPlatform } from "@usebutr/core";
+import type { ChainPlatform, WalletAdapter } from "@usebutr/core";
 import { describe, expect, it, vi } from "vitest";
 
 import type { UniversalProviderConstructor, UniversalProviderLike } from "../adapter";
 import { createWalletConnectAdapters } from "../adapter";
 
 type ConnectArgs = Parameters<UniversalProviderLike["connect"]>[0];
+type FakeSession = { namespaces: Record<string, { accounts: ReadonlyArray<string> }> };
 
-const createFakeProvider = (): UniversalProviderLike & {
+const requestedPrefixes = (opts: ConnectArgs): Array<string> =>
+  Object.keys({ ...opts.namespaces, ...opts.optionalNamespaces });
+
+/** `approve` narrows what the wallet grants, mirroring a wallet that
+ *  declines an optional namespace it does not speak. */
+const createFakeProvider = (
+  overrides: { approve?: ReadonlyArray<string> } = {},
+): UniversalProviderLike & {
   connectCalls: Array<ConnectArgs>;
+  disconnectCalls: () => number;
 } => {
   const listeners = new Map<string, Set<(...args: ReadonlyArray<unknown>) => void>>();
   const connectCalls: Array<ConnectArgs> = [];
+  let disconnectCalls = 0;
+  let session: FakeSession | null = null;
 
   return {
     connect(opts) {
       connectCalls.push(opts);
+      const granted = requestedPrefixes(opts).filter(
+        (prefix) => overrides.approve === undefined || overrides.approve.includes(prefix),
+      );
+      session = {
+        namespaces: Object.fromEntries(granted.map((prefix) => [prefix, { accounts: [] }])),
+      };
       return Promise.resolve();
     },
     connectCalls,
     disconnect() {
+      disconnectCalls += 1;
+      session = null;
       return Promise.resolve();
     },
+    disconnectCalls: () => disconnectCalls,
     on(event, listener) {
       let set = listeners.get(event);
       if (!set) {
@@ -35,7 +55,9 @@ const createFakeProvider = (): UniversalProviderLike & {
     request() {
       return Promise.resolve(null);
     },
-    session: null,
+    get session() {
+      return session;
+    },
   };
 };
 
@@ -130,5 +152,96 @@ describe("createWalletConnectAdapters", () => {
     });
     expect(adapters).toHaveLength(1);
     expect(adapters[0]?.chainPlatform).toBe("evm");
+  });
+});
+
+const createEvmAndSvmAdapters = async (
+  provider: UniversalProviderLike,
+): Promise<{ evm: WalletAdapter; svm: WalletAdapter }> => {
+  const adapters = await createWalletConnectAdapters({
+    namespaces: { evm: ["eip155:1"], svm: ["solana:mainnet"] },
+    projectId: "test",
+    universalProvider: fakeUniversalProvider(provider),
+  });
+  const evm = adapters.find((adapter) => adapter.chainPlatform === "evm");
+  const svm = adapters.find((adapter) => adapter.chainPlatform === "svm");
+  if (evm === undefined || svm === undefined) {
+    throw new Error("expected one EVM and one SVM adapter");
+  }
+  return { evm, svm };
+};
+
+describe("createWalletConnectAdapters (one session across namespaces)", () => {
+  it("pairs every requested namespace in a single provider.connect", async () => {
+    const provider = createFakeProvider();
+    const { evm } = await createEvmAndSvmAdapters(provider);
+
+    await evm.connect();
+
+    expect(provider.connectCalls).toHaveLength(1);
+    const call = provider.connectCalls[0];
+    expect(Object.keys({ ...call?.namespaces, ...call?.optionalNamespaces }).toSorted()).toEqual([
+      "eip155",
+      "solana",
+    ]);
+    expect(call?.namespaces.eip155?.chains).toEqual(["eip155:1"]);
+    expect(call?.optionalNamespaces?.solana?.chains).toEqual(["solana:mainnet"]);
+    expect(call?.optionalNamespaces?.solana?.methods).toContain("solana_signAndSendTransaction");
+  });
+
+  it("the sibling adapter reuses the pairing instead of opening a second one", async () => {
+    const provider = createFakeProvider();
+    const { evm, svm } = await createEvmAndSvmAdapters(provider);
+
+    await evm.connect();
+    await svm.connect();
+
+    expect(provider.connectCalls).toHaveLength(1);
+  });
+
+  it("concurrent connects from both adapters produce exactly one pairing", async () => {
+    const provider = createFakeProvider();
+    const { evm, svm } = await createEvmAndSvmAdapters(provider);
+
+    await Promise.all([evm.connect(), svm.connect()]);
+
+    expect(provider.connectCalls).toHaveLength(1);
+  });
+
+  it("rejects on the adapter whose namespace the wallet declined", async () => {
+    const provider = createFakeProvider({ approve: ["eip155"] });
+    const { evm, svm } = await createEvmAndSvmAdapters(provider);
+
+    await evm.connect();
+
+    await expect(svm.connect()).rejects.toThrow(/carries no "solana" namespace/v);
+  });
+
+  it("keeps the shared session until every connected adapter disconnects", async () => {
+    const provider = createFakeProvider();
+    const { evm, svm } = await createEvmAndSvmAdapters(provider);
+
+    await evm.connect();
+    await svm.connect();
+    await evm.disconnect?.();
+
+    await expect(svm.connect({ silent: true })).resolves.toBeUndefined();
+    expect(provider.disconnectCalls()).toBe(0);
+    expect(provider.session).not.toBeNull();
+
+    await svm.disconnect?.();
+    expect(provider.disconnectCalls()).toBe(1);
+    expect(provider.session).toBeNull();
+  });
+
+  it("disconnects the session when the only connected adapter disconnects", async () => {
+    const provider = createFakeProvider();
+    const { evm } = await createEvmAndSvmAdapters(provider);
+
+    await evm.connect();
+    await evm.disconnect?.();
+
+    expect(provider.disconnectCalls()).toBe(1);
+    expect(provider.session).toBeNull();
   });
 });

@@ -1,11 +1,9 @@
 import "./index.css";
 
-// `@solana/web3.js` v1 (a transitive of `@wormhole-foundation/sdk-solana`)
-// uses Node's `Buffer` API. Browsers don't expose it, and Vite/rolldown
-// doesn't auto-polyfill, so we attach the `buffer` shim to
-// `globalThis` before any Solana code runs. Done at module load (this
-// file is the entry) so the polyfill is in place by the time
-// `wallet-provider` / `app` import any Solana modules.
+// `@solana/web3.js` v1 (a transitive of `@wormhole-foundation/sdk-solana`) uses
+// Node's `Buffer`, which browsers don't expose and Vite/rolldown won't
+// auto-polyfill. Shimmed here at entry-module load so it exists before any
+// Solana module is imported.
 // oxlint-disable-next-line unicorn/prefer-node-protocol -- intentionally the npm browser polyfill, not the Node built-in
 import { Buffer } from "buffer";
 

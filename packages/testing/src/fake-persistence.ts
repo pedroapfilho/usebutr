@@ -1,10 +1,5 @@
-import type {
-  ChainPlatform,
-  ConnectedWallet,
-  StoredPoolRecord,
-  StoredSelectionRecord,
-  WalletPersistence,
-} from "@usebutr/core";
+import type { StoredPoolRecord, StoredSelectionRecord, WalletPersistence } from "@usebutr/core";
+import { createMemoryStorageDriver, WalletStorage } from "@usebutr/core";
 
 type FakePersistenceSeed = {
   activeConnectorId?: string | null;
@@ -13,71 +8,31 @@ type FakePersistenceSeed = {
   userDisconnected?: boolean;
 };
 
+const KEY_PREFIX = "butr-test";
+
 /**
- * In-memory `WalletPersistence` for tests. Mirrors `WalletStorage`'s
- * shape without touching localStorage or cookies. Seed initial state
- * via the optional `seed` argument; reads/writes resolve synchronously
- * (wrapped in `Promise.resolve` to satisfy the async interface).
+ * The real `WalletStorage` over memory drivers, not a second implementation of
+ * the interface. A hand-rolled fake previously drifted on pool upsert and
+ * `clearAll` semantics, so tests passed while production did the opposite.
  */
 const createFakePersistence = (seed: FakePersistenceSeed = {}): WalletPersistence => {
-  let pool: StoredPoolRecord = seed.pool ?? {};
-  let selection: StoredSelectionRecord = seed.selection ?? {};
-  let activeConnectorId: string | null = seed.activeConnectorId ?? null;
-  let userDisconnected = seed.userDisconnected ?? false;
+  const persistent = createMemoryStorageDriver();
+  const session = createMemoryStorageDriver();
 
-  return {
-    clearAll: () => {
-      pool = {};
-      selection = {};
-      activeConnectorId = null;
-      userDisconnected = false;
-      return Promise.resolve();
-    },
-    clearPool: () => {
-      pool = {};
-      return Promise.resolve();
-    },
-    getActiveConnectorId: () => Promise.resolve(activeConnectorId),
-    getPool: () => Promise.resolve(pool),
-    getSelection: () => Promise.resolve(selection),
-    isUserDisconnected: () => Promise.resolve(userDisconnected),
-    markUserDisconnected: (value) => {
-      userDisconnected = value;
-      return Promise.resolve();
-    },
-    removePoolEntry: (connectorId) => {
-      const { [connectorId]: _removed, ...next } = pool;
-      pool = next;
-      return Promise.resolve();
-    },
-    setActiveConnectorId: (id) => {
-      activeConnectorId = id;
-      return Promise.resolve();
-    },
-    setPool: (next: Map<string, ConnectedWallet>) => {
-      const record: StoredPoolRecord = {};
-      for (const [id, wallet] of next.entries()) {
-        record[id] = {
-          account: wallet.account,
-          accounts: wallet.accounts,
-          chainPlatform: wallet.connector.chainPlatform,
-          connectorId: wallet.connector.id,
-          icon: wallet.connector.icon,
-          name: wallet.connector.name,
-        };
-      }
-      pool = record;
-      return Promise.resolve();
-    },
-    setSelection: (next: Map<ChainPlatform, string>) => {
-      const record: StoredSelectionRecord = {};
-      for (const [platform, id] of next.entries()) {
-        record[platform] = id;
-      }
-      selection = record;
-      return Promise.resolve();
-    },
-  };
+  if (seed.pool) {
+    void persistent.setItem(`${KEY_PREFIX}-pool`, JSON.stringify(seed.pool));
+  }
+  if (seed.selection) {
+    void persistent.setItem(`${KEY_PREFIX}-selection`, JSON.stringify(seed.selection));
+  }
+  if (seed.activeConnectorId !== undefined && seed.activeConnectorId !== null) {
+    void persistent.setItem(`${KEY_PREFIX}-active`, seed.activeConnectorId);
+  }
+  if (seed.userDisconnected === true) {
+    void session.setItem(`${KEY_PREFIX}-user-disconnected`, "true");
+  }
+
+  return new WalletStorage({ keyPrefix: KEY_PREFIX, persistent, session });
 };
 
 export type { FakePersistenceSeed };

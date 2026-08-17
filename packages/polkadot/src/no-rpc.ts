@@ -1,13 +1,9 @@
 import type { Balance } from "@usebutr/core";
 
 /**
- * butr ships no RPC on Polkadot: building/broadcasting an extrinsic and
- * reading on-chain state both need chain metadata. Balance and receipt
- * reads return neutral placeholders (gated behind
- * `capabilities.getBalance` / `getTransactionReceipt === false`);
- * transaction submission rejects with a hint to drive polkadot-api via
- * `getSigner()`. Both discovery channels (injectedWeb3 + Wallet Standard)
- * share these so the invariant lives in one place.
+ * Building an extrinsic or reading on-chain state both need chain metadata
+ * butr doesn't fetch, so it ships no Polkadot RPC. The neutral balance and
+ * receipt values are gated behind the matching `capabilities` flags.
  */
 const POLKADOT_SEND_TX_HINT =
   "Polkadot sendTx is unsupported: use getSigner() with polkadot-api to build and submit extrinsics";

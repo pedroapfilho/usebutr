@@ -1,5 +1,5 @@
 import type { WalletAdapter } from "@usebutr/core";
-import { base64ToBytes } from "@usebutr/core";
+import { base64ToBytes, bytesToBase64 } from "@usebutr/core";
 import {
   createWalletStandardCore,
   discoverWalletStandard,
@@ -19,41 +19,31 @@ const SUI_PREFIX = "sui:";
 const SUI_DECIMALS = 9;
 const SUI_MAINNET = "sui:mainnet";
 
-/** Coerce butr's `unknown` tx into the shape `sui:signAndExecuteTransaction`
- *  expects (an object with `toJSON()` returning a Promise<string>). When
- *  consumers pass a base64 string directly, we wrap it in a stub object so
- *  the feature contract stays satisfied without us depending on
- *  `@mysten/sui`. */
-const coerceSuiTransaction = (tx: unknown): { toJSON: () => Promise<string> } | string => {
+/** Coerce butr's `unknown` tx into the shape the Sui Wallet Standard features
+ *  expect: an object with `toJSON()` returning a Promise<string>. A raw string
+ *  or BCS byte array is wrapped, because wallets accept only the `toJSON()`
+ *  form and a bare string reaches them as a shape they cannot consume. */
+const coerceSuiTransaction = (tx: unknown): { toJSON: () => Promise<string> } => {
   if (typeof tx === "string") {
-    return tx;
+    return { toJSON: () => Promise.resolve(tx) };
+  }
+  if (tx instanceof Uint8Array) {
+    const encoded = bytesToBase64(tx);
+    return { toJSON: () => Promise.resolve(encoded) };
   }
   if (typeof tx === "object" && tx !== null && "toJSON" in tx && typeof tx.toJSON === "function") {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- validated toJSON() above; @mysten/sui Transaction is otherwise untyped here
     return tx as { toJSON: () => Promise<string> };
   }
   throw new TypeError(
-    "Sui sendTx/signTransaction expects a @mysten/sui Transaction (with toJSON()) or a base64-encoded string",
+    "Sui sendTx/signTransaction expects a @mysten/sui Transaction (with toJSON()), a base64-encoded string, or BCS bytes",
   );
 };
 
 /**
- * Adapt a Sui Wallet Standard `Wallet` into a butr `WalletAdapter`.
- *
- * Returns `null` if the wallet doesn't advertise any Sui chain or doesn't
- * expose `standard:connect`. Same posture as `buildSvmAdapter`: gate
- * features on what each wallet advertises, return placeholders for
- * RPC-backed reads (`getBalance`, `getTransactionReceipt`), forward
- * `subscribe` through `standard:events`.
- *
- * **Known limitations**
- *
- *  - `getBalance` returns a `{ value: 0n, symbol: "SUI" }` placeholder.
- *    Consumers wrap `@mysten/sui`'s `SuiClient` for real reads.
- *  - `getTransactionReceipt` returns `"Pending"` for the same reason.
- *  - `switchChain` is local-state-only (mirrors SVM). Sui Wallet Standard
- *    has no "tell the wallet to switch network" RPC; the wallet's UI
- *    controls its global cluster setting.
+ * Sui Wallet Standard has no "switch network" RPC, so `switchChain` moves
+ * butr's view only and the wallet's own UI owns its cluster. Balance and
+ * receipt reads need `@mysten/sui`'s `SuiClient`, which butr doesn't ship.
  */
 const buildSuiAdapter = (
   wallet: WalletStandardWallet,
@@ -84,7 +74,25 @@ const buildSuiAdapter = (
   );
   const signTx = getFeature<SuiSignTransactionFeature>(wallet, "sui:signTransaction");
 
-  const executeTx = async (tx: unknown, account?: { walletAddress: string }): Promise<string> => {
+  /** Resolve a caller-supplied target into a chain the wallet advertises,
+   *  accepting either a full CAIP-2 id (`sui:testnet`) or a bare reference. */
+  const resolveTargetChain = (targetChainId: string): string => {
+    const candidate = targetChainId.startsWith(SUI_PREFIX)
+      ? targetChainId
+      : `${SUI_PREFIX}${targetChainId}`;
+    if (!wallet.chains.includes(candidate)) {
+      throw new Error(
+        `Wallet ${wallet.name} does not advertise chain "${candidate}". Available: ${wallet.chains.join(", ")}`,
+      );
+    }
+    return candidate;
+  };
+
+  const executeTx = async (
+    tx: unknown,
+    account?: { walletAddress: string },
+    chain?: string,
+  ): Promise<string> => {
     if (signAndExecute === undefined) {
       throw new Error(`Wallet ${wallet.name} does not advertise sui:signAndExecuteTransaction`);
     }
@@ -92,7 +100,7 @@ const buildSuiAdapter = (
     const transaction = coerceSuiTransaction(tx);
     const output = await signAndExecute.signAndExecuteTransaction({
       account: wsAccount,
-      chain: core.currentChainId(),
+      chain: chain ?? core.currentChainId(),
       transaction,
     });
     return output.digest;
@@ -127,9 +135,15 @@ const buildSuiAdapter = (
 
     sendTx: (tx, account) => executeTx(tx, account),
 
-    sendTxToChain: (tx, _targetChainId, account, cb) => {
-      cb?.();
-      return executeTx(tx, account);
+    // Async so an unadvertised chain surfaces as a rejection rather than a
+    // synchronous throw; the declared return type is a promise either way.
+    async sendTxToChain(tx, targetChainId, account, cb) {
+      const target = resolveTargetChain(targetChainId);
+      if (target !== core.currentChainId()) {
+        cb?.();
+      }
+      const digest = await executeTx(tx, account, target);
+      return digest;
     },
 
     async signMessage(msg, account) {
@@ -157,27 +171,18 @@ const buildSuiAdapter = (
               chain: core.currentChainId(),
               transaction,
             });
-            return base64ToBytes(output.bytes);
+            return {
+              bytes: base64ToBytes(output.bytes),
+              signature: base64ToBytes(output.signature),
+            };
           },
         }),
   };
 };
 
 /**
- * Subscribe to Sui Wallet Standard announcements.
+ * Requires the optional `@wallet-standard/app` peer dep.
  * Spec: https://docs.sui.io/standards/wallet-standard
- *
- * Runtime requires the `@wallet-standard/app` package, which is an
- * **optional peer dependency** of butr.
- *
- * Sui wallets share the same `getWallets()` bus as SVM wallets; Phantom
- * advertises features for SVM, Sui, and Bitcoin from a single Wallet
- * Standard wallet object. `buildSuiAdapter` returns `null` for wallets
- * that don't advertise any `sui:*` features, so we cleanly end up with
- * one adapter per platform on multi-chain wallets.
- *
- * The discovery loop (dynamic import, dedupe, register / unregister
- * bridge) lives in `@usebutr/wallet-standard-shared`.
  */
 const discoverSuiAdapters = (onAdapter: (adapter: WalletAdapter) => void): (() => void) =>
   discoverWalletStandard(onAdapter, (wallet, registerDisconnector) =>

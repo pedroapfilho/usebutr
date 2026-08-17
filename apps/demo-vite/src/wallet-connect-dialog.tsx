@@ -1,18 +1,6 @@
 /**
- * WalletConnectDialog: recommended modal connect pattern for apps that
- * want a dialog overlay UX rather than an inline list.
- *
- * Uses the native <dialog> element via `dialog.showModal()` for built-in:
- *   - focus trap (browser-native)
- *   - Escape-to-close (browser-native: `onClose` on the <dialog> syncs
- *     React state back when that happens)
- *   - aria-modal semantics
- *   - top-layer stacking (no z-index wars)
- *
- * `closedby="any"` (Chrome 133+) lets clicking the backdrop close the dialog.
- * The ::backdrop click handler provides a fallback for older browsers.
- *
- * Copy this component into your app and style it to match your design system.
+ * `closedby="any"` (backdrop click closes the dialog) is Chrome 133+; the
+ * ::backdrop click handler is the fallback for older browsers.
  */
 import type { WalletAdapter } from "@usebutr/core";
 import { useConnectWallet, useConnectingConnectorId } from "@usebutr/react";

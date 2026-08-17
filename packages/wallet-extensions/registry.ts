@@ -1,36 +1,9 @@
 import type { WalletExtension } from "./types";
 
 /**
- * Registry of wallet browser extensions used by butr's automated tests.
- *
- * **Scope.** This list is the set of extensions butr's Playwright /
- * Chrome-extension test infrastructure can install via the Web Store
- * preferences file. Three classes of wallet are intentionally NOT
- * here:
- *
- *  - **Built-in browser wallets** (Brave Wallet, Opera Crypto Wallet).
- *    Ship as native browser features; no Chrome Web Store extension
- *    exists to load. Tested by running the host browser, not by
- *    installing an extension.
- *  - **Mobile-only wallets** (Trust Wallet mobile, Rainbow mobile,
- *    Zerion mobile). Reach the dapp through WalletConnect rather than
- *    as injected browser extensions. Covered by `@usebutr/walletconnect`,
- *    not by this registry.
- *  - **Discontinued / regional builds** (Slope, old Binance Chain
- *    Wallet, Bitkeep). Not actively maintained or unverifiable.
- *
- * **Runtime discovery is independent.** This registry is only consulted
- * by the test installer. The runtime discovery layer (EIP-6963,
- * Wallet Standard, the injected fallback) picks up *any* compliant
- * wallet without consulting this file; a wallet doesn't need to be
- * listed here to work in production.
- *
- * Chrome Web Store IDs are mostly stable but can change when wallets
- * relaunch under a new listing. Before relying on these in CI, open
- * the `webStoreUrl` for each entry, copy the trailing 32-character
- * identifier from the URL path, and confirm it matches
- * `chromeWebStoreId`. Entries tagged with `TODO_VERIFY` need a manual
- * lookup before first use.
+ * Consulted only by the test installer: runtime discovery picks up any
+ * compliant wallet without this file. Built-in browser and mobile-only
+ * wallets are out of scope. Web Store IDs change when a listing relaunches.
  */
 
 const Backpack: WalletExtension = {

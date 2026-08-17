@@ -7,10 +7,8 @@ type ChainPlatform = "evm" | "svm" | "sui" | "bitcoin";
  */
 type WalletExtension = {
   /**
-   * Chrome Web Store extension ID. The 32-character lowercase identifier
-   * that appears in the Web Store URL: `…/detail/<slug>/<id>`.
-   * Used both as the filename for Chrome's external-preferences manifest
-   * and as the update URL target.
+   * The 32-character id from the Web Store URL (`…/detail/<slug>/<id>`), used
+   * both as the external-preferences filename and as the update URL target.
    */
   chromeWebStoreId: string;
   /** Human-readable name for logs and test descriptions. */

@@ -432,6 +432,25 @@ describe("SVM wallet fixtures — protocol-level uniformity", () => {
       switchAccount: false, // No silent "use address X"
     });
   });
+
+  it("capabilities.switchChain counts only solana: chains on a multi-namespace wallet", () => {
+    const connectable = (chains: ReadonlyArray<string>) =>
+      buildSvmAdapter(
+        withFeatures(buildWallet({ chains }), {
+          "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+        }),
+      );
+
+    expect(
+      connectable(["solana:mainnet", "bip122:000000000019d6689c085ae165831e93", "sui:mainnet"])
+        ?.capabilities.switchChain,
+    ).toBe(false);
+
+    expect(
+      connectable(["solana:mainnet", "solana:devnet", "bip122:000000000019d6689c085ae165831e93"])
+        ?.capabilities.switchChain,
+    ).toBe(true);
+  });
 });
 
 describe("buildSvmAdapter.switchChain", () => {

@@ -113,7 +113,7 @@ const buildSvmAdapter = (
   return {
     ...core,
     capabilities: resolveWalletStandardCapabilities({
-      chainCount: wallet.chains.length,
+      chainCount: core.chainCount,
       features: {
         events: core.hasEvents,
         signAndSendTransaction: Boolean(signAndSendTx),

@@ -113,11 +113,15 @@ import { STORAGE_KEY_PREFIX, WalletProvider } from "../wallet-provider";
 const RootLayout = async ({ children }: { children: ReactNode }) => {
   const cookieStore = await cookies();
 
-  // Plain object form — serializes cleanly across the RSC boundary
-  // and feeds the cookie storage driver.
+  // Plain object form, filtered to butr's own keys. This object is a prop on a
+  // "use client" component, so whatever you put here is serialized into the RSC
+  // payload and readable from JS. Forwarding the whole jar would publish your
+  // httpOnly session cookies to the page.
   const initialCookies: Record<string, string> = {};
   for (const { name, value } of cookieStore.getAll()) {
-    initialCookies[name] = value;
+    if (name.startsWith(`${STORAGE_KEY_PREFIX}-`)) {
+      initialCookies[name] = value;
+    }
   }
 
   // Typed view of the persisted pool. The keyPrefix must match the

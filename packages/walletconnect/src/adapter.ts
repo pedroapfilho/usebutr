@@ -201,6 +201,7 @@ const createWalletConnectAdapters = async (
   const baseName = options.name ?? "WalletConnect";
   const icon = options.icon ?? DEFAULT_ICON;
   const multiNamespace = selected.length > 1;
+  const connectedAdapters = new Set<WalletAdapter>();
 
   return selected.map(({ builder, chains, platform }) => {
     const adapter = builder.buildAdapter({
@@ -212,13 +213,17 @@ const createWalletConnectAdapters = async (
       session,
     });
     const release = session.retain();
-    const innerDisconnect = adapter.disconnect?.bind(adapter);
+    const innerConnect = adapter.connect.bind(adapter);
     return Object.assign(adapter, {
+      connect: async (connectOptions?: { silent?: boolean }) => {
+        await innerConnect(connectOptions);
+        connectedAdapters.add(adapter);
+      },
       disconnect: async () => {
-        try {
-          await innerDisconnect?.();
-        } finally {
-          release();
+        connectedAdapters.delete(adapter);
+        release();
+        if (connectedAdapters.size === 0) {
+          await session.disconnect();
         }
       },
     });

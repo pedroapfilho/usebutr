@@ -111,6 +111,7 @@ const buildInjectedPolkadotAdapter = (
   };
 
   const openSession = (injected: Injected): void => {
+    closeSession();
     const opened: InjectedSession = { injected, unsubscribe: null };
     session = opened;
     try {

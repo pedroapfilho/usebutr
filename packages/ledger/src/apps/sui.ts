@@ -18,10 +18,8 @@ import type { TransportFactory } from "../transport";
  *    a `0x` prefix to produce the Sui address string explorers + RPCs
  *    use. No host-side blake2b needed.
  *  - `signTransaction` signs the BCS-serialized transaction message and
- *    returns ONLY the signature bytes; assembling the final signed
- *    transaction (wrapping signature + pubkey into the Sui transaction
- *    signature envelope) is on the consumer; same as Suiet, Sui Wallet,
- *    and `@mysten/sui`'s own flows.
+ *    returns only the raw signature bytes. The adapter combines those
+ *    bytes with the public key into Sui's serialized signature envelope.
  *  - There is **no `signPersonalMessage`** on the Ledger Sui app at this
  *    version; Ledger's Sui app supports transaction signing only.
  *    Capabilities reflect this with `signMessage: false`, and the
@@ -46,6 +44,27 @@ type SuiCluster = "mainnet" | "testnet" | "devnet" | "localnet";
  */
 const DEFAULT_DERIVATION_PATH_PREFIX = "44'/784'/0'/0'";
 const DEFAULT_CLUSTER: SuiCluster = "mainnet";
+const ED25519_SCHEME_FLAG = 0;
+const ED25519_PUBLIC_KEY_LENGTH = 32;
+const ED25519_SIGNATURE_LENGTH = 64;
+
+const serializeEd25519Signature = (signature: Uint8Array, publicKey: Uint8Array): Uint8Array => {
+  if (signature.length !== ED25519_SIGNATURE_LENGTH) {
+    throw new Error(
+      `[butr/ledger] Sui app returned a ${signature.length}-byte signature; expected ${ED25519_SIGNATURE_LENGTH}`,
+    );
+  }
+  if (publicKey.length !== ED25519_PUBLIC_KEY_LENGTH) {
+    throw new Error(
+      `[butr/ledger] Sui app returned a ${publicKey.length}-byte public key; expected ${ED25519_PUBLIC_KEY_LENGTH}`,
+    );
+  }
+  const serialized = new Uint8Array(1 + ED25519_SIGNATURE_LENGTH + ED25519_PUBLIC_KEY_LENGTH);
+  serialized[0] = ED25519_SCHEME_FLAG;
+  serialized.set(signature, 1);
+  serialized.set(publicKey, 1 + ED25519_SIGNATURE_LENGTH);
+  return serialized;
+};
 
 const loadSui = async (): Promise<SuiAppConstructor> => {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- untyped optional peer-dep module boundary
@@ -130,11 +149,8 @@ const buildSuiAccount = (address: string, chain: ChainBase): Account => ({
  * which dispatches by `platform` field.
  *
  * **Signing model.** `signTransaction` signs BCS-serialized Sui
- * transaction bytes and returns ONLY the 64-byte ed25519 signature;
- * the consumer assembles the final signed transaction by wrapping that
- * signature with the public key into Sui's signature envelope (use
- * `@mysten/sui`'s `Ed25519PublicKey.toSuiBytes()` / signature helpers).
- * This matches how Suiet and Sui Wallet ship the same surface.
+ * transaction bytes and returns the bytes with Sui's serialized Ed25519
+ * signature envelope.
  *
  * **No off-chain signing.** Ledger's Sui app does NOT implement a
  * `signPersonalMessage` instruction at this app version, so
@@ -206,13 +222,6 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
         ),
       ),
 
-    /**
-     * Sign a serialized Sui transaction. Returns the BCS bytes that were
-     * signed plus the raw 64-byte ed25519 signature, which is what
-     * `SuiClient.executeTransactionBlock` consumes. Wrapping the signature
-     * with the public key into Sui's signature envelope stays the
-     * consumer's job; use `@mysten/sui`'s signature helpers.
-     */
     async signTransaction(tx, account) {
       const sui = core.requireApp();
       if (!(tx instanceof Uint8Array)) {
@@ -221,8 +230,15 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
         );
       }
       const path = await core.resolvePath(account);
+      const publicKey = await sui.getPublicKey(path);
       const result = await sui.signTransaction(path, tx);
-      return { bytes: tx, signature: new Uint8Array(result.signature) };
+      return {
+        bytes: tx,
+        signature: serializeEd25519Signature(
+          new Uint8Array(result.signature),
+          new Uint8Array(publicKey.publicKey),
+        ),
+      };
     },
 
     subscribe: core.subscribe,
@@ -258,4 +274,4 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
 
 export type { SuiAppConstructor, SuiAppLike, SuiCluster, SuiLedgerOptions };
 export { LEDGER_ICON as LEDGER_SUI_DEFAULT_ICON } from "../adapter-core";
-export { createSuiLedgerAdapter };
+export { createSuiLedgerAdapter, serializeEd25519Signature };

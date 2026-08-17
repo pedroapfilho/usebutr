@@ -16,9 +16,11 @@ const createFakeProvider = (
   overrides: { approve?: ReadonlyArray<string> } = {},
 ): UniversalProviderLike & {
   connectCalls: Array<ConnectArgs>;
+  disconnectCalls: () => number;
 } => {
   const listeners = new Map<string, Set<(...args: ReadonlyArray<unknown>) => void>>();
   const connectCalls: Array<ConnectArgs> = [];
+  let disconnectCalls = 0;
   let session: FakeSession | null = null;
 
   return {
@@ -34,9 +36,11 @@ const createFakeProvider = (
     },
     connectCalls,
     disconnect() {
+      disconnectCalls += 1;
       session = null;
       return Promise.resolve();
     },
+    disconnectCalls: () => disconnectCalls,
     on(event, listener) {
       let set = listeners.get(event);
       if (!set) {
@@ -213,14 +217,31 @@ describe("createWalletConnectAdapters (one session across namespaces)", () => {
     await expect(svm.connect()).rejects.toThrow(/carries no "solana" namespace/v);
   });
 
-  it("one adapter's disconnect() leaves the sibling reporting no session", async () => {
+  it("keeps the shared session until every connected adapter disconnects", async () => {
     const provider = createFakeProvider();
     const { evm, svm } = await createEvmAndSvmAdapters(provider);
 
     await evm.connect();
+    await svm.connect();
     await evm.disconnect?.();
 
-    await expect(svm.connect({ silent: true })).rejects.toThrow(/silent reconnect/v);
-    await expect(svm.getAccounts?.()).resolves.toEqual([]);
+    await expect(svm.connect({ silent: true })).resolves.toBeUndefined();
+    expect(provider.disconnectCalls()).toBe(0);
+    expect(provider.session).not.toBeNull();
+
+    await svm.disconnect?.();
+    expect(provider.disconnectCalls()).toBe(1);
+    expect(provider.session).toBeNull();
+  });
+
+  it("disconnects the session when the only connected adapter disconnects", async () => {
+    const provider = createFakeProvider();
+    const { evm } = await createEvmAndSvmAdapters(provider);
+
+    await evm.connect();
+    await evm.disconnect?.();
+
+    expect(provider.disconnectCalls()).toBe(1);
+    expect(provider.session).toBeNull();
   });
 });

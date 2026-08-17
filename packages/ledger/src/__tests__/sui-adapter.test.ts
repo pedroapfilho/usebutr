@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { SuiAppConstructor, SuiAppLike, TransportFactory, TransportLike } from "../adapter";
 import { createLedgerAdapter, createSuiLedgerAdapter } from "../adapter";
+import { serializeEd25519Signature } from "../apps/sui";
 
 const buildFakePubkey = (index: number): Uint8Array => {
   const buf = new Uint8Array(32);
@@ -151,7 +152,7 @@ describe("createSuiLedgerAdapter", () => {
     await expect(adapter.signMessage(message)).rejects.toThrow(/signMessage not supported/v);
   });
 
-  it("signTransaction() routes through signTransaction and returns the signature bytes", async () => {
+  it("signTransaction() returns Sui's serialized Ed25519 signature", async () => {
     const { factory } = buildFakeTransport();
     const adapter = await createSuiLedgerAdapter({
       platform: "sui",
@@ -167,8 +168,10 @@ describe("createSuiLedgerAdapter", () => {
     const tx = new Uint8Array([1, 2, 3, 4]);
     const signed = await adapter.signTransaction!(tx);
     expect(signed.bytes).toBe(tx);
-    expect(signed.signature.length).toBe(64);
-    expect(signed.signature[0]).toBe(0xcd);
+    expect(signed.signature).toHaveLength(97);
+    expect(signed.signature[0]).toBe(0);
+    expect(signed.signature.slice(1, 65)).toEqual(buildFakeSig(0xcd));
+    expect(signed.signature.slice(65)).toEqual(buildFakePubkey(0));
   });
 
   it("signTransaction() rejects non-Uint8Array input", async () => {
@@ -210,7 +213,16 @@ describe("createSuiLedgerAdapter", () => {
     }
     const tx = new Uint8Array([9, 9, 9]);
     const signed = await adapter.signTransaction!(tx, targetAccount);
-    expect(signed.signature.length).toBe(64);
+    expect(signed.signature).toHaveLength(97);
+  });
+
+  it("rejects malformed Ledger signature material", () => {
+    expect(() => serializeEd25519Signature(new Uint8Array(63), buildFakePubkey(0))).toThrow(
+      /63-byte signature/v,
+    );
+    expect(() => serializeEd25519Signature(buildFakeSig(1), new Uint8Array(31))).toThrow(
+      /31-byte public key/v,
+    );
   });
 
   it("signTransaction() throws when the address isn't on any known path", async () => {

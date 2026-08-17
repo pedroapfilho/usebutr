@@ -32,15 +32,16 @@ const makeDrivableProvider = (): {
   push: (accounts: ReadonlyArray<InjectedAccount>) => void;
   unsubscribeCalls: () => number;
 } => {
-  let callback: ((accounts: ReadonlyArray<InjectedAccount>) => void) | null = null;
+  const callbacks = new Set<(accounts: ReadonlyArray<InjectedAccount>) => void>();
   let unsubscribeCalls = 0;
   const provider: InjectedWindowProvider = {
     enable: vi.fn().mockResolvedValue({
       accounts: {
         get: vi.fn().mockResolvedValue([{ address: ADDRESS, name: "Alice" }]),
         subscribe: (cb: (accounts: ReadonlyArray<InjectedAccount>) => void) => {
-          callback = cb;
+          callbacks.add(cb);
           return () => {
+            callbacks.delete(cb);
             unsubscribeCalls += 1;
           };
         },
@@ -50,7 +51,11 @@ const makeDrivableProvider = (): {
   };
   return {
     provider,
-    push: (accounts) => callback?.(accounts),
+    push: (accounts) => {
+      for (const callback of callbacks) {
+        callback(accounts);
+      }
+    },
     unsubscribeCalls: () => unsubscribeCalls,
   };
 };
@@ -180,6 +185,20 @@ describe("buildInjectedPolkadotAdapter", () => {
     expect(first).toHaveBeenCalledTimes(1);
     expect(second).toHaveBeenCalledTimes(1);
     expect(driver.provider.enable).toHaveBeenCalledTimes(1);
+  });
+
+  it("replaces the wallet subscription when connect runs again", async () => {
+    const driver = makeDrivableProvider();
+    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", driver.provider);
+    const listener = vi.fn<(event: ConnectorEvent) => void>();
+    adapter.subscribe?.(listener);
+
+    await adapter.connect();
+    await adapter.connect();
+    driver.push([{ address: OTHER_ADDRESS, name: "Bob" }]);
+
+    expect(driver.unsubscribeCalls()).toBe(1);
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 
   it("stops delivering after unsubscribe", async () => {

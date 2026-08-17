@@ -6,10 +6,10 @@
 "@usebutr/bitcoin": minor
 "@usebutr/ledger": minor
 "@usebutr/react": minor
-"@usebutr/core": minor
+"@usebutr/core": major
 "@usebutr/evm": minor
-"@usebutr/sui": minor
-"@usebutr/svm": minor
+"@usebutr/sui": major
+"@usebutr/svm": major
 ---
 
 Correctness pass across the storage, hydration and connector layers. Several of

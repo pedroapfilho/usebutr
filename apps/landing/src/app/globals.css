@@ -72,32 +72,6 @@ body {
   background-color: color-mix(in oklab, var(--primary) 35%, transparent);
 }
 
-.wallet-network-hero {
-  background-image:
-    radial-gradient(
-      circle at 78% 30%,
-      color-mix(in oklab, var(--primary) 18%, transparent),
-      transparent 25rem
-    ),
-    linear-gradient(color-mix(in oklab, var(--border) 45%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in oklab, var(--border) 45%, transparent) 1px, transparent 1px);
-  background-size:
-    auto,
-    2.5rem 2.5rem,
-    2.5rem 2.5rem;
-}
-
-.network-map::before {
-  position: absolute;
-  top: 5.75rem;
-  bottom: 4.5rem;
-  left: 50%;
-  z-index: -1;
-  width: 1px;
-  background: color-mix(in oklab, var(--primary) 55%, transparent);
-  content: "";
-}
-
 /*
  * Shiki emits both themes as CSS variables (`defaultColor: false`), so the code
  * panel tracks the page instead of pinning one palette. Same media query the

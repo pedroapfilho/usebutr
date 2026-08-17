@@ -68,7 +68,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
   );
 };
 
-const AccountPicker = ({ wallet }: { wallet: ConnectedWallet }) => (
+const AccountList = ({ wallet }: { wallet: ConnectedWallet }) => (
   <div className="space-y-1">
     <ul className="space-y-1">
       {wallet.accounts.map((account) => (
@@ -81,4 +81,4 @@ const AccountPicker = ({ wallet }: { wallet: ConnectedWallet }) => (
   </div>
 );
 
-export { AccountPicker };
+export { AccountList };

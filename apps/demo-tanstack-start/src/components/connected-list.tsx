@@ -7,7 +7,7 @@ import {
   useSetActiveConnector,
 } from "@usebutr/react";
 
-import { AccountPicker } from "./account-list";
+import { AccountList } from "./account-list";
 import { ChainPicker } from "./chain-picker";
 
 const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
@@ -75,7 +75,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
       <dl className="grid grid-cols-[120px_1fr] gap-y-1.5 text-sm">
         <dt className="text-neutral-500">Address</dt>
         <dd>
-          <AccountPicker wallet={wallet} />
+          <AccountList wallet={wallet} />
         </dd>
         <dt className="text-neutral-500">Balance</dt>
         <dd className="font-mono text-xs">{balanceText}</dd>

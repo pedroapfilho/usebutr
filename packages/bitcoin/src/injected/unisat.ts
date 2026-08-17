@@ -54,7 +54,7 @@ const toStringArray = (value: unknown): Array<string> =>
 const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider): WalletAdapter => {
   let chain: ChainBase = BITCOIN_CHAINS.mainnet;
 
-  const sendBitcoinTx = (tx: unknown): Promise<string> => {
+  const sendBitcoinTx = async (tx: unknown): Promise<string> => {
     if (typeof provider.sendBitcoin !== "function") {
       throw new TypeError(`Wallet ${name} does not expose sendBitcoin`);
     }
@@ -71,7 +71,8 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
       );
     }
     const { amount, recipient } = tx;
-    return provider.sendBitcoin(recipient, Number(amount));
+    const txid = await provider.sendBitcoin(recipient, Number(amount));
+    return txid;
   };
 
   const refreshChain = async () => {
@@ -199,15 +200,19 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
       };
     },
 
-    switchChain: (target) => {
+    // `capabilities.switchChain` is false: UniSat exposes no way to ask the
+    // wallet to change network, so the wallet's own setting is authoritative
+    // and every account read re-reads it. This validates the request and then
+    // reports what the wallet actually says, rather than assigning the target
+    // locally and having the next read silently contradict it.
+    async switchChain(target) {
       if (target.namespace !== "bip122") {
         throw new Error(
           `Bitcoin adapter received non-Bitcoin chain "${target.id}". Pass a chain with namespace "bip122".`,
         );
       }
       chain = target;
-      void refreshChain();
-      return Promise.resolve();
+      await refreshChain();
     },
   };
 };

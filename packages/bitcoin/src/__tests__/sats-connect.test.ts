@@ -161,4 +161,120 @@ describe("buildSatsConnectAdapter", () => {
     const txid = await adapter.sendTx({ amount: 1000n, recipient: "bc1qto" });
     expect(txid).toBe("abcd");
   });
+
+  it("sendTx() rejects a payload that isn't { amount: bigint, recipient: string }", async () => {
+    const provider = buildProvider({
+      getAccounts: { addresses: [PAYMENT] },
+      sendTransfer: { txid: "abcd" },
+    });
+    const adapter = buildAdapter(provider);
+    await adapter.connect();
+
+    await expect(adapter.sendTx({ amount: 1000, recipient: "bc1qto" })).rejects.toThrow(TypeError);
+  });
+
+  it("sendTxToChain() fires the switched callback and forwards the transfer", async () => {
+    const provider = buildProvider({
+      getAccounts: { addresses: [PAYMENT] },
+      sendTransfer: { txid: "abcd" },
+    });
+    const adapter = buildAdapter(provider);
+    await adapter.connect();
+    const cb = vi.fn<() => void>();
+
+    const txid = await adapter.sendTxToChain(
+      { amount: 1000n, recipient: "bc1qto" },
+      BITCOIN_CHAINS.testnet.id,
+      undefined,
+      cb,
+    );
+
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(provider.request).toHaveBeenLastCalledWith("sendTransfer", {
+      recipients: [{ address: "bc1qto", amount: "1000" }],
+    });
+    expect(txid).toBe("abcd");
+  });
+
+  it("connect() rejects when the wallet returns no addresses", async () => {
+    const provider = buildProvider({ getAccounts: { addresses: [] } });
+    const adapter = buildAdapter(provider);
+
+    await expect(adapter.connect()).rejects.toThrow(/returned no addresses/v);
+  });
+
+  it("requestAccounts() re-runs the approval prompt", async () => {
+    const provider = buildProvider({ getAccounts: { addresses: [PAYMENT] } });
+    const adapter = buildAdapter(provider);
+
+    await adapter.requestAccounts?.();
+
+    expect(methodsCalled(provider)).toEqual(["getAccounts"]);
+    const account = await adapter.getAccount();
+    expect(account?.walletAddress).toBe(PAYMENT.address);
+  });
+
+  it("signTransaction() base64-bridges the PSBT through signPsbt", async () => {
+    const provider = buildProvider({ signPsbt: { psbt: "CgsM" } });
+    const adapter = buildSatsConnectAdapter("injected:bitcoin:xverse", "Xverse", provider);
+    if (adapter.chainPlatform !== "bitcoin") {
+      throw new Error("expected a bitcoin adapter");
+    }
+
+    const signed = await adapter.signTransaction?.(new Uint8Array([1, 2, 3]));
+
+    expect(provider.request).toHaveBeenCalledWith("signPsbt", { psbt: "AQID" });
+    expect(signed).toEqual(new Uint8Array([10, 11, 12]));
+  });
+
+  it("signTransaction() rejects anything that isn't PSBT bytes", async () => {
+    const provider = buildProvider({ signPsbt: { psbt: "CgsM" } });
+    const adapter = buildSatsConnectAdapter("injected:bitcoin:xverse", "Xverse", provider);
+    if (adapter.chainPlatform !== "bitcoin") {
+      throw new Error("expected a bitcoin adapter");
+    }
+
+    await expect(adapter.signTransaction?.("not-a-psbt")).rejects.toThrow(TypeError);
+    expect(provider.request).not.toHaveBeenCalled();
+  });
+
+  it("surfaces the provider's error message", async () => {
+    const provider = buildProvider({});
+    const adapter = buildAdapter(provider);
+
+    await expect(adapter.connect()).rejects.toThrow(/sats-connect getAccounts failed/v);
+  });
+
+  it("switchChain() adopts a bip122 target and rejects other namespaces", async () => {
+    const provider = buildProvider({ getAccounts: { addresses: [PAYMENT] } });
+    const adapter = buildAdapter(provider);
+    await adapter.connect();
+
+    await adapter.switchChain(BITCOIN_CHAINS.testnet);
+
+    const account = await adapter.getAccount();
+    expect(account?.chain.id).toBe(BITCOIN_CHAINS.testnet.id);
+    expect(() =>
+      adapter.switchChain({
+        id: "sui:mainnet",
+        name: "Sui",
+        namespace: "sui",
+        reference: "mainnet",
+      }),
+    ).toThrow(/non-Bitcoin/v);
+  });
+
+  it("reads without an RPC client return placeholders", async () => {
+    const provider = buildProvider({});
+    const adapter = buildAdapter(provider);
+
+    expect(await adapter.getBalance()).toEqual({
+      decimals: 8,
+      formatted: "0",
+      symbol: "BTC",
+      value: 0n,
+    });
+    expect(await adapter.getSigner()).toBe(provider);
+    expect(await adapter.getTransactionReceipt("abcd")).toEqual({ status: "Pending" });
+  });
 });

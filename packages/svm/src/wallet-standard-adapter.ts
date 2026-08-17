@@ -1,5 +1,5 @@
 import type { WalletAdapter } from "@usebutr/core";
-import { buildAccount, bytesToBase64 } from "@usebutr/core";
+import { buildAccount, bytesToBase58 } from "@usebutr/core";
 import {
   createWalletStandardCore,
   discoverWalletStandard,
@@ -91,7 +91,28 @@ const buildSvmAdapter = (
   const signTx = getFeature<SolanaSignTransactionFeature>(wallet, "solana:signTransaction");
   const signIn = getFeature<SolanaSignInFeature>(wallet, "solana:signIn");
 
-  const signAndSend = async (tx: unknown, account?: { walletAddress: string }): Promise<string> => {
+  /**
+   * Resolve a caller-supplied target into a chain the wallet advertises.
+   * Accepts both the full CAIP-2 id (`solana:devnet`) and a bare reference
+   * (`devnet`), since consumers reasonably reach for either.
+   */
+  const resolveTargetChain = (targetChainId: string): string => {
+    const candidate = targetChainId.startsWith(SOLANA_PREFIX)
+      ? targetChainId
+      : `${SOLANA_PREFIX}${targetChainId}`;
+    if (!wallet.chains.includes(candidate)) {
+      throw new Error(
+        `Wallet ${wallet.name} does not advertise chain "${candidate}". Available: ${wallet.chains.join(", ")}`,
+      );
+    }
+    return candidate;
+  };
+
+  const signAndSend = async (
+    tx: unknown,
+    account?: { walletAddress: string },
+    chain?: string,
+  ): Promise<string> => {
     if (signAndSendTx === undefined) {
       throw new Error(`Wallet ${wallet.name} does not advertise solana:signAndSendTransaction`);
     }
@@ -101,13 +122,15 @@ const buildSvmAdapter = (
     }
     const [output] = await signAndSendTx.signAndSendTransaction({
       account: wsAccount,
-      chain: core.currentChainId(),
+      chain: chain ?? core.currentChainId(),
       transaction: tx,
     });
     if (output === undefined) {
       throw new Error("signAndSendTransaction returned no outputs");
     }
-    return bytesToBase64(output.signature);
+    // Base58 is the encoding every Solana explorer, `getSignatureStatuses`,
+    // and the WalletConnect SVM namespace use for a transaction signature.
+    return bytesToBase58(output.signature);
   };
 
   return {
@@ -140,9 +163,15 @@ const buildSvmAdapter = (
 
     sendTx: (tx, account) => signAndSend(tx, account),
 
-    sendTxToChain: (tx, _targetChainId, account, cb) => {
-      cb?.();
-      return signAndSend(tx, account);
+    // Async so an unadvertised chain surfaces as a rejection rather than a
+    // synchronous throw; the declared return type is a promise either way.
+    async sendTxToChain(tx, targetChainId, account, cb) {
+      const target = resolveTargetChain(targetChainId);
+      if (target !== core.currentChainId()) {
+        cb?.();
+      }
+      const signature = await signAndSend(tx, account, target);
+      return signature;
     },
 
     async signMessage(msg, account) {

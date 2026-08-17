@@ -10,12 +10,12 @@ const buildAccount = (address: string) => ({
   walletAddress: address,
 });
 
-const buildWallet = (id: string): ConnectedWallet => {
+const buildWallet = (id: string, overrides: { name?: string } = {}): ConnectedWallet => {
   const account = buildAccount("0xfeed");
   return {
     account,
     accounts: [account],
-    connector: createFakeAdapter({ id }),
+    connector: { ...createFakeAdapter({ id }), ...overrides },
   };
 };
 
@@ -106,7 +106,12 @@ describe("createFakePersistence", () => {
     await expect(p.getPool()).resolves.toEqual({});
   });
 
-  it("clearAll resets pool, selection, activeConnectorId, and userDisconnected", async () => {
+  // `clearAll` deliberately leaves the disconnect flag alone: it lives in the
+  // session driver so a reset keeps auto-connect suppressed for the rest of
+  // the session. `reset()` writes the flag and calls `clearAll` as two
+  // unawaited operations, so a fake that cleared it here made the outcome
+  // order-dependent and let a remount silently auto-reconnect.
+  it("clearAll resets pool, selection and activeConnectorId but keeps userDisconnected", async () => {
     const p = createFakePersistence({
       activeConnectorId: "a",
       pool: {
@@ -125,6 +130,33 @@ describe("createFakePersistence", () => {
     await expect(p.getPool()).resolves.toEqual({});
     await expect(p.getSelection()).resolves.toEqual({});
     await expect(p.getActiveConnectorId()).resolves.toBeNull();
-    await expect(p.isUserDisconnected()).resolves.toBe(false);
+    await expect(p.isUserDisconnected()).resolves.toBe(true);
+  });
+
+  it("setPool upserts rather than replacing, matching WalletStorage", async () => {
+    const p = createFakePersistence({
+      pool: {
+        a: {
+          account: buildAccount("0xaa"),
+          accounts: [buildAccount("0xaa")],
+          chainPlatform: "evm",
+          connectorId: "a",
+          name: "Wallet A",
+        },
+      },
+    });
+
+    await p.setPool(new Map([["b", buildWallet("b")]]));
+
+    const ids = Object.keys(await p.getPool());
+    expect(ids.toSorted()).toEqual(["a", "b"]);
+  });
+
+  it("drops an entry that fails validation instead of round-tripping it", async () => {
+    const p = createFakePersistence();
+
+    await p.setPool(new Map([["c", buildWallet("c", { name: "" })]]));
+
+    expect(await p.getPool()).toEqual({});
   });
 });

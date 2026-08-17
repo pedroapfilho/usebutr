@@ -1,3 +1,4 @@
+import { base58ToBytes, bytesToBase58 } from "@usebutr/core";
 import type {
   StandardConnectFeature,
   StandardDisconnectFeature,
@@ -203,7 +204,7 @@ describe("buildSvmAdapter", () => {
     await expect(adapter?.signMessage(new Uint8Array())).rejects.toThrow(/solana:signMessage/v);
   });
 
-  it("sendTx() bridges through solana:signAndSendTransaction, returns base64 signature", async () => {
+  it("sendTx() bridges through solana:signAndSendTransaction, returns base58 signature", async () => {
     const account = buildAccount("So1Address1");
     const signatureBytes = new Uint8Array([1, 2, 3, 4]);
     const sendFeature: SolanaSignAndSendTransactionFeature = {
@@ -226,8 +227,60 @@ describe("buildSvmAdapter", () => {
       chain: "solana:mainnet",
       transaction: txBytes,
     });
-    const expectedBase64 = btoa(String.fromCodePoint(...signatureBytes));
-    expect(sig).toBe(expectedBase64);
+    expect(sig).toBe(bytesToBase58(signatureBytes));
+    expect(base58ToBytes(sig ?? "")).toEqual(signatureBytes);
+  });
+
+  describe("sendTxToChain", () => {
+    const buildSendable = (chains: ReadonlyArray<string>) => {
+      const sendFeature: SolanaSignAndSendTransactionFeature = {
+        signAndSendTransaction: vi.fn().mockResolvedValue([{ signature: new Uint8Array([9]) }]),
+      };
+      const wallet = withFeatures(buildWallet({ chains }), {
+        "solana:signAndSendTransaction": sendFeature,
+        "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+      });
+      return { adapter: buildSvmAdapter(wallet), sendFeature };
+    };
+
+    it("submits to the requested chain, not the adapter's current one", async () => {
+      const { adapter, sendFeature } = buildSendable(["solana:mainnet", "solana:devnet"]);
+      const cb = vi.fn<() => void>();
+
+      await adapter?.sendTxToChain(new Uint8Array([1]), "solana:devnet", undefined, cb);
+
+      expect(sendFeature.signAndSendTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ chain: "solana:devnet" }),
+      );
+      expect(cb).toHaveBeenCalledTimes(1);
+    });
+
+    it("accepts a bare chain reference", async () => {
+      const { adapter, sendFeature } = buildSendable(["solana:mainnet", "solana:devnet"]);
+
+      await adapter?.sendTxToChain(new Uint8Array([1]), "devnet");
+
+      expect(sendFeature.signAndSendTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ chain: "solana:devnet" }),
+      );
+    });
+
+    it("does not fire the switched callback when already on the target chain", async () => {
+      const { adapter } = buildSendable(["solana:mainnet", "solana:devnet"]);
+      const cb = vi.fn<() => void>();
+
+      await adapter?.sendTxToChain(new Uint8Array([1]), "solana:mainnet", undefined, cb);
+
+      expect(cb).not.toHaveBeenCalled();
+    });
+
+    it("rejects a chain the wallet does not advertise", async () => {
+      const { adapter } = buildSendable(["solana:mainnet"]);
+
+      await expect(adapter?.sendTxToChain(new Uint8Array([1]), "solana:devnet")).rejects.toThrow(
+        /does not advertise chain/v,
+      );
+    });
   });
 
   it("sendTx() rejects when transaction isn't a Uint8Array", async () => {

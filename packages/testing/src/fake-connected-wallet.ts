@@ -91,6 +91,16 @@ const createFakeConnectedWallet = (options: FakeConnectedWalletOptions = {}): Co
     );
   }
 
+  // A supplied adapter carries its own accounts, and the entry must agree with
+  // it: real pool entries are always built from the connector's own
+  // `getAccount()`/`getAccounts()`, so an entry whose account the adapter has
+  // never heard of is a state production cannot reach.
+  if (adapter && (addresses !== undefined || adapterOptions.accounts !== undefined)) {
+    throw new Error(
+      "createFakeConnectedWallet: pass either `adapter` or `addresses`/`accounts`, not both. The entry's accounts must come from the adapter that serves them.",
+    );
+  }
+
   return {
     account,
     accounts,

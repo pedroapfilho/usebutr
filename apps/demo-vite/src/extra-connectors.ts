@@ -52,10 +52,8 @@ const emitWhenReady = async (
 let extraSources: Array<Promise<Array<WalletAdapter>>> | null = null;
 
 /**
- * Create the explicit (non-injected) connectors, Ledger and
- * WalletConnect, and emit each through `onAdapter` as it becomes
- * ready. Fire-and-forget: failures are logged, the wallet simply
- * doesn't appear in the picker.
+ * Fire-and-forget: a connector that fails to initialize is logged and simply
+ * never appears in the picker.
  */
 const registerExtraAdapters = (onAdapter: OnAdapter): void => {
   extraSources ??= [

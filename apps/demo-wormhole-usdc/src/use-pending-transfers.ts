@@ -43,11 +43,8 @@ type ScanTask = {
 };
 
 /**
- * Discovers incomplete CCTP transfers for the connected wallets: scans each
- * supported chain for this wallet's burns, reconstructs them through the
- * Wormhole SDK, and keeps only those not yet minted on their destination.
- * Triggered manually (`rescan`); scanning every chain on render would
- * hammer testnet RPCs.
+ * Scanning is manual (`rescan`) rather than on-render: every supported chain
+ * costs a full RPC sweep, which would hammer the public testnet endpoints.
  */
 const usePendingTransfers = (
   evmWallet: ConnectedWallet | undefined,

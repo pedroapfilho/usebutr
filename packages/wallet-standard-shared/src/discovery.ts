@@ -6,18 +6,9 @@ import type { WalletStandardAppModule, WalletStandardWallet } from "./types";
 let warnedMissingApp = false;
 
 /**
- * Callback supplied by per-platform discovery to build a `WalletAdapter`
- * out of a Wallet Standard wallet announcement.
- *
- * Returns `null` when the wallet doesn't advertise this platform; that
- * lets a multi-chain wallet (e.g. Phantom: SVM + EVM + Sui + Bitcoin)
- * produce one adapter per platform without each builder needing to know
- * about the others.
- *
- * The second argument is a hook the builder calls during construction
- * to wire a synthetic `disconnected` event into its subscriber set.
- * The discovery loop fires the registered emitter when Wallet Standard
- * announces `unregister` for that wallet.
+ * Returns `null` when the wallet doesn't advertise this platform, so a
+ * multi-chain wallet yields one adapter per platform. `registerDisconnector`
+ * wires the synthetic `disconnected` fired on Wallet Standard `unregister`.
  */
 type WalletStandardAdapterBuilder = (
   wallet: WalletStandardWallet,
@@ -25,29 +16,9 @@ type WalletStandardAdapterBuilder = (
 ) => WalletAdapter | null;
 
 /**
- * Subscribe to Wallet Standard announcements and turn matching wallets
- * into butr `WalletAdapter`s using a per-platform `build` callback.
- *
- * **Shared machinery** every platform package needs:
- *  - Dynamic import of `@wallet-standard/app` (optional peer dep;
- *    failure to resolve quietly disables discovery so consumers who
- *    don't install it pay nothing).
- *  - Cancellation: the returned unsubscribe is safe to call before the
- *    dynamic import has resolved.
- *  - Dedupe by adapter id, so re-announcements don't double-emit.
- *  - `unregister` integration: when an extension is removed mid-session,
- *    fire the disconnector the builder registered so connected pool
- *    entries on the consumer side tear down cleanly.
- *
- * **What's platform-specific** lives entirely in `build`:
- *  - Which `wallet.chains` to accept.
- *  - Which features to gate on.
- *  - The `id` slug prefix (use `slugify(prefix, wallet.name)`).
- *  - The capability resolver, the feature decoding, the chain coercion.
- *
- * Disconnectors are keyed by the wallet object itself (identity equality),
- * not by adapter id; Wallet Standard's `register` / `unregister` emit
- * the same wallet object, so identity is the cheapest stable key.
+ * `@wallet-standard/app` is an optional peer dep: a failed import quietly
+ * disables discovery. Disconnectors are keyed by wallet identity rather
+ * than adapter id because `register` / `unregister` emit the same object.
  */
 const discoverWalletStandard = (
   onAdapter: (adapter: WalletAdapter) => void,

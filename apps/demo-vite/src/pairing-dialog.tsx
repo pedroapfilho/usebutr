@@ -1,12 +1,3 @@
-/**
- * PairingDialog: WalletConnect QR pairing overlay.
- *
- * Opens whenever a WalletConnect adapter emits a pairing URI
- * (`onPairingUri` → pairing store) and closes when the connect attempt
- * settles or the user dismisses it. Same native <dialog> pattern as
- * WalletConnectDialog: browser-native focus trap, Escape-to-close,
- * aria-modal semantics, top-layer stacking.
- */
 import { useConnectingConnectorId } from "@usebutr/react";
 import { useEffect, useRef, useState } from "react";
 import { renderSVG } from "uqr";

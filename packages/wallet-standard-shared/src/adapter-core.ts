@@ -62,17 +62,9 @@ type WalletStandardCore = {
 };
 
 /**
- * Session plumbing every Wallet Standard platform adapter repeats: chain
- * resolution, the connect/disconnect handshake, account reads, the local
- * listener set that lets `switchChain` synthesise `accountChanged`, and
- * the `standard:events` bridge. Returns `null` for wallets butr can't
- * drive (no chain in this namespace, or no `standard:connect`), which is
- * the same `null` each platform adapter returns to its caller.
- *
- * Platform packages keep what genuinely differs: which features they read
- * off the wallet, how they encode transactions and messages, and their
- * balance units. `getSigner` hands back the raw Wallet Standard wallet so
- * consumers can wrap it in their own signing library.
+ * Shared session plumbing for every Wallet Standard platform adapter.
+ * `getSigner` hands back the raw Wallet Standard wallet so consumers can
+ * wrap it in their own signing library.
  */
 const createWalletStandardCore = ({
   chainPrefix,

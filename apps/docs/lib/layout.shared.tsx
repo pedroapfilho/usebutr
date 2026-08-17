@@ -3,12 +3,6 @@ import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 const GITHUB_URL = "https://github.com/pedroapfilho/usebutr";
 const DEMO_URL = "https://demo.usebutr.com";
 
-/**
- * Layout options shared between the docs layout and the home layout.
- * The nav title renders the butr brand mark, swapping the light/dark
- * SVG variant with the active theme via a single <picture> element.
- * This saves an HTTP request compared to the previous two-<Image> approach.
- */
 export const baseOptions = (): BaseLayoutProps => ({
   githubUrl: GITHUB_URL,
   links: [{ external: true, text: "Demo", url: DEMO_URL }],

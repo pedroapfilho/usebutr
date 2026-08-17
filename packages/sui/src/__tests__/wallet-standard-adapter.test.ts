@@ -292,7 +292,7 @@ describe("buildSuiAdapter", () => {
     await expect(adapter?.sendTx(42)).rejects.toThrow(TypeError);
   });
 
-  it("switchChain() rejects a non-sui namespace", () => {
+  it("switchChain() rejects a non-sui namespace", async () => {
     const connectFeature: StandardConnectFeature = {
       connect: vi.fn().mockResolvedValue({ accounts: [] }),
     };
@@ -300,17 +300,17 @@ describe("buildSuiAdapter", () => {
       "standard:connect": connectFeature,
     });
     const adapter = buildSuiAdapter(wallet);
-    expect(() =>
+    await expect(
       adapter?.switchChain({
         id: "eip155:1",
         name: "Ethereum",
         namespace: "eip155",
         reference: "1",
       }),
-    ).toThrow(/non-Sui/v);
+    ).rejects.toThrow(/non-Sui/v);
   });
 
-  it("switchChain() rejects chains the wallet doesn't advertise", () => {
+  it("switchChain() rejects chains the wallet doesn't advertise", async () => {
     const connectFeature: StandardConnectFeature = {
       connect: vi.fn().mockResolvedValue({ accounts: [] }),
     };
@@ -318,13 +318,13 @@ describe("buildSuiAdapter", () => {
       "standard:connect": connectFeature,
     });
     const adapter = buildSuiAdapter(wallet);
-    expect(() =>
+    await expect(
       adapter?.switchChain({
         id: "sui:testnet",
         name: "Sui Testnet",
         namespace: "sui",
         reference: "testnet",
       }),
-    ).toThrow(/does not advertise chain/v);
+    ).rejects.toThrow(/does not advertise chain/v);
   });
 });

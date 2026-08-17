@@ -103,34 +103,34 @@ describe("buildPolkadotWalletStandardAdapter", () => {
     expect(adapter?.capabilities.switchChain).toBe(false);
   });
 
-  it("switchChain rejects a non-polkadot namespace chain", () => {
+  it("switchChain rejects a non-polkadot namespace chain", async () => {
     const wallet = withFeatures(buildWallet({ chains: ["polkadot:paseo", "polkadot:polkadot"] }), {
       "standard:connect": baseConnect,
     });
     const adapter = buildPolkadotWalletStandardAdapter(wallet);
-    expect(() =>
+    await expect(
       adapter?.switchChain({
         id: "eip155:1",
         name: "Ethereum",
         namespace: "eip155",
         reference: "1",
       }),
-    ).toThrow(/non-Polkadot/v);
+    ).rejects.toThrow(/non-Polkadot/v);
   });
 
-  it("switchChain rejects a polkadot chain id the wallet does not advertise", () => {
+  it("switchChain rejects a polkadot chain id the wallet does not advertise", async () => {
     const wallet = withFeatures(buildWallet({ chains: ["polkadot:paseo"] }), {
       "standard:connect": baseConnect,
     });
     const adapter = buildPolkadotWalletStandardAdapter(wallet);
-    expect(() =>
+    await expect(
       adapter?.switchChain({
         id: "polkadot:polkadot",
         name: "Polkadot",
         namespace: "polkadot",
         reference: "polkadot",
       }),
-    ).toThrow(/does not advertise chain/v);
+    ).rejects.toThrow(/does not advertise chain/v);
   });
 
   it("resolves the Polkadot chain even when the wallet lists a testnet first", async () => {

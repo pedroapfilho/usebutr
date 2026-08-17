@@ -220,7 +220,10 @@ const createWalletStandardCore = ({
       };
     },
 
-    switchChain: (chain) => {
+    // Async so a rejected chain surfaces as a rejection. Declared
+    // `Promise<void>`, this previously threw synchronously, so a caller
+    // attaching `.catch()` instead of awaiting got an uncaught throw.
+    switchChain: async (chain) => {
       if (chain.namespace !== namespace) {
         throw new Error(
           `${label} adapter received non-${platform} chain "${chain.id}". Pass a chain with namespace "${namespace}".`,
@@ -233,7 +236,7 @@ const createWalletStandardCore = ({
       }
       currentChainId = chain.id;
       notifyAccountChanged();
-      return Promise.resolve();
+      await Promise.resolve();
     },
 
     toChain,

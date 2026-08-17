@@ -25,7 +25,6 @@
     "build": "tsdown",
     "clean": "rm -rf dist",
     "dev": "tsdown --watch",
-    "lint": "oxlint src",
     "prepack": "pnpm run build",
     "test": "vitest run --passWithNoTests",
     "test:coverage": "vitest run --coverage --passWithNoTests",

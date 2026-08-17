@@ -191,7 +191,7 @@ describe("buildBitcoinAdapter", () => {
     expect(result).toEqual(signedPsbt);
   });
 
-  it("switchChain() rejects a non-bip122 namespace", () => {
+  it("switchChain() rejects a non-bip122 namespace", async () => {
     const connectFeature: StandardConnectFeature = {
       connect: vi.fn().mockResolvedValue({ accounts: [] }),
     };
@@ -199,13 +199,13 @@ describe("buildBitcoinAdapter", () => {
       "standard:connect": connectFeature,
     });
     const adapter = buildBitcoinAdapter(wallet);
-    expect(() =>
+    await expect(
       adapter?.switchChain({
         id: "sui:mainnet",
         name: "Sui",
         namespace: "sui",
         reference: "mainnet",
       }),
-    ).toThrow(/non-Bitcoin/v);
+    ).rejects.toThrow(/non-Bitcoin/v);
   });
 });

@@ -517,28 +517,28 @@ describe("buildSvmAdapter.switchChain", () => {
       }),
     );
 
-  it("rejects a non-Solana chain", () => {
+  it("rejects a non-Solana chain", async () => {
     const adapter = buildAdapter();
-    expect(() =>
+    await expect(
       adapter?.switchChain({
         id: "eip155:1",
         name: "Ethereum",
         namespace: "eip155",
         reference: "1",
       }),
-    ).toThrow(/non-Solana/v);
+    ).rejects.toThrow(/non-Solana/v);
   });
 
-  it("rejects a Solana chain the wallet does not advertise", () => {
+  it("rejects a Solana chain the wallet does not advertise", async () => {
     const adapter = buildAdapter();
-    expect(() =>
+    await expect(
       adapter?.switchChain({
         id: "solana:testnet",
         name: "Solana Testnet",
         namespace: "solana",
         reference: "testnet",
       }),
-    ).toThrow(/does not advertise chain/v);
+    ).rejects.toThrow(/does not advertise chain/v);
   });
 
   it("happy path: switches and synthesises an accountChanged event", async () => {

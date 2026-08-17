@@ -2,20 +2,28 @@ import { ButtonLink } from "@/components/button-link";
 import { CodeBlock } from "@/components/code-block";
 import { INTEGRATIONS_URL } from "@/lib/site";
 
-const BRIDGE_CODE = `import { useConnectedWallets } from "@usebutr/react";
+const BRIDGE_CODE = `import { useMemo } from "react";
+import { useSelectedWallet, useSigner } from "@usebutr/react";
 import type { Address, EIP1193Provider } from "viem";
 import { createWalletClient, custom } from "viem";
 import { sepolia } from "viem/chains";
 
-const [wallet] = useConnectedWallets();
+const useViemWalletClient = () => {
+  const wallet = useSelectedWallet("evm");
+  const signer = useSigner(wallet?.connector.id);
 
-const signer = await wallet.connector.getSigner();
+  return useMemo(() => {
+    if (!wallet || signer.status !== "success") {
+      return null;
+    }
 
-const client = createWalletClient({
-  account: wallet.account.walletAddress as Address,
-  chain: sepolia,
-  transport: custom(signer as EIP1193Provider),
-});`;
+    return createWalletClient({
+      account: wallet.account.walletAddress as Address,
+      chain: sepolia,
+      transport: custom(signer.data as EIP1193Provider),
+    });
+  }, [signer, wallet]);
+};`;
 
 const CodeExample = () => (
   <section className="border-border bg-muted/40 border-y py-16 sm:py-24">

@@ -13,6 +13,7 @@ import type {
 } from "../wallet-standard-types";
 
 const MAINNET = "bip122:000000000019d6689c085ae165831e93";
+const TESTNET = "bip122:000000000933ea01ad0ee984209779ba";
 
 const buildAccount = (
   address: string,
@@ -145,6 +146,49 @@ describe("buildBitcoinAdapter", () => {
       recipient: "bc1qto",
     });
     expect(txid).toBe("abcd1234");
+  });
+
+  describe("sendTxToChain", () => {
+    const buildSendable = (chains: ReadonlyArray<string>) => {
+      const sendFeature: BitcoinSendTransferFeature = {
+        sendTransfer: vi.fn().mockResolvedValue({ txid: "abcd1234" }),
+      };
+      const wallet = withFeatures(buildWallet({ chains }), {
+        "bitcoin:sendTransfer": sendFeature,
+        "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+      });
+      return { adapter: buildBitcoinAdapter(wallet), sendFeature };
+    };
+    const payload = { amount: 1n, recipient: "bc1qto" };
+
+    it("submits to the requested chain, not the adapter's current one", async () => {
+      const { adapter, sendFeature } = buildSendable([MAINNET, TESTNET]);
+      const cb = vi.fn<() => void>();
+
+      await adapter?.sendTxToChain(payload, TESTNET, undefined, cb);
+
+      expect(sendFeature.sendTransfer).toHaveBeenCalledWith(
+        expect.objectContaining({ chain: TESTNET }),
+      );
+      expect(cb).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not fire the switched callback when already on the target chain", async () => {
+      const { adapter } = buildSendable([MAINNET, TESTNET]);
+      const cb = vi.fn<() => void>();
+
+      await adapter?.sendTxToChain(payload, MAINNET, undefined, cb);
+
+      expect(cb).not.toHaveBeenCalled();
+    });
+
+    it("rejects a chain the wallet does not advertise", async () => {
+      const { adapter } = buildSendable([MAINNET]);
+
+      await expect(adapter?.sendTxToChain(payload, TESTNET)).rejects.toThrow(
+        /does not advertise chain/v,
+      );
+    });
   });
 
   it("sendTx() rejects when payload isn't { amount, recipient }", async () => {

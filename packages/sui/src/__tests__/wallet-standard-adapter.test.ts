@@ -272,6 +272,84 @@ describe("buildSuiAdapter", () => {
     await expect(passed?.transaction.toJSON()).resolves.toBe("AQID");
   });
 
+  describe("sendTxToChain", () => {
+    const buildSendable = (chains: ReadonlyArray<string>) => {
+      const sendFeature: SuiSignAndExecuteTransactionFeature = {
+        signAndExecuteTransaction: vi
+          .fn()
+          .mockResolvedValue({ bytes: "", digest: "d", effects: "", signature: "" }),
+      };
+      const wallet = withFeatures(buildWallet({ chains }), {
+        "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+        "sui:signAndExecuteTransaction": sendFeature,
+      });
+      return { adapter: buildSuiAdapter(wallet), sendFeature };
+    };
+    const tx = { toJSON: () => Promise.resolve("{}") };
+
+    it("submits to the requested chain, not the adapter's current one", async () => {
+      const { adapter, sendFeature } = buildSendable(["sui:mainnet", "sui:testnet"]);
+      const cb = vi.fn<() => void>();
+
+      await adapter?.sendTxToChain(tx, "sui:testnet", undefined, cb);
+
+      expect(sendFeature.signAndExecuteTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ chain: "sui:testnet" }),
+      );
+      expect(cb).toHaveBeenCalledTimes(1);
+    });
+
+    it("accepts a bare chain reference", async () => {
+      const { adapter, sendFeature } = buildSendable(["sui:mainnet", "sui:testnet"]);
+
+      await adapter?.sendTxToChain(tx, "testnet");
+
+      expect(sendFeature.signAndExecuteTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ chain: "sui:testnet" }),
+      );
+    });
+
+    it("does not fire the switched callback when already on the target chain", async () => {
+      const { adapter } = buildSendable(["sui:mainnet", "sui:testnet"]);
+      const cb = vi.fn<() => void>();
+
+      await adapter?.sendTxToChain(tx, "sui:mainnet", undefined, cb);
+
+      expect(cb).not.toHaveBeenCalled();
+    });
+
+    it("rejects a chain the wallet does not advertise", async () => {
+      const { adapter } = buildSendable(["sui:mainnet"]);
+
+      await expect(adapter?.sendTxToChain(tx, "sui:testnet")).rejects.toThrow(
+        /does not advertise chain/v,
+      );
+    });
+  });
+
+  it("requestAccounts() re-runs the connect handshake", async () => {
+    const connectFeature: StandardConnectFeature = {
+      connect: vi.fn().mockResolvedValue({ accounts: [] }),
+    };
+    const wallet = withFeatures(buildWallet(), { "standard:connect": connectFeature });
+    const adapter = buildSuiAdapter(wallet);
+
+    await adapter?.requestAccounts?.();
+
+    expect(connectFeature.connect).toHaveBeenCalled();
+  });
+
+  it("getTransactionReceipt() returns Pending (no RPC in Wallet Standard)", async () => {
+    const wallet = withFeatures(buildWallet(), {
+      "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+    });
+    const adapter = buildSuiAdapter(wallet);
+
+    await expect(adapter?.getTransactionReceipt("anyhash")).resolves.toEqual({
+      status: "Pending",
+    });
+  });
+
   it("sendTx() rejects when transaction isn't a Transaction nor a string", async () => {
     const connectFeature: StandardConnectFeature = {
       connect: vi.fn().mockResolvedValue({ accounts: [] }),

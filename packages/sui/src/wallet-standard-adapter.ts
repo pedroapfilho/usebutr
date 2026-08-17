@@ -87,7 +87,25 @@ const buildSuiAdapter = (
   );
   const signTx = getFeature<SuiSignTransactionFeature>(wallet, "sui:signTransaction");
 
-  const executeTx = async (tx: unknown, account?: { walletAddress: string }): Promise<string> => {
+  /** Resolve a caller-supplied target into a chain the wallet advertises,
+   *  accepting either a full CAIP-2 id (`sui:testnet`) or a bare reference. */
+  const resolveTargetChain = (targetChainId: string): string => {
+    const candidate = targetChainId.startsWith(SUI_PREFIX)
+      ? targetChainId
+      : `${SUI_PREFIX}${targetChainId}`;
+    if (!wallet.chains.includes(candidate)) {
+      throw new Error(
+        `Wallet ${wallet.name} does not advertise chain "${candidate}". Available: ${wallet.chains.join(", ")}`,
+      );
+    }
+    return candidate;
+  };
+
+  const executeTx = async (
+    tx: unknown,
+    account?: { walletAddress: string },
+    chain?: string,
+  ): Promise<string> => {
     if (signAndExecute === undefined) {
       throw new Error(`Wallet ${wallet.name} does not advertise sui:signAndExecuteTransaction`);
     }
@@ -95,7 +113,7 @@ const buildSuiAdapter = (
     const transaction = coerceSuiTransaction(tx);
     const output = await signAndExecute.signAndExecuteTransaction({
       account: wsAccount,
-      chain: core.currentChainId(),
+      chain: chain ?? core.currentChainId(),
       transaction,
     });
     return output.digest;
@@ -130,9 +148,15 @@ const buildSuiAdapter = (
 
     sendTx: (tx, account) => executeTx(tx, account),
 
-    sendTxToChain: (tx, _targetChainId, account, cb) => {
-      cb?.();
-      return executeTx(tx, account);
+    // Async so an unadvertised chain surfaces as a rejection rather than a
+    // synchronous throw; the declared return type is a promise either way.
+    async sendTxToChain(tx, targetChainId, account, cb) {
+      const target = resolveTargetChain(targetChainId);
+      if (target !== core.currentChainId()) {
+        cb?.();
+      }
+      const digest = await executeTx(tx, account, target);
+      return digest;
     },
 
     async signMessage(msg, account) {

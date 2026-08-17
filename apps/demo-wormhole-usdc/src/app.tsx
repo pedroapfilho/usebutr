@@ -1,7 +1,7 @@
 import type { ConnectedWallet } from "@usebutr/core";
 import { useSelectedWallet } from "@usebutr/react";
 import { type Chain, type Network, Wormhole, amount } from "@wormhole-foundation/sdk-connect";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { type ChainSpec, CHAIN_LIST, USDC_DECIMALS, getChainSpec } from "./chains";
 import { PendingTransfers } from "./pending-transfers";
@@ -11,14 +11,22 @@ import { getWormhole, makeSigner } from "./wormhole";
 
 const ATTESTATION_TIMEOUT_MS = 10 * 60 * 1000;
 
-type Status =
+type CircleTransfer = Awaited<ReturnType<Wormhole<Network>["circleTransfer"]>>;
+
+/**
+ * Each post-burn phase carries its own `xfer`, so "no transfer in flight" can never
+ * coexist with a live CCTP handle: dropping the handle strands burned USDC behind the
+ * PendingTransfers scan, which is bounded and may miss it.
+ */
+type Phase =
   | { kind: "idle" }
   | { kind: "initiating" }
-  | { kind: "waiting-attestation"; sourceTxHash: string }
-  | { kind: "ready-to-redeem"; sourceTxHash: string }
-  | { kind: "redeeming"; sourceTxHash: string }
-  | { destTxHash: string; kind: "complete"; sourceTxHash: string }
-  | { kind: "error"; message: string };
+  | { kind: "waiting-attestation"; sourceTxHash: string; xfer: CircleTransfer }
+  | { kind: "ready-to-redeem"; sourceTxHash: string; xfer: CircleTransfer }
+  | { kind: "redeeming"; sourceTxHash: string; xfer: CircleTransfer }
+  | { destTxHash: string; kind: "complete"; sourceTxHash: string };
+
+type Transfer = { error: string | null; phase: Phase };
 
 const formatError = (e: unknown): string => {
   if (e instanceof Error) {
@@ -130,67 +138,83 @@ const TxLink = ({ hash, spec }: { hash: string; spec: ChainSpec }) => {
   );
 };
 
-const StatusPanel = ({
+const PhaseBody = ({
   dstSpec,
+  phase,
   srcSpec,
-  status,
 }: {
   dstSpec: ChainSpec;
+  phase: Phase;
   srcSpec: ChainSpec;
-  status: Status;
 }) => {
-  if (status.kind === "idle") {
+  if (phase.kind === "idle") {
     return null;
   }
-  let body;
-  if (status.kind === "initiating") {
-    body = (
+  if (phase.kind === "initiating") {
+    return (
       <p className="text-sm text-neutral-600">
         Burning USDC on {srcSpec.label} via CCTP. Approve in your wallet…
       </p>
     );
-  } else if (status.kind === "waiting-attestation") {
-    body = (
+  }
+  if (phase.kind === "waiting-attestation") {
+    return (
       <div className="space-y-1 text-sm">
         <p className="text-neutral-600">Waiting for Circle to attest the burn…</p>
-        <TxLink hash={status.sourceTxHash} spec={srcSpec} />
+        <TxLink hash={phase.sourceTxHash} spec={srcSpec} />
         <p className="text-xs text-neutral-500">
           Typically a few minutes, depending on source-chain finality.
         </p>
       </div>
     );
-  } else if (status.kind === "ready-to-redeem") {
-    body = (
+  }
+  if (phase.kind === "ready-to-redeem") {
+    return (
       <div className="space-y-1 text-sm">
         <p className="text-emerald-700">Attestation ready. Approve the mint on {dstSpec.label}.</p>
-        <TxLink hash={status.sourceTxHash} spec={srcSpec} />
+        <TxLink hash={phase.sourceTxHash} spec={srcSpec} />
       </div>
     );
-  } else if (status.kind === "redeeming") {
-    body = (
+  }
+  if (phase.kind === "redeeming") {
+    return (
       <div className="space-y-1 text-sm">
         <p className="text-neutral-600">Minting native USDC on {dstSpec.label}…</p>
-        <TxLink hash={status.sourceTxHash} spec={srcSpec} />
+        <TxLink hash={phase.sourceTxHash} spec={srcSpec} />
       </div>
-    );
-  } else if (status.kind === "complete") {
-    body = (
-      <div className="space-y-1 text-sm">
-        <p className="text-emerald-700">Transfer complete.</p>
-        <TxLink hash={status.sourceTxHash} spec={srcSpec} />
-        <TxLink hash={status.destTxHash} spec={dstSpec} />
-      </div>
-    );
-  } else {
-    body = (
-      <p className="text-sm text-red-700" role="alert">
-        {status.message}
-      </p>
     );
   }
   return (
-    <div aria-live="polite" className="rounded-lg border border-neutral-200 bg-white p-4">
-      {body}
+    <div className="space-y-1 text-sm">
+      <p className="text-emerald-700">Transfer complete.</p>
+      <TxLink hash={phase.sourceTxHash} spec={srcSpec} />
+      <TxLink hash={phase.destTxHash} spec={dstSpec} />
+    </div>
+  );
+};
+
+const StatusPanel = ({
+  dstSpec,
+  error,
+  phase,
+  srcSpec,
+}: {
+  dstSpec: ChainSpec;
+  error: string | null;
+  phase: Phase;
+  srcSpec: ChainSpec;
+}) => {
+  if (phase.kind === "idle" && error === null) {
+    return null;
+  }
+  return (
+    <div aria-live="polite" className="space-y-2 rounded-lg border border-neutral-200 bg-white p-4">
+      <PhaseBody dstSpec={dstSpec} phase={phase} srcSpec={srcSpec} />
+      {error === null ? null : (
+        <p className="text-sm text-red-700" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 };
@@ -202,8 +226,8 @@ const App = () => {
   const [sourceChain, setSourceChain] = useState<Chain>("Sepolia");
   const [destChain, setDestChain] = useState<Chain>("Solana");
   const [amountInput, setAmountInput] = useState("1");
-  const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const xferRef = useRef<Awaited<ReturnType<Wormhole<Network>["circleTransfer"]>> | null>(null);
+  const [transfer, setTransfer] = useState<Transfer>({ error: null, phase: { kind: "idle" } });
+  const { phase } = transfer;
 
   const srcSpec = getChainSpec(sourceChain);
   const dstSpec = getChainSpec(destChain);
@@ -216,17 +240,18 @@ const App = () => {
   const dstBalance = useUsdcBalance(dstSpec, dstWallet?.account.walletAddress);
 
   const isWorking =
-    status.kind === "initiating" ||
-    status.kind === "waiting-attestation" ||
-    status.kind === "redeeming";
+    phase.kind === "initiating" ||
+    phase.kind === "waiting-attestation" ||
+    phase.kind === "redeeming";
+  const isTransferOpen = phase.kind !== "idle" && phase.kind !== "complete";
+  const canRetryAttestation = phase.kind === "waiting-attestation" && transfer.error !== null;
 
   const resetTransfer = () => {
-    setStatus({ kind: "idle" });
-    xferRef.current = null;
+    setTransfer({ error: null, phase: { kind: "idle" } });
   };
 
   const selectSource = (next: Chain) => {
-    if (isWorking) {
+    if (isTransferOpen) {
       return;
     }
     resetTransfer();
@@ -237,7 +262,7 @@ const App = () => {
   };
 
   const selectDest = (next: Chain) => {
-    if (isWorking) {
+    if (isTransferOpen) {
       return;
     }
     resetTransfer();
@@ -248,7 +273,7 @@ const App = () => {
   };
 
   const flip = () => {
-    if (isWorking) {
+    if (isTransferOpen) {
       return;
     }
     resetTransfer();
@@ -260,45 +285,68 @@ const App = () => {
     if (!srcWallet || !dstWallet) {
       return;
     }
-    setStatus({ kind: "initiating" });
-    xferRef.current = null;
+    setTransfer({ error: null, phase: { kind: "initiating" } });
+    let burned: { sourceTxHash: string; xfer: CircleTransfer } | null = null;
     try {
       const wh = getWormhole();
       const sourceAddress = Wormhole.chainAddress(srcSpec.chain, srcWallet.account.walletAddress);
       const destAddress = Wormhole.chainAddress(dstSpec.chain, dstWallet.account.walletAddress);
       const units = amount.units(amount.parse(amountInput, USDC_DECIMALS));
 
-      const transfer = await wh.circleTransfer(units, sourceAddress, destAddress, false);
-      xferRef.current = transfer;
-
+      const xfer = await wh.circleTransfer(units, sourceAddress, destAddress, false);
       const sourceSigner = await makeSigner(srcSpec, srcWallet);
-      const srcTxids = await transfer.initiateTransfer(sourceSigner);
+      const srcTxids = await xfer.initiateTransfer(sourceSigner);
       const sourceTxHash = srcTxids.at(-1) ?? "";
-      setStatus({ kind: "waiting-attestation", sourceTxHash });
+      burned = { sourceTxHash, xfer };
+      setTransfer({ error: null, phase: { kind: "waiting-attestation", sourceTxHash, xfer } });
       srcBalance.refetch();
 
-      await transfer.fetchAttestation(ATTESTATION_TIMEOUT_MS);
-      setStatus({ kind: "ready-to-redeem", sourceTxHash });
+      await xfer.fetchAttestation(ATTESTATION_TIMEOUT_MS);
+      setTransfer({ error: null, phase: { kind: "ready-to-redeem", sourceTxHash, xfer } });
     } catch (error) {
-      setStatus({ kind: "error", message: formatError(error) });
+      const message = formatError(error);
+      setTransfer(
+        burned === null
+          ? { error: message, phase: { kind: "idle" } }
+          : { error: message, phase: { kind: "waiting-attestation", ...burned } },
+      );
+    }
+  };
+
+  const handleRetryAttestation = async () => {
+    if (phase.kind !== "waiting-attestation") {
+      return;
+    }
+    const { sourceTxHash, xfer } = phase;
+    setTransfer({ error: null, phase: { kind: "waiting-attestation", sourceTxHash, xfer } });
+    try {
+      await xfer.fetchAttestation(ATTESTATION_TIMEOUT_MS);
+      setTransfer({ error: null, phase: { kind: "ready-to-redeem", sourceTxHash, xfer } });
+    } catch (error) {
+      setTransfer({
+        error: formatError(error),
+        phase: { kind: "waiting-attestation", sourceTxHash, xfer },
+      });
     }
   };
 
   const handleRedeem = async () => {
-    const xfer = xferRef.current;
-    if (!dstWallet || !xfer || status.kind !== "ready-to-redeem") {
+    if (!dstWallet || phase.kind !== "ready-to-redeem") {
       return;
     }
-    const sourceTxHash = status.sourceTxHash;
-    setStatus({ kind: "redeeming", sourceTxHash });
+    const { sourceTxHash, xfer } = phase;
+    setTransfer({ error: null, phase: { kind: "redeeming", sourceTxHash, xfer } });
     try {
       const destSigner = await makeSigner(dstSpec, dstWallet);
       const destTxids = await xfer.completeTransfer(destSigner);
       const destTxHash = destTxids.at(-1) ?? "";
-      setStatus({ destTxHash, kind: "complete", sourceTxHash });
+      setTransfer({ error: null, phase: { destTxHash, kind: "complete", sourceTxHash } });
       dstBalance.refetch();
     } catch (error) {
-      setStatus({ kind: "error", message: formatError(error) });
+      setTransfer({
+        error: formatError(error),
+        phase: { kind: "ready-to-redeem", sourceTxHash, xfer },
+      });
     }
   };
 
@@ -328,19 +376,19 @@ const App = () => {
           direction="out"
           networkSlot={
             <ChainSelect
-              disabled={isWorking}
+              disabled={isTransferOpen}
               label="Source chain"
               onChange={selectSource}
               value={sourceChain}
             />
           }
-          onAmountChange={isWorking ? undefined : setAmountInput}
+          onAmountChange={isTransferOpen ? undefined : setAmountInput}
         />
         <div className="flex justify-center">
           <button
             aria-label="Swap source and destination"
             className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-50 disabled:opacity-50"
-            disabled={isWorking}
+            disabled={isTransferOpen}
             onClick={flip}
             type="button"
           >
@@ -353,7 +401,7 @@ const App = () => {
           direction="in"
           networkSlot={
             <ChainSelect
-              disabled={isWorking}
+              disabled={isTransferOpen}
               label="Destination chain"
               onChange={selectDest}
               value={destChain}
@@ -368,9 +416,8 @@ const App = () => {
           disabled={
             !srcWallet ||
             !dstWallet ||
-            isWorking ||
-            status.kind === "ready-to-redeem" ||
-            status.kind === "complete" ||
+            isTransferOpen ||
+            phase.kind === "complete" ||
             amountInput === ""
           }
           onClick={() => {
@@ -378,7 +425,7 @@ const App = () => {
           }}
           type="button"
         >
-          {isWorking ? "Working…" : "Swap"}
+          {isWorking && !canRetryAttestation ? "Working…" : "Swap"}
         </button>
 
         {missingWallet ? (
@@ -388,22 +435,34 @@ const App = () => {
           </p>
         ) : null}
 
-        {status.kind === "ready-to-redeem" || status.kind === "redeeming" ? (
+        {canRetryAttestation ? (
+          <button
+            className="w-full rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
+            onClick={() => {
+              void handleRetryAttestation();
+            }}
+            type="button"
+          >
+            Retry attestation
+          </button>
+        ) : null}
+
+        {phase.kind === "ready-to-redeem" || phase.kind === "redeeming" ? (
           <button
             className="w-full rounded-md border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
-            disabled={status.kind === "redeeming"}
+            disabled={phase.kind === "redeeming"}
             onClick={() => {
               void handleRedeem();
             }}
             type="button"
           >
-            {status.kind === "redeeming"
+            {phase.kind === "redeeming"
               ? `Minting on ${dstSpec.label}…`
               : `Mint on ${dstSpec.label}`}
           </button>
         ) : null}
 
-        {status.kind === "complete" ? (
+        {phase.kind === "complete" ? (
           <button
             className="w-full rounded-md border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
             onClick={resetTransfer}
@@ -413,7 +472,7 @@ const App = () => {
           </button>
         ) : null}
 
-        <StatusPanel dstSpec={dstSpec} srcSpec={srcSpec} status={status} />
+        <StatusPanel dstSpec={dstSpec} error={transfer.error} phase={phase} srcSpec={srcSpec} />
 
         <p className="text-center text-xs text-neutral-500">
           Need testnet USDC?{" "}

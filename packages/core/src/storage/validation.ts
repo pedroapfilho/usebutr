@@ -124,12 +124,4 @@ const decodeSelection = (
   return result;
 };
 
-export {
-  DEFAULT_KEY_PREFIX,
-  chainPlatformSchema,
-  decodePool,
-  decodeSelection,
-  parseStoredPoolEntry,
-  recordSchema,
-  storageKeys,
-};
+export { decodePool, decodeSelection, parseStoredPoolEntry, storageKeys };

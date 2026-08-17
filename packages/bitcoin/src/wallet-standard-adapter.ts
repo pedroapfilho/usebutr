@@ -70,9 +70,24 @@ const buildBitcoinAdapter = (
   const signPsbt = getFeature<BitcoinSignPsbtFeature>(wallet, "bitcoin:signPsbt");
   const sendTransfer = getFeature<BitcoinSendTransferFeature>(wallet, "bitcoin:sendTransfer");
 
+  /** Resolve a caller-supplied target into a chain the wallet advertises,
+   *  accepting either a full CAIP-2 id or a bare genesis-hash reference. */
+  const resolveTargetChain = (targetChainId: string): string => {
+    const candidate = targetChainId.startsWith(BITCOIN_PREFIX)
+      ? targetChainId
+      : `${BITCOIN_PREFIX}${targetChainId}`;
+    if (!wallet.chains.includes(candidate)) {
+      throw new Error(
+        `Wallet ${wallet.name} does not advertise chain "${candidate}". Available: ${wallet.chains.join(", ")}`,
+      );
+    }
+    return candidate;
+  };
+
   const sendTransferTx = async (
     tx: unknown,
     account?: { walletAddress: string },
+    chain?: string,
   ): Promise<string> => {
     if (sendTransfer === undefined) {
       throw new Error(`Wallet ${wallet.name} does not advertise bitcoin:sendTransfer`);
@@ -93,7 +108,7 @@ const buildBitcoinAdapter = (
     const output = await sendTransfer.sendTransfer({
       account: core.resolveAccount(account),
       amount,
-      chain: core.currentChainId(),
+      chain: chain ?? core.currentChainId(),
       recipient,
     });
     return output.txid;
@@ -128,9 +143,15 @@ const buildBitcoinAdapter = (
 
     sendTx: (tx, account) => sendTransferTx(tx, account),
 
-    sendTxToChain: (tx, _targetChainId, account, cb) => {
-      cb?.();
-      return sendTransferTx(tx, account);
+    // Async so an unadvertised chain surfaces as a rejection rather than a
+    // synchronous throw; the declared return type is a promise either way.
+    async sendTxToChain(tx, targetChainId, account, cb) {
+      const target = resolveTargetChain(targetChainId);
+      if (target !== core.currentChainId()) {
+        cb?.();
+      }
+      const txid = await sendTransferTx(tx, account, target);
+      return txid;
     },
 
     async signMessage(msg, account) {

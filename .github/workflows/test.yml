@@ -17,4 +17,6 @@ jobs:
         with:
           runtime: node@24
           cache: true
-      - run: pnpm test
+      # test:coverage, not test: the shared vitest config declares coverage
+      # thresholds, and only this script produces the report they gate on.
+      - run: pnpm test:coverage

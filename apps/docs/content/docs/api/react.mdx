@@ -15,48 +15,50 @@ All props are flat; there is no nested `config` object. Props captured once at
 mount; later changes are silently ignored. Pass stable references (module-level
 values, `useRef`, `useCallback`).
 
-| Prop                     | Type                                    | Notes                                                                                                            |
-| ------------------------ | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `children`               | `React.ReactNode`                       | Required.                                                                                                        |
-| `discovery`              | `WalletSource`                          | Auto-discovery source (e.g. `autoDiscovery()`). Omit to skip auto-discovery; no protocol code enters the bundle. |
-| `connectors`             | `Array<ConnectorMeta>`                  | Metadata for explicitly-registered connectors.                                                                   |
-| `createConnector`        | `(id: string) => WalletAdapter \| null` | Explicit connector factory. Resolved after `discovery`.                                                          |
-| `onConnect`              | `WalletManagerConfig["onConnect"]`      | Lifecycle callback.                                                                                              |
-| `onConnectError`         | `WalletManagerConfig["onConnectError"]` | Lifecycle callback.                                                                                              |
-| `onDisconnect`           | `WalletManagerConfig["onDisconnect"]`   | Lifecycle callback.                                                                                              |
-| `onHydrated`             | `WalletManagerConfig["onHydrated"]`     | Lifecycle callback.                                                                                              |
-| `onReset`                | `WalletManagerConfig["onReset"]`        | Lifecycle callback.                                                                                              |
-| `onSlowConnect`          | `WalletManagerConfig["onSlowConnect"]`  | Lifecycle callback.                                                                                              |
-| `onStorageError`         | `WalletManagerConfig["onStorageError"]` | Lifecycle callback.                                                                                              |
-| `slowConnectThresholdMs` | `number`                                | Threshold before `onSlowConnect` fires.                                                                          |
-| `storage`                | `WalletPersistence`                     | Custom storage. Defaults to `localStorage`.                                                                      |
-| `storageKeyPrefix`       | `string`                                | Prefix for all persisted keys.                                                                                   |
+| Prop                     | Type                                    | Notes                                                                                                                    |
+| ------------------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `children`               | `React.ReactNode`                       | Required.                                                                                                                |
+| `discovery`              | `WalletSource`                          | Auto-discovery source (e.g. `autoDiscovery()`). Omit to skip auto-discovery; no protocol code enters the bundle.         |
+| `connectors`             | `Array<ConnectorMeta>`                  | Metadata for explicitly-registered connectors.                                                                           |
+| `createConnector`        | `(id: string) => WalletAdapter \| null` | Explicit connector factory. Resolved after `discovery`.                                                                  |
+| `initialState`           | `WalletSnapshot`                        | Seeds the store synchronously from a server-read snapshot. See [Hydration](/concepts/hydration#synchronous-seeding-ssr). |
+| `onConnect`              | `WalletManagerConfig["onConnect"]`      | Lifecycle callback.                                                                                                      |
+| `onConnectError`         | `WalletManagerConfig["onConnectError"]` | Lifecycle callback.                                                                                                      |
+| `onDisconnect`           | `WalletManagerConfig["onDisconnect"]`   | Lifecycle callback.                                                                                                      |
+| `onHydrated`             | `WalletManagerConfig["onHydrated"]`     | Lifecycle callback.                                                                                                      |
+| `onReset`                | `WalletManagerConfig["onReset"]`        | Lifecycle callback.                                                                                                      |
+| `onSlowConnect`          | `WalletManagerConfig["onSlowConnect"]`  | Lifecycle callback.                                                                                                      |
+| `onStorageError`         | `WalletManagerConfig["onStorageError"]` | Lifecycle callback.                                                                                                      |
+| `slowConnectThresholdMs` | `number`                                | Threshold before `onSlowConnect` fires.                                                                                  |
+| `storage`                | `WalletPersistence`                     | Custom storage. Defaults to `localStorage`.                                                                              |
+| `storageKeyPrefix`       | `string`                                | Prefix for all persisted keys.                                                                                           |
 
 Also exports `WalletStoreContext` and `useWalletStoreContext()` (the raw store,
 used in custom discovery wiring).
 
 ## Sync hooks: read state
 
-| Hook                               | Returns                                                    |
-| ---------------------------------- | ---------------------------------------------------------- |
-| `useConnectionStatus()`            | `"idle" \| "connecting" \| "success" \| "error"`           |
-| `useIsConnecting()`                | `boolean`                                                  |
-| `useConnectingConnectorId()`       | `string \| null`                                           |
-| `useActiveConnectorId()`           | `string \| null`                                           |
-| `useConnectionError()`             | `ConnectionError \| null`                                  |
-| `useWalletConnected()`             | `boolean` (pool non-empty)                                 |
-| `useIsHydrated()`                  | `boolean`                                                  |
-| `useIsUserDisconnected()`          | `boolean` (session-scoped)                                 |
-| `usePool()`                        | `Map<string, ConnectedWallet>`                             |
-| `useConnectedWallets()`            | `Array<ConnectedWallet>`                                   |
-| `useSelection()`                   | `Map<ChainPlatform, string>`                               |
-| `useActiveWallet()`                | `ConnectedWallet \| undefined`                             |
-| `useSelectedWallet(platform)`      | `ConnectedWallet \| undefined`                             |
-| `useIsPlatformConnected(platform)` | `boolean`                                                  |
-| `useAccounts(connectorId?)`        | `ReadonlyArray<Account>` (active wallet if omitted)        |
-| `useDiscoveredWallets()`           | `ReadonlyArray<WalletAdapter>` (empty without `discovery`) |
-| `useDiscoveredWalletsByPlatform()` | `Map<ChainPlatform, Array<WalletAdapter>>`                 |
-| `useConnectedWalletsByPlatform()`  | `Map<ChainPlatform, Array<ConnectedWallet>>`               |
+| Hook                               | Returns                                                            |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| `useConnectionStatus()`            | `"idle" \| "connecting" \| "success" \| "error" \| "reconnecting"` |
+| `useIsReconnecting(connectorId?)`  | `boolean` (seeded entry awaiting its live adapter)                 |
+| `useIsConnecting()`                | `boolean`                                                          |
+| `useConnectingConnectorId()`       | `string \| null`                                                   |
+| `useActiveConnectorId()`           | `string \| null`                                                   |
+| `useConnectionError()`             | `ConnectionError \| null`                                          |
+| `useWalletConnected()`             | `boolean` (pool non-empty)                                         |
+| `useIsHydrated()`                  | `boolean`                                                          |
+| `useIsUserDisconnected()`          | `boolean` (session-scoped)                                         |
+| `usePool()`                        | `Map<string, ConnectedWallet>`                                     |
+| `useConnectedWallets()`            | `Array<ConnectedWallet>`                                           |
+| `useSelection()`                   | `Map<ChainPlatform, string>`                                       |
+| `useActiveWallet()`                | `ConnectedWallet \| undefined`                                     |
+| `useSelectedWallet(platform)`      | `ConnectedWallet \| undefined`                                     |
+| `useIsPlatformConnected(platform)` | `boolean`                                                          |
+| `useAccounts(connectorId?)`        | `ReadonlyArray<Account>` (active wallet if omitted)                |
+| `useDiscoveredWallets()`           | `ReadonlyArray<WalletAdapter>` (empty without `discovery`)         |
+| `useDiscoveredWalletsByPlatform()` | `Map<ChainPlatform, Array<WalletAdapter>>`                         |
+| `useConnectedWalletsByPlatform()`  | `Map<ChainPlatform, Array<ConnectedWallet>>`                       |
 
 ### Stable accessors (return functions, safe in callbacks/deps)
 

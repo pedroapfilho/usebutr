@@ -8,7 +8,6 @@
     "start": "next start -p 4000",
     "postinstall": "fumadocs-mdx",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint app lib",
     "clean": "rm -rf .next .source node_modules"
   },
   "dependencies": {

@@ -8,10 +8,6 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**", ".output/**", ".vinxi/**", ".expo/**"]
     },
-    "lint": {
-      "dependsOn": ["^build"],
-      "outputs": []
-    },
     "typecheck": {
       "dependsOn": ["^build"]
     },
@@ -26,7 +22,6 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "outputs": ["coverage/**"],
       "cache": false
     },
     "test:coverage": {

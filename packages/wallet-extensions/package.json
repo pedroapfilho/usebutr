@@ -10,7 +10,6 @@
     "./playwright": "./playwright.ts"
   },
   "scripts": {
-    "lint": "oxlint *.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

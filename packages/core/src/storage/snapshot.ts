@@ -66,7 +66,7 @@ const SNAPSHOT_LABEL = "[butr] readWalletSnapshot:";
  * Pure, sync, no `document`, no React; runnable in any environment
  * (Server Component, route handler, edge middleware, even client
  * code). Pair with `createCookieStorageDriver({ initialCookies })`
- * and `<WalletManagerProvider initialSnapshot={…} />` to render a
+ * and `<WalletManagerProvider initialState={…} />` to render a
  * connected shell server-side without a hydration flash.
  *
  * **Stale-snapshot semantics.** The snapshot reflects whatever the
@@ -75,7 +75,9 @@ const SNAPSHOT_LABEL = "[butr] readWalletSnapshot:";
  * client-side hydration will reconcile reality and the live store
  * will diverge from the snapshot. Treat the snapshot as an
  * *optimistic* shell; accurate enough to avoid a paint flicker,
- * authoritative only after `useIsHydrated()` is true.
+ * authoritative only once the entry leaves `reconnectingIds`
+ * (`useIsReconnecting()` in React). `isHydrated` is true from the first
+ * render on this path, so it is not the signal to wait on.
  *
  * **Inputs.** Accepts the three shapes Next.js / Express / Hono /
  * generic-Node cookie code naturally produces:

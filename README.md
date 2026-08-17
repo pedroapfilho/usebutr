@@ -59,6 +59,9 @@ export const ConnectButton = () => {
   const connect = useConnectWallet();
   const disconnect = useDisconnectWallet();
 
+  // Client-only rendering: the pool is empty until the restore pass finishes.
+  // For SSR, seed the store instead and skip this gate entirely; see
+  // https://docs.usebutr.com/concepts/hydration#synchronous-seeding-ssr
   if (!isHydrated) return null;
 
   return (

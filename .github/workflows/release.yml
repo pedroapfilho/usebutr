@@ -50,7 +50,25 @@ jobs:
         if: steps.changesets.outputs.pullRequestNumber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Derived from the directory rather than listed here: a hand-maintained
+        # list silently skips any gate added later, and merging this PR
+        # publishes to npm. react-doctor is excluded because it is an advisory
+        # reporting job with no workflow_dispatch trigger, so dispatching it
+        # would fail. A new gate must therefore declare workflow_dispatch; if it
+        # does not, this step fails loudly rather than skipping it silently.
         run: |
-          for workflow in build lint typecheck test format fallow; do
-            gh workflow run "${workflow}.yml" --ref changeset-release/main
+          set -euo pipefail
+          gates=$(
+            grep -l 'pull_request:' .github/workflows/*.yml \
+              | xargs -n1 basename \
+              | grep -vx 'release.yml' \
+              | grep -vx 'react-doctor.yml'
+          )
+          if [ -z "$gates" ]; then
+            echo "::error::found no gate workflows to dispatch" >&2
+            exit 1
+          fi
+          echo "dispatching: $gates"
+          for workflow in $gates; do
+            gh workflow run "$workflow" --ref changeset-release/main
           done

@@ -66,8 +66,9 @@ Pull the chain list from `@usebutr/evm` directly. `CHAINS_BY_PLATFORM` from
 `@usebutr/wallets` would re-introduce the bundle you just avoided.
 
 ```tsx
+import { buildChainsByPlatform } from "@usebutr/core";
 import { EVM_CHAINS_LIST } from "@usebutr/evm";
-const CHAINS_BY_PLATFORM = { evm: EVM_CHAINS_LIST, svm: [] as const };
+const CHAINS_BY_PLATFORM = buildChainsByPlatform({ evm: EVM_CHAINS_LIST });
 ```
 
 `EVM_CHAINS` (keyed: `ethereum`, `sepolia`, `arbitrum`, `optimism`, `base`,

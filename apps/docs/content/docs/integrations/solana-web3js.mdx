@@ -20,11 +20,8 @@ wallet's native Wallet Standard features.
 `getSigner()` on an SVM adapter returns the `WalletStandardWallet`:
 
 ```ts
-import type {
-  SolanaSignAndSendTransactionFeature,
-  SolanaSignMessageFeature,
-  WalletStandardWallet,
-} from "@usebutr/svm";
+import type { SolanaSignAndSendTransactionFeature, SolanaSignMessageFeature } from "@usebutr/svm";
+import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
 const walletStd = (await wallet.connector.getSigner()) as WalletStandardWallet;
 ```

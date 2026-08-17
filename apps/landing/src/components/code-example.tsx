@@ -1,53 +1,50 @@
 import { ButtonLink } from "@/components/button-link";
 import { CodeBlock } from "@/components/code-block";
-import { QUICKSTART_URL } from "@/lib/site";
+import { INTEGRATIONS_URL } from "@/lib/site";
 
-const EXAMPLE_CODE = `import {
-  WalletManagerProvider,
-  useDiscoveredWallets,
-  useConnectWallet,
-} from "@usebutr/react";
-import { autoDiscovery } from "@usebutr/wallets";
+const BRIDGE_CODE = `import { useMemo } from "react";
+import { useSelectedWallet, useSigner } from "@usebutr/react";
+import type { Address, EIP1193Provider } from "viem";
+import { createWalletClient, custom } from "viem";
+import { sepolia } from "viem/chains";
 
-const discovery = autoDiscovery();
+const useViemWalletClient = () => {
+  const wallet = useSelectedWallet("evm");
+  const signer = useSigner(wallet?.connector.id);
 
-export const App = () => (
-  <WalletManagerProvider discovery={discovery} storageKeyPrefix="my-app">
-    <Connect />
-  </WalletManagerProvider>
-);
+  return useMemo(() => {
+    if (!wallet || signer.status !== "success") {
+      return null;
+    }
 
-const Connect = () => {
-  const wallets = useDiscoveredWallets();
-  const connect = useConnectWallet();
-
-  return wallets.map((wallet) => (
-    <button key={wallet.id} onClick={() => connect(wallet.id)}>
-      Connect {wallet.name}
-    </button>
-  ));
+    return createWalletClient({
+      account: wallet.account.walletAddress as Address,
+      chain: sepolia,
+      transport: custom(signer.data as EIP1193Provider),
+    });
+  }, [signer, wallet]);
 };`;
 
 const CodeExample = () => (
   <section className="border-border bg-muted/40 border-y py-16 sm:py-24">
-    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-6 lg:grid-cols-2 lg:items-center">
+    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-8 px-6 lg:grid-cols-2">
       <div>
-        <h2 className="max-w-[40ch] text-3xl font-semibold tracking-tight text-balance sm:max-w-[35ch] sm:text-4xl">
-          Wire up your wallets in one provider.
+        <h2 className="max-w-[35ch] text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+          Hand the signer to your chain library.
         </h2>
         <p className="text-muted-foreground mt-4 max-w-[48ch] text-lg text-pretty">
-          Drop <code className="bg-card rounded-sm px-1.5 py-0.5 font-mono">autoDiscovery()</code>{" "}
-          into the provider and read wallets from a hook. You get discovered wallets and connection
-          state, without writing chain-specific UI or per-wallet branches.
+          <code className="bg-card rounded-sm px-1.5 py-0.5 font-mono">getSigner()</code> returns
+          the wallet&apos;s raw provider. Wrap it with viem, wagmi, gill, or @solana/kit and keep
+          the stack you already have.
         </p>
         <div className="mt-8">
-          <ButtonLink href={QUICKSTART_URL} variant="secondary">
-            Read the quickstart
+          <ButtonLink href={INTEGRATIONS_URL} variant="secondary">
+            Read the integration guides
           </ButtonLink>
         </div>
       </div>
 
-      <CodeBlock code={EXAMPLE_CODE} />
+      <CodeBlock code={BRIDGE_CODE} />
     </div>
   </section>
 );

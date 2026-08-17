@@ -1,27 +1,48 @@
 import { ButtonLink } from "@/components/button-link";
+import { CodeBlock } from "@/components/code-block";
 import { InstallCommand } from "@/components/install-command";
 import { DEMO_URL, QUICKSTART_URL } from "@/lib/site";
 
-const Hero = () => (
-  <section className="relative overflow-hidden">
-    {/* Soft amber wash behind the hero, weighted left to sit behind the headline. */}
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-x-0 -top-40 -z-10 h-[28rem] bg-[radial-gradient(50%_60%_at_30%_0%,color-mix(in_oklab,var(--primary)_22%,transparent),transparent)]"
-    />
+const QUICKSTART_CODE = `import {
+  WalletManagerProvider,
+  useConnectWallet,
+  useDiscoveredWallets,
+} from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 
-    <div className="pt-20 pb-16 sm:pt-28 sm:pb-24">
-      <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-8 px-6">
+const discovery = autoDiscovery();
+
+export const App = () => (
+  <WalletManagerProvider discovery={discovery}>
+    <WalletPicker />
+  </WalletManagerProvider>
+);
+
+const WalletPicker = () => {
+  const wallets = useDiscoveredWallets();
+  const connect = useConnectWallet();
+
+  return wallets.map(({ id, name }) => (
+    <button key={id} onClick={() => connect(id)}>
+      Connect {name}
+    </button>
+  ));
+};`;
+
+const Hero = () => (
+  <section className="border-border border-b pt-20 pb-16 sm:pt-28 sm:pb-24">
+    <div className="mx-auto grid w-full max-w-6xl items-center gap-8 px-6 lg:grid-cols-2">
+      <div className="flex flex-col items-start gap-8">
         <div>
           <p className="text-muted-foreground font-mono text-sm tracking-wide uppercase">
             Multi-chain wallets for React
           </p>
 
-          <h1 className="mt-5 max-w-[30ch] text-5xl font-semibold tracking-tight text-balance sm:max-w-[20ch] sm:text-7xl">
+          <h1 className="mt-5 max-w-[24ch] text-5xl font-semibold tracking-tight text-balance sm:text-6xl">
             One hook surface for wallets on any chain.
           </h1>
 
-          <p className="text-muted-foreground mt-6 max-w-[48ch] text-lg text-pretty sm:max-w-[40ch] sm:text-xl">
+          <p className="text-muted-foreground mt-6 max-w-[48ch] text-lg text-pretty">
             butr discovers EVM, Solana, Sui, Bitcoin, and Polkadot wallets, manages their connection
             state across reloads, and hands you a raw signer. Bring your own chain library.
           </p>
@@ -38,6 +59,8 @@ const Hero = () => (
 
         <InstallCommand />
       </div>
+
+      <CodeBlock code={QUICKSTART_CODE} />
     </div>
   </section>
 );

@@ -1,4 +1,4 @@
-import type { ChainBase, WalletAdapter, WalletCapabilities } from "@usebutr/core";
+import type { Account, ChainBase, WalletAdapter, WalletCapabilities } from "@usebutr/core";
 import { base64ToBytes, bytesToBase64 } from "@usebutr/core";
 import { buildAccount } from "@usebutr/wallet-standard-shared";
 
@@ -14,6 +14,23 @@ type SatsConnectProvider = {
   ) => Promise<{ error?: { message: string }; result?: unknown }>;
 };
 
+/** One address entry of a sats-connect account result. `purpose` tags the
+ *  role: `"payment"` is the spendable address, `"ordinals"` is a taproot
+ *  address that `sendTransfer` never debits. */
+type SatsAddress = {
+  address: string;
+  publicKey?: string;
+  purpose?: string;
+};
+
+type ConnectedSession = {
+  addresses: ReadonlyArray<SatsAddress>;
+  payment: string;
+  status: "connected";
+};
+
+type Session = ConnectedSession | { status: "disconnected" };
+
 const CAPS_SATS_CONNECT: WalletCapabilities = {
   getBalance: false,
   getTransactionReceipt: false,
@@ -27,14 +44,20 @@ const CAPS_SATS_CONNECT: WalletCapabilities = {
   switchChain: false,
 };
 
+const ACCOUNT_PURPOSES = ["payment", "ordinals"];
+const CONNECT_MESSAGE = "Connect to butr";
+
+const pickPaymentAddress = (addresses: ReadonlyArray<SatsAddress>): SatsAddress | undefined =>
+  addresses.find((a) => a.purpose === "payment") ?? addresses[0];
+
 /**
  * Wrap an Xverse-style `BitcoinProvider` (sats-connect) into a butr
- * `WalletAdapter`. sats-connect routes everything through a single
- * `request(method, params)` RPC; we shim each butr capability onto the
- * corresponding sats-connect method.
+ * `WalletAdapter`; every capability is shimmed onto the provider's single
+ * `request(method, params)` RPC.
  *
- * Tested against Xverse's `getAccounts`, `signMessage`, `signPsbt`,
- * `sendTransfer` methods.
+ * Only the payment address is exposed as an Account, because `sendTransfer`
+ * takes no sender and always debits it. The taproot ordinals address stays
+ * reachable through `getSigner()` and as `signMessage`'s `account`.
  */
 const buildSatsConnectAdapter = (
   id: string,
@@ -42,7 +65,7 @@ const buildSatsConnectAdapter = (
   provider: SatsConnectProvider,
 ): WalletAdapter => {
   let chain: ChainBase = BITCOIN_CHAINS.mainnet;
-  let cachedAccounts: ReadonlyArray<string> = [];
+  let session: Session = { status: "disconnected" };
 
   // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- caller-supplied result shape for an untyped RPC bridge
   const callRequest = async <T>(method: string, params?: Record<string, unknown>): Promise<T> => {
@@ -54,22 +77,47 @@ const buildSatsConnectAdapter = (
     return response.result as T;
   };
 
-  const loadAccounts = async (): Promise<ReadonlyArray<string>> => {
+  const startSession = async (method: string, params: Record<string, unknown>): Promise<void> => {
     const result = await callRequest<{
-      addresses?: ReadonlyArray<{ address: string; purpose?: string }>;
-    } | null>("getAccounts", {
-      message: "Connect to butr",
-      purposes: ["payment", "ordinals"],
-    });
-    if (result?.addresses === undefined) {
-      return [];
+      addresses?: ReadonlyArray<SatsAddress>;
+    } | null>(method, params);
+    const addresses = result?.addresses ?? [];
+    const payment = pickPaymentAddress(addresses);
+    if (payment === undefined) {
+      throw new Error(`Wallet ${name} returned no addresses from ${method}`);
     }
-    const addresses = result.addresses.map((a) => a.address);
-    cachedAccounts = addresses;
-    return addresses;
+    session = { addresses, payment: payment.address, status: "connected" };
   };
 
-  const sendTransferTx = async (tx: unknown): Promise<string> => {
+  const requestSession = () =>
+    startSession("getAccounts", { message: CONNECT_MESSAGE, purposes: ACCOUNT_PURPOSES });
+
+  const requireSession = (): ConnectedSession => {
+    if (session.status !== "connected") {
+      throw new Error("No connected account");
+    }
+    return session;
+  };
+
+  const resolveAddress = (account?: Account): string => {
+    const active = requireSession();
+    if (account === undefined) {
+      return active.payment;
+    }
+    const match = active.addresses.find((a) => a.address === account.walletAddress);
+    if (match === undefined) {
+      throw new Error(`Account ${account.walletAddress} is not exposed by ${name}`);
+    }
+    return match.address;
+  };
+
+  const sendTransferTx = async (tx: unknown, account?: Account): Promise<string> => {
+    const sender = resolveAddress(account);
+    if (sender !== requireSession().payment) {
+      throw new Error(
+        `Wallet ${name} always debits its payment address; ${sender} cannot be used as the sender.`,
+      );
+    }
     if (
       typeof tx !== "object" ||
       tx === null ||
@@ -93,29 +141,28 @@ const buildSatsConnectAdapter = (
     capabilities: CAPS_SATS_CONNECT,
     chainPlatform: "bitcoin",
 
-    async connect() {
-      await loadAccounts();
+    async connect(opts) {
+      if (opts?.silent === true) {
+        // `wallet_getAccount` reads already-granted permissions without
+        // showing wallet UI; `getAccounts` IS Xverse's approval prompt.
+        // Builds predating `wallet_getAccount` reject here, which butr's
+        // hydration treats as a clean restore failure.
+        await startSession("wallet_getAccount", { addresses: ACCOUNT_PURPOSES });
+        return;
+      }
+      await requestSession();
     },
 
     disconnect: () => {
-      cachedAccounts = [];
+      session = { status: "disconnected" };
       return Promise.resolve();
     },
 
-    async getAccount() {
-      const first = cachedAccounts[0];
-      if (first !== undefined) {
-        return buildAccount(first, chain);
-      }
-      const accounts = await loadAccounts();
-      const firstFresh = accounts[0];
-      return firstFresh === undefined ? null : buildAccount(firstFresh, chain);
-    },
+    getAccount: () =>
+      Promise.resolve(session.status === "connected" ? buildAccount(session.payment, chain) : null),
 
-    async getAccounts() {
-      const accounts = cachedAccounts.length > 0 ? cachedAccounts : await loadAccounts();
-      return accounts.map((a) => buildAccount(a, chain));
-    },
+    getAccounts: () =>
+      Promise.resolve(session.status === "connected" ? [buildAccount(session.payment, chain)] : []),
 
     getBalance: () =>
       Promise.resolve({
@@ -133,22 +180,17 @@ const buildSatsConnectAdapter = (
     id,
     name,
 
-    async requestAccounts() {
-      await loadAccounts();
-    },
+    requestAccounts: () => requestSession(),
 
-    sendTx: (tx) => sendTransferTx(tx),
+    sendTx: (tx, account) => sendTransferTx(tx, account),
 
-    sendTxToChain: (tx, _targetChainId, _account, cb) => {
+    sendTxToChain: (tx, _targetChainId, account, cb) => {
       cb?.();
-      return sendTransferTx(tx);
+      return sendTransferTx(tx, account);
     },
 
-    async signMessage(msg) {
-      const address = cachedAccounts[0];
-      if (address === undefined) {
-        throw new Error("No connected account");
-      }
+    async signMessage(msg, account) {
+      const address = resolveAddress(account);
       const result = await callRequest<{ messageHash?: string; signature: string }>("signMessage", {
         address,
         message: new TextDecoder().decode(msg),

@@ -1,4 +1,4 @@
-import type { ChainBase, ConnectorEvent, WalletAdapter, WalletCapabilities } from "@usebutr/core";
+import type { ChainBase, WalletAdapter, WalletCapabilities } from "@usebutr/core";
 import { base64ToBytes, bytesToHex, hexToBytes } from "@usebutr/core";
 import { buildAccount } from "@usebutr/wallet-standard-shared";
 
@@ -53,7 +53,6 @@ const toStringArray = (value: unknown): Array<string> =>
 
 const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider): WalletAdapter => {
   let chain: ChainBase = BITCOIN_CHAINS.mainnet;
-  const listenersSet = new Set<(event: ConnectorEvent) => void>();
 
   const sendBitcoinTx = (tx: unknown): Promise<string> => {
     if (typeof provider.sendBitcoin !== "function") {
@@ -176,7 +175,6 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     },
 
     subscribe(listener) {
-      listenersSet.add(listener);
       const onAccountsChanged = (...args: ReadonlyArray<unknown>) => {
         const accounts = toStringArray(args[0]);
         if (accounts.length === 0) {
@@ -198,7 +196,6 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
       return () => {
         provider.removeListener?.("accountsChanged", onAccountsChanged);
         provider.removeListener?.("networkChanged", onNetworkChanged);
-        listenersSet.delete(listener);
       };
     },
 

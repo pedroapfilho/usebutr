@@ -1,6 +1,7 @@
 import { hexToBytes } from "@usebutr/core";
 
 import type { Eip1193Provider } from "./eip1193";
+import { requestString } from "./eip1193";
 
 const HEX_PREFIX = "0x";
 const ETH_DECIMALS = 18n;
@@ -8,12 +9,12 @@ const ERC20_BALANCE_OF_SELECTOR = "0x70a08231";
 const ERC20_DECIMALS_SELECTOR = "0x313ce567";
 const ERC20_SYMBOL_SELECTOR = "0x95d89b41";
 
-const requestString = async (
-  provider: Eip1193Provider,
-  args: { method: string; params?: ReadonlyArray<unknown> },
-): Promise<string> => {
-  const result = await provider.request(args);
-  return typeof result === "string" ? result : "";
+/** A failed read must not render as a confident zero balance. */
+const requireHex = (hex: string | null, label: string): string => {
+  if (hex === null) {
+    throw new Error(`Wallet returned a malformed ${label} response`);
+  }
+  return hex;
 };
 
 const formatUnits = (raw: bigint, decimals: number): string => {
@@ -65,7 +66,7 @@ const readEvmBalance = async (
       method: "eth_getBalance",
       params: [address, "latest"],
     });
-    const value = BigInt(balanceHex);
+    const value = BigInt(requireHex(balanceHex, "eth_getBalance"));
     return {
       decimals: Number(ETH_DECIMALS),
       formatted: formatEther(value),
@@ -91,12 +92,12 @@ const readEvmBalance = async (
       params: [{ data: ERC20_SYMBOL_SELECTOR, to: tokenAddress }, "latest"],
     }),
   ]);
-  const value = BigInt(balanceHex);
-  const decimals = Number(BigInt(decimalsHex));
+  const value = BigInt(requireHex(balanceHex, "balanceOf()"));
+  const decimals = Number(BigInt(requireHex(decimalsHex, "decimals()")));
   return {
     decimals,
     formatted: formatUnits(value, decimals),
-    symbol: decodeAbiString(symbolHex),
+    symbol: decodeAbiString(symbolHex ?? ""),
     value,
   };
 };

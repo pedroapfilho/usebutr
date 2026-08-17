@@ -129,6 +129,26 @@ describe("buildEvmAdapter", () => {
     expect(account?.id).toBe("eip155:137:0xc0ffee");
   });
 
+  it("getAccount() propagates a rejected eth_chainId instead of returning null", async () => {
+    const provider = createMockProvider();
+    provider.setHandler("eth_accounts", () => ["0xAAA"]);
+    provider.setHandler("eth_chainId", () => {
+      throw new Error("wallet unavailable");
+    });
+
+    const adapter = buildEvmAdapter(INFO, provider);
+    await expect(adapter.getAccount()).rejects.toThrow("wallet unavailable");
+  });
+
+  it("getAccount() throws instead of reporting chain 0 for a malformed eth_chainId", async () => {
+    const provider = createMockProvider();
+    provider.setHandler("eth_accounts", () => ["0xAAA"]);
+    provider.setHandler("eth_chainId", () => 137);
+
+    const adapter = buildEvmAdapter(INFO, provider);
+    await expect(adapter.getAccount()).rejects.toThrow("malformed eth_chainId");
+  });
+
   it("getAccounts() returns every exposed address with the same chain", async () => {
     const provider = createMockProvider();
     provider.setHandler("eth_accounts", () => ["0xAAA", "0xBBB"]);
@@ -163,6 +183,21 @@ describe("buildEvmAdapter", () => {
     });
   });
 
+  it("switchChain() skips the request when already on the target chain", async () => {
+    const provider = createMockProvider();
+    provider.setHandler("eth_chainId", () => "0x89");
+    const adapter = buildEvmAdapter(INFO, provider);
+
+    await adapter.switchChain({
+      id: "eip155:137",
+      name: "Polygon",
+      namespace: "eip155",
+      reference: "137",
+    });
+
+    expect(provider.requests.some((r) => r.method === "wallet_switchEthereumChain")).toBe(false);
+  });
+
   it("signMessage() round-trips a Uint8Array through personal_sign", async () => {
     const provider = createMockProvider();
     provider.setHandler("eth_accounts", () => ["0xAAA"]);
@@ -178,6 +213,25 @@ describe("buildEvmAdapter", () => {
     });
     expect(result.signature).toEqual(new Uint8Array([222, 173, 190, 239]));
     expect(result.signedMessage).toBe(msg);
+  });
+
+  it("signMessage() throws when personal_sign returns a non-string", async () => {
+    const provider = createMockProvider();
+    provider.setHandler("eth_accounts", () => ["0xAAA"]);
+    provider.setHandler("personal_sign", () => ({ signature: "0xdeadbeef" }));
+
+    const adapter = buildEvmAdapter(INFO, provider);
+    await expect(adapter.signMessage(new Uint8Array([0x01]))).rejects.toThrow(
+      "malformed personal_sign",
+    );
+  });
+
+  it("sendTx() throws when the wallet returns no transaction hash", async () => {
+    const provider = createMockProvider();
+    provider.setHandler("eth_sendTransaction", () => null);
+
+    const adapter = buildEvmAdapter(INFO, provider);
+    await expect(adapter.sendTx({})).rejects.toThrow("no transaction hash");
   });
 
   it("sendTxToChain() switches chain first when needed, then sends", async () => {
@@ -376,6 +430,50 @@ describe("buildEvmAdapter", () => {
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({ account: expectedAccount, type: "accountChanged" }),
     );
+    unsub?.();
+  });
+
+  it("subscribe() falls back to eth_chainId when chainChanged emits a number", async () => {
+    const provider = createMockProvider();
+    provider.setHandler("eth_accounts", () => ["0xAAA"]);
+    provider.setHandler("eth_chainId", () => "0x89");
+    const adapter = buildEvmAdapter(INFO, provider);
+    const listener = vi.fn<() => void>();
+    const unsub = adapter.subscribe?.(listener);
+
+    provider.emit("chainChanged", 137);
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+
+    expect(provider.requests.filter(({ method }) => method === "eth_chainId")).toHaveLength(1);
+    const onPolygon = expect.objectContaining({
+      chain: expect.objectContaining({ id: "eip155:137" }),
+    });
+    const onChainZero = expect.objectContaining({
+      chain: expect.objectContaining({ id: "eip155:0" }),
+    });
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({ account: onPolygon, type: "accountChanged" }),
+    );
+    expect(listener).not.toHaveBeenCalledWith(expect.objectContaining({ account: onChainZero }));
+    unsub?.();
+  });
+
+  it("subscribe() emits nothing when the chain stays unreadable", async () => {
+    const provider = createMockProvider();
+    provider.setHandler("eth_accounts", () => ["0xAAA"]);
+    provider.setHandler("eth_chainId", () => 137);
+    const adapter = buildEvmAdapter(INFO, provider);
+    const listener = vi.fn<() => void>();
+    const unsub = adapter.subscribe?.(listener);
+
+    provider.emit("chainChanged", 137);
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+
+    expect(listener).not.toHaveBeenCalled();
     unsub?.();
   });
 

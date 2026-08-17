@@ -5,8 +5,8 @@
  *
  * These types describe only the methods butr's auto-discovery layer
  * actually calls on a provider. They're intentionally loose
- * (`request(...)` returns `unknown`) so individual call sites can
- * narrow the result via a cast.
+ * (`request(...)` returns `unknown`); the `request*` helpers below
+ * narrow the results at the boundary.
  */
 
 type Eip1193RequestArgs = {
@@ -40,6 +40,31 @@ type Eip6963ProviderDetail = {
 };
 
 type Eip6963AnnounceEvent = CustomEvent<Eip6963ProviderDetail>;
+
+/** `provider.request` is typed `unknown` by design; these helpers narrow
+ *  the well-known EVM RPC shapes at the boundary with runtime guards so
+ *  call sites stay assertion-free. A malformed response is reported as
+ *  `null` / `[]` rather than a blank value, so call sites that cannot
+ *  proceed without a real one fail instead of inventing a default. */
+const requestString = async (
+  provider: Eip1193Provider,
+  args: Eip1193RequestArgs,
+): Promise<string | null> => {
+  const result = await provider.request(args);
+  return typeof result === "string" ? result : null;
+};
+
+const requestStringArray = async (
+  provider: Eip1193Provider,
+  args: Eip1193RequestArgs,
+): Promise<Array<string>> => {
+  const result = await provider.request(args);
+  return Array.isArray(result)
+    ? result.filter((item): item is string => typeof item === "string")
+    : [];
+};
+
+export { requestString, requestStringArray };
 
 export type {
   Eip1193Listener,

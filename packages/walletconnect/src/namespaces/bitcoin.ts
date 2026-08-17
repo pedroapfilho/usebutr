@@ -85,7 +85,7 @@ const coercePsbtToBase64 = (tx: unknown): string => {
  * here exposes the address from the WC session as-is.
  */
 const bitcoinNamespace: WalletConnectNamespaceBuilder = {
-  buildAdapter({ chains, icon, id, name, provider }) {
+  buildAdapter({ chains, icon, id, name, provider, session }) {
     const { resolveAddress, ...core } = createCaipAdapterCore({
       chains,
       events: DEFAULT_EVENTS,
@@ -96,6 +96,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
       namespace: BITCOIN_NAMESPACE,
       platform: "Bitcoin",
       provider,
+      session,
     });
 
     const broadcastTx = async (tx: unknown, account?: Account): Promise<string> => {

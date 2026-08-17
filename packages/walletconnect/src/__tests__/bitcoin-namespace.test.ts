@@ -31,6 +31,17 @@ const bytesToHex = (bytes: Uint8Array): string => {
   return hex;
 };
 
+/** A wallet approving everything the dapp asked for: the resulting
+ *  session carries one entry per requested namespace. */
+const approvedSession = (opts: ConnectArgs): Session => ({
+  namespaces: Object.fromEntries(
+    Object.keys({ ...opts.namespaces, ...opts.optionalNamespaces }).map((prefix) => [
+      prefix,
+      { accounts: [] },
+    ]),
+  ),
+});
+
 const createFakeProvider = (overrides?: {
   request?: (args: RequestArgs) => Promise<unknown>;
   session?: Session;
@@ -41,10 +52,12 @@ const createFakeProvider = (overrides?: {
   const listeners = new Map<string, Set<(...args: ReadonlyArray<unknown>) => void>>();
   const connectCalls: Array<ConnectArgs> = [];
   const requestCalls: Array<RequestArgs> = [];
+  let session: Session = overrides?.session ?? null;
 
   return {
     connect(opts) {
       connectCalls.push(opts);
+      session = approvedSession(opts);
       return Promise.resolve();
     },
     connectCalls,
@@ -67,7 +80,9 @@ const createFakeProvider = (overrides?: {
       return overrides?.request ? overrides.request(args) : Promise.resolve(null);
     },
     requestCalls,
-    session: overrides?.session ?? null,
+    get session() {
+      return session;
+    },
   };
 };
 
@@ -128,8 +143,8 @@ describe("bitcoinNamespace", () => {
     expect(namespace?.events).toContain("bip122_addressesChanged");
   });
 
-  it("connect() short-circuits when a session already exists", async () => {
-    const provider = createFakeProvider({ session: { namespaces: {} } });
+  it("connect() short-circuits when a session already carries the bip122 namespace", async () => {
+    const provider = createFakeProvider({ session: { namespaces: { bip122: { accounts: [] } } } });
     const adapter = bitcoinNamespace.buildAdapter({
       chains: [MAINNET],
       icon: "x",
@@ -203,6 +218,12 @@ describe("bitcoinNamespace", () => {
     const accounts = await adapter.getAccounts?.();
     expect(accounts).toHaveLength(2);
     expect(accounts?.map((a) => a.walletAddress)).toEqual(["bc1qaaa", "tb1qbbb"]);
+    expect(accounts?.map((a) => a.chain.id)).toEqual([MAINNET, TESTNET]);
+    expect(accounts?.map((a) => a.chain.reference)).toEqual([
+      "000000000019d6689c085ae165831e93",
+      "000000000933ea01ad0ee984209779ba",
+    ]);
+    expect(accounts?.map((a) => a.id)).toEqual([`${MAINNET}:bc1qaaa`, `${TESTNET}:tb1qbbb`]);
   });
 
   it("signMessage routes through bip122 signMessage with utf-8 message + hex signature decode", async () => {
@@ -428,6 +449,68 @@ describe("bitcoinNamespace", () => {
     });
   });
 
+  it("routes signMessage through the active chain's address after switchChain", async () => {
+    const provider = createFakeProvider({
+      request: () => Promise.resolve({ signature: "dead" }),
+      session: {
+        namespaces: {
+          bip122: { accounts: [`${MAINNET}:bc1qaaa`, `${TESTNET}:tb1qbbb`] },
+        },
+      },
+    });
+    const adapter = bitcoinNamespace.buildAdapter({
+      chains: [MAINNET, TESTNET],
+      icon: "x",
+      id: "walletconnect-bitcoin",
+      name: "WalletConnect (BITCOIN)",
+      provider,
+    });
+
+    await adapter.switchChain({
+      id: TESTNET,
+      name: "Bitcoin Testnet",
+      namespace: "bip122",
+      reference: "000000000933ea01ad0ee984209779ba",
+    });
+    await adapter.signMessage(new TextEncoder().encode("hi"));
+
+    expect(provider.requestCalls[0]?.params).toMatchObject({
+      account: "tb1qbbb",
+      address: "tb1qbbb",
+    });
+  });
+
+  it("refuses to sign when the session holds no account on the active chain", async () => {
+    const provider = createFakeProvider({
+      request: () => Promise.resolve({ signature: "dead" }),
+      session: {
+        namespaces: {
+          bip122: { accounts: [`${MAINNET}:bc1qaaa`] },
+        },
+      },
+    });
+    const adapter = bitcoinNamespace.buildAdapter({
+      chains: [MAINNET, REGTEST],
+      icon: "x",
+      id: "walletconnect-bitcoin",
+      name: "WalletConnect (BITCOIN)",
+      provider,
+    });
+
+    await adapter.switchChain({
+      id: REGTEST,
+      name: "Bitcoin Regtest",
+      namespace: "bip122",
+      reference: "0f9188f13cb7b2c71f2a335e3a4fc328",
+    });
+
+    await expect(adapter.signMessage(new TextEncoder().encode("hi"))).rejects.toThrow(
+      /No connected Bitcoin account on chain/v,
+    );
+    expect(provider.requestCalls).toHaveLength(0);
+    await expect(adapter.getAccount()).resolves.toBeNull();
+  });
+
   it("switchChain works across mainnet, testnet, and regtest; non-bip122 rejects", async () => {
     const provider = createFakeProvider({
       request: () => Promise.resolve({ signature: "dead" }),
@@ -455,6 +538,7 @@ describe("bitcoinNamespace", () => {
     });
     let active = await adapter.getAccount();
     expect(active?.chain.id).toBe(TESTNET);
+    expect(active?.walletAddress).toBe("tb1qbbb");
 
     await adapter.switchChain({
       id: REGTEST,
@@ -464,6 +548,7 @@ describe("bitcoinNamespace", () => {
     });
     active = await adapter.getAccount();
     expect(active?.chain.id).toBe(REGTEST);
+    expect(active?.walletAddress).toBe("bcrt1qccc");
 
     expect(() =>
       adapter.switchChain({

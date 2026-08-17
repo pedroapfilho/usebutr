@@ -64,7 +64,7 @@ const coerceTransactionToBase64 = (tx: unknown): string => {
 };
 
 const suiNamespace: WalletConnectNamespaceBuilder = {
-  buildAdapter({ chains, icon, id, name, provider }) {
+  buildAdapter({ chains, icon, id, name, provider, session }) {
     const { resolveAddress, ...core } = createCaipAdapterCore({
       chains,
       events: DEFAULT_EVENTS,
@@ -75,6 +75,7 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
       namespace: SUI_NAMESPACE,
       platform: "Sui",
       provider,
+      session,
     });
 
     const executeTx = async (tx: unknown, account?: Account): Promise<string> => {
@@ -139,18 +140,21 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
           method: "sui_signTransaction",
           params: { address, transaction },
         });
-        const bytesB64 =
-          readStringField(result, "transactionBytes") ??
-          readStringField(result, "transactionBlockBytes");
-        if (bytesB64 !== undefined && bytesB64 !== "") {
-          return base64ToBytes(bytesB64);
-        }
         const signatureB64 =
           typeof result === "string" ? result : readStringField(result, "signature");
         if (signatureB64 === undefined || signatureB64 === "") {
-          throw new Error("sui_signTransaction returned no transaction or signature");
+          throw new Error("sui_signTransaction returned no signature");
         }
-        return base64ToBytes(signatureB64);
+        // Wallets vary on the key, and some echo no bytes at all. The bytes the
+        // signature covers are the ones we submitted, so fall back to those
+        // rather than returning a pair whose halves disagree.
+        const bytesB64 =
+          readStringField(result, "transactionBytes") ??
+          readStringField(result, "transactionBlockBytes");
+        return {
+          bytes: base64ToBytes(bytesB64 === undefined || bytesB64 === "" ? transaction : bytesB64),
+          signature: base64ToBytes(signatureB64),
+        };
       },
     };
 

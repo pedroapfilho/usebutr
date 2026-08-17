@@ -6,17 +6,23 @@ import type { Eip1193Provider } from "@usebutr/evm";
  * butr's own type-check pipeline (the peer dep is optional). Real
  * provider instances satisfy this shape.
  */
+type WcNamespaceRequest = {
+  chains: ReadonlyArray<string>;
+  events: ReadonlyArray<string>;
+  methods: ReadonlyArray<string>;
+  rpcMap?: Record<string, string>;
+};
+
 type UniversalProviderLike = Eip1193Provider & {
   connect: (opts: {
-    namespaces: Record<
-      string,
-      {
-        chains: ReadonlyArray<string>;
-        events: ReadonlyArray<string>;
-        methods: ReadonlyArray<string>;
-        rpcMap?: Record<string, string>;
-      }
-    >;
+    namespaces: Record<string, WcNamespaceRequest>;
+    /**
+     * Namespaces the wallet may decline without failing the pairing.
+     * WC v2 sessions cannot be extended namespace-by-namespace after
+     * approval, so every namespace butr will ever need has to be
+     * declared in the first `connect` call.
+     */
+    optionalNamespaces?: Record<string, WcNamespaceRequest>;
   }) => Promise<unknown>;
   disconnect: () => Promise<void>;
   session: WcSession | null | undefined;
@@ -66,5 +72,10 @@ const loadUniversalProvider = async (): Promise<UniversalProviderConstructor> =>
   return ctor as unknown as UniversalProviderConstructor;
 };
 
-export type { UniversalProviderConstructor, UniversalProviderInitOptions, UniversalProviderLike };
+export type {
+  UniversalProviderConstructor,
+  UniversalProviderInitOptions,
+  UniversalProviderLike,
+  WcNamespaceRequest,
+};
 export { loadUniversalProvider };

@@ -1,6 +1,7 @@
 import type { ChainPlatform, WalletAdapter } from "@usebutr/core";
 
 import type { UniversalProviderLike } from "../loader";
+import type { WalletConnectSession } from "../session";
 
 /**
  * Self-describing builder for one CAIP-2 namespace in a WalletConnect
@@ -39,6 +40,10 @@ type WalletConnectNamespaceBuilder = {
     id: string;
     name: string;
     provider: UniversalProviderLike;
+    /** Pairing state shared with the sibling adapters built in the same
+     *  factory call. Omit it to drive the builder standalone, in which
+     *  case it pairs for its own namespace only. */
+    session?: WalletConnectSession;
   }) => WalletAdapter;
   /** CAIP-2 namespace prefix (`eip155`, `solana`, `sui`, `bip122`). */
   caipPrefix: string;

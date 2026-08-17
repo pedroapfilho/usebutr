@@ -45,7 +45,7 @@ const WALLETCONNECT_SVM_CAPABILITIES: WalletCapabilities = { ...CAIP_WC_CAPABILI
  * land a follow-up.
  */
 const solanaNamespace: WalletConnectNamespaceBuilder = {
-  buildAdapter({ chains, icon, id, name, provider }) {
+  buildAdapter({ chains, icon, id, name, provider, session }) {
     const { resolveAddress, ...core } = createCaipAdapterCore({
       chains,
       events: DEFAULT_EVENTS,
@@ -56,6 +56,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
       namespace: SOLANA_NAMESPACE,
       platform: "Solana",
       provider,
+      session,
     });
 
     const signAndSend = async (tx: unknown, account?: Account): Promise<string> => {

@@ -1,13 +1,18 @@
 import type { ChainPlatform, WalletAdapter } from "@usebutr/core";
-import type { Eip1193Listener } from "@usebutr/evm";
 
-import type { UniversalProviderConstructor, UniversalProviderLike } from "./loader";
+import type {
+  UniversalProviderConstructor,
+  UniversalProviderLike,
+  WcNamespaceRequest,
+} from "./loader";
 import { loadUniversalProvider } from "./loader";
 import { bitcoinNamespace } from "./namespaces/bitcoin";
 import { evmNamespace } from "./namespaces/evm";
 import { suiNamespace } from "./namespaces/sui";
 import { solanaNamespace } from "./namespaces/svm";
 import type { WalletConnectNamespaceBuilder } from "./namespaces/types";
+import type { PairingRequest } from "./session";
+import { createWalletConnectSession } from "./session";
 
 type WalletConnectMetadata = {
   description?: string;
@@ -66,13 +71,9 @@ type WalletConnectOptions = {
 const DEFAULT_ICON =
   "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzNiOTlmYyI+PHBhdGggZD0iTTQuOTEzIDcuNTE5YzMuOTI0LTMuODQyIDEwLjI1Mi0zLjg0MiAxNC4xNzYgMGwuNDcyLjQ2MmEuNDgzLjQ4MyAwIDAgMSAwIC42OWwtMS42MTUgMS41ODFhLjI1NC4yNTQgMCAwIDEtLjM1NCAwbC0uNjUtLjYzN2MtMi43MzgtMi42OC03LjE3Ny0yLjY4LTkuOTE1IDBsLS42OTYuNjgyYS4yNTQuMjU0IDAgMCAxLS4zNTQgMEw0LjM2MyA4LjcxNmEuNDgzLjQ4MyAwIDAgMSAwLS42OXptMTcuNTA0IDMuMjY1IDEuNDM3IDEuNDA2YS40ODMuNDgzIDAgMCAxIDAgLjY5bC02LjQ4MiA2LjM0OWEuNTA4LjUwOCAwIDAgMS0uNzA4IDBsLTQuNjAyLTQuNTA1YS4xMjcuMTI3IDAgMCAwLS4xNzcgMGwtNC42MDIgNC41MDVhLjUwOC41MDggMCAwIDEtLjcwOCAwTC4wOTMgMTIuODhhLjQ4My40ODMgMCAwIDEgMC0uNjlsMS40MzctMS40MDZhLjUwOC41MDggMCAwIDEgLjcwOCAwbDQuNjAyIDQuNTA1Yy4wNDkuMDQ4LjEyOC4wNDguMTc3IDBsNC42MDItNC41MDVhLjUwOC41MDggMCAwIDEgLjcwOCAwbDQuNjAyIDQuNTA1Yy4wNDkuMDQ4LjEyOC4wNDguMTc3IDBsNC42MDItNC41MDVhLjUwOC41MDggMCAwIDEgLjcwOCAweiIvPjwvc3ZnPg==";
 
-const NOOP_CLEANUP = (): void => {};
-
-const initProvider = async (
-  options: WalletConnectOptions,
-): Promise<{ cleanup: () => void; provider: UniversalProviderLike }> => {
+const initProvider = async (options: WalletConnectOptions): Promise<UniversalProviderLike> => {
   const UniversalProvider = options.universalProvider ?? (await loadUniversalProvider());
-  const provider = await UniversalProvider.init({
+  return UniversalProvider.init({
     metadata: options.metadata
       ? {
           description: options.metadata.description,
@@ -83,28 +84,16 @@ const initProvider = async (
       : undefined,
     projectId: options.projectId,
   });
-
-  let cleanup = NOOP_CLEANUP;
-  if (options.onPairingUri) {
-    const onDisplayUri: Eip1193Listener = (...args) => {
-      const uri = args[0];
-      if (typeof uri === "string") {
-        options.onPairingUri?.(uri);
-      }
-    };
-    provider.on("display_uri", onDisplayUri);
-    let removed = false;
-    cleanup = () => {
-      if (removed) {
-        return;
-      }
-      removed = true;
-      provider.removeListener("display_uri", onDisplayUri);
-    };
-  }
-
-  return { cleanup, provider };
 };
+
+const namespaceRequest = (
+  builder: WalletConnectNamespaceBuilder,
+  chains: ReadonlyArray<string>,
+): WcNamespaceRequest => ({
+  chains: [...chains],
+  events: [...builder.defaultEvents],
+  methods: [...builder.defaultMethods],
+});
 
 /**
  * Registry of known per-namespace builders. Adding a new namespace =
@@ -129,6 +118,12 @@ const KNOWN_NAMESPACES: Readonly<Record<string, WalletConnectNamespaceBuilder | 
  * ship with the package. The factory is shaped this way so adding a
  * platform = adding one file under `src/namespaces/` and one entry to
  * {@link KNOWN_NAMESPACES}, with no API change elsewhere.
+ *
+ * A WC v2 session's namespaces are fixed at approval time, so the
+ * pairing declares the union up front: the first requested namespace
+ * is required, the rest optional. Adapters for a namespace the wallet
+ * declined reject on `connect()` rather than report a connection whose
+ * requests would fail at the relay.
  *
  * @example Single namespace
  * ```ts
@@ -176,31 +171,54 @@ const createWalletConnectAdapters = async (
     );
   }
 
-  const { cleanup, provider } = await initProvider(options);
-  const baseId = options.id ?? "walletconnect";
-  const baseName = options.name ?? "WalletConnect";
-  const icon = options.icon ?? DEFAULT_ICON;
-  const multiNamespace = requested.length > 1;
-
-  return requested.map(([platform, chains]) => {
+  const selected = requested.map(([platform, chains]) => {
     const builder = KNOWN_NAMESPACES[platform];
     if (!builder) {
       throw new Error(`Unreachable: builder missing for ${platform}`);
     }
+    return { builder, chains: chains.length > 0 ? chains : builder.defaultChains, platform };
+  });
+
+  const [primary, ...secondary] = selected;
+  if (primary === undefined) {
+    throw new Error("Unreachable: empty namespace selection");
+  }
+  const namespaces: PairingRequest = {
+    [primary.builder.caipPrefix]: namespaceRequest(primary.builder, primary.chains),
+  };
+  const optionalNamespaces: PairingRequest = Object.fromEntries(
+    secondary.map(({ builder, chains }) => [builder.caipPrefix, namespaceRequest(builder, chains)]),
+  );
+
+  const provider = await initProvider(options);
+  const session = createWalletConnectSession({
+    namespaces,
+    onPairingUri: options.onPairingUri,
+    optionalNamespaces,
+    provider,
+  });
+  const baseId = options.id ?? "walletconnect";
+  const baseName = options.name ?? "WalletConnect";
+  const icon = options.icon ?? DEFAULT_ICON;
+  const multiNamespace = selected.length > 1;
+
+  return selected.map(({ builder, chains, platform }) => {
     const adapter = builder.buildAdapter({
-      chains: chains.length > 0 ? chains : builder.defaultChains,
+      chains,
       icon,
       id: multiNamespace ? `${baseId}-${platform}` : baseId,
       name: multiNamespace ? `${baseName} (${platform.toUpperCase()})` : baseName,
       provider,
+      session,
     });
+    const release = session.retain();
     const innerDisconnect = adapter.disconnect?.bind(adapter);
     return Object.assign(adapter, {
       disconnect: async () => {
         try {
           await innerDisconnect?.();
         } finally {
-          cleanup();
+          release();
         }
       },
     });

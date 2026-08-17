@@ -10,6 +10,18 @@ type RequestArgs = Parameters<UniversalProviderLike["request"]>[0];
 type ProviderListener = (...args: ReadonlyArray<unknown>) => void;
 
 type ListenerCall = { event: string; fn: ProviderListener };
+type FakeSession = { namespaces: Record<string, { accounts: ReadonlyArray<string> }> };
+
+/** A wallet approving everything the dapp asked for: the resulting
+ *  session carries one entry per requested namespace. */
+const approvedSession = (opts: ConnectArgs): FakeSession => ({
+  namespaces: Object.fromEntries(
+    Object.keys({ ...opts.namespaces, ...opts.optionalNamespaces }).map((prefix) => [
+      prefix,
+      { accounts: [] },
+    ]),
+  ),
+});
 
 const createFakeProvider = (
   overrides: { disconnect?: () => Promise<void> } = {},
@@ -22,7 +34,7 @@ const createFakeProvider = (
 } => {
   const listeners = new Map<string, Set<ProviderListener>>();
   const requests: Array<RequestArgs> = [];
-  let session: object | null = null;
+  let session: FakeSession | null = null;
   const connectCalls: Array<ConnectArgs> = [];
   const onCalls: Array<ListenerCall> = [];
   const removeListenerCalls: Array<ListenerCall> = [];
@@ -31,7 +43,7 @@ const createFakeProvider = (
   return {
     connect(opts: ConnectArgs) {
       connectCalls.push(opts);
-      session = { topic: "fake-session" };
+      session = approvedSession(opts);
       return Promise.resolve();
     },
     connectCalls,
@@ -284,6 +296,29 @@ describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
     await expect(adapter.disconnect?.()).resolves.toBeUndefined();
     expect(provider.disconnectCalls).toBe(1);
     expect(displayUriListeners(provider.removeListenerCalls)).toHaveLength(1);
+  });
+
+  it("still forwards the pairing URI after connect / disconnect / connect", async () => {
+    const provider = createFakeProvider();
+    const seen = vi.fn<(uri: string) => void>();
+    const [adapter] = await createWalletConnectAdapters({
+      namespaces: EVM_ONLY,
+      onPairingUri: seen,
+      projectId: "test",
+      universalProvider: stubUniversalProvider(provider),
+    });
+
+    if (adapter === undefined) {
+      throw new Error("expected one adapter");
+    }
+    await adapter.connect();
+    await adapter.disconnect?.();
+    await adapter.connect();
+
+    provider.emit("display_uri", "wc:second@2");
+
+    expect(provider.connectCalls).toHaveLength(2);
+    expect(seen).toHaveBeenCalledWith("wc:second@2");
   });
 
   it("is idempotent — disconnecting twice does not throw or double-remove", async () => {

@@ -6,13 +6,9 @@ import type { WalletConnectSession } from "../session";
 import { createSingleNamespaceSession, missingNamespaceError } from "../session";
 
 /**
- * Runtime capability flags shared by every CAIP-based WalletConnect v2
- * namespace (`solana`, `sui`, `bip122`). All three advertise the same
- * surface at pairing time: sign/send RPC methods are requested, while
- * balance/receipt reads, account requests, sign-in and wallet-side
- * subscriptions are not available over WC today. Per-platform builders
- * spread this into their own exported constant so each keeps a distinct
- * object identity.
+ * `solana`, `sui` and `bip122` advertise the same surface at pairing: sign
+ * and send are requested, while balance/receipt reads, account requests,
+ * sign-in and wallet-side subscriptions have no WC equivalent today.
  */
 const CAIP_WC_CAPABILITIES: WalletCapabilities = {
   getBalance: false,
@@ -127,13 +123,6 @@ type CaipAdapterCore = {
   switchChain: (chain: ChainBase) => Promise<void>;
 };
 
-/**
- * Session plumbing every CAIP namespace builder repeats: the pairing
- * handshake, session teardown, CAIP-10 account reads off the live
- * session, and the local-only chain switch. Builders keep only what
- * genuinely differs per platform: RPC method names, response decoding,
- * and balance units.
- */
 const createCaipAdapterCore = ({
   chains,
   events,

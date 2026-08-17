@@ -1,12 +1,6 @@
 /**
- * Sui-specific Wallet Standard feature shapes. Shared protocol types
- * (`WalletStandardWallet`, `standard:*` features) come from
- * `@usebutr/wallet-standard-shared`.
- *
+ * Sui-specific feature shapes, narrowed to the fields the adapter reads.
  * Spec: https://docs.sui.io/standards/wallet-standard
- *
- * These shapes intentionally narrow the spec; they describe only the
- * fields butr's adapter actually reads.
  */
 
 import type { WalletStandardWalletAccount } from "@usebutr/wallet-standard-shared";

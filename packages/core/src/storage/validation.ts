@@ -42,12 +42,9 @@ const parseStoredPoolEntry = (key: string, value: unknown) => {
 const DEFAULT_KEY_PREFIX = "butr";
 
 /**
- * The four persisted key names, derived in one place.
- *
- * `WalletStorage` writes them through a `StorageDriver` and
- * `readWalletSnapshot` reads them out of a cookie jar. The two must agree
- * exactly or an SSR-seeded render disagrees with the client that rehydrates
- * it, which is the failure ADR 0003 exists to prevent.
+ * `WalletStorage` writes these and `readWalletSnapshot` reads them from
+ * a cookie jar; any divergence desyncs the SSR-seeded render from the
+ * client that rehydrates it, the failure ADR 0003 exists to prevent.
  */
 const storageKeys = (keyPrefix?: string) => {
   const prefix = keyPrefix === undefined || keyPrefix === "" ? DEFAULT_KEY_PREFIX : keyPrefix;
@@ -60,13 +57,9 @@ const storageKeys = (keyPrefix?: string) => {
 };
 
 /**
- * Decode a persisted pool payload. Pure: no driver access, no repair, no
- * throw. An undecodable payload yields `{}` and individual malformed entries
- * are dropped, so one corrupt entry cannot take down a whole session.
- *
- * Callers that own a writable driver decide separately whether to evict the
- * bad key; `readWalletSnapshot` must not, because it may run on a server with
- * no cookie jar to write to.
+ * Never repairs or throws: one corrupt entry must not take down a whole
+ * session, and `readWalletSnapshot` may run on a server with no cookie
+ * jar to write the eviction to.
  */
 const decodePool = (raw: string | null | undefined, label = "[butr]"): StoredPoolRecord => {
   if (raw === null || raw === undefined || raw === "") {

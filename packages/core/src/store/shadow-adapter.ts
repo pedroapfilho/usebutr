@@ -2,21 +2,9 @@ import type { StoredPoolEntry } from "../storage/persistence";
 import type { WalletAdapter, WalletCapabilities } from "../types";
 
 /**
- * Error thrown when a method is called on a shadow adapter; the
- * placeholder `WalletAdapter` that the store seeds into the pool when
- * an `initialState` is provided (e.g. from a server-rendered cookie
- * snapshot). Shadow adapters carry the identity and account data of a
- * previously-connected wallet, but the live wallet extension hasn't
- * been verified yet; the silent reconnect happens asynchronously
- * after mount.
- *
- * UI code that gates affordances on `wallet.connector.capabilities.*`
- * never reaches a shadow method (capabilities are all `false`). Code
- * that calls through anyway hits this typed error, which is the
- * correct loud failure: the consumer ignored the capability gate.
- *
- * Consumers wanting to wait out the reconnecting window should branch
- * on whether `connectorId` is in `state.reconnectingIds`.
+ * Loud failure for consumers that called a wallet method without gating
+ * on `capabilities.*` (all `false` here) or `reconnectingIds`, before
+ * silent reconnect swapped in the live adapter.
  */
 class ShadowConnectorError extends Error {
   readonly code = "BUTR_RECONNECTING";
@@ -46,26 +34,9 @@ const ALL_FALSE_CAPABILITIES: WalletCapabilities = Object.freeze({
 });
 
 /**
- * Builds a placeholder `WalletAdapter` from a persisted pool entry.
- *
- * Used by `createWalletStore` when `WalletManagerConfig.initialState`
- * is provided: each stored entry becomes a `ConnectedWallet` whose
- * `connector` is one of these. The store flips `isHydrated` true
- * synchronously and exposes the data through the usual hooks
- * (`useActiveWallet`, `useConnectedWallets`, …), but the connector
- * can't actually talk to a wallet yet, so its capabilities are all
- * `false` and its methods throw `ShadowConnectorError` if called.
- *
- * The hydration coordinator's silent-reconnect pass upgrades each
- * shadow to a live `WalletAdapter` by calling `createConnector(id)`
- * (which only succeeds once the live adapter has been announced via
- * discovery or registered explicitly) and replacing the pool entry.
- * On success the connector id is removed from `reconnectingIds`; on
- * failure the entry is dropped from the pool and storage.
- *
- * The entry's `name` is required (the storage validator rejects
- * entries without it); `icon` is optional only because some live
- * adapters genuinely have no icon to begin with.
+ * Lets `createWalletStore` flip `isHydrated` synchronously from
+ * `initialState`; the hydration coordinator later swaps each shadow for
+ * a live adapter, or drops the entry from pool and storage.
  */
 const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
   const id = entry.connectorId;
@@ -117,17 +88,9 @@ const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
 };
 
 /**
- * Type guard. Returns true when an adapter is a placeholder created
- * by `createShadowAdapter`. Useful for the hydration coordinator
- * (which needs to know which pool entries still need upgrading) and
- * for consumers writing wagmi-style "is this connection verified yet"
- * checks without subscribing to `reconnectingIds` directly.
- *
- * Detection is structural: a shadow has all capabilities set to false.
- * Live adapters always advertise at least one capability (every wallet
- * surface includes `getBalance`, `signMessage`, `switchChain` as
- * required methods, and adapter constructors set their flags
- * accordingly).
+ * Structural detection: relies on every live adapter advertising at
+ * least one capability, since `getBalance`, `signMessage` and
+ * `switchChain` are required on all wallet surfaces.
  */
 const isShadowAdapter = (adapter: WalletAdapter): boolean => {
   return Object.values(adapter.capabilities).every((flag) => !flag);

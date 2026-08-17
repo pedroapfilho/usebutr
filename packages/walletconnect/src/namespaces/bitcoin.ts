@@ -12,12 +12,9 @@ const BITCOIN_MAINNET = "bip122:000000000019d6689c085ae165831e93";
 
 const DEFAULT_CHAINS: ReadonlyArray<string> = [BITCOIN_MAINNET];
 
-// Reown's bip122 methods are unprefixed camelCase (`signMessage`,
-// `signPsbt`, `sendTransfer`, `getAccountAddresses`); verified against
-// the Bitcoin RPC reference at
-// https://docs.reown.com/advanced/multichain/rpc-reference/bitcoin-rpc.
-// The event channel uses a `bip122_` prefix (`bip122_addressesChanged`),
-// which is why methods and events look asymmetric.
+// Reown's bip122 methods are unprefixed camelCase while its event channel
+// uses a `bip122_` prefix, which is why the two lists look asymmetric.
+// https://docs.reown.com/advanced/multichain/rpc-reference/bitcoin-rpc
 const DEFAULT_METHODS: ReadonlyArray<string> = [
   "signMessage",
   "signPsbt",
@@ -48,41 +45,9 @@ const coercePsbtToBase64 = (tx: unknown): string => {
 };
 
 /**
- * Bitcoin (CAIP `bip122:*`) namespace builder. Wraps the paired
- * `UniversalProvider` and routes calls through the WalletConnect v2
- * Bitcoin RPC methods:
- *
- *  - `signMessage`  → `signMessage`     (returns hex signature)
- *  - `signPsbt`     → `signTransaction` (PSBT in, signed PSBT out)
- *  - `signPsbt`     → `sendTx` (with `broadcast: true`, returns txid)
- *
- * **Caveats.** The bip122 namespace is younger than eip155/solana/sui
- * and the wire format is still settling. Reown's reference uses
- * unprefixed camelCase methods (`signPsbt`, not `bip122_signPsbt`) but
- * a prefixed event channel (`bip122_addressesChanged`). The adapter
- * follows the Reown spec; verify end-to-end against your target
- * wallets before relying on this in production.
- *
- * `signTransaction` returns the signed PSBT bytes (base64-decoded).
- * butr ships no Bitcoin RPC, so the consumer finalises and broadcasts
- * those bytes through their own Esplora / Electrum client.
- *
- * `sendTx` is mapped to `signPsbt` with `broadcast: true` rather than
- * `sendTransfer`: `sendTransfer` is a high-level "build + send N sats
- * to address" UX flow that takes recipient/amount, not a raw tx the
- * consumer has already built. `signPsbt` with broadcast preserves
- * butr's `sendTx(tx: unknown) → txid` contract for consumers that
- * built the PSBT themselves.
- *
- * `subscribe` is a no-op for v0; wallet events over WC are mediated by
- * the provider and need per-wallet quirks the namespace builder
- * shouldn't own. Consumers wire native events themselves until we
- * land a follow-up.
- *
- * **Out of scope.** UTXO selection, fee estimation, address discovery
- * (via `getAccountAddresses` for ordinal/payment intents), and xpub /
- * multi-address sessions are tracked follow-ups; the namespace builder
- * here exposes the address from the WC session as-is.
+ * `sendTx` maps to `signPsbt` with `broadcast: true` rather than
+ * `sendTransfer`, a recipient/amount UX flow that can't carry a raw tx.
+ * `signTransaction` hands back PSBT bytes: butr ships no Bitcoin RPC.
  */
 const bitcoinNamespace: WalletConnectNamespaceBuilder = {
   buildAdapter({ chains, icon, id, name, provider, session }) {

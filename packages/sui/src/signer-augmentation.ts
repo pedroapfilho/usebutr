@@ -1,10 +1,8 @@
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
 /**
- * Augment `@usebutr/core`'s `SignerForPlatform` registry with the Sui
- * entry. Sui's `getSigner()` returns the Wallet Standard wallet
- * object, which consumers narrow further via its `features` map (e.g.
- * `wallet.features["sui:signAndExecuteTransaction"]`).
+ * Sui's `getSigner()` hands back the Wallet Standard wallet, which consumers
+ * narrow through its `features` map.
  */
 declare module "@usebutr/core" {
   // oxlint-disable-next-line typescript/consistent-type-definitions -- module augmentation requires interface

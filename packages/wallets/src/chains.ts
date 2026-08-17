@@ -6,15 +6,9 @@ import { SUI_CHAINS, SUI_CHAINS_LIST } from "@usebutr/sui";
 import { SVM_CHAINS, SVM_CHAINS_LIST } from "@usebutr/svm";
 
 /**
- * Combined EVM + SVM + Sui + Bitcoin + Polkadot chain registries.
- * Convenient for `@usebutr/wallets` consumers who already pull every
- * platform; i.e. multi-chain apps using `autoDiscovery()`.
- *
- * Single-platform apps should NOT import this. Instead, import the
- * per-platform registry directly (e.g. `EVM_CHAINS` from `@usebutr/evm`)
- * and use `buildChainsByPlatform` from `@usebutr/core` to assemble a
- * `ChainsByPlatform` map without pulling unused chain tables into the
- * bundle.
+ * Importing this pulls every platform's chain table into the bundle.
+ * Single-platform apps should import the per-platform registry directly and
+ * assemble their map with `buildChainsByPlatform` from `@usebutr/core`.
  */
 const CHAINS = {
   bitcoin: BITCOIN_CHAINS,

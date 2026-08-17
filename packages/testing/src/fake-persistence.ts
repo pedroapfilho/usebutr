@@ -11,15 +11,9 @@ type FakePersistenceSeed = {
 const KEY_PREFIX = "butr-test";
 
 /**
- * In-memory `WalletPersistence` for tests.
- *
- * This is the real `WalletStorage` over memory drivers rather than a second
- * implementation of the interface. A hand-rolled fake drifts: the previous one
- * replaced the pool where the real class upserts, and cleared the
- * user-disconnected flag on `clearAll` where the real class leaves it in the
- * session driver. Tests written against those semantics passed while
- * production did the opposite. Going through `WalletStorage` means the fake
- * cannot disagree with what ships.
+ * The real `WalletStorage` over memory drivers, not a second implementation of
+ * the interface. A hand-rolled fake previously drifted on pool upsert and
+ * `clearAll` semantics, so tests passed while production did the opposite.
  */
 const createFakePersistence = (seed: FakePersistenceSeed = {}): WalletPersistence => {
   const persistent = createMemoryStorageDriver();

@@ -2,15 +2,9 @@ import type { Account, ChainPlatform, ConnectedWallet } from "../types";
 import type { ConnectionError } from "../types/errors";
 
 /**
- * Public connection-status enum. `state.connectionStatus` in the
- * reducer only takes the first four values ("idle" | "connecting" |
- * "success" | "error"); those track the user-initiated connect
- * attempt. The fifth value, `"reconnecting"`, is *derived* by
- * `useConnectionStatus` when the active wallet is still backed by a
- * shadow adapter (its id is in `state.reconnectingIds`). The
- * derivation lives in the React selector so the reducer can stay a
- * narrow state machine while the public API matches wagmi's
- * vocabulary.
+ * The reducer never writes `"reconnecting"`; `useConnectionStatus`
+ * derives it from `reconnectingIds` so the state machine stays narrow
+ * while the public vocabulary matches wagmi's.
  */
 type ConnectionStatus = "idle" | "connecting" | "success" | "error" | "reconnecting";
 
@@ -23,13 +17,9 @@ type State = {
   isUserDisconnected: boolean;
   pool: Map<string, ConnectedWallet>;
   /**
-   * Connector IDs whose pool entry is currently backed by a shadow
-   * adapter: created from `WalletManagerConfig.initialState` and
-   * waiting for the live adapter to be announced (via discovery) and
-   * the silent reconnect to succeed. The set shrinks as entries
-   * upgrade (`HYDRATED` / `CONNECT_SUCCEEDED` clear matching ids) or
-   * drop (`DISCONNECTED` / `RESET`). Empty for stores constructed
-   * without `initialState`.
+   * Ids still backed by a shadow adapter from `initialState`. Empty
+   * without `initialState`; shrinks on `HYDRATED` / `CONNECT_SUCCEEDED`
+   * and on `DISCONNECTED` / `RESET`.
    */
   reconnectingIds: ReadonlySet<string>;
   selection: Map<ChainPlatform, string>;
@@ -55,10 +45,8 @@ type LifecycleEvent =
   | { type: "USER_DISCONNECTED_SET"; value: boolean };
 
 /**
- * Connection status events: the transitions of the in-flight connect
- * attempt: start, success/failure, status/error reset. None of these
- * mutate the pool directly; `CONNECT_SUCCEEDED` is the bridge to
- * `PoolMutationEvent`.
+ * None of these mutate the pool; `CONNECT_SUCCEEDED` is the only bridge
+ * across to `PoolMutationEvent`.
  */
 type ConnectionStatusEvent =
   | { connectorId: string; type: "CONNECT_STARTED" }
@@ -75,10 +63,9 @@ type ConnectionStatusEvent =
 type PoolMutationEvent =
   | {
       /**
-       * A parked entry was upgraded from its shadow adapter to the live one by
-       * the background silent reconnect. Deliberately NOT `CONNECT_SUCCEEDED`:
-       * this fires at an arbitrary time driven by wallet discovery, so it must
-       * not write the connect-attempt status the user's own action owns.
+       * Deliberately not `CONNECT_SUCCEEDED`: discovery fires this at an
+       * arbitrary time, so it must not overwrite the connect-attempt
+       * status that the user's own action owns.
        */
       connectorId: string;
       entry: ConnectedWallet;

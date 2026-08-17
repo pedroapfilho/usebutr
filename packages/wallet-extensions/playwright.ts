@@ -1,26 +1,9 @@
 import type { WalletExtension } from "./types";
 
 /**
- * Build Chromium launch args that load a set of pre-unpacked wallet
- * extensions. The caller is responsible for fetching each wallet's
- * `.crx` archive from the Web Store (or building unpacked dirs) and
- * passing the resulting absolute paths.
- *
- * The returned flags are suitable for `chromium.launchPersistentContext(
- *   userDataDir, { args }
- * )`. Two flags are emitted in tandem:
- *
- *  - `--disable-extensions-except=…` prevents Chromium from auto-loading
- *    anything outside the supplied list, keeping tests deterministic.
- *  - `--load-extension=…` points at the unpacked extension directories.
- *
- * Extensions are only supported in **persistent contexts**, not the
- * fresh-per-test context Playwright uses by default. Tests must opt into
- * `launchPersistentContext` and accept that storage state is shared
- * across pages within the same browser session.
- *
- * Empty input returns `[]` so callers can unconditionally spread the
- * result into a Playwright `args` array.
+ * Chromium loads extensions only in a persistent context, so tests must use
+ * `launchPersistentContext` and accept storage state shared across pages.
+ * `--disable-extensions-except` blocks anything outside the supplied paths.
  */
 const buildLoadExtensionArgs = (extensionPaths: ReadonlyArray<string>): ReadonlyArray<string> => {
   if (extensionPaths.length === 0) {
@@ -41,13 +24,9 @@ type ResolvedPaths = {
 };
 
 /**
- * Convenience helper: given a `(wallet) => path | null` resolver, split
- * the registry into the subset that has been unpacked on disk and the
- * subset that hasn't. Pair with `buildLoadExtensionArgs(paths.map(p => p.path))`.
- *
- * The actual `.crx`-fetching step lives outside this package; the
- * registry is the source of truth, the resolver is whatever the test
- * infrastructure uses (a CLI, a fixture, a Docker volume mount).
+ * The `.crx`-fetching step lives outside this package: the registry is the
+ * source of truth and the resolver is whatever the test infrastructure uses
+ * (a CLI, a fixture, a Docker volume mount).
  */
 const partitionResolvedExtensions = (
   wallets: ReadonlyArray<WalletExtension>,

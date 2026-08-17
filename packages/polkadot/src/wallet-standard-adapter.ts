@@ -16,13 +16,6 @@ const POLKADOT_PREFIX = "polkadot:";
 
 const slugify = (name: string): string => kitSlugify("polkadot", name);
 
-/**
- * Adapt a Wallet Standard wallet advertising `polkadot:*` features into a
- * butr `WalletAdapter`. Returns `null` for wallets that don't advertise a
- * polkadot chain or `standard:connect`. butr ships no RPC, so
- * sendTx/getBalance/getTransactionReceipt are placeholders; transaction
- * signing goes through `getSigner()` (returns the Wallet Standard wallet).
- */
 const buildPolkadotWalletStandardAdapter = (
   wallet: WalletStandardWallet,
   /** Optional. Called with a function that pushes a synthetic
@@ -77,10 +70,8 @@ const buildPolkadotWalletStandardAdapter = (
 };
 
 /**
- * Subscribe to Wallet Standard announcements and emit adapters for
- * wallets advertising `polkadot:*` features (Talisman, SubWallet). Used
- * as the FALLBACK channel; see `polkadotDiscoverer`. Requires the
- * optional `@wallet-standard/app` peer dep; absent → no-op.
+ * The fallback channel; see `polkadotDiscoverer`. Requires the optional
+ * `@wallet-standard/app` peer dep and no-ops without it.
  */
 const discoverPolkadotWalletStandardAdapters = (
   onAdapter: (adapter: WalletAdapter) => void,

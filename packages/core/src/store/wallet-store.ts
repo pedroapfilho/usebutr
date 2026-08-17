@@ -25,13 +25,9 @@ const VALID_CHAIN_PLATFORMS: ReadonlySet<string> = new Set(CHAIN_PLATFORMS);
 const isChainPlatform = (value: string): value is ChainPlatform => VALID_CHAIN_PLATFORMS.has(value);
 
 /**
- * Build a synchronously-populated `State` from `config.initialState`.
- * Each pool entry becomes a `ConnectedWallet` whose `connector` is a
- * shadow adapter; every connector id enters `reconnectingIds` so
- * consumers can branch on "is this connection verified" without
- * waiting for the async silent reconnect. `isHydrated` flips true
- * synchronously: the consumer's first render sees the persisted
- * state in the live store, not undefined.
+ * `isHydrated` is true from the first render on this path, so
+ * `reconnectingIds` (not `isHydrated`) is the "is this connection
+ * verified" signal until silent reconnect lands.
  */
 const seedStateFromSnapshot = (snapshot: WalletSnapshot): State => {
   const pool = new Map<string, ConnectedWallet>();

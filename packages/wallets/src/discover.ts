@@ -9,23 +9,9 @@ import { svmDiscoverer } from "@usebutr/svm";
 import { createDiscoveryBus } from "./discovery-bus";
 
 /**
- * Which platforms to discover, as an allowlist: a platform is discovered
- * only if its flag is explicitly `true`. Every unlisted platform is off,
- * so `{}` enables nothing. Passing no options at all is the separate
- * "everything" case.
- *
- * Restricting platforms means unused listeners don't fire and unused
- * adapters don't appear in the provider's `discovery` source.
- *
- * The three fallback flags invert that rule: each defaults to `true`
- * when its primary platform is enabled, and is only consulted then.
- * They emit only if the primary path produced no adapter by the settle
- * deadline; disable them when targeting standards-compliant wallets
- * only, to skip the timer.
- *
- * Prefer the array form (`autoDiscovery(["evm", "svm"])`) when you don't
- * need the fallback flags: it reads as the allowlist it is, and an empty
- * array is visibly empty in a way `{}` is not.
+ * An allowlist: a platform is off unless its flag is explicitly `true`, so
+ * `{}` enables nothing. The fallback flags invert that, defaulting to `true`
+ * when their primary platform is on; turning one off also skips its timer.
  */
 type DiscoverOptions = {
   bitcoin?: boolean;
@@ -57,13 +43,8 @@ type ResolvedDiscoverOptions = {
   svm: boolean;
 };
 
-/**
- * Registry of known `PlatformDiscoverer`s keyed by `ChainPlatform`.
- * Adding a new platform = one import + one registry entry.
- *
- * The aggregator no longer carries per-platform discovery logic;
- * each entry self-describes its primary + fallback subscription.
- */
+/** Each entry self-describes its primary and fallback subscription, so adding
+ *  a platform is one import plus one registry entry. */
 const KNOWN_DISCOVERERS: Readonly<Record<ChainPlatform, PlatformDiscoverer>> = {
   bitcoin: bitcoinDiscoverer,
   evm: evmDiscoverer,
@@ -97,22 +78,9 @@ const platformsToOptions = (platforms: ReadonlyArray<ChainPlatform>): DiscoverOp
 };
 
 /**
- * Resolve an `auto` prop input into a concrete set of enabled
- * platforms. The single place where the `DiscoverInput` union is
- * interpreted.
- *
- * **Defaults**
- *
- *  - `true` → every platform enabled, every fallback on. The
- *    `<WalletManagerProvider auto>` shorthand and the bare
- *    `autoDiscovery()` call use this path.
- *  - Array form → allowlist. `["evm", "svm"]` discovers exactly those,
- *    with each platform's fallback on.
- *  - Object form → opt-in. `{ evm: true }` discovers only EVM;
- *    unspecified flags default to `false`, so `{}` enables nothing.
- *    Each fallback defaults to `true` IF its primary platform is also
- *    enabled (`injected` follows `evm`; `injectedBitcoin` follows
- *    `bitcoin`; `polkadotWalletStandard` follows `polkadot`).
+ * The single place the `DiscoverInput` union is interpreted. `true` enables
+ * everything; the array and object forms are allowlists whose fallbacks
+ * default on only when their primary platform is enabled.
  */
 const resolveDiscoverOptions = (auto: DiscoverInput): ResolvedDiscoverOptions => {
   if (auto === true) {
@@ -166,16 +134,8 @@ const collectActiveDiscoverers = (
   });
 
 /**
- * Subscribe to every enabled discovery protocol at once. Each platform
- * package exports its own `PlatformDiscoverer` describing primary +
- * fallback subscription; this function composes them.
- *
- * `onAdapter` is called at most once per unique wallet, deduplicated by
- * `adapter.id`. See `resolveDiscoverOptions` for the defaults that
- * apply when `options` is omitted.
- *
- * The returned function unsubscribes from every listener that was
- * actually attached.
+ * Subscribes to every enabled discovery protocol at once. `onAdapter` fires at
+ * most once per wallet, deduplicated by `adapter.id`.
  */
 const discoverWalletAdapters = (
   onAdapter: (adapter: WalletAdapter) => void,

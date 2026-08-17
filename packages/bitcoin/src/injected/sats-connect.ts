@@ -51,13 +51,9 @@ const pickPaymentAddress = (addresses: ReadonlyArray<SatsAddress>): SatsAddress 
   addresses.find((a) => a.purpose === "payment") ?? addresses[0];
 
 /**
- * Wrap an Xverse-style `BitcoinProvider` (sats-connect) into a butr
- * `WalletAdapter`; every capability is shimmed onto the provider's single
- * `request(method, params)` RPC.
- *
- * Only the payment address is exposed as an Account, because `sendTransfer`
- * takes no sender and always debits it. The taproot ordinals address stays
- * reachable through `getSigner()` and as `signMessage`'s `account`.
+ * Only the payment address is exposed as an Account: sats-connect's
+ * `sendTransfer` takes no sender and always debits it. The taproot ordinals
+ * address stays reachable through `getSigner()` and `signMessage`'s account.
  */
 const buildSatsConnectAdapter = (
   id: string,

@@ -1,21 +1,9 @@
 import type { ConnectedWallet } from "./types";
 
 /**
- * Two wallet snapshots are equivalent for selector purposes iff they
- * share the same adapter instance, active account address, and active
- * account chain id. Used by `useStoreWithEqualityFn` consumers
- * (active-wallet, selected-wallet, useWalletEntry) to suppress spurious
- * re-renders when the underlying Map churns but the resolved entry
- * hasn't changed.
- *
- * The adapter is compared by reference, not by `connector.id`: hydration
- * replaces a shadow adapter with the live one under an unchanged id and
- * address, so an id comparison reports "equal" and leaves consumers
- * holding a placeholder whose every method throws ShadowConnectorError.
- *
- * Hoisted to its own module so the equivalence rule lives in one place;
- * if we ever extend the snapshot (e.g. to consider `accounts.length`),
- * every selector hook picks up the new rule for free.
+ * The adapter is compared by reference, not `connector.id`: hydration
+ * swaps a shadow adapter for the live one under an unchanged id, and an
+ * id check would strand consumers on the throwing placeholder.
  */
 const walletEqual = (a: ConnectedWallet | undefined, b: ConnectedWallet | undefined): boolean => {
   if (a === b) {

@@ -1,9 +1,7 @@
 /**
- * Minimal local types for the `@polkadot/extension-dapp` injectedWeb3
- * standard. Declared here (rather than depending on
- * `@polkadot/extension-inject`) so the connector stays lean; same
- * posture as `@usebutr/bitcoin`'s `UnisatProvider`. These narrow the
- * spec to only the fields butr reads.
+ * Local narrowing of the `@polkadot/extension-dapp` injectedWeb3 standard
+ * to the fields butr reads, so the connector takes no dependency on
+ * `@polkadot/extension-inject`.
  */
 
 /** A single account the extension exposes. Addresses are SS58; accounts

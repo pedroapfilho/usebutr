@@ -66,35 +66,9 @@ const readAccountState = async (
 };
 
 /**
- * Adapt an EIP-1193 provider (announced via EIP-6963) into a butr
- * `WalletAdapter`. The returned adapter covers the full `Connector +
- * Wallet` surface; consumers can pass it through `createConnector` like
- * any hand-written adapter.
- *
- * **Caveats**
- *
- *  - `disconnect` calls `wallet_revokePermissions`. Many wallets don't
- *    implement that method and silently ignore the call. The reducer
- *    will still mark the wallet as disconnected on butr's side; the
- *    wallet's own auto-reconnect heuristic may or may not honour it.
- *  - `switchAccount` is intentionally unimplemented because EIP-1193 has
- *    no silent "use address X" RPC. The active account is whichever one
- *    the wallet exposes first; the user changes it through the wallet's
- *    own UI. butr's `subscribe` bridge auto-updates the pool entry when
- *    `accountsChanged` fires. Call `requestAccounts` if you want the
- *    wallet to expose more accounts.
- *  - `getBalance()` returns the native ETH balance with symbol `"ETH"`
- *    regardless of which EVM chain the wallet is currently on. Consumers
- *    that target multiple EVM chains should overlay the symbol via
- *    their own logic.
- *  - `getBalance(tokenAddress)` reads the ERC20 balance for the active
- *    account on the currently-connected chain. The token's own
- *    `decimals()` and `symbol()` are queried for accurate formatting;
- *    if `symbol()` is non-standard (bytes32) it's decoded as best-
- *    effort. Routed through `eth_call` on the wallet's own provider;
- *    the demo doesn't ship a separate RPC.
- *  - `getSigner` returns the raw EIP-1193 provider. Wrap it in viem's
- *    `createWalletClient` or ethers' `BrowserProvider` at the call site.
+ * `disconnect` calls `wallet_revokePermissions`, which many wallets don't
+ * implement and silently ignore, so their own auto-reconnect may outlive it.
+ * `getBalance()` labels the native balance `"ETH"` on every EVM chain.
  */
 const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): WalletAdapter => {
   return {

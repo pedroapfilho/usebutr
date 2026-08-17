@@ -6,24 +6,9 @@ import { LEDGER_SIGN_TRANSACTION_CAPABILITIES } from "../capabilities";
 import type { TransportFactory } from "../transport";
 
 /**
- * Minimal type surface for `@ledgerhq/hw-app-sui` (which extends
- * `@mysten/ledgerjs-hw-app-sui`). Declared inline so butr's typecheck
- * pipeline doesn't depend on the optional peer dep being installed.
- * Real Ledger Sui app instances satisfy this shape.
- *
- * Notes:
- *  - `getPublicKey` returns BOTH the 32-byte ed25519 public key AND the
- *    32-byte Sui address. The device computes the address (blake2b of
- *    `0x00 || pubkey`) on-device, so we just hex-encode the bytes with
- *    a `0x` prefix to produce the Sui address string explorers + RPCs
- *    use. No host-side blake2b needed.
- *  - `signTransaction` signs the BCS-serialized transaction message and
- *    returns only the raw signature bytes. The adapter combines those
- *    bytes with the public key into Sui's serialized signature envelope.
- *  - There is **no `signPersonalMessage`** on the Ledger Sui app at this
- *    version; Ledger's Sui app supports transaction signing only.
- *    Capabilities reflect this with `signMessage: false`, and the
- *    adapter's `signMessage` method rejects.
+ * Declared inline so butr's typecheck doesn't depend on the optional peer dep.
+ * `getPublicKey` also returns the address, computed on-device as blake2b of
+ * `0x00 || pubkey`. The app exposes no `signPersonalMessage` at this version.
  */
 type SuiAppLike = {
   getPublicKey: (
@@ -86,18 +71,11 @@ const loadSui = async (): Promise<SuiAppConstructor> => {
  * the Sui platform**; no opaque DI bag, no `unknown` chain hints.
  */
 type SuiLedgerOptions = {
-  /**
-   * How many accounts to enumerate via `getAccounts()`. Each path walk
-   * hits the device (~1-2 s per address), so larger values are slow.
-   * Default: 1.
-   */
+  /** Each path walk hits the device (~1-2 s per address), so larger values are
+   *  slow. Default: 1. */
   accountCount?: number;
-  /**
-   * Sui cluster shortname. Stored locally; Ledger has no internal
-   * "current cluster" concept; the cluster only affects the ChainBase
-   * id butr surfaces to consumers. `switchChain` updates this value.
-   * Default: `"mainnet"`.
-   */
+  /** Ledger has no internal "current cluster", so this is stored locally and
+   *  only affects the ChainBase id butr surfaces. Default: `"mainnet"`. */
   cluster?: SuiCluster;
   /**
    * BIP-32 derivation path *prefix*. `getAccounts(n)` appends `/N'`
@@ -139,27 +117,9 @@ const buildSuiAccount = (address: string, chain: ChainBase): Account => ({
 });
 
 /**
- * Build a Ledger hardware-wallet adapter wired to the **Sui app**. The
- * returned adapter is fully-formed but UN-paired; pairing happens when
- * butr's runtime calls `adapter.connect()`, at which point the browser
- * shows the WebUSB permission prompt and the user unlocks their Ledger
- * and opens the Sui app.
- *
- * Most consumers go through `createLedgerAdapter` in `adapter.ts`,
- * which dispatches by `platform` field.
- *
- * **Signing model.** `signTransaction` signs BCS-serialized Sui
- * transaction bytes and returns the bytes with Sui's serialized Ed25519
- * signature envelope.
- *
- * **No off-chain signing.** Ledger's Sui app does NOT implement a
- * `signPersonalMessage` instruction at this app version, so
- * `capabilities.signMessage` is `false` and the adapter's `signMessage`
- * rejects. Off-chain auth flows should fall back to a non-hardware
- * wallet.
- *
- * **No broadcast.** `sendTx` rejects; Ledger has no RPC. The consumer
- * broadcasts the assembled transaction through their own Sui RPC client.
+ * The returned adapter is UN-paired: pairing happens on `adapter.connect()`,
+ * when the browser prompts for WebUSB and the user opens the Sui app, which
+ * implements no `signPersonalMessage`, so `signMessage` rejects.
  */
 const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapter> => {
   const capabilities = { ...LEDGER_SIGN_TRANSACTION_CAPABILITIES, signMessage: false };

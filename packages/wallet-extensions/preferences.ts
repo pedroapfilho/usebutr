@@ -14,28 +14,9 @@ type WriteResult = {
 };
 
 /**
- * Write Chrome's "External Extensions" preferences manifests into a user
- * data directory. On launch, Chrome reads each `<extension-id>.json`,
- * resolves the bundled `external_update_url`, and silently fetches the
- * `.crx` from the Web Store.
- *
- * Background:
- * https://developer.chrome.com/docs/extensions/how-to/distribute/install-extensions#preferences
- *
- * IMPORTANT: this method only works with **Google Chrome**. Chromium,
- * which Playwright bundles by default, does not honour
- * `external_update_url` pointing at `clients2.google.com`. To exercise
- * this strategy from Playwright, launch with `channel: 'chrome'`. For
- * Chromium-based runs, use the alternative `buildLoadExtensionArgs`
- * helper in `./playwright` (which expects pre-fetched, unpacked
- * extension directories).
- *
- * @param userDataDir  Absolute path to the Chrome user-data directory
- *                     Playwright will hand to `launchPersistentContext`.
- * @param wallets      Wallets to enroll. Entries with an empty
- *                     `chromeWebStoreId` are silently skipped (and
- *                     reported via `result.skipped`) so partially-filled
- *                     registries don't block the rest.
+ * Chrome reads each `<extension-id>.json` at launch and fetches the `.crx`
+ * from the Web Store. Google Chrome only: the Chromium build Playwright
+ * bundles ignores `external_update_url`, so launch with `channel: 'chrome'`.
  */
 const writeExternalExtensionsPrefs = async (
   userDataDir: string,

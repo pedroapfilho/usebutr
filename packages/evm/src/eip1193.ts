@@ -1,12 +1,7 @@
 /**
- * Minimal EIP-1193 / EIP-6963 type surface; declared inline rather
- * than imported from `@types/ethereum` (which doesn't exist as a
- * cohesive package) or `viem` (which would expand butr's footprint).
- *
- * These types describe only the methods butr's auto-discovery layer
- * actually calls on a provider. They're intentionally loose
- * (`request(...)` returns `unknown`); the `request*` helpers below
- * narrow the results at the boundary.
+ * Declared inline rather than taken from `viem`, which would expand butr's
+ * footprint. Loose on purpose: `request(...)` returns `unknown` and the
+ * `request*` helpers narrow it at the boundary.
  */
 
 type Eip1193RequestArgs = {

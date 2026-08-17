@@ -24,25 +24,9 @@ const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged"
 const WALLETCONNECT_SVM_CAPABILITIES: WalletCapabilities = { ...CAIP_WC_CAPABILITIES };
 
 /**
- * Solana (CAIP `solana:*`) namespace builder. Wraps the paired
- * `UniversalProvider` and routes calls through the WalletConnect v2
- * Solana RPC methods:
- *
- *  - `solana_signMessage`            → `signMessage`
- *  - `solana_signTransaction`        → `signTransaction`
- *  - `solana_signAndSendTransaction` → `sendTx` / `sendTxToChain`
- *
- * **Caveats.** Mobile-wallet support for these methods varies; Phantom
- * and Solflare advertise them today, but the response shapes (base58
- * signatures vs. base64 transactions) drift between releases. Verify
- * end-to-end against your target wallets before relying on this in
- * production. There is no Sign-In-With-Solana over WC today, so
- * `capabilities.signIn` is `false`.
- *
- * `subscribe` is a no-op for v0; wallet events over WC are mediated by
- * the provider and need per-wallet quirks the namespace builder
- * shouldn't own. Consumers wire native events themselves until we
- * land a follow-up.
+ * Wallet response shapes drift between releases (base58 signatures vs
+ * base64 transactions), so decoding stays lenient. There is no
+ * Sign-In-With-Solana over WC, hence `capabilities.signIn === false`.
  */
 const solanaNamespace: WalletConnectNamespaceBuilder = {
   buildAdapter({ chains, icon, id, name, provider, session }) {

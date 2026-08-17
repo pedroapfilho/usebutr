@@ -7,11 +7,9 @@ type Account = {
 };
 
 /**
- * Build butr's `Account` shape from a wallet address and a resolved
- * `ChainBase`. The composite id (`<chain>:<address>`) is what the
- * reducer uses to compare accounts across refreshes, so every adapter
- * must build accounts through this helper (or keep the format
- * byte-identical).
+ * The reducer compares accounts by the composite `<chain>:<address>`
+ * id, so every adapter must build accounts here or reproduce that
+ * format byte for byte.
  */
 const buildAccount = (address: string, chain: ChainBase): Account => ({
   chain,

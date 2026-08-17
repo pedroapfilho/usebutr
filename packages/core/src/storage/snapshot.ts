@@ -2,16 +2,9 @@ import type { StoredPoolRecord, StoredSelectionRecord } from "./persistence";
 import { decodePool, decodeSelection, storageKeys } from "./validation";
 
 /**
- * Server-safe view of a butr-persisted session; everything you can
- * know about a user's connected wallets from the cookie payload alone,
- * without instantiating a `Connector`.
- *
- * Notably absent: the `Connector` instance. A wallet extension exists
- * only in the browser, so a server render can know *which* wallet was
- * connected and *what address* it held, but cannot dispatch
- * `signMessage`/`sendTransaction` on it. Splitting display from action
- * along this seam keeps the impossibility expressed in the types
- * rather than hidden inside a runtime check.
+ * Carries no `Connector` by design: a wallet extension exists only in
+ * the browser, so a server render can name the wallet and its address
+ * but can never dispatch on it.
  */
 type WalletSnapshot = {
   activeConnectorId: string | null;
@@ -61,33 +54,9 @@ const toCookieMap = (input: CookieSource): Map<string, string> => {
 const SNAPSHOT_LABEL = "[butr] readWalletSnapshot:";
 
 /**
- * Parse a cookie source into a server-safe `WalletSnapshot`.
- *
- * Pure, sync, no `document`, no React; runnable in any environment
- * (Server Component, route handler, edge middleware, even client
- * code). Pair with `createCookieStorageDriver({ initialCookies })`
- * and `<WalletManagerProvider initialState={…} />` to render a
- * connected shell server-side without a hydration flash.
- *
- * **Stale-snapshot semantics.** The snapshot reflects whatever the
- * browser most recently persisted. If the user has since uninstalled
- * the wallet, switched accounts, or disconnected in another tab, the
- * client-side hydration will reconcile reality and the live store
- * will diverge from the snapshot. Treat the snapshot as an
- * *optimistic* shell; accurate enough to avoid a paint flicker,
- * authoritative only once the entry leaves `reconnectingIds`
- * (`useIsReconnecting()` in React). `isHydrated` is true from the first
- * render on this path, so it is not the signal to wait on.
- *
- * **Inputs.** Accepts the three shapes Next.js / Express / Hono /
- * generic-Node cookie code naturally produces:
- *  - A plain object: `{ "butr-pool": "{...}", … }`
- *  - An array of `{ name, value }` (Next.js' `cookies().getAll()`)
- *  - An iterable of `[name, value]` tuples
- *
- * Malformed entries are dropped with a `logWarn` (same policy as
- * `WalletStorage.getPool`); a cross-tab corruption shouldn't crash
- * the server render.
+ * Optimistic: only what the browser last persisted, so an uninstall or
+ * other-tab disconnect makes it stale. Authoritative once the entry
+ * leaves `reconnectingIds`; `isHydrated` is true from render one.
  */
 const readWalletSnapshot = (
   source: CookieSource,

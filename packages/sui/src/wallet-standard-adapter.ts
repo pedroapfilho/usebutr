@@ -41,22 +41,9 @@ const coerceSuiTransaction = (tx: unknown): { toJSON: () => Promise<string> } =>
 };
 
 /**
- * Adapt a Sui Wallet Standard `Wallet` into a butr `WalletAdapter`.
- *
- * Returns `null` if the wallet doesn't advertise any Sui chain or doesn't
- * expose `standard:connect`. Same posture as `buildSvmAdapter`: gate
- * features on what each wallet advertises, return placeholders for
- * RPC-backed reads (`getBalance`, `getTransactionReceipt`), forward
- * `subscribe` through `standard:events`.
- *
- * **Known limitations**
- *
- *  - `getBalance` returns a `{ value: 0n, symbol: "SUI" }` placeholder.
- *    Consumers wrap `@mysten/sui`'s `SuiClient` for real reads.
- *  - `getTransactionReceipt` returns `"Pending"` for the same reason.
- *  - `switchChain` is local-state-only (mirrors SVM). Sui Wallet Standard
- *    has no "tell the wallet to switch network" RPC; the wallet's UI
- *    controls its global cluster setting.
+ * Sui Wallet Standard has no "switch network" RPC, so `switchChain` moves
+ * butr's view only and the wallet's own UI owns its cluster. Balance and
+ * receipt reads need `@mysten/sui`'s `SuiClient`, which butr doesn't ship.
  */
 const buildSuiAdapter = (
   wallet: WalletStandardWallet,
@@ -194,20 +181,8 @@ const buildSuiAdapter = (
 };
 
 /**
- * Subscribe to Sui Wallet Standard announcements.
+ * Requires the optional `@wallet-standard/app` peer dep.
  * Spec: https://docs.sui.io/standards/wallet-standard
- *
- * Runtime requires the `@wallet-standard/app` package, which is an
- * **optional peer dependency** of butr.
- *
- * Sui wallets share the same `getWallets()` bus as SVM wallets; Phantom
- * advertises features for SVM, Sui, and Bitcoin from a single Wallet
- * Standard wallet object. `buildSuiAdapter` returns `null` for wallets
- * that don't advertise any `sui:*` features, so we cleanly end up with
- * one adapter per platform on multi-chain wallets.
- *
- * The discovery loop (dynamic import, dedupe, register / unregister
- * bridge) lives in `@usebutr/wallet-standard-shared`.
  */
 const discoverSuiAdapters = (onAdapter: (adapter: WalletAdapter) => void): (() => void) =>
   discoverWalletStandard(onAdapter, (wallet, registerDisconnector) =>

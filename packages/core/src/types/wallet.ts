@@ -20,12 +20,9 @@ type WalletBase = {
   getTransactionReceipt: (tx: string) => Promise<{
     status: "Success" | "Error" | "Pending";
   }>;
-  /** Submit a transaction on the wallet's currently-active chain.
-   *  Pass an `account` from `ConnectedWallet.accounts` to route the
-   *  transaction through a specific exposed address instead of the
-   *  wallet's currently-active one. EVM wallets honour this via
-   *  `tx.from`; Wallet Standard wallets via the feature's `account`
-   *  input. Omit for "use whichever the wallet picks." */
+  /** `account` routes through a specific exposed address (EVM via
+   *  `tx.from`, Wallet Standard via the feature's `account` input);
+   *  omitting it lets the wallet pick. */
   sendTx: (tx: unknown, account?: Account) => Promise<string>;
   /** Submit a transaction targeting a specific chain. The optional
    *  callback fires after the connector has switched chain (consumers
@@ -38,15 +35,9 @@ type WalletBase = {
     cb?: () => void,
   ) => Promise<string>;
   /**
-   * Sign a message and return both the signature and the bytes the wallet
-   * actually signed. Solana Wallet Standard wallets may prefix or re-encode
-   * the message internally; verifiers must check the signature against
-   * `signedMessage`, not the input bytes. EVM wallets echo the input.
-   *
-   * Pass an `account` to sign with a specific exposed address. EIP-1193
-   * routes it through `personal_sign`'s address param; Wallet Standard
-   * uses the feature's `account` input. Both support per-call signing
-   * without changing the wallet's active account.
+   * Verify against `signedMessage`, not the input: Solana Wallet
+   * Standard wallets may prefix or re-encode it. `account` signs with a
+   * specific address without changing the wallet's active one.
    */
   signMessage: (
     msg: Uint8Array,
@@ -60,20 +51,16 @@ type WalletBase = {
 };
 
 /**
- * EVM wallet surface. No `signIn` (Sign-In-With-Ethereum is an app-level
- * concern in this library, not a protocol method). No `signTransaction`:
- * EVM wallets sign-and-send via `eth_sendTransaction`; sign-only EVM
- * flows aren't exposed through this surface.
+ * No `signIn` (SIWE is app-level here, not a protocol method) and no
+ * `signTransaction`: EVM wallets sign and send in one step through
+ * `eth_sendTransaction`.
  */
 type EvmWallet = WalletBase;
 
 /**
- * Solana wallet surface. Adds:
- *  - `signIn`: Sign-In-With-Solana (`solana:signIn`). Optional;
- *    `capabilities.signIn` gates availability at runtime.
- *  - `signTransaction`: sign-only path for wallets that advertise
- *    `solana:signTransaction` but not `solana:signAndSendTransaction`.
- *    Optional; `capabilities.signTransaction` gates availability.
+ * Both additions are optional at runtime; gate them on
+ * `capabilities.signIn` / `capabilities.signTransaction`, which mirror
+ * what the wallet actually advertises.
  */
 type SvmWallet = WalletBase & {
   /** Sign In With Solana (SIWS, `solana:signIn`). Authenticates the user
@@ -109,22 +96,18 @@ type SuiWallet = WalletBase & {
 };
 
 /**
- * Bitcoin wallet surface. `signTransaction` here is `bitcoin:signPsbt`
- * (sign-only PSBT path). Consumers pass `psbt.toBuffer()` bytes; the
- * wallet returns the signed PSBT bytes for the consumer to finalise /
- * broadcast through their own Esplora / Electrum client.
+ * `signTransaction` is `bitcoin:signPsbt`: pass `psbt.toBuffer()` bytes
+ * and get signed PSBT bytes back, to finalise and broadcast through
+ * your own Esplora or Electrum client.
  */
 type BitcoinWallet = WalletBase & {
   signTransaction?: (tx: unknown, account?: Account) => Promise<Uint8Array>;
 };
 
 /**
- * Polkadot/Substrate wallet surface. No standalone `signTransaction`:
- * building an extrinsic needs chain metadata (an RPC round-trip butr
- * doesn't ship), so transaction signing happens through the
- * `getSigner()` handoff; the consumer builds and submits with the
- * wallet's signer (e.g. polkadot-api). Message signing works via the
- * injected `signer.signRaw`. Same shape as `EvmWallet`.
+ * No standalone `signTransaction`: building an extrinsic needs chain
+ * metadata over RPC, which butr does not ship, so transaction signing
+ * goes through the `getSigner()` handoff.
  */
 type PolkadotWallet = WalletBase;
 
@@ -138,22 +121,9 @@ type BitcoinAdapter = Connector<"bitcoin"> & BitcoinWallet;
 type PolkadotAdapter = Connector<"polkadot"> & PolkadotWallet;
 
 /**
- * Full adapter interface; discriminated union by `chainPlatform`.
- *
- * Narrow on `wallet.connector.chainPlatform === "svm"` (etc.) to gain
- * access to platform-specific methods like `signIn` (SVM) or
- * `signTransaction` (SVM / Sui / Bitcoin). Calling those methods on a
- * non-narrowed `WalletAdapter` is a TypeScript error; that's the
- * point. The discriminant carries the type-level fact "this method
- * doesn't exist on EVM" so consumers can't accidentally branch on
- * `capabilities.signIn` and call a method that EVM adapters don't
- * implement.
- *
- * Runtime gating via `capabilities` still matters for the methods that
- * are OPTIONAL within a platform (a Solana wallet might or might not
- * advertise `solana:signTransaction`). Capabilities narrow "wallet
- * supports this feature"; the discriminated union narrows "this
- * platform has this concept at all".
+ * The union narrows "this platform has the concept at all"; the
+ * `capabilities` flags narrow "this wallet supports it right now".
+ * Both gates are needed, and neither substitutes for the other.
  */
 type WalletAdapter = EvmAdapter | SvmAdapter | SuiAdapter | BitcoinAdapter | PolkadotAdapter;
 

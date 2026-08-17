@@ -1,14 +1,7 @@
 /**
- * Tagged union of normalised connection errors.
- *
- * butr maps thrown values from connectors (which vary across wallet SDKs:
- * MetaMask uses EIP-1193 codes, Phantom throws stringly-typed errors,
- * embedded SDKs throw their own classes) into a small set of UX-meaningful
- * variants. Consumers branch on `kind` instead of regexing message strings.
- *
- * `message` is always present and human-readable. `cause` preserves the
- * original thrown value so callers can inspect raw connector errors when
- * the variant is `Unknown`.
+ * Wallet SDKs disagree on error shape (EIP-1193 codes, bare strings,
+ * bespoke classes), so consumers branch on `kind` rather than regexing
+ * messages. `cause` keeps the original value for the `Unknown` case.
  */
 type ConnectionError =
   | { kind: "UserRejected"; message: string }
@@ -22,17 +15,9 @@ type ConnectionError =
 type ConnectionErrorKind = ConnectionError["kind"];
 
 /**
- * Normalise a thrown value into a `ConnectionError`.
- *
- * Recognises:
- *  - butr's own `Error("Connection timeout")` (from the 90s connect timeout)
- *  - butr's own `Error("Failed to get account")` (from the connect flow)
- *  - EIP-1193 numeric `code` properties (`4001` → UserRejected,
- *    `-32002` → RequestPending, `4100`/`4900`/`4901` → NotConnected:
- *    unauthorized / disconnected from all-or-one chains)
- *  - common message substrings: "user rejected" / "user denied",
- *    "locked", "chain", etc.
- *  - anything else → `Unknown` with `cause` set to the original value.
+ * EIP-1193 codes: `4001` rejected, `-32002` pending, `4100`/`4900`/`4901`
+ * unauthorized or disconnected. Message-substring matching is the last
+ * resort for SDKs that ship no codes at all.
  */
 const mapConnectionError = (raw: unknown): ConnectionError => {
   if (raw instanceof Error) {

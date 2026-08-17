@@ -40,17 +40,14 @@ const CAPS_UNISAT: WalletCapabilities = {
   switchChain: false,
 };
 
-/**
- * Wrap a UniSat-style provider (`window.unisat`, `window.okxwallet.bitcoin`,
- * `window.btc`) into a butr `WalletAdapter`.
- *
- * The UniSat shape is consistent enough that one adapter handles every
- * derivative. Differences (network names, `sendBitcoin` presence) are
- * gated by feature detection per call.
- */
 const toStringArray = (value: unknown): Array<string> =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
+/**
+ * The UniSat shape is consistent enough across `window.unisat`,
+ * `window.okxwallet.bitcoin` and `window.btc` that one adapter covers all
+ * three; the differences (network names, `sendBitcoin`) are probed per call.
+ */
 const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider): WalletAdapter => {
   let chain: ChainBase = BITCOIN_CHAINS.mainnet;
 

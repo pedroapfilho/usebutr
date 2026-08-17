@@ -47,25 +47,13 @@ const loadEth = async (): Promise<EthAppConstructor> => {
   return ctor;
 };
 
-/**
- * EVM-specific Ledger adapter options. Each option is **fully typed
- * for the EVM platform**; no opaque DI bag, no `unknown` chain hints.
- * Other platforms (`createSvmLedgerAdapter`, etc., as they're added)
- * will have their own option types.
- */
+/** EVM-specific Ledger adapter options. */
 type EvmLedgerOptions = {
-  /**
-   * How many accounts to enumerate via `getAccounts()`. Each path walk
-   * hits the device (~1-2 s per address), so larger values are slow.
-   * Default: 1.
-   */
+  /** Each path walk hits the device (~1-2 s per address), so larger values are
+   *  slow. Default: 1. */
   accountCount?: number;
-  /**
-   * EIP-155 chain id the adapter signs against. Stored locally;
-   * Ledger has no internal "current chain" concept; `chainId` enters
-   * the signing pipeline per-tx. `switchChain` updates this value.
-   * Default: 1 (Ethereum mainnet).
-   */
+  /** Ledger has no internal "current chain", so this is stored locally and
+   *  enters the signing pipeline per-tx. Default: 1 (Ethereum mainnet). */
   chainId?: number;
   /**
    * BIP-32 derivation path *prefix*. `getAccounts(n)` appends the
@@ -106,14 +94,9 @@ const buildEvmAccount = (address: string, chain: ChainBase): Account => ({
 });
 
 /**
- * Build a Ledger hardware-wallet adapter wired to the **EVM Ethereum
- * app**. The returned adapter is fully-formed but UN-paired; pairing
- * happens when butr's runtime calls `adapter.connect()`, at which point
- * the browser shows the WebUSB permission prompt and the user unlocks
- * their Ledger.
- *
- * Direct callers can use this; most consumers go through
- * `createLedgerAdapter` in `adapter.ts`, which dispatches by platform.
+ * The returned adapter is UN-paired: pairing happens on `adapter.connect()`,
+ * when the browser prompts for WebUSB access and the user unlocks the device
+ * and opens the Ethereum app.
  */
 const createEvmLedgerAdapter = (options: EvmLedgerOptions): Promise<WalletAdapter> => {
   let chainId = options.chainId ?? DEFAULT_CHAIN_ID;

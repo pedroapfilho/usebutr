@@ -28,15 +28,9 @@ type PolkadotSignerHandle = {
 };
 
 /**
- * Convert a wallet display name into a stable kebab-case slug for the
- * injected adapter id. Strips anything that isn't a lowercase letter or
- * digit (turning "Polkadot{.js}" → "polkadot-js"), then prepends the
- * injected Polkadot channel prefix.
- *
- * This is intentionally NOT the wallet-standard-shared `slugify` helper;
- * that helper embeds the `wallet-standard:` scheme which is wrong for
- * the injected channel. The ID convention for injected adapters is
- * `injected:polkadot:<slug>`.
+ * Deliberately not wallet-standard-shared's `slugify`: that helper embeds
+ * the `wallet-standard:` scheme, while injected adapter ids follow the
+ * `injected:polkadot:<slug>` convention.
  */
 const toKebab = (name: string): string =>
   name
@@ -60,13 +54,8 @@ type InjectedSession = {
 };
 
 /**
- * Wrap a `window.injectedWeb3[name]` provider into a butr
- * `PolkadotAdapter`. The provider is NOT enabled at construction;
- * `enable()` triggers the authorization prompt, so it runs lazily in
- * `connect()`. Before connect, `getAccount` returns null.
- *
- * `id` is `injected:polkadot:<slug>` so consumers can distinguish the
- * injected channel from the Wallet Standard one in their picker.
+ * The provider is not enabled at construction: `enable()` raises the
+ * extension's authorization prompt, so it runs lazily in `connect()`.
  */
 const buildInjectedPolkadotAdapter = (
   extensionName: string,

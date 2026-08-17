@@ -24,15 +24,9 @@ const DEFAULT_METHODS: ReadonlyArray<string> = [
 const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged", "disconnect"];
 
 /**
- * EVM (CAIP `eip155:*`) namespace builder. Wraps the paired
- * `UniversalProvider` as an EIP-1193 provider and runs the result
- * through `buildEvmAdapter`, which gives us every EIP-1193 method
- * (request, on/removeListener, accountsChanged/chainChanged) wired
- * to butr's `WalletAdapter` contract.
- *
- * Overrides `connect` (the WC namespace handshake) and `disconnect`
- * (kill the session) because those are session-lifecycle concerns,
- * not EIP-1193 method calls.
+ * The paired `UniversalProvider` is already EIP-1193-shaped, so this reuses
+ * `buildEvmAdapter` and overrides only `connect` / `disconnect`: those are
+ * WC session lifecycle, not EIP-1193 method calls.
  */
 const evmNamespace: WalletConnectNamespaceBuilder = {
   buildAdapter({ chains, icon, id, name, provider, session }) {

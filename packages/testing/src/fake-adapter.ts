@@ -22,16 +22,6 @@ const DEFAULT_CAPABILITIES: WalletCapabilities = {
   switchChain: true,
 };
 
-/**
- * Build a fully-configured fake `WalletAdapter` for tests. Every method
- * resolves to a deterministic stub value. Override individual methods
- * on the returned object after construction to introduce failure modes:
- *
- * ```ts
- * const adapter = createFakeAdapter({ id: "metamask" });
- * adapter.connect = () => Promise.reject(new Error("user rejected"));
- * ```
- */
 const signBytes = (tx: unknown) =>
   Promise.resolve(tx instanceof Uint8Array ? tx : new Uint8Array());
 

@@ -12,10 +12,9 @@ type WalletStandardPolkadotCapabilityInput = {
 };
 
 /**
- * injectedWeb3 capability profile. The injected `signer.signRaw` always
- * supports message signing and `accounts.subscribe` always supports events,
- * so both are unconditional. The chain count comes from butr's own registry
- * because injectedWeb3 wallets advertise no chains of their own.
+ * injectedWeb3 always exposes `signer.signRaw` and `accounts.subscribe`, so
+ * those flags are unconditional. The chain count comes from butr's own
+ * registry because injectedWeb3 wallets advertise no chains.
  */
 const resolveInjectedPolkadotCapabilities = (): WalletCapabilities =>
   buildWalletCapabilities({

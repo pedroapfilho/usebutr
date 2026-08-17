@@ -28,16 +28,9 @@ class WalletStorage implements WalletPersistence {
   private readonly persistent: StorageDriver;
   private readonly session: StorageDriver;
   /**
-   * Serializes pool-key mutations so concurrent fire-and-forget
-   * writes can't interleave their read-modify-write phases. Without
-   * this, two simultaneous `setPool` calls both read the pre-write
-   * state, each merge their own entries, and whichever finishes last
-   * overwrites the other's additions.
-   *
-   * Nothing reachable from inside a queued mutation may re-enter this queue:
-   * it is not reentrant, so a nested acquire self-deadlocks and leaves the
-   * queue permanently pending. Queued mutations therefore read through
-   * `readPool`, never through the public `getPool`, which can repair.
+   * Serializes pool read-modify-writes; without it concurrent `setPool`
+   * calls drop each other's entries. Not reentrant, so a queued mutation
+   * must read via `readPool`: `getPool` re-enters and deadlocks it.
    */
   private poolMutationQueue: Promise<unknown> = Promise.resolve();
 
@@ -114,14 +107,9 @@ class WalletStorage implements WalletPersistence {
   }
 
   /**
-   * Upsert the in-memory pool into storage. Additive: entries in
-   * `pool` are written; entries already in storage that aren't in
-   * `pool` are kept. The in-memory pool reflects "what's live right
-   * now", not "the complete list of remembered connections"; a
-   * silent reconnect that fails on reload leaves the entry out of
-   * the pool but the saved entry stays so the next load can retry.
-   * Use `removePoolEntry` for explicit eviction (the user clicked
-   * Disconnect) and `clearAll` for a full wipe (reset).
+   * Additive on purpose: a failed silent reconnect drops the entry from
+   * the live pool, and it must survive to be retried next load.
+   * Eviction goes through `removePoolEntry` or `clearAll`.
    */
   async setPool(pool: Map<string, ConnectedWallet>): Promise<void> {
     await this.serializePoolMutation(async () => {
@@ -218,12 +206,9 @@ class WalletStorage implements WalletPersistence {
   }
 
   /**
-   * Disconnect-intent tracking.
-   *
-   * Lives in the session driver: survives component remounts (unlike refs)
-   * but clears when the session ends (unlike the persistent driver).
-   * Prevents auto-connect from firing immediately after a manual disconnect,
-   * while still allowing auto-connect on fresh sessions.
+   * Kept in the session driver so it survives remounts (unlike a ref)
+   * yet clears at session end (unlike the persistent driver): a manual
+   * disconnect must suppress auto-connect now, not forever.
    */
   async isUserDisconnected(): Promise<boolean> {
     try {

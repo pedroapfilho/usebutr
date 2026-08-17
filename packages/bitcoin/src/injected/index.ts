@@ -71,19 +71,9 @@ const probeProviders = (host: InjectedHost): Array<WalletAdapter> => {
 };
 
 /**
- * Last-resort discovery path for Bitcoin wallets that DON'T announce via
- * Wallet Standard. Probes, in order: `window.unisat`,
- * `window.okxwallet.bitcoin`, `window.XverseProviders.BitcoinProvider`,
- * `window.btc`.
- *
- * Wallet Standard wallets (Phantom, Magic Eden, Leather, modern OKX
- * builds) are already handled by `discoverBitcoinAdapters`. This
- * fallback waits `settleMs` (default 150ms), consults
- * `hasAnyWalletStandardAdapter` if provided, and emits adapters for
- * any injected providers that weren't already covered.
- *
- * Each emitted adapter has a stable id prefix (`injected:bitcoin:*`)
- * so consumers can distinguish them in the picker UI.
+ * Last-resort path for wallets that don't announce via Wallet Standard:
+ * `window.unisat`, OKX, Xverse, `window.btc`. The `settleMs` wait lets
+ * Wallet Standard announce first, else a wallet on both channels lists twice.
  */
 const discoverInjectedBitcoinAdapter = (
   onAdapter: (adapter: WalletAdapter) => void,

@@ -21,44 +21,9 @@ const SOLANA_DECIMALS = 9;
 const SOLANA_MAINNETS: ReadonlyArray<string> = ["solana:mainnet", "solana:mainnet-beta"];
 
 /**
- * Adapt a Solana Wallet Standard `Wallet` object into a butr
- * `WalletAdapter`. Returns `null` if the wallet doesn't advertise any
- * Solana chain or doesn't expose `standard:connect`; both required
- * for butr to do anything useful with it.
- *
- * **Capability gating**
- *
- *  - `signMessage` is only present if the wallet advertises
- *    `solana:signMessage`. Without it, calling `adapter.signMessage`
- *    rejects with a clear error.
- *  - `sendTx` / `sendTxToChain` use `solana:signAndSendTransaction`.
- *    Without it, those methods reject.
- *  - `subscribe` is wired through `standard:events`. Wallets that
- *    don't expose events get a no-op unsubscribe.
- *
- * **Known limitations**
- *
- *  - `getBalance` returns `{ value: 0n, formatted: "0", … }`. Solana
- *    balance reads require an RPC connection that's outside butr's
- *    scope; consumers wrap their own RPC client.
- *  - `getTransactionReceipt` returns `{ status: "Pending" }`. Same
- *    reason; needs an RPC.
- *  - `switchChain` updates butr's view of the current Solana cluster
- *    locally and routes subsequent `signAndSendTransaction` calls
- *    through the new chain. Wallet Standard has no "tell the wallet
- *    to switch cluster" RPC; the wallet's own UI controls its global
- *    cluster setting, and `signAndSendTransaction` accepts the chain
- *    per-call. The chain must be one the wallet advertises in
- *    `wallet.chains`; otherwise the call rejects.
- *  - `requestAccounts` re-runs `standard:connect`. Some wallets show
- *    their account picker again; others (those that "remember"
- *    authorisations) silently return the existing accounts. butr
- *    refreshes the pool entry's `accounts` array either way.
- *  - `switchAccount` is intentionally unimplemented. Wallet Standard
- *    has no silent "use address X" feature; the user picks the active
- *    account through the wallet's own UI. `signAndSendTransaction`
- *    accepts an `account` input, so consumers needing per-tx address
- *    selection can pick one from `accounts` at call time.
+ * Wallet Standard has no switch-cluster RPC: `switchChain` re-points butr's
+ * view only, and `signAndSendTransaction` takes the chain per call.
+ * `requestAccounts` re-runs `standard:connect`; some wallets answer silently.
  */
 const buildSvmAdapter = (
   wallet: WalletStandardWallet,
@@ -229,24 +194,9 @@ const buildSvmAdapter = (
 };
 
 /**
- * Subscribe to Solana Wallet Standard announcements.
- * Spec: https://github.com/wallet-standard/wallet-standard
- *
- * Runtime requires the `@wallet-standard/app` package, which is an
- * **optional peer dependency** of butr. EVM-only consumers don't need
- * to install it; discovery will silently skip the SVM side if the
- * module isn't resolvable.
- *
- * Install for SVM auto-discovery:
- *
- *     npm install @wallet-standard/app
- *
- * The function returns a synchronous unsubscribe that's safe to call
+ * Requires the optional `@wallet-standard/app` peer dep; without it SVM
+ * discovery silently does nothing. The returned unsubscribe is safe to call
  * before the dynamic import has resolved.
- *
- * Implementation: the discovery loop (dynamic import, dedupe, register
- * / unregister bridge) lives in `@usebutr/wallet-standard-shared`. This
- * file's only job is to hand the kit a per-wallet builder.
  */
 const discoverSvmAdapters = (onAdapter: (adapter: WalletAdapter) => void): (() => void) =>
   discoverWalletStandard(onAdapter, (wallet, registerDisconnector) =>

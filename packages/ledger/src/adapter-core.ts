@@ -87,15 +87,9 @@ type LedgerAdapterCore<TApp> = {
 };
 
 /**
- * Device plumbing every Ledger app adapter repeats: the transport +
- * app-instance lifecycle, the derivation-path walk that maps a butr
- * `Account` back to the path the device signs with, and the rejections for
- * the RPC-backed methods Ledger has no answer for (it signs, it never
- * broadcasts, and it emits no events).
- *
- * App packages keep only what genuinely differs: their chain shape, the
- * device instructions they call, and how they encode addresses,
- * transactions, and signatures.
+ * Device plumbing every Ledger app adapter repeats. Ledger signs but never
+ * broadcasts and emits no events, so the RPC-backed methods reject from here
+ * rather than each app package.
  */
 const createLedgerAdapterCore = <TApp>({
   accountCount: requestedAccountCount,

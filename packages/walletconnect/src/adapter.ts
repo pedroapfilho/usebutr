@@ -39,20 +39,15 @@ type WalletConnectOptions = {
   /** Override the wallet's display name. Default `"WalletConnect"`. */
   name?: string;
   /**
-   * Per-namespace chain requests. Each key is a `ChainPlatform`; each
-   * value is the CAIP-2 chains to advertise for that namespace.
-   *
-   * Omit a key to skip that namespace entirely. Pass an empty array
-   * to use the namespace builder's `defaultChains`.
+   * Each key is a `ChainPlatform`, each value the CAIP-2 chains to
+   * advertise. Omit a key to skip that namespace; pass an empty array to
+   * fall back to the builder's `defaultChains`.
    */
   namespaces: Partial<Record<ChainPlatform, ReadonlyArray<string>>>;
   /**
-   * Called with the WalletConnect pairing URI whenever the provider
-   * needs the user to scan a QR code (or open a mobile deep link).
-   * butr ships no QR renderer by design; consumers wire their own
-   * (`@walletconnect/modal`, `qrcode`, hand-rolled). On mobile,
-   * forward the URI to `window.location` to trigger the OS's wallet
-   * selection sheet.
+   * butr ships no QR renderer by design, so wire your own
+   * (`@walletconnect/modal`, `qrcode`). On mobile, forward the URI to
+   * `window.location` to trigger the OS's wallet selection sheet.
    */
   onPairingUri?: (uri: string) => void;
   /**
@@ -108,45 +103,9 @@ const KNOWN_NAMESPACES: Readonly<Record<string, WalletConnectNamespaceBuilder | 
 };
 
 /**
- * WalletConnect v2 factory. Accepts a per-platform `chains` map and
- * returns one adapter per requested namespace from a single paired
- * session. Each returned adapter has its own id (with a platform suffix
- * when more than one namespace is requested) so butr's pool can hold
- * them simultaneously.
- *
- * EVM, SVM (Solana), Sui, and Bitcoin (bip122) namespace builders all
- * ship with the package. The factory is shaped this way so adding a
- * platform = adding one file under `src/namespaces/` and one entry to
- * {@link KNOWN_NAMESPACES}, with no API change elsewhere.
- *
- * A WC v2 session's namespaces are fixed at approval time, so the
- * pairing declares the union up front: the first requested namespace
- * is required, the rest optional. Adapters for a namespace the wallet
- * declined reject on `connect()` rather than report a connection whose
- * requests would fail at the relay.
- *
- * @example Single namespace
- * ```ts
- * const [wc] = await createWalletConnectAdapters({
- *   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
- *   namespaces: { evm: ["eip155:1"] },
- *   onPairingUri: (uri) => setQrUri(uri),
- * });
- * ```
- *
- * @example Multi-namespace
- * ```ts
- * const wcs = await createWalletConnectAdapters({
- *   projectId,
- *   namespaces: {
- *     evm: ["eip155:1"],
- *     svm: ["solana:mainnet"],
- *     sui: ["sui:mainnet"],
- *     bitcoin: ["bip122:000000000019d6689c085ae165831e93"],
- *   },
- *   onPairingUri: (uri) => setQrUri(uri),
- * });
- * ```
+ * A WC v2 session's namespaces are fixed at approval time, so the pairing
+ * declares the union up front: first namespace required, the rest optional.
+ * Adapters for a declined namespace reject on `connect()`.
  */
 const createWalletConnectAdapters = async (
   options: WalletConnectOptions,

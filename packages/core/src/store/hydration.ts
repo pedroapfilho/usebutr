@@ -46,26 +46,15 @@ type HydrateResult = {
 };
 
 type HydrationCoordinator = {
-  /**
-   * Restore a parked entry whose adapter has now become available.
-   * Returns `null` if no entry is parked under `connectorId`. Returns an
-   * `ok` outcome with the new `ConnectedWallet`, or a `fail` outcome
-   * with the error (storage cleanup is handled internally).
-   */
+  /** Storage cleanup on a `fail` outcome is handled internally; the
+   *  caller only routes the error. */
   drainPending: (connectorId: string) => Promise<RestoreOutcome | null>;
-  /**
-   * Read storage, instantiate every adapter that's currently
-   * registered, restore in parallel, park the rest. After the returned
-   * promise resolves, the coordinator holds an internal pending queue
-   * indexed by `connectorId`. Resolve queued entries via `drainPending`.
-   */
+  /** Entries whose adapter is not registered yet are parked, not
+   *  dropped; the caller must drain them via `drainPending` or those
+   *  wallets never reconnect. */
   hydrate: () => Promise<HydrateResult>;
-  /**
-   * Snapshot of currently-parked ids. The runtime uses this once
-   * immediately after `hydrate()` resolves to drain entries whose
-   * adapter announced *during* the hydration window (the discovery race
-   * we used to resolve manually inside the store).
-   */
+  /** Read once right after `hydrate()` resolves, to catch adapters that
+   *  announced during the hydration window. */
   pendingIds: () => Array<string>;
 };
 

@@ -148,6 +148,14 @@ const createWalletStore = (config: WalletManagerConfig) => {
         refreshPoolEntry(connectorId, [...accounts], active);
       },
       onDisconnected: (connectorId, chainPlatform) => {
+        // Tear the connector down as well as dropping it from the pool. The
+        // adapter instance is cached by discovery and handed back on the next
+        // connect, so an adapter that reported itself disconnected while
+        // holding a live session would be reused in that state.
+        const wallet = get().pool.get(connectorId);
+        if (wallet) {
+          void run(() => wallet.connector.disconnect?.() ?? Promise.resolve(), logError);
+        }
         dispatch({ connectorId, type: "DISCONNECTED" });
         config.onDisconnect?.(chainPlatform);
       },
@@ -219,7 +227,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
           onSuccess?.(entry);
         } catch (error) {
           const normalised = mapConnectionError(error);
-          dispatch({ error: normalised, type: "CONNECT_FAILED" });
+          dispatch({ connectorId, error: normalised, type: "CONNECT_FAILED" });
           try {
             await connector.disconnect?.();
           } catch (disconnectError: unknown) {
@@ -279,6 +287,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
         const result = await hydration.hydrate();
         dispatch({
           activeConnectorId: result.activeConnectorId,
+          dropped: result.dropped.map((d) => d.connectorId),
           isUserDisconnected: result.isUserDisconnected,
           pool: result.pool,
           selection: result.selection,
@@ -390,7 +399,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
           logWarn(`[butr] late restore failed for ${connectorId}:`, outcome.error);
           return;
         }
-        dispatch({ connectorId, entry: outcome.entry, type: "CONNECT_SUCCEEDED" });
+        dispatch({ connectorId, entry: outcome.entry, type: "ENTRY_RESTORED" });
         lifecycle.attach(connectorId, outcome.entry.connector);
         await Promise.all([persistPool(), persistSelection(), persistActive()]);
         config.onConnect?.(outcome.entry);

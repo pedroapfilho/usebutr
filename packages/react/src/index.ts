@@ -20,6 +20,7 @@ export {
   useIsConnecting,
   useIsHydrated,
   useIsPlatformConnected,
+  useIsReconnecting,
   useIsUserDisconnected,
   usePool,
   useSelectedWallet,

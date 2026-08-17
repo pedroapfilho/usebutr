@@ -155,6 +155,49 @@ describe("multi-platform hydration (EVM + SVM)", () => {
     expect(ids).toEqual(["io.metamask", "phantom"]);
   });
 
+  // A late restore is driven by wallet discovery at an arbitrary time. It must
+  // not write the connect-attempt status, which belongs to the user's own
+  // action, nor steal the active selection from it.
+  it("a late restore does not touch connection status or steal the active wallet", async () => {
+    const storage = buildSharedStorage();
+    const evmAdapter = buildEvmAdapter();
+    const svmAdapter = buildSvmAdapter();
+
+    const firstAdapters = new Map<string, WalletAdapter>([
+      [evmAdapter.id, evmAdapter],
+      [svmAdapter.id, svmAdapter],
+    ]);
+    const firstStore = createWalletStore({
+      connectors: [],
+      createConnector: (id) => firstAdapters.get(id) ?? null,
+      storage,
+    });
+    await firstStore.getState().hydrateWallets();
+    await firstStore.getState().connectWallet(evmAdapter.id);
+    await firstStore.getState().connectWallet(svmAdapter.id);
+
+    const lateAdapters = new Map<string, WalletAdapter>([[evmAdapter.id, evmAdapter]]);
+    const reloadedStore = createWalletStore({
+      connectors: [],
+      createConnector: (id) => lateAdapters.get(id) ?? null,
+      storage,
+    });
+    await reloadedStore.getState().hydrateWallets();
+
+    const statusBefore = reloadedStore.getState().connectionStatus;
+    const activeBefore = reloadedStore.getState().activeConnectorId;
+    expect(statusBefore).toBe("idle");
+
+    lateAdapters.set(svmAdapter.id, svmAdapter);
+    await reloadedStore.getState().tryRestoreFromPending(svmAdapter.id);
+
+    const state = reloadedStore.getState();
+    expect(state.pool.has(svmAdapter.id)).toBe(true);
+    expect(state.connectionStatus).toBe(statusBefore);
+    expect(state.connectingConnectorId).toBeNull();
+    expect(state.activeConnectorId).toBe(activeBefore);
+  });
+
   it("preserves entries added by CONNECT_SUCCEEDED that races with HYDRATED (regression: HYDRATED merges, not replaces)", async () => {
     const storage = buildSharedStorage();
     const evmAdapter = buildEvmAdapter();

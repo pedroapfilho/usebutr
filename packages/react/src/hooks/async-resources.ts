@@ -1,7 +1,7 @@
 import type { Balance } from "@usebutr/core";
 import { useCallback, useEffect, useMemo, useReducer } from "react";
 
-import { useWalletEntry } from "./selectors";
+import { useIsReconnecting, useWalletEntry } from "./selectors";
 
 /**
  * Async-resource hooks: return `AsyncState<T>` and run lifecycle
@@ -109,12 +109,17 @@ const useAsyncResource = <T>(fn: (() => Promise<T>) | null): AsyncState<T> => {
  * signer is returned.
  *
  * Returns `{ data, error, status }`. `status` is `"idle"` when there's no
- * wallet, `"loading"` while the connector resolves, `"success"` once the
- * signer is available, `"error"` if `getSigner()` rejected.
+ * wallet or the wallet is still reconnecting, `"loading"` while the connector
+ * resolves, `"success"` once the signer is available, `"error"` if
+ * `getSigner()` rejected.
  */
 const useSigner = (connectorId?: string | null): AsyncState<unknown> => {
   const wallet = useWalletEntry(connectorId);
-  const fn = useMemo(() => (wallet ? () => wallet.connector.getSigner() : null), [wallet]);
+  const reconnecting = useIsReconnecting(connectorId);
+  const fn = useMemo(
+    () => (wallet && !reconnecting ? () => wallet.connector.getSigner() : null),
+    [wallet, reconnecting],
+  );
   return useAsyncResource(fn);
 };
 
@@ -130,14 +135,15 @@ type UseBalanceResult = AsyncState<Balance> & { refetch: () => void };
  */
 const useBalance = (connectorId?: string | null, mint?: string): UseBalanceResult => {
   const wallet = useWalletEntry(connectorId);
+  const reconnecting = useIsReconnecting(connectorId);
   const [counter, bumpCounter] = useReducer((n: number) => n + 1, 0);
   const refetch = useCallback(() => {
     bumpCounter();
   }, []);
   const fn = useMemo(() => {
     void counter;
-    return wallet ? () => wallet.connector.getBalance(mint) : null;
-  }, [wallet, mint, counter]);
+    return wallet && !reconnecting ? () => wallet.connector.getBalance(mint) : null;
+  }, [wallet, mint, counter, reconnecting]);
   const state = useAsyncResource(fn);
   return { ...state, refetch };
 };

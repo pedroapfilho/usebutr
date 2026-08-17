@@ -60,14 +60,42 @@ const accountsEqual = (a: ReadonlyArray<Account>, b: ReadonlyArray<Account>) => 
  * machine stays a narrow tracker of the in-flight connect attempt
  * while the public hook gives consumers the broader vocabulary they
  * need to render.
+ *
+ * `"connecting"` and `"error"` take precedence over `"reconnecting"`: those
+ * describe the user's own in-flight attempt, which must stay visible even
+ * while some other wallet is still reconnecting in the background. For the
+ * per-wallet question on its own, use `useIsReconnecting`.
  */
 const useConnectionStatus = () => {
   const store = useWalletStoreContext();
   return useStore(store, (state) => {
+    // A live connect attempt outranks the derived value. The two answer
+    // different questions ("how is the user's attempt going" vs "is the active
+    // wallet still a placeholder"), and letting the derivation win hid an
+    // in-flight spinner and, worse, a connection error.
+    if (state.connectionStatus === "connecting" || state.connectionStatus === "error") {
+      return state.connectionStatus;
+    }
     if (state.activeConnectorId !== null && state.reconnectingIds.has(state.activeConnectorId)) {
       return "reconnecting" as const;
     }
     return state.connectionStatus;
+  });
+};
+
+/**
+ * Whether a specific wallet is still backed by a shadow adapter, i.e. seeded
+ * from `initialState` and waiting on the silent reconnect. Defaults to the
+ * active wallet.
+ *
+ * Shadow adapters reject every call, so this is the gate for "can I touch this
+ * connector yet". `useSigner` and `useBalance` apply it for you.
+ */
+const useIsReconnecting = (connectorId?: string | null) => {
+  const store = useWalletStoreContext();
+  return useStore(store, (state) => {
+    const id = connectorId ?? state.activeConnectorId;
+    return id !== null && id !== undefined && state.reconnectingIds.has(id);
   });
 };
 
@@ -264,6 +292,7 @@ export {
   useIsConnecting,
   useIsHydrated,
   useIsPlatformConnected,
+  useIsReconnecting,
   useIsUserDisconnected,
   usePool,
   useSelectedWallet,

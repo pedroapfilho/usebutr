@@ -21,7 +21,12 @@ minimumReleaseAgeExclude:
   - "@oxlint-tsgolint/win32-arm64@7.0.2001"
   - "@oxlint-tsgolint/win32-x64@7.0.2001"
   - oxlint-tsgolint@7.0.2001
-  - oxlint-config-awesomeness@3.4.2
+  - "@dashfoo/*"
+  - "@easeia/*"
+  - "@usebutr/*"
+  - "@walletwright/*"
+  - astro-awesomeness
+  - oxlint-config-awesomeness
   - "@tanstack/react-router-devtools@1.167.1"
   - "@tanstack/react-router@1.170.19"
   - "@tanstack/react-start-client@1.168.17"

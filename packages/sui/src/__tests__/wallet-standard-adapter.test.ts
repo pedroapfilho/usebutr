@@ -32,7 +32,14 @@ const buildAccount = (
   features,
 });
 
-type FeatureMap = Record<string, unknown>;
+type SuiFeature =
+  | StandardConnectFeature
+  | StandardDisconnectFeature
+  | SuiSignAndExecuteTransactionFeature
+  | SuiSignPersonalMessageFeature
+  | SuiSignTransactionFeature;
+
+type FeatureMap = Record<string, SuiFeature>;
 
 const buildWallet = (overrides: Partial<WalletStandardWallet> = {}): WalletStandardWallet => ({
   accounts: [buildAccount("0xSuiAddress1")],
@@ -215,7 +222,10 @@ describe("buildSuiAdapter", () => {
       signTransaction: vi.fn().mockResolvedValue({ bytes: "AQID", signature: "BAUG" }),
     };
     const wallet = withFeatures(buildWallet({ accounts: [account] }), {
-      "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+      "standard:connect": {
+        connect: vi.fn().mockResolvedValue({ accounts: [] }),
+        version: "1.0.0",
+      },
       "sui:signTransaction": signFeature,
     });
     const adapter = expectSuiAdapter(buildSuiAdapter(wallet));
@@ -228,7 +238,10 @@ describe("buildSuiAdapter", () => {
 
   it("signTransaction() is absent when sui:signTransaction is not advertised", () => {
     const wallet = withFeatures(buildWallet(), {
-      "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+      "standard:connect": {
+        connect: vi.fn().mockResolvedValue({ accounts: [] }),
+        version: "1.0.0",
+      },
     });
     const adapter = expectSuiAdapter(buildSuiAdapter(wallet));
     expect(adapter.signTransaction).toBeUndefined();
@@ -242,7 +255,10 @@ describe("buildSuiAdapter", () => {
         .mockResolvedValue({ bytes: "", digest: "d", effects: "", signature: "" }),
     };
     const wallet = withFeatures(buildWallet({ accounts: [account] }), {
-      "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+      "standard:connect": {
+        connect: vi.fn().mockResolvedValue({ accounts: [] }),
+        version: "1.0.0",
+      },
       "sui:signAndExecuteTransaction": sendFeature,
     });
     const adapter = buildSuiAdapter(wallet);
@@ -261,7 +277,10 @@ describe("buildSuiAdapter", () => {
         .mockResolvedValue({ bytes: "", digest: "d", effects: "", signature: "" }),
     };
     const wallet = withFeatures(buildWallet({ accounts: [account] }), {
-      "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+      "standard:connect": {
+        connect: vi.fn().mockResolvedValue({ accounts: [] }),
+        version: "1.0.0",
+      },
       "sui:signAndExecuteTransaction": sendFeature,
     });
     const adapter = buildSuiAdapter(wallet);
@@ -280,7 +299,10 @@ describe("buildSuiAdapter", () => {
           .mockResolvedValue({ bytes: "", digest: "d", effects: "", signature: "" }),
       };
       const wallet = withFeatures(buildWallet({ chains }), {
-        "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+        "standard:connect": {
+          connect: vi.fn().mockResolvedValue({ accounts: [] }),
+          version: "1.0.0",
+        },
         "sui:signAndExecuteTransaction": sendFeature,
       });
       return { adapter: buildSuiAdapter(wallet), sendFeature };
@@ -341,7 +363,10 @@ describe("buildSuiAdapter", () => {
 
   it("getTransactionReceipt() returns Pending (no RPC in Wallet Standard)", async () => {
     const wallet = withFeatures(buildWallet(), {
-      "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+      "standard:connect": {
+        connect: vi.fn().mockResolvedValue({ accounts: [] }),
+        version: "1.0.0",
+      },
     });
     const adapter = buildSuiAdapter(wallet);
 
@@ -367,6 +392,7 @@ describe("buildSuiAdapter", () => {
       "sui:signAndExecuteTransaction": sendFeature,
     });
     const adapter = buildSuiAdapter(wallet);
+    // @ts-expect-error Runtime validation protects JavaScript consumers from invalid payloads.
     await expect(adapter?.sendTx(42)).rejects.toThrow(TypeError);
   });
 

@@ -30,25 +30,30 @@ const isEip6963AnnounceEvent = (event: Event): event is Eip6963AnnounceEvent => 
   return (
     typeof info === "object" &&
     info !== null &&
+    "icon" in info &&
+    typeof info.icon === "string" &&
+    "name" in info &&
+    typeof info.name === "string" &&
     "rdns" in info &&
     typeof info.rdns === "string" &&
+    "uuid" in info &&
+    typeof info.uuid === "string" &&
     typeof provider === "object" &&
-    provider !== null
+    provider !== null &&
+    "on" in provider &&
+    typeof provider.on === "function" &&
+    "removeListener" in provider &&
+    typeof provider.removeListener === "function" &&
+    "request" in provider &&
+    typeof provider.request === "function"
   );
 };
-
-const isEventTarget = (value: unknown): value is EventTarget =>
-  typeof value === "object" &&
-  value !== null &&
-  "addEventListener" in value &&
-  typeof value.addEventListener === "function";
 
 const resolveTarget = (target?: EventTarget): EventTarget | null => {
   if (target !== undefined) {
     return target;
   }
-  const candidate: unknown = (globalThis as { window?: unknown }).window;
-  return isEventTarget(candidate) ? candidate : null;
+  return globalThis.window ?? null;
 };
 
 /**

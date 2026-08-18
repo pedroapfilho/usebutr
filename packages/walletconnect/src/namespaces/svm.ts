@@ -1,4 +1,4 @@
-import type { Account, SvmAdapter, WalletCapabilities } from "@usebutr/core";
+import type { Account, SvmAdapter, TransactionInput, WalletCapabilities } from "@usebutr/core";
 import { base58ToBytes, base64ToBytes, bytesToBase64 } from "@usebutr/core";
 
 import { CAIP_WC_CAPABILITIES, createCaipAdapterCore } from "./caip";
@@ -43,12 +43,12 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
       session,
     });
 
-    const signAndSend = async (tx: unknown, account?: Account): Promise<string> => {
+    const signAndSend = async (tx: TransactionInput, account?: Account): Promise<string> => {
       if (!(tx instanceof Uint8Array)) {
         throw new TypeError("SVM sendTx expects a serialized transaction (Uint8Array)");
       }
       const pubkey = resolveAddress(account);
-      const result: unknown = await provider.request({
+      const result = await provider.request({
         method: "solana_signAndSendTransaction",
         params: {
           pubkey,
@@ -88,7 +88,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
 
       async signMessage(msg, account) {
         const pubkey = resolveAddress(account);
-        const result: unknown = await provider.request({
+        const result = await provider.request({
           method: "solana_signMessage",
           params: {
             message: bytesToBase64(msg),
@@ -108,7 +108,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder = {
           throw new TypeError("SVM signTransaction expects a serialized transaction (Uint8Array)");
         }
         const pubkey = resolveAddress(account);
-        const result: unknown = await provider.request({
+        const result = await provider.request({
           method: "solana_signTransaction",
           params: {
             pubkey,

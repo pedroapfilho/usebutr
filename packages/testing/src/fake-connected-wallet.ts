@@ -12,7 +12,7 @@ import { type FakeAdapterOptions, createFakeAdapter } from "./fake-adapter";
 /** Mirrors the per-platform registries in `@usebutr/evm` and friends.
  *  Duplicated rather than imported so `@usebutr/testing` keeps its single
  *  `@usebutr/core` dependency. */
-const DEFAULT_CHAINS: Readonly<Record<ChainPlatform, ChainBase>> = {
+const DEFAULT_CHAINS = {
   bitcoin: {
     id: "bip122:000000000019d6689c085ae165831e93",
     name: "Bitcoin",
@@ -28,17 +28,17 @@ const DEFAULT_CHAINS: Readonly<Record<ChainPlatform, ChainBase>> = {
   },
   sui: { id: "sui:mainnet", name: "Sui Mainnet", namespace: "sui", reference: "mainnet" },
   svm: { id: "solana:mainnet", name: "Solana Mainnet", namespace: "solana", reference: "mainnet" },
-};
+} satisfies Readonly<Record<ChainPlatform, ChainBase>>;
 
 /** Plausibly-shaped addresses per platform: the wrong-looking address is
  *  a common source of confusion when a snapshot test fails. */
-const DEFAULT_ADDRESSES: Readonly<Record<ChainPlatform, string>> = {
+const DEFAULT_ADDRESSES = {
   bitcoin: "bc1qfake000000000000000000000000000000000",
   evm: "0x0000000000000000000000000000000000000001",
   polkadot: "5FakeAddress00000000000000000000000000000000000000",
   sui: "0x0000000000000000000000000000000000000000000000000000000000000001",
   svm: "So11111111111111111111111111111111111111112",
-};
+} satisfies Readonly<Record<ChainPlatform, string>>;
 
 type FakeConnectedWalletOptions = FakeAdapterOptions & {
   /** Wrap an existing adapter instead of building one. When set, the

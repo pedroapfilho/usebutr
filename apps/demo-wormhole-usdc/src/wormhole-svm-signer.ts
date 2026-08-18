@@ -1,5 +1,4 @@
-/* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-argument, typescript/no-unsafe-call -- Wormhole SDK types UnsignedTransaction.transaction as `any`; this file is the typed boundary that narrows it */
-import { type Signature, createSolanaRpc } from "@solana/kit";
+import { assertIsSignature, createSolanaRpc } from "@solana/kit";
 import type { WalletAdapter } from "@usebutr/core";
 import type {
   Chain,
@@ -8,6 +7,7 @@ import type {
   TxHash,
   UnsignedTransaction,
 } from "@wormhole-foundation/sdk-connect";
+import { z } from "zod";
 
 type SolanaRpc = ReturnType<typeof createSolanaRpc>;
 
@@ -20,10 +20,11 @@ const sleep = (ms: number): Promise<void> =>
   });
 
 const confirmSignature = async (rpc: SolanaRpc, sig: string): Promise<void> => {
+  assertIsSignature(sig);
   const deadline = Date.now() + CONFIRM_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    // oxlint-disable-next-line no-await-in-loop, typescript/no-unsafe-type-assertion -- sequential status poll; @solana/kit Signature is a branded string for a validated base58 signature
-    const { value } = await rpc.getSignatureStatuses([sig as Signature]).send();
+    // oxlint-disable-next-line no-await-in-loop
+    const { value } = await rpc.getSignatureStatuses([sig]).send();
     const status = value[0];
     if (status) {
       if (status.err !== null) {
@@ -56,13 +57,45 @@ type VersionedTx = {
   sign: (signers: Array<Web3Signer>) => void;
 };
 
-type SolanaUnsignedTx<N extends Network, C extends Chain> = UnsignedTransaction<N, C> & {
-  description: string;
-  transaction: {
-    signers?: Array<Web3Signer>;
-    transaction: LegacyTx | VersionedTx;
-  };
-};
+const legacyPartialSignSchema = z.custom<LegacyTx["partialSign"]>(
+  (value) => typeof value === "function",
+);
+const legacySerializeSchema = z.custom<LegacyTx["serialize"]>(
+  (value) => typeof value === "function",
+);
+const legacyTxContract = z.object({
+  partialSign: legacyPartialSignSchema,
+  recentBlockhash: z.string().optional(),
+  serialize: legacySerializeSchema,
+});
+const legacyTxSchema = z.custom<LegacyTx>((value) => legacyTxContract.safeParse(value).success);
+
+const versionedSerializeSchema = z.custom<VersionedTx["serialize"]>(
+  (value) => typeof value === "function",
+);
+const versionedSignSchema = z.custom<VersionedTx["sign"]>((value) => typeof value === "function");
+const versionedMessageSchema = z.object({ recentBlockhash: z.string() });
+const versionedTxContract = z.object({
+  message: versionedMessageSchema,
+  serialize: versionedSerializeSchema,
+  sign: versionedSignSchema,
+});
+const versionedTxSchema = z.custom<VersionedTx>(
+  (value) => versionedTxContract.safeParse(value).success,
+);
+
+const web3SignerSchema = z.object({
+  publicKey: z.unknown(),
+  secretKey: z.instanceof(Uint8Array),
+});
+const solanaTransactionSchema = z.object({
+  signers: z.array(web3SignerSchema).optional(),
+  transaction: z.union([versionedTxSchema, legacyTxSchema]),
+});
+const solanaUnsignedTxSchema = z.object({
+  description: z.string(),
+  transaction: solanaTransactionSchema,
+});
 
 const isVersioned = (tx: LegacyTx | VersionedTx): tx is VersionedTx =>
   "message" in tx && typeof tx.message === "object";
@@ -96,10 +129,11 @@ class ButrSvmWormholeSigner<N extends Network, C extends Chain> implements SignA
   async signAndSend(txs: Array<UnsignedTransaction<N, C>>): Promise<Array<TxHash>> {
     const rpc = createSolanaRpc(this._rpcUrl);
     const hashes: Array<TxHash> = [];
-    for (const tx of txs as Array<SolanaUnsignedTx<N, C>>) {
+    for (const tx of txs) {
+      const parsedTx = solanaUnsignedTxSchema.parse(tx);
       // oxlint-disable-next-line no-console
-      console.log(`[wormhole/svm] sending: ${tx.description}`);
-      const { signers, transaction } = tx.transaction;
+      console.log(`[wormhole/svm] sending: ${parsedTx.description}`);
+      const { signers, transaction } = parsedTx.transaction;
       // oxlint-disable-next-line no-await-in-loop
       const { value } = await rpc.getLatestBlockhash().send();
       let serialized: Uint8Array;

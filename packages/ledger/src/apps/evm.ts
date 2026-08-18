@@ -3,7 +3,7 @@ import { bytesToHex, hexToBytes } from "@usebutr/core";
 
 import { createLedgerAdapterCore } from "../adapter-core";
 import { LEDGER_CAPABILITIES } from "../capabilities";
-import type { TransportFactory } from "../transport";
+import type { TransportFactory, TransportLike } from "../transport";
 
 /**
  * Minimal type surface for `@ledgerhq/hw-app-eth`. Declared inline so
@@ -20,31 +20,27 @@ type EthAppLike = {
     path: string,
     messageHex: string,
   ) => Promise<{ r: string; s: string; v: number }>;
-  signTransaction: (
-    path: string,
-    rawTxHex: string,
-    resolution?: unknown,
-  ) => Promise<{ r: string; s: string; v: string }>;
 };
 
-type EthAppConstructor = new (transport: unknown) => EthAppLike;
+type EthAppConstructor = new (transport: TransportLike) => EthAppLike;
 
 const DEFAULT_DERIVATION_PATH_PREFIX = "44'/60'/0'/0";
 const DEFAULT_CHAIN_ID = 1;
 
 const loadEth = async (): Promise<EthAppConstructor> => {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- untyped optional peer-dep module boundary
-  const mod = (await import("@ledgerhq/hw-app-eth")) as unknown as {
+  const imported: unknown = await import("@ledgerhq/hw-app-eth");
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SAFETY: The supported peer range exports the Ethereum app constructor under default or Eth.
+  const moduleValue = imported as {
     default?: EthAppConstructor;
     Eth?: EthAppConstructor;
   };
-  const ctor = mod.default ?? mod.Eth;
-  if (!ctor) {
+  const constructor = moduleValue.default ?? moduleValue.Eth;
+  if (!constructor) {
     throw new Error(
       "[butr/ledger] failed to load @ledgerhq/hw-app-eth: install it as an optional peer dep",
     );
   }
-  return ctor;
+  return constructor;
 };
 
 /** EVM-specific Ledger adapter options. */

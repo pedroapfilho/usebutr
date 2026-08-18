@@ -1,4 +1,10 @@
-import type { Account, ChainPlatform, WalletAdapter, WalletCapabilities } from "@usebutr/core";
+import type {
+  Account,
+  ChainPlatform,
+  TransactionInput,
+  WalletAdapter,
+  WalletCapabilities,
+} from "@usebutr/core";
 
 type FakeAdapterOptions = {
   accounts?: Array<Account>;
@@ -22,7 +28,7 @@ const DEFAULT_CAPABILITIES: WalletCapabilities = {
   switchChain: true,
 };
 
-const signBytes = (tx: unknown) =>
+const signBytes = (tx: TransactionInput) =>
   Promise.resolve(tx instanceof Uint8Array ? tx : new Uint8Array());
 
 const createFakeAdapter = (options: FakeAdapterOptions = {}): WalletAdapter => {
@@ -77,7 +83,7 @@ const createFakeAdapter = (options: FakeAdapterOptions = {}): WalletAdapter => {
       return {
         ...base,
         chainPlatform: "sui",
-        signTransaction: (tx: unknown) =>
+        signTransaction: (tx: TransactionInput) =>
           Promise.resolve({
             bytes: tx instanceof Uint8Array ? tx : new Uint8Array(),
             signature: new Uint8Array(),

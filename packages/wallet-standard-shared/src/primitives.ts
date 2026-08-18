@@ -1,4 +1,10 @@
-import type { WalletStandardWallet, WalletStandardWalletAccount } from "./types";
+import type { WalletSigner } from "@usebutr/core";
+
+import type {
+  WalletStandardFeature,
+  WalletStandardWallet,
+  WalletStandardWalletAccount,
+} from "./types";
 
 /**
  * The platform prefix scopes the id so one multi-chain wallet (Phantom
@@ -17,15 +23,36 @@ const slugify = (platformPrefix: string, name: string): string => {
  * unknown>`, so the caller declares the shape it expects. This accessor is
  * the single boundary where that dynamism is acknowledged.
  */
-// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- caller-supplied feature shape; not inferable from args
-const getFeature = <T>(wallet: WalletStandardWallet, name: string): T | undefined => {
-  const feature: unknown = wallet.features[name];
-  if (typeof feature !== "object" || feature === null) {
+type FeatureGuard<Feature> = (
+  feature: WalletStandardFeature,
+) => feature is WalletStandardFeature & Feature;
+
+const getFeature = <Feature>(
+  wallet: WalletStandardWallet,
+  name: string,
+  isFeature: FeatureGuard<Feature>,
+): (WalletStandardFeature & Feature) | undefined => {
+  const feature = wallet.features[name];
+  if (feature === undefined || !isFeature(feature)) {
     return undefined;
   }
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped Wallet Standard feature registry; caller declares the shape
-  return feature as T;
+  return feature;
 };
+
+const isWalletStandardWallet = (value: WalletSigner): value is WalletStandardWallet =>
+  "accounts" in value &&
+  Array.isArray(value.accounts) &&
+  "chains" in value &&
+  Array.isArray(value.chains) &&
+  "features" in value &&
+  typeof value.features === "object" &&
+  value.features !== null &&
+  "icon" in value &&
+  typeof value.icon === "string" &&
+  "name" in value &&
+  typeof value.name === "string" &&
+  "version" in value &&
+  typeof value.version === "string";
 
 const pickFirstAddress = (accounts: ReadonlyArray<WalletStandardWalletAccount>): string | null => {
   const first = accounts[0];
@@ -44,4 +71,4 @@ const pickAccountByAddress = (
   accounts.find((a) => a.address === address) ?? accounts[0];
 
 export { buildAccount } from "@usebutr/core";
-export { getFeature, pickAccountByAddress, pickFirstAddress, slugify };
+export { getFeature, isWalletStandardWallet, pickAccountByAddress, pickFirstAddress, slugify };

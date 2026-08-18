@@ -3,7 +3,7 @@ import { bytesToHex, hexToBytes } from "@usebutr/core";
 
 import { createLedgerAdapterCore } from "../adapter-core";
 import { LEDGER_SIGN_TRANSACTION_CAPABILITIES } from "../capabilities";
-import type { TransportFactory } from "../transport";
+import type { TransportFactory, TransportLike } from "../transport";
 
 /**
  * Mirrors `@ledgerhq/hw-app-btc`'s `AddressFormat`, re-declared inline so
@@ -51,7 +51,7 @@ type BtcAppLike = {
   ) => Promise<{ psbt: Uint8Array; tx?: string }>;
 };
 
-type BtcAppConstructor = new (args: { currency?: string; transport: unknown }) => BtcAppLike;
+type BtcAppConstructor = new (args: { currency?: string; transport: TransportLike }) => BtcAppLike;
 
 /**
  * Default Bitcoin chain CAIP-2 reference (mainnet genesis block hash). The
@@ -68,18 +68,19 @@ const DEFAULT_DERIVATION_PATH_PREFIX = "84'/0'/0'/0";
 const DEFAULT_ADDRESS_FORMAT: BitcoinAddressFormat = "bech32";
 
 const loadBtc = async (): Promise<BtcAppConstructor> => {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- untyped optional peer-dep module boundary
-  const mod = (await import("@ledgerhq/hw-app-btc")) as unknown as {
+  const imported: unknown = await import("@ledgerhq/hw-app-btc");
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SAFETY: The supported peer range exports the Bitcoin app constructor under default or Btc.
+  const moduleValue = imported as {
     Btc?: BtcAppConstructor;
     default?: BtcAppConstructor;
   };
-  const ctor = mod.default ?? mod.Btc;
-  if (!ctor) {
+  const constructor = moduleValue.default ?? moduleValue.Btc;
+  if (!constructor) {
     throw new Error(
       "[butr/ledger] failed to load @ledgerhq/hw-app-btc: install it as an optional peer dep",
     );
   }
-  return ctor;
+  return constructor;
 };
 
 /**

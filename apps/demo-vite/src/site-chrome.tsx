@@ -4,8 +4,6 @@ const DOCS_URL = "https://docs.usebutr.com";
 const GITHUB_URL = "https://github.com/pedroapfilho/usebutr";
 const NPM_URL = "https://www.npmjs.com/org/usebutr";
 
-const CURRENT_YEAR = new Date().getFullYear();
-
 const GitHubIcon = () => (
   <svg
     aria-hidden="true"
@@ -62,26 +60,30 @@ const FOOTER_LINKS = [
   { href: NPM_URL, label: "npm" },
 ];
 
-const SiteFooter = () => (
-  <footer className="mt-16 border-t border-neutral-200">
-    <div className="mx-auto flex max-w-2xl flex-col gap-3 px-6 py-8 text-sm text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
-      <p>© {CURRENT_YEAR} butr</p>
-      <ul className="flex items-center gap-5">
-        {FOOTER_LINKS.map((link) => (
-          <li key={link.label}>
-            <a
-              className="font-normal text-neutral-600 transition-colors hover:text-neutral-900"
-              href={link.href}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              {link.label}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </div>
-  </footer>
-);
+const SiteFooter = () => {
+  const currentYear = new Date().getFullYear();
+
+  return (
+    <footer className="mt-16 border-t border-neutral-200">
+      <div className="mx-auto flex max-w-2xl flex-col gap-3 px-6 py-8 text-sm text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
+        <p>© {currentYear} butr</p>
+        <ul className="flex items-center gap-5">
+          {FOOTER_LINKS.map((link) => (
+            <li key={link.label}>
+              <a
+                className="font-normal text-neutral-600 transition-colors hover:text-neutral-900"
+                href={link.href}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </footer>
+  );
+};
 
 export { SiteHeader, SiteFooter };

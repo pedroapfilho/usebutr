@@ -6,15 +6,20 @@ import type {
   UnsignedTransaction,
 } from "@wormhole-foundation/sdk-connect";
 import { BrowserProvider, type Eip1193Provider } from "ethers";
+import { z } from "zod";
 
-type EvmUnsignedTx<N extends Network, C extends Chain> = UnsignedTransaction<N, C> & {
-  description: string;
-  transaction: {
-    data?: string;
-    to?: string;
-    value?: bigint | number | string;
-  };
-};
+const transactionValueSchema = z.union([z.bigint(), z.number(), z.string()]);
+const evmTransactionSchema = z
+  .object({
+    data: z.string().optional(),
+    to: z.string().optional(),
+    value: transactionValueSchema.optional(),
+  })
+  .loose();
+const evmUnsignedTxSchema = z.object({
+  description: z.string(),
+  transaction: evmTransactionSchema,
+});
 
 /**
  * Wraps butr's EIP-1193 provider so the Wormhole SDK can sign and
@@ -44,11 +49,12 @@ class ButrEvmWormholeSigner<N extends Network, C extends Chain> implements SignA
     const signer = await provider.getSigner(this._address);
     const hashes: Array<TxHash> = [];
     // oxlint-disable-next-line no-await-in-loop
-    for (const tx of txs as Array<EvmUnsignedTx<N, C>>) {
+    for (const tx of txs) {
+      const parsedTx = evmUnsignedTxSchema.parse(tx);
       // oxlint-disable-next-line no-await-in-loop, no-console
-      console.log(`[wormhole/evm] sending: ${tx.description}`);
-      // oxlint-disable-next-line no-await-in-loop, typescript/no-unsafe-argument -- Wormhole SDK types tx.transaction loosely; ethers narrows it to TransactionRequest at send
-      const response = await signer.sendTransaction(tx.transaction);
+      console.log(`[wormhole/evm] sending: ${parsedTx.description}`);
+      // oxlint-disable-next-line no-await-in-loop
+      const response = await signer.sendTransaction(parsedTx.transaction);
       // oxlint-disable-next-line no-await-in-loop
       await response.wait(1);
       hashes.push(response.hash);

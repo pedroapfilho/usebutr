@@ -3,7 +3,6 @@ import { createStore } from "zustand/vanilla";
 import { logError, logWarn } from "../logger";
 import type { WalletPersistence, WalletSnapshot } from "../storage";
 import { WalletStorage } from "../storage/wallet-storage";
-import { CHAIN_PLATFORMS } from "../types";
 import type {
   Account,
   ChainPlatform,
@@ -11,8 +10,9 @@ import type {
   WalletAdapter,
   WalletManagerConfig,
 } from "../types";
-import type { ConnectionError } from "../types/errors";
+import type { ConnectionError, ErrorCause } from "../types/errors";
 import { mapConnectionError } from "../types/errors";
+import { CHAIN_PLATFORMS } from "../types/platform";
 
 import { createConnectorLifecycle } from "./connector-lifecycle";
 import { createHydrationCoordinator } from "./hydration";
@@ -100,11 +100,11 @@ type WalletStoreState = ExtractState<WalletStore>;
 const createWalletStore = (config: WalletManagerConfig) => {
   const storage = config.storage ?? new WalletStorage({ keyPrefix: config.storageKeyPrefix });
 
-  const reportStorageError = (context: string) => (error: unknown) => {
+  const reportStorageError = (context: string) => (error: ErrorCause) => {
     if (config.onStorageError) {
       try {
         config.onStorageError(error, context);
-      } catch (cbError: unknown) {
+      } catch (cbError) {
         logWarn("[butr] onStorageError threw:", cbError);
       }
       return;
@@ -180,7 +180,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
           ? setTimeout(() => {
               try {
                 config.onSlowConnect?.(connectorId);
-              } catch (cbError: unknown) {
+              } catch (cbError) {
                 logWarn("[butr] onSlowConnect threw:", cbError);
               }
             }, slowThreshold)
@@ -222,16 +222,16 @@ const createWalletStore = (config: WalletManagerConfig) => {
           config.onConnect?.(entry);
           onSuccess?.(entry);
         } catch (error) {
-          const normalised = mapConnectionError(error);
+          const normalised = mapConnectionError(error instanceof Error ? error : String(error));
           dispatch({ connectorId, error: normalised, type: "CONNECT_FAILED" });
           try {
             await connector.disconnect?.();
-          } catch (disconnectError: unknown) {
+          } catch (disconnectError) {
             logWarn("[butr] disconnect during error recovery failed:", disconnectError);
           }
           try {
             config.onConnectError?.(normalised, connectorId);
-          } catch (cbError: unknown) {
+          } catch (cbError) {
             logWarn("[butr] onConnectError threw:", cbError);
           }
           onError?.(error instanceof Error ? error : new Error(String(error)));
@@ -308,7 +308,7 @@ const createWalletStore = (config: WalletManagerConfig) => {
               pendingIds: [...result.pendingIds],
               restoredIds: [...result.pool.keys()],
             });
-          } catch (cbError: unknown) {
+          } catch (cbError) {
             logWarn("[butr] onHydrated threw:", cbError);
           }
         } else if (result.dropped.length > 0) {

@@ -7,8 +7,9 @@ import {
 } from "@solana/web3.js";
 import { bytesToBase58 } from "@usebutr/core";
 import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
-import type { SolanaSignAndSendTransactionFeature, SolanaSignMessageFeature } from "@usebutr/svm";
+import { isSolanaSignAndSendTransactionFeature, isSolanaSignMessageFeature } from "@usebutr/svm";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
+import { getFeature, isWalletStandardWallet } from "@usebutr/wallet-standard-shared";
 import { useEffect, useMemo, useState } from "react";
 
 import { useDiscoveredWallets } from "./wallet-provider";
@@ -18,11 +19,11 @@ const BURN_ADDRESS = new PublicKey("11111111111111111111111111111111");
 
 const connection = new Connection(DEVNET, "confirmed");
 
-const formatError = (e: unknown): string => {
-  if (e instanceof Error) {
-    return e.message;
+const formatError = (error: Error | string): string => {
+  if (error instanceof Error) {
+    return error.message;
   }
-  return String(e);
+  return error;
 };
 
 const Row = ({ children, label }: { children: React.ReactNode; label: string }) => (
@@ -56,14 +57,16 @@ const Connected = ({
     let cancelled = false;
     void (async () => {
       try {
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: getSigner() returns the Wallet Standard wallet for SVM adapters
-        const ws = (await wallet.connector.getSigner()) as WalletStandardWallet;
+        const signer = await wallet.connector.getSigner();
+        if (!isWalletStandardWallet(signer)) {
+          throw new Error("SVM signer is not a Wallet Standard wallet");
+        }
         if (!cancelled) {
-          setWalletStd(ws);
+          setWalletStd(signer);
         }
       } catch (error) {
         if (!cancelled) {
-          setErrorMsg(formatError(error));
+          setErrorMsg(formatError(error instanceof Error ? error : String(error)));
         }
       }
     })();
@@ -98,10 +101,7 @@ const Connected = ({
     }
     setErrorMsg(null);
     try {
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: untyped Wallet Standard feature registry
-      const feature = walletStd.features["solana:signMessage"] as
-        | SolanaSignMessageFeature
-        | undefined;
+      const feature = getFeature(walletStd, "solana:signMessage", isSolanaSignMessageFeature);
       if (feature === undefined) {
         throw new Error("Wallet does not advertise solana:signMessage");
       }
@@ -116,7 +116,7 @@ const Connected = ({
       }
       setSignature(bytesToBase58(output.signature));
     } catch (error) {
-      setErrorMsg(formatError(error));
+      setErrorMsg(formatError(error instanceof Error ? error : String(error)));
     }
   };
 
@@ -138,10 +138,11 @@ const Connected = ({
       tx.feePayer = publicKey;
 
       // Hand the serialized tx to the wallet's Wallet Standard feature.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: untyped Wallet Standard feature registry
-      const feature = walletStd.features["solana:signAndSendTransaction"] as
-        | SolanaSignAndSendTransactionFeature
-        | undefined;
+      const feature = getFeature(
+        walletStd,
+        "solana:signAndSendTransaction",
+        isSolanaSignAndSendTransactionFeature,
+      );
       if (feature === undefined) {
         throw new Error("Wallet does not advertise solana:signAndSendTransaction");
       }
@@ -160,7 +161,7 @@ const Connected = ({
       }
       setTxSignature(bytesToBase58(output.signature));
     } catch (error) {
-      setErrorMsg(formatError(error));
+      setErrorMsg(formatError(error instanceof Error ? error : String(error)));
     }
   };
 
@@ -289,7 +290,7 @@ const Content = () => {
 const App = () => (
   <>
     <a
-      className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:shadow"
+      className="sr-only px-4 py-2 text-sm focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-white focus:shadow"
       href="#main"
     >
       Skip to content

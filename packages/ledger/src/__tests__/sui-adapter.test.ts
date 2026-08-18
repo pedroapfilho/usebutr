@@ -24,7 +24,7 @@ const buildFakeSig = (fill: number): Uint8Array => {
 
 const buildFakeSuiCtor = (onGetPublicKey?: (path: string) => void): SuiAppConstructor => {
   return class FakeSui implements SuiAppLike {
-    constructor(private readonly _transport: unknown) {
+    constructor(private readonly _transport: TransportLike) {
       void _transport;
     }
     getPublicKey(path: string): Promise<{ address: Uint8Array; publicKey: Uint8Array }> {

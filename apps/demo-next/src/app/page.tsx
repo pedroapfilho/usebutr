@@ -129,7 +129,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
         Chain
       </label>
       <select
-        className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs"
+        className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-base"
         id={selectId}
         onChange={(event) => {
           void handleChange(event);
@@ -439,7 +439,7 @@ const Content = () => {
 const Page = () => (
   <>
     <a
-      className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:shadow"
+      className="sr-only px-4 py-2 text-sm focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-white focus:shadow"
       href="#main"
     >
       Skip to content

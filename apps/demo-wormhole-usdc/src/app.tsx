@@ -28,14 +28,8 @@ type Phase =
 
 type Transfer = { error: string | null; phase: Phase };
 
-const formatError = (e: unknown): string => {
-  if (e instanceof Error) {
-    return e.message;
-  }
-  if (typeof e === "string") {
-    return e;
-  }
-  return "unknown error";
+const formatError = (e: Error | string): string => {
+  return e instanceof Error ? e.message : e;
 };
 
 const formatBalance = (b: UsdcBalance): string => {
@@ -61,11 +55,13 @@ const ChainSelect = ({
 }) => (
   <select
     aria-label={label}
-    className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs text-neutral-700 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:outline-none disabled:opacity-50"
+    className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-base text-neutral-700 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:outline-none disabled:opacity-50"
     disabled={disabled}
-    onChange={(e) => {
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: the select's option values are Wormhole Chain literals
-      onChange(e.target.value as Chain);
+    onChange={(event) => {
+      const chain = CHAIN_LIST.find((spec) => spec.chain === event.target.value)?.chain;
+      if (chain !== undefined) {
+        onChange(chain);
+      }
     }}
     value={value}
   >
@@ -304,7 +300,7 @@ const App = () => {
       await xfer.fetchAttestation(ATTESTATION_TIMEOUT_MS);
       setTransfer({ error: null, phase: { kind: "ready-to-redeem", sourceTxHash, xfer } });
     } catch (error) {
-      const message = formatError(error);
+      const message = formatError(error instanceof Error ? error : String(error));
       setTransfer(
         burned === null
           ? { error: message, phase: { kind: "idle" } }
@@ -324,7 +320,7 @@ const App = () => {
       setTransfer({ error: null, phase: { kind: "ready-to-redeem", sourceTxHash, xfer } });
     } catch (error) {
       setTransfer({
-        error: formatError(error),
+        error: formatError(error instanceof Error ? error : String(error)),
         phase: { kind: "waiting-attestation", sourceTxHash, xfer },
       });
     }
@@ -344,7 +340,7 @@ const App = () => {
       dstBalance.refetch();
     } catch (error) {
       setTransfer({
-        error: formatError(error),
+        error: formatError(error instanceof Error ? error : String(error)),
         phase: { kind: "ready-to-redeem", sourceTxHash, xfer },
       });
     }

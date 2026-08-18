@@ -1,4 +1,4 @@
-import type { WalletAdapter } from "@usebutr/core";
+import type { TransactionInput, WalletAdapter } from "@usebutr/core";
 import { buildAccount, bytesToBase58 } from "@usebutr/core";
 import {
   createWalletStandardCore,
@@ -6,7 +6,11 @@ import {
   getFeature,
   slugify,
 } from "@usebutr/wallet-standard-shared";
-import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
+import type {
+  WalletStandardFeature,
+  WalletStandardModuleLoader,
+  WalletStandardWallet,
+} from "@usebutr/wallet-standard-shared";
 
 import { resolveWalletStandardCapabilities } from "./capabilities";
 import type {
@@ -19,6 +23,26 @@ import type {
 const SOLANA_PREFIX = "solana:";
 const SOLANA_DECIMALS = 9;
 const SOLANA_MAINNETS: ReadonlyArray<string> = ["solana:mainnet", "solana:mainnet-beta"];
+
+const isSolanaSignMessageFeature = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & SolanaSignMessageFeature =>
+  "signMessage" in feature && typeof feature.signMessage === "function";
+
+const isSolanaSignAndSendTransactionFeature = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & SolanaSignAndSendTransactionFeature =>
+  "signAndSendTransaction" in feature && typeof feature.signAndSendTransaction === "function";
+
+const isSolanaSignTransactionFeature = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & SolanaSignTransactionFeature =>
+  "signTransaction" in feature && typeof feature.signTransaction === "function";
+
+const isSolanaSignInFeature = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & SolanaSignInFeature =>
+  "signIn" in feature && typeof feature.signIn === "function";
 
 /**
  * Wallet Standard has no switch-cluster RPC: `switchChain` re-points butr's
@@ -48,13 +72,14 @@ const buildSvmAdapter = (
     return null;
   }
 
-  const signMessage = getFeature<SolanaSignMessageFeature>(wallet, "solana:signMessage");
-  const signAndSendTx = getFeature<SolanaSignAndSendTransactionFeature>(
+  const signMessage = getFeature(wallet, "solana:signMessage", isSolanaSignMessageFeature);
+  const signAndSendTx = getFeature(
     wallet,
     "solana:signAndSendTransaction",
+    isSolanaSignAndSendTransactionFeature,
   );
-  const signTx = getFeature<SolanaSignTransactionFeature>(wallet, "solana:signTransaction");
-  const signIn = getFeature<SolanaSignInFeature>(wallet, "solana:signIn");
+  const signTx = getFeature(wallet, "solana:signTransaction", isSolanaSignTransactionFeature);
+  const signIn = getFeature(wallet, "solana:signIn", isSolanaSignInFeature);
 
   /**
    * Resolve a caller-supplied target into a chain the wallet advertises.
@@ -74,7 +99,7 @@ const buildSvmAdapter = (
   };
 
   const signAndSend = async (
-    tx: unknown,
+    tx: TransactionInput,
     account?: { walletAddress: string },
     chain?: string,
   ): Promise<string> => {
@@ -98,7 +123,7 @@ const buildSvmAdapter = (
     return bytesToBase58(output.signature);
   };
 
-  return {
+  const adapter: WalletAdapter = {
     ...core,
     capabilities: resolveWalletStandardCapabilities({
       chainCount: core.chainCount,
@@ -152,45 +177,41 @@ const buildSvmAdapter = (
       }
       return { signature: output.signature, signedMessage: output.signedMessage };
     },
-
-    ...(signTx === undefined
-      ? {}
-      : {
-          async signTransaction(tx, account) {
-            const wsAccount = core.resolveAccount(account);
-            if (!(tx instanceof Uint8Array)) {
-              throw new TypeError(
-                "SVM signTransaction expects a serialized transaction (Uint8Array)",
-              );
-            }
-            const [output] = await signTx.signTransaction({
-              account: wsAccount,
-              chain: core.currentChainId(),
-              transaction: tx,
-            });
-            if (output === undefined) {
-              throw new Error("signTransaction returned no outputs");
-            }
-            return output.signedTransaction;
-          },
-        }),
-
-    ...(signIn === undefined
-      ? {}
-      : {
-          async signIn(input) {
-            const [output] = await signIn.signIn(input);
-            if (output === undefined) {
-              throw new Error("signIn returned no outputs");
-            }
-            return {
-              account: buildAccount(output.account.address, core.toChain()),
-              signature: output.signature,
-              signedMessage: output.signedMessage,
-            };
-          },
-        }),
   };
+
+  if (signTx !== undefined) {
+    adapter.signTransaction = async (tx, account) => {
+      const wsAccount = core.resolveAccount(account);
+      if (!(tx instanceof Uint8Array)) {
+        throw new TypeError("SVM signTransaction expects a serialized transaction (Uint8Array)");
+      }
+      const [output] = await signTx.signTransaction({
+        account: wsAccount,
+        chain: core.currentChainId(),
+        transaction: tx,
+      });
+      if (output === undefined) {
+        throw new Error("signTransaction returned no outputs");
+      }
+      return output.signedTransaction;
+    };
+  }
+
+  if (signIn !== undefined) {
+    adapter.signIn = async (input) => {
+      const [output] = await signIn.signIn(input);
+      if (output === undefined) {
+        throw new Error("signIn returned no outputs");
+      }
+      return {
+        account: buildAccount(output.account.address, core.toChain()),
+        signature: output.signature,
+        signedMessage: output.signedMessage,
+      };
+    };
+  }
+
+  return adapter;
 };
 
 /**
@@ -198,9 +219,21 @@ const buildSvmAdapter = (
  * discovery silently does nothing. The returned unsubscribe is safe to call
  * before the dynamic import has resolved.
  */
-const discoverSvmAdapters = (onAdapter: (adapter: WalletAdapter) => void): (() => void) =>
-  discoverWalletStandard(onAdapter, (wallet, registerDisconnector) =>
-    buildSvmAdapter(wallet, registerDisconnector),
+const discoverSvmAdapters = (
+  onAdapter: (adapter: WalletAdapter) => void,
+  loadModule?: WalletStandardModuleLoader,
+): (() => void) =>
+  discoverWalletStandard(
+    onAdapter,
+    (wallet, registerDisconnector) => buildSvmAdapter(wallet, registerDisconnector),
+    loadModule,
   );
 
-export { buildSvmAdapter, discoverSvmAdapters };
+export {
+  buildSvmAdapter,
+  discoverSvmAdapters,
+  isSolanaSignAndSendTransactionFeature,
+  isSolanaSignInFeature,
+  isSolanaSignMessageFeature,
+  isSolanaSignTransactionFeature,
+};

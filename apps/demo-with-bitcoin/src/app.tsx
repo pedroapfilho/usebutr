@@ -4,17 +4,17 @@ import { useMemo, useState } from "react";
 
 import { useDiscoveredWallets } from "./wallet-provider";
 
-const NETWORK_BY_CHAIN_REF: Record<string, typeof networks.bitcoin> = {
-  "000000000019d6689c085ae165831e93": networks.bitcoin,
-  "000000000933ea01ad0ee984209779ba": networks.testnet,
-  "0f9188f13cb7b2c71f2a335e3a4fc328": networks.regtest,
-};
+const NETWORK_BY_CHAIN_REF = new Map<string, typeof networks.bitcoin>([
+  ["000000000019d6689c085ae165831e93", networks.bitcoin],
+  ["000000000933ea01ad0ee984209779ba", networks.testnet],
+  ["0f9188f13cb7b2c71f2a335e3a4fc328", networks.regtest],
+]);
 
-const formatError = (e: unknown): string => {
-  if (e instanceof Error) {
-    return e.message;
+const formatError = (error: Error | string): string => {
+  if (error instanceof Error) {
+    return error.message;
   }
-  return String(e);
+  return error;
 };
 
 const bytesToHex = (bytes: Uint8Array): string => {
@@ -50,7 +50,7 @@ const Connected = ({
 
   const bech32Prefix = useMemo(() => {
     const ref = chainId.split(":")[1] ?? "";
-    return NETWORK_BY_CHAIN_REF[ref]?.bech32 ?? "unknown";
+    return NETWORK_BY_CHAIN_REF.get(ref)?.bech32 ?? "unknown";
   }, [chainId]);
 
   const handleSign = async () => {
@@ -60,7 +60,7 @@ const Connected = ({
       const result = await wallet.connector.signMessage(message);
       setSignature(bytesToHex(result.signature));
     } catch (error) {
-      setErrorMsg(formatError(error));
+      setErrorMsg(formatError(error instanceof Error ? error : String(error)));
     }
   };
 
@@ -81,7 +81,7 @@ const Connected = ({
       const signed = await connector.signTransaction(psbt);
       setSignedPsbt(bytesToHex(signed));
     } catch (error) {
-      setErrorMsg(formatError(error));
+      setErrorMsg(formatError(error instanceof Error ? error : String(error)));
     }
   };
 

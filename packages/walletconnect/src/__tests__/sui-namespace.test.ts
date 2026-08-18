@@ -1,5 +1,6 @@
 import type { SuiAdapter, WalletAdapter } from "@usebutr/core";
 import { base64ToBytes } from "@usebutr/core";
+import type { Eip1193Listener, Eip1193Value } from "@usebutr/evm";
 import { describe, expect, it } from "vitest";
 
 import type { UniversalProviderLike } from "../adapter";
@@ -32,13 +33,13 @@ const approvedSession = (opts: ConnectArgs): Session => ({
 });
 
 const createFakeProvider = (overrides?: {
-  request?: (args: RequestArgs) => Promise<unknown>;
+  request?: (args: RequestArgs) => Promise<Eip1193Value | undefined>;
   session?: Session;
 }): UniversalProviderLike & {
   connectCalls: Array<ConnectArgs>;
   requestCalls: Array<RequestArgs>;
 } => {
-  const listeners = new Map<string, Set<(...args: ReadonlyArray<unknown>) => void>>();
+  const listeners = new Map<string, Set<Eip1193Listener>>();
   const connectCalls: Array<ConnectArgs> = [];
   const requestCalls: Array<RequestArgs> = [];
   let session: Session = overrides?.session ?? null;
@@ -47,7 +48,7 @@ const createFakeProvider = (overrides?: {
     connect(opts) {
       connectCalls.push(opts);
       session = approvedSession(opts);
-      return Promise.resolve();
+      return Promise.resolve(undefined);
     },
     connectCalls,
     disconnect() {
@@ -514,7 +515,7 @@ describe("suiNamespace", () => {
   it("getAccount reflects session account drift (simulating an accountsChanged event)", async () => {
     let accounts: ReadonlyArray<string> = ["sui:mainnet:0xaaa111"];
     const provider: UniversalProviderLike = {
-      connect: () => Promise.resolve(),
+      connect: () => Promise.resolve(undefined),
       disconnect: () => Promise.resolve(),
       on: () => {},
       removeListener: () => {},

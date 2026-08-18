@@ -13,13 +13,14 @@ type ChainsByPlatform = Readonly<Record<ChainPlatform, ReadonlyArray<ChainBase>>
  * chain registries out of its bundle. Apps that want all of them import
  * `CHAINS_BY_PLATFORM` from `@usebutr/wallets`.
  */
-const buildChainsByPlatform = (partial: Partial<ChainsByPlatform>): ChainsByPlatform => ({
-  bitcoin: partial.bitcoin ?? [],
-  evm: partial.evm ?? [],
-  polkadot: partial.polkadot ?? [],
-  sui: partial.sui ?? [],
-  svm: partial.svm ?? [],
-});
+const buildChainsByPlatform = (partial: Partial<ChainsByPlatform>) =>
+  ({
+    bitcoin: partial.bitcoin ?? [],
+    evm: partial.evm ?? [],
+    polkadot: partial.polkadot ?? [],
+    sui: partial.sui ?? [],
+    svm: partial.svm ?? [],
+  }) satisfies ChainsByPlatform;
 
 export type { ChainsByPlatform };
 export { buildChainsByPlatform };

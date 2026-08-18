@@ -1,5 +1,5 @@
 import { MultiAddress, paseo } from "@polkadot-api/descriptors";
-import type { PolkadotSignerHandle } from "@usebutr/polkadot";
+import { isPolkadotSignerHandle } from "@usebutr/polkadot";
 import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
 import { createClient } from "polkadot-api";
 import { connectInjectedExtension } from "polkadot-api/pjs-signer";
@@ -14,11 +14,11 @@ const PASEO_DECIMALS = 10;
 const client = createClient(getWsProvider(PASEO_WS));
 const api = client.getTypedApi(paseo);
 
-const formatError = (e: unknown): string => {
-  if (e instanceof Error) {
-    return e.message;
+const formatError = (error: Error | string): string => {
+  if (error instanceof Error) {
+    return error.message;
   }
-  return String(e);
+  return error;
 };
 
 const toHex = (bytes: Uint8Array): string => {
@@ -92,7 +92,7 @@ const Connected = ({
       setSignature(toHex(result.signature));
       setSignedMessage(toHex(result.signedMessage));
     } catch (error) {
-      setErrorMsg(formatError(error));
+      setErrorMsg(formatError(error instanceof Error ? error : String(error)));
     }
   };
 
@@ -100,8 +100,10 @@ const Connected = ({
     setErrorMsg(null);
     setTxStatus("Bridging signer…");
     try {
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: injected Polkadot adapter getSigner() returns a PolkadotSignerHandle
-      const handle = (await wallet.connector.getSigner()) as PolkadotSignerHandle;
+      const handle = await wallet.connector.getSigner();
+      if (!isPolkadotSignerHandle(handle)) {
+        throw new Error("This demo requires an injected Polkadot signer");
+      }
       const extension = await connectInjectedExtension(handle.extensionName);
       const account = extension.getAccounts().find((a) => a.address === handle.address);
       if (account === undefined) {
@@ -120,9 +122,9 @@ const Connected = ({
         complete: () => {
           setTxStatus("Finalized");
         },
-        error: (error: unknown) => {
+        error: (error) => {
           setTxStatus(null);
-          setErrorMsg(formatError(error));
+          setErrorMsg(formatError(error instanceof Error ? error : String(error)));
         },
         next: (event) => {
           setTxStatus(`Tx: ${event.type}`);
@@ -130,7 +132,7 @@ const Connected = ({
       });
     } catch (error) {
       setTxStatus(null);
-      setErrorMsg(formatError(error));
+      setErrorMsg(formatError(error instanceof Error ? error : String(error)));
     }
   };
 

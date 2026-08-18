@@ -270,6 +270,7 @@ describe("buildUnisatAdapter", () => {
 
       await expect(adapter.sendTx({ amount: 1, recipient: "bc1qto" })).rejects.toThrow(TypeError);
       await expect(adapter.sendTx({ recipient: "bc1qto" })).rejects.toThrow(TypeError);
+      // @ts-expect-error Runtime validation protects JavaScript consumers from invalid payloads.
       await expect(adapter.sendTx(42)).rejects.toThrow(TypeError);
     });
 

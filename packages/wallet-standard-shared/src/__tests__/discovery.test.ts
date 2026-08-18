@@ -2,9 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { discoverWalletStandard } from "../discovery";
 
-vi.mock("@wallet-standard/app", () => {
-  throw new Error("Cannot find module '@wallet-standard/app'");
-});
+const loadMissingModule = () =>
+  Promise.reject(new Error("Cannot find module '@wallet-standard/app'"));
 
 describe("discoverWalletStandard", () => {
   afterEach(() => {
@@ -14,9 +13,8 @@ describe("discoverWalletStandard", () => {
   it("warns once when @wallet-standard/app is not installed", async () => {
     const warn = vi.spyOn(console, "warn").mockReturnValue(undefined);
     const onAdapter = vi.fn<() => void>();
-
-    const unsubscribeA = discoverWalletStandard(onAdapter, () => null);
-    const unsubscribeB = discoverWalletStandard(onAdapter, () => null);
+    const unsubscribeA = discoverWalletStandard(onAdapter, () => null, loadMissingModule);
+    const unsubscribeB = discoverWalletStandard(onAdapter, () => null, loadMissingModule);
 
     await vi.waitFor(() => {
       expect(warn).toHaveBeenCalled();

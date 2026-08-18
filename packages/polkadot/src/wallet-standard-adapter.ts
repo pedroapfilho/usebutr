@@ -5,7 +5,7 @@ import {
   getFeature,
   slugify as kitSlugify,
 } from "@usebutr/wallet-standard-shared";
-import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
+import type { WalletStandardFeature, WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
 import { resolveWalletStandardPolkadotCapabilities } from "./capabilities";
 import { POLKADOT_MAINNET_IDS } from "./chains";
@@ -13,6 +13,11 @@ import { noRpcBalance, noRpcSendTx, noRpcSendTxToChain, noRpcTransactionReceipt 
 import type { PolkadotSignMessageFeature } from "./wallet-standard-types";
 
 const POLKADOT_PREFIX = "polkadot:";
+
+const isPolkadotSignMessageFeature = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & PolkadotSignMessageFeature =>
+  "signMessage" in feature && typeof feature.signMessage === "function";
 
 const slugify = (name: string): string => kitSlugify("polkadot", name);
 
@@ -38,7 +43,7 @@ const buildPolkadotWalletStandardAdapter = (
     return null;
   }
 
-  const signMessage = getFeature<PolkadotSignMessageFeature>(wallet, "polkadot:signMessage");
+  const signMessage = getFeature(wallet, "polkadot:signMessage", isPolkadotSignMessageFeature);
 
   return {
     ...core,

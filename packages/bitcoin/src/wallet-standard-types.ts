@@ -18,6 +18,7 @@ type BitcoinSignMessageOutput = {
 
 type BitcoinSignMessageFeature = {
   signMessage: (input: BitcoinSignMessageInput) => Promise<BitcoinSignMessageOutput>;
+  version?: string;
 };
 
 type BitcoinSignPsbtInput = {
@@ -39,6 +40,7 @@ type BitcoinSignPsbtOutput = {
 
 type BitcoinSignPsbtFeature = {
   signPsbt: (input: BitcoinSignPsbtInput) => Promise<BitcoinSignPsbtOutput>;
+  version?: string;
 };
 
 type BitcoinSendTransferInput = {
@@ -55,6 +57,7 @@ type BitcoinSendTransferOutput = {
 
 type BitcoinSendTransferFeature = {
   sendTransfer: (input: BitcoinSendTransferInput) => Promise<BitcoinSendTransferOutput>;
+  version?: string;
 };
 
 export type {

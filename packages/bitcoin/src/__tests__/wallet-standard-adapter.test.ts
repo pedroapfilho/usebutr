@@ -25,7 +25,13 @@ const buildAccount = (
   features,
 });
 
-type FeatureMap = Record<string, unknown>;
+type FeatureMap = Record<
+  string,
+  | BitcoinSendTransferFeature
+  | BitcoinSignMessageFeature
+  | BitcoinSignPsbtFeature
+  | StandardConnectFeature
+>;
 
 const buildWallet = (overrides: Partial<WalletStandardWallet> = {}): WalletStandardWallet => ({
   accounts: [buildAccount("bc1qexample")],
@@ -156,7 +162,10 @@ describe("buildBitcoinAdapter", () => {
       };
       const wallet = withFeatures(buildWallet({ chains }), {
         "bitcoin:sendTransfer": sendFeature,
-        "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+        "standard:connect": {
+          connect: vi.fn().mockResolvedValue({ accounts: [] }),
+          version: "1.0.0",
+        },
       });
       return { adapter: buildBitcoinAdapter(wallet), sendFeature };
     };
@@ -204,6 +213,7 @@ describe("buildBitcoinAdapter", () => {
       "standard:connect": connectFeature,
     });
     const adapter = buildBitcoinAdapter(wallet);
+    // @ts-expect-error Runtime validation protects JavaScript consumers from invalid payloads.
     await expect(adapter?.sendTx(42)).rejects.toThrow(TypeError);
   });
 

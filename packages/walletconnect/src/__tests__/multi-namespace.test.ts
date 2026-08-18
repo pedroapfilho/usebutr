@@ -1,4 +1,5 @@
 import type { ChainPlatform, WalletAdapter } from "@usebutr/core";
+import type { Eip1193Listener } from "@usebutr/evm";
 import { describe, expect, it, vi } from "vitest";
 
 import type { UniversalProviderConstructor, UniversalProviderLike } from "../adapter";
@@ -18,7 +19,7 @@ const createFakeProvider = (
   connectCalls: Array<ConnectArgs>;
   disconnectCalls: () => number;
 } => {
-  const listeners = new Map<string, Set<(...args: ReadonlyArray<unknown>) => void>>();
+  const listeners = new Map<string, Set<Eip1193Listener>>();
   const connectCalls: Array<ConnectArgs> = [];
   let disconnectCalls = 0;
   let session: FakeSession | null = null;
@@ -32,7 +33,7 @@ const createFakeProvider = (
       session = {
         namespaces: Object.fromEntries(granted.map((prefix) => [prefix, { accounts: [] }])),
       };
-      return Promise.resolve();
+      return Promise.resolve(undefined);
     },
     connectCalls,
     disconnect() {

@@ -1,5 +1,6 @@
 import type {
   StandardConnectFeature,
+  StandardEventsFeature,
   WalletStandardWallet,
   WalletStandardWalletAccount,
 } from "@usebutr/wallet-standard-shared";
@@ -15,7 +16,10 @@ const buildAccount = (address: string): WalletStandardWalletAccount => ({
   features: [],
 });
 
-type FeatureMap = Record<string, unknown>;
+type FeatureMap = Record<
+  string,
+  PolkadotSignMessageFeature | StandardConnectFeature | StandardEventsFeature
+>;
 
 const buildWallet = (overrides: Partial<WalletStandardWallet> = {}): WalletStandardWallet => ({
   accounts: [buildAccount("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY")],
@@ -81,7 +85,7 @@ describe("buildPolkadotWalletStandardAdapter", () => {
   it("sets subscribe capability true when standard:events is advertised", () => {
     const wallet = withFeatures(buildWallet(), {
       "standard:connect": baseConnect,
-      "standard:events": { on: vi.fn() },
+      "standard:events": { on: vi.fn(), version: "1.0.0" },
     });
     const adapter = buildPolkadotWalletStandardAdapter(wallet);
     expect(adapter?.capabilities.subscribe).toBe(true);

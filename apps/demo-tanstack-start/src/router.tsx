@@ -2,7 +2,7 @@ import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 
 import { routeTree } from "./routeTree.gen";
 
-export function getRouter() {
+const getRouter = () => {
   const router = createTanStackRouter({
     defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
@@ -11,7 +11,7 @@ export function getRouter() {
   });
 
   return router;
-}
+};
 
 declare module "@tanstack/react-router" {
   // oxlint-disable-next-line consistent-type-definitions -- module augmentation requires interface
@@ -19,3 +19,5 @@ declare module "@tanstack/react-router" {
     router: ReturnType<typeof getRouter>;
   }
 }
+
+export { getRouter };

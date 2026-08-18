@@ -8,16 +8,15 @@ type WalletStandardWalletAccount = {
   address: string;
   chains: ReadonlyArray<string>;
   features: ReadonlyArray<string>;
-  /** Public key bytes; Wallet Standard ships these as Uint8Array. */
-  publicKey?: Uint8Array;
+  publicKey?: { readonly length: number; readonly [index: number]: number };
 };
+
+type WalletStandardFeature = { version?: string };
 
 type WalletStandardWallet = {
   accounts: ReadonlyArray<WalletStandardWalletAccount>;
   chains: ReadonlyArray<string>;
-  /** Map keyed by feature name. Values are feature-specific; narrow at
-   *  use sites. */
-  features: Readonly<Record<string, unknown>>;
+  features: Readonly<Record<string, WalletStandardFeature>>;
   icon: string;
   name: string;
   version: string;
@@ -35,14 +34,18 @@ type WalletStandardAppModule = {
   getWallets: () => WalletsApp;
 };
 
+type WalletStandardModuleLoader = () => Promise<WalletStandardAppModule>;
+
 type StandardConnectFeature = {
   connect: (input?: { silent?: boolean }) => Promise<{
     accounts: ReadonlyArray<WalletStandardWalletAccount>;
   }>;
+  version?: string;
 };
 
 type StandardDisconnectFeature = {
   disconnect: () => Promise<void>;
+  version?: string;
 };
 
 type StandardEventsListener = (changes: {
@@ -53,6 +56,7 @@ type StandardEventsListener = (changes: {
 
 type StandardEventsFeature = {
   on: (event: "change", listener: StandardEventsListener) => () => void;
+  version?: string;
 };
 
 export type {
@@ -62,6 +66,8 @@ export type {
   StandardEventsListener,
   WalletsApp,
   WalletStandardAppModule,
+  WalletStandardFeature,
+  WalletStandardModuleLoader,
   WalletStandardWallet,
   WalletStandardWalletAccount,
 };

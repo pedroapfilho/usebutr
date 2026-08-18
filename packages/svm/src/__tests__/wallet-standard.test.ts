@@ -1,14 +1,18 @@
 import type { WalletAdapter } from "@usebutr/core";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import type {
+  StandardConnectFeature,
+  WalletsApp,
+  WalletStandardAppModule,
+  WalletStandardWallet,
+} from "@usebutr/wallet-standard-shared";
+import { describe, expect, it, vi } from "vitest";
 
 import { discoverSvmAdapters } from "../wallet-standard-adapter";
 
-describe("discoverSvmAdapters", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.resetModules();
-  });
+const loadMissingModule = (): Promise<WalletStandardAppModule> =>
+  Promise.reject(new Error("module not installed"));
 
+describe("discoverSvmAdapters", () => {
   it("returns a synchronous unsubscribe even before the import resolves", () => {
     const unsubscribe = discoverSvmAdapters(() => {});
     expect(typeof unsubscribe).toBe("function");
@@ -18,30 +22,33 @@ describe("discoverSvmAdapters", () => {
   });
 
   it("emits adapters announced via the Wallet Standard `register` event", async () => {
-    const listeners = new Set<(...wallets: ReadonlyArray<unknown>) => void>();
-    const fakeApp = {
+    const listeners = new Set<(...wallets: ReadonlyArray<WalletStandardWallet>) => void>();
+    const fakeApp: WalletsApp = {
       get: () => [],
-      on: (event: string, handler: (...wallets: ReadonlyArray<unknown>) => void) => {
+      on: (event, handler) => {
         if (event !== "register") {
           return () => {};
         }
         listeners.add(handler);
-        return () => listeners.delete(handler);
+        return () => {
+          listeners.delete(handler);
+        };
       },
     };
-    vi.doMock("@wallet-standard/app", () => ({
-      getWallets: () => fakeApp,
-    }));
-
-    const { discoverSvmAdapters: subject } = await import("../wallet-standard-adapter");
+    const loadModule = (): Promise<WalletStandardAppModule> =>
+      Promise.resolve({ getWallets: () => fakeApp });
     const seen: Array<string> = [];
-    const unsubscribe = subject((adapter) => {
+    const unsubscribe = discoverSvmAdapters((adapter) => {
       seen.push(adapter.id);
-    });
+    }, loadModule);
     await new Promise<void>((resolve) => {
       setTimeout(resolve, 0);
     });
-    const fakeWallet = {
+    const connectFeature: StandardConnectFeature = {
+      connect: () => Promise.resolve({ accounts: [] }),
+      version: "1.0.0",
+    };
+    const fakeWallet: WalletStandardWallet = {
       accounts: [
         {
           address: "BDybu9hsWSLuZyNjZ2kz8c7ce6WzGd1ymXuUr3czVu9Z",
@@ -51,8 +58,9 @@ describe("discoverSvmAdapters", () => {
       ],
       chains: ["solana:mainnet"],
       features: {
-        "standard:connect": { connect: () => Promise.resolve({ accounts: [] }), version: "1.0.0" },
+        "standard:connect": connectFeature,
       },
+      icon: "",
       name: "TestSolanaWallet",
       version: "1.0.0",
     };
@@ -64,12 +72,8 @@ describe("discoverSvmAdapters", () => {
   });
 
   it("silently exits when @wallet-standard/app is unavailable (catch path)", async () => {
-    vi.doMock("@wallet-standard/app", () => {
-      throw new Error("module not installed");
-    });
-    const { discoverSvmAdapters: subject } = await import("../wallet-standard-adapter");
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
-    const unsubscribe = subject(onAdapter);
+    const unsubscribe = discoverSvmAdapters(onAdapter, loadMissingModule);
     await new Promise<void>((resolve) => {
       setTimeout(resolve, 0);
     });

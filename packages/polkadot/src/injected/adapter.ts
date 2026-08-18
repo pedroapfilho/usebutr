@@ -4,6 +4,7 @@ import type {
   ConnectorEvent,
   PolkadotAdapter,
   WalletCapabilities,
+  WalletSigner,
 } from "@usebutr/core";
 import { logWarn, sanitizeIcon } from "@usebutr/core";
 
@@ -26,6 +27,15 @@ type PolkadotSignerHandle = {
   extension: Injected;
   extensionName: string;
 };
+
+const isPolkadotSignerHandle = (value: WalletSigner): value is PolkadotSignerHandle =>
+  "address" in value &&
+  typeof value.address === "string" &&
+  "extension" in value &&
+  typeof value.extension === "object" &&
+  value.extension !== null &&
+  "extensionName" in value &&
+  typeof value.extensionName === "string";
 
 /**
  * Deliberately not wallet-standard-shared's `slugify`: that helper embeds
@@ -229,4 +239,4 @@ const buildInjectedPolkadotAdapter = (
 };
 
 export type { PolkadotSignerHandle };
-export { buildInjectedPolkadotAdapter };
+export { buildInjectedPolkadotAdapter, isPolkadotSignerHandle };

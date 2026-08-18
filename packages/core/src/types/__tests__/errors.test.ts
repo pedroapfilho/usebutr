@@ -67,9 +67,9 @@ describe("mapConnectionError", () => {
     });
   });
 
-  it("falls back to Unknown for non-Error, non-string values", () => {
-    const result = mapConnectionError({ weird: "object" });
+  it("falls back to Unknown for an unclassified string", () => {
+    const result = mapConnectionError("[object Object]");
     expect(result.kind).toBe("Unknown");
-    expect(result.message).toBe("Connection failed");
+    expect(result.message).toBe("[object Object]");
   });
 });

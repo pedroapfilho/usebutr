@@ -12,7 +12,9 @@ import { describe, expect, it, vi } from "vitest";
 import { buildSvmAdapter } from "../wallet-standard-adapter";
 import type {
   SolanaSignAndSendTransactionFeature,
+  SolanaSignInFeature,
   SolanaSignMessageFeature,
+  SolanaSignTransactionFeature,
 } from "../wallet-standard-types";
 
 /** Narrows the WalletAdapter union the builder returns; signIn and
@@ -33,7 +35,16 @@ const buildAccount = (
   features,
 });
 
-type FeatureMap = Record<string, unknown>;
+type FeatureMap = Record<
+  string,
+  | SolanaSignAndSendTransactionFeature
+  | SolanaSignInFeature
+  | SolanaSignMessageFeature
+  | SolanaSignTransactionFeature
+  | StandardConnectFeature
+  | StandardDisconnectFeature
+  | StandardEventsFeature
+>;
 
 const buildWallet = (overrides: Partial<WalletStandardWallet> = {}): WalletStandardWallet => ({
   accounts: [buildAccount("So1Address1")],
@@ -238,7 +249,10 @@ describe("buildSvmAdapter", () => {
       };
       const wallet = withFeatures(buildWallet({ chains }), {
         "solana:signAndSendTransaction": sendFeature,
-        "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+        "standard:connect": {
+          connect: vi.fn().mockResolvedValue({ accounts: [] }),
+          version: "1.0.0",
+        },
       });
       return { adapter: buildSvmAdapter(wallet), sendFeature };
     };
@@ -432,7 +446,7 @@ describe("SVM wallet fixtures — protocol-level uniformity", () => {
 
     const withSignMessage = withFeatures(buildWallet(), {
       "solana:signAndSendTransaction": signAndSendFeature,
-      "solana:signMessage": { signMessage: vi.fn() },
+      "solana:signMessage": { signMessage: vi.fn(), version: "1.0.0" },
       "standard:connect": connectFeature,
     });
     expect(buildSvmAdapter(withSignMessage)?.capabilities.signMessage).toBe(true);
@@ -452,6 +466,7 @@ describe("SVM wallet fixtures — protocol-level uniformity", () => {
     const withFeature = withFeatures(buildWallet(), {
       "solana:signAndSendTransaction": {
         signAndSendTransaction: vi.fn(),
+        version: "1.0.0",
       },
       "standard:connect": connectFeature,
     });
@@ -468,7 +483,7 @@ describe("SVM wallet fixtures — protocol-level uniformity", () => {
 
     const withEvents = withFeatures(buildWallet(), {
       "standard:connect": connectFeature,
-      "standard:events": { on: vi.fn().mockReturnValue(() => {}) },
+      "standard:events": { on: vi.fn().mockReturnValue(() => {}), version: "1.0.0" },
     });
     expect(buildSvmAdapter(withEvents)?.capabilities.subscribe).toBe(true);
 
@@ -490,7 +505,10 @@ describe("SVM wallet fixtures — protocol-level uniformity", () => {
     const connectable = (chains: ReadonlyArray<string>) =>
       buildSvmAdapter(
         withFeatures(buildWallet({ chains }), {
-          "standard:connect": { connect: vi.fn().mockResolvedValue({ accounts: [] }) },
+          "standard:connect": {
+            connect: vi.fn().mockResolvedValue({ accounts: [] }),
+            version: "1.0.0",
+          },
         }),
       );
 
@@ -665,6 +683,7 @@ describe("buildSvmAdapter edge cases", () => {
   it("exposes signTransaction + capability when solana:signTransaction is advertised (D3)", async () => {
     const signTxFeature = {
       signTransaction: vi.fn().mockResolvedValue([{ signedTransaction: new Uint8Array([9, 9]) }]),
+      version: "1.0.0",
     };
     const walletWithSignTx = withFeatures(buildWallet(), {
       "solana:signTransaction": signTxFeature,
@@ -690,6 +709,7 @@ describe("buildSvmAdapter edge cases", () => {
           signedMessage: new Uint8Array([2]),
         },
       ]),
+      version: "1.0.0",
     };
     const walletWithSignIn = withFeatures(buildWallet(), {
       "solana:signIn": signInFeature,

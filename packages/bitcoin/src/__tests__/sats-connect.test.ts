@@ -3,7 +3,7 @@ import { buildAccount } from "@usebutr/core";
 import { describe, expect, it, vi } from "vitest";
 
 import { BITCOIN_CHAINS } from "../chains";
-import type { SatsConnectProvider } from "../injected/sats-connect";
+import type { RpcValue, SatsConnectProvider } from "../injected/sats-connect";
 import { buildSatsConnectAdapter } from "../injected/sats-connect";
 
 const PAYMENT = { address: "bc1qpayment", purpose: "payment" };
@@ -11,7 +11,7 @@ const ORDINALS = { address: "bc1pordinals", purpose: "ordinals" };
 
 type MockProvider = SatsConnectProvider & { request: ReturnType<typeof vi.fn> };
 
-const buildProvider = (responses: Record<string, unknown>): MockProvider => ({
+const buildProvider = (responses: Record<string, RpcValue>): MockProvider => ({
   request: vi.fn((method: string) =>
     method in responses
       ? Promise.resolve({ result: responses[method] })

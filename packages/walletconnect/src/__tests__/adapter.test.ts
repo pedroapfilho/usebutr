@@ -1,3 +1,4 @@
+import type { Eip1193Listener, Eip1193Value } from "@usebutr/evm";
 import { describe, expect, it, vi } from "vitest";
 
 import type { UniversalProviderConstructor, UniversalProviderLike } from "../adapter";
@@ -7,7 +8,7 @@ const EVM_ONLY = { evm: ["eip155:1"] } as const;
 
 type ConnectArgs = Parameters<UniversalProviderLike["connect"]>[0];
 type RequestArgs = Parameters<UniversalProviderLike["request"]>[0];
-type ProviderListener = (...args: ReadonlyArray<unknown>) => void;
+type ProviderListener = Eip1193Listener;
 
 type ListenerCall = { event: string; fn: ProviderListener };
 type FakeSession = { namespaces: Record<string, { accounts: ReadonlyArray<string> }> };
@@ -28,7 +29,7 @@ const createFakeProvider = (
 ): UniversalProviderLike & {
   connectCalls: Array<ConnectArgs>;
   readonly disconnectCalls: number;
-  emit: (event: string, ...args: ReadonlyArray<unknown>) => void;
+  emit: (event: string, ...args: ReadonlyArray<Eip1193Value | undefined>) => void;
   onCalls: Array<ListenerCall>;
   removeListenerCalls: Array<ListenerCall>;
 } => {
@@ -44,7 +45,7 @@ const createFakeProvider = (
     connect(opts: ConnectArgs) {
       connectCalls.push(opts);
       session = approvedSession(opts);
-      return Promise.resolve();
+      return Promise.resolve(undefined);
     },
     connectCalls,
     disconnect() {
@@ -55,7 +56,7 @@ const createFakeProvider = (
     get disconnectCalls() {
       return state.disconnectCalls;
     },
-    emit(event: string, ...args: ReadonlyArray<unknown>) {
+    emit(event: string, ...args: ReadonlyArray<Eip1193Value | undefined>) {
       const set = listeners.get(event);
       if (!set) {
         return;

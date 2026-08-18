@@ -7,7 +7,7 @@ import {
 import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { bytesToBase58 } from "@usebutr/core";
 import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
-import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
+import { isWalletStandardWallet } from "@usebutr/wallet-standard-shared";
 import { useEffect, useMemo, useState } from "react";
 
 import { ButrAdapterBridge } from "./butr-adapter-bridge";
@@ -16,11 +16,11 @@ import { useDiscoveredWallets } from "./wallet-provider";
 const DEVNET = "https://api.devnet.solana.com";
 const BURN_ADDRESS = new PublicKey("11111111111111111111111111111111");
 
-const formatError = (e: unknown): string => {
-  if (e instanceof Error) {
-    return e.message;
+const formatError = (error: Error | string): string => {
+  if (error instanceof Error) {
+    return error.message;
   }
-  return String(e);
+  return error;
 };
 
 const Row = ({ children, label }: { children: React.ReactNode; label: string }) => (
@@ -81,7 +81,7 @@ const AdapterConsumer = ({
       );
       setSignature(bytesToBase58(sig));
     } catch (error) {
-      setErrorMsg(formatError(error));
+      setErrorMsg(formatError(error instanceof Error ? error : String(error)));
     }
   };
 
@@ -100,7 +100,7 @@ const AdapterConsumer = ({
       const sig = await sendTransaction(tx, connection);
       setTxSignature(sig);
     } catch (error) {
-      setErrorMsg(formatError(error));
+      setErrorMsg(formatError(error instanceof Error ? error : String(error)));
     }
   };
 
@@ -185,15 +185,17 @@ const BridgeAndExplore = ({ wallet }: { wallet: ReturnType<typeof useActiveWalle
         if (cancelled) {
           return;
         }
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: getSigner() returns the Wallet Standard wallet for SVM adapters
-        const ws = (await wallet.connector.getSigner()) as WalletStandardWallet;
+        const signer = await wallet.connector.getSigner();
+        if (!isWalletStandardWallet(signer)) {
+          throw new Error("SVM signer is not a Wallet Standard wallet");
+        }
         if (cancelled) {
           return;
         }
-        setBridge(new ButrAdapterBridge(wallet.connector, ws, wallet.account.walletAddress));
+        setBridge(new ButrAdapterBridge(wallet.connector, signer, wallet.account.walletAddress));
       } catch (error) {
         if (!cancelled) {
-          setErrorMsg(formatError(error));
+          setErrorMsg(formatError(error instanceof Error ? error : String(error)));
         }
       }
     })();
@@ -274,7 +276,7 @@ const Content = () => {
 const App = () => (
   <>
     <a
-      className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:shadow"
+      className="sr-only px-4 py-2 text-sm focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-white focus:shadow"
       href="#main"
     >
       Skip to content

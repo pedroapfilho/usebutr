@@ -1,7 +1,9 @@
 export type {
   Eip1193Listener,
+  Eip1193Object,
   Eip1193Provider,
   Eip1193RequestArgs,
+  Eip1193Value,
   Eip6963AnnounceEvent,
   Eip6963ProviderDetail,
   Eip6963ProviderInfo,
@@ -19,7 +21,7 @@ export {
 } from "./eip6963-adapter";
 
 export type { InjectedDiscoveryOptions } from "./injected";
-export { GENERIC_INJECTED_ICON, discoverInjectedAdapter } from "./injected";
+export { GENERIC_INJECTED_ICON, discoverInjectedAdapter, isEip1193Provider } from "./injected";
 
 export { EVM_CHAINS, EVM_CHAINS_LIST } from "./chains";
 

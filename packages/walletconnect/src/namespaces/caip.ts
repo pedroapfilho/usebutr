@@ -112,7 +112,7 @@ type CaipAdapterCore = {
   disconnect: () => Promise<void>;
   getAccount: () => Promise<Account | null>;
   getAccounts: () => Promise<Array<Account>>;
-  getSigner: () => Promise<unknown>;
+  getSigner: () => Promise<UniversalProviderLike>;
   getTransactionReceipt: () => Promise<{ status: "Pending" }>;
   /** Pick the WC account address to route a call through. Falls back
    *  to the first session account when the caller doesn't specify one.

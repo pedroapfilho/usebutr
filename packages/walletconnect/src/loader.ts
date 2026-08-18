@@ -20,7 +20,7 @@ type UniversalProviderLike = Eip1193Provider & {
      * ever need has to be declared in the first `connect` call.
      */
     optionalNamespaces?: Record<string, WcNamespaceRequest>;
-  }) => Promise<unknown>;
+  }) => Promise<WcSession | undefined>;
   disconnect: () => Promise<void>;
   session: WcSession | null | undefined;
 };
@@ -43,6 +43,11 @@ type UniversalProviderConstructor = {
   init: (options: UniversalProviderInitOptions) => Promise<UniversalProviderLike>;
 };
 
+const hasUniversalProviderInit = (
+  value: CallableFunction,
+): value is CallableFunction & UniversalProviderConstructor =>
+  "init" in value && typeof value.init === "function";
+
 /**
  * Dynamic so consumers who don't ship WC pay no bundle cost and can install
  * without the peer dep. WC v2 minors expose either `{ UniversalProvider }`
@@ -56,13 +61,12 @@ const loadUniversalProvider = async (): Promise<UniversalProviderConstructor> =>
   const named = "UniversalProvider" in mod ? mod.UniversalProvider : undefined;
   const fallback = "default" in mod ? mod.default : undefined;
   const ctor = named ?? fallback;
-  if (typeof ctor !== "function") {
+  if (typeof ctor !== "function" || !hasUniversalProviderInit(ctor)) {
     throw new TypeError(
       "@walletconnect/universal-provider exposes no UniversalProvider constructor",
     );
   }
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- validated the export is callable; the untyped WC module is otherwise opaque
-  return ctor as unknown as UniversalProviderConstructor;
+  return { init: ctor.init };
 };
 
 export type {

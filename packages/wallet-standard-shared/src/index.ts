@@ -5,6 +5,8 @@ export type {
   StandardEventsListener,
   WalletsApp,
   WalletStandardAppModule,
+  WalletStandardFeature,
+  WalletStandardModuleLoader,
   WalletStandardWallet,
   WalletStandardWalletAccount,
 } from "./types";
@@ -12,6 +14,7 @@ export type {
 export {
   buildAccount,
   getFeature,
+  isWalletStandardWallet,
   pickAccountByAddress,
   pickFirstAddress,
   slugify,

@@ -4,16 +4,31 @@ import { buildInjectedPolkadotAdapter } from "./adapter";
 import type { InjectedWindow } from "./injected-web3";
 import { readInjectedWindow } from "./injected-web3";
 
-const KNOWN_NAMES: Readonly<Record<string, string>> = {
-  enkrypt: "Enkrypt",
-  "nova-wallet": "Nova Wallet",
-  "polkadot-js": "Polkadot{.js}",
-  "subwallet-js": "SubWallet",
-  talisman: "Talisman",
+const knownDisplayNameFor = (key: string): string | undefined => {
+  switch (key) {
+    case "enkrypt": {
+      return "Enkrypt";
+    }
+    case "nova-wallet": {
+      return "Nova Wallet";
+    }
+    case "polkadot-js": {
+      return "Polkadot{.js}";
+    }
+    case "subwallet-js": {
+      return "SubWallet";
+    }
+    case "talisman": {
+      return "Talisman";
+    }
+    default: {
+      return undefined;
+    }
+  }
 };
 
 const displayNameFor = (key: string): string =>
-  KNOWN_NAMES[key] ??
+  knownDisplayNameFor(key) ??
   key
     .split(/[\-_]/v)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))

@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { Eip1193Listener, Eip1193Provider, Eip6963ProviderInfo } from "../eip1193";
+import type {
+  Eip1193Listener,
+  Eip1193Provider,
+  Eip1193RequestArgs,
+  Eip1193Value,
+  Eip6963ProviderInfo,
+} from "../eip1193";
 import {
   buildEvmAdapter,
   bytesToHex,
@@ -18,15 +24,21 @@ const INFO: Eip6963ProviderInfo = {
 };
 
 type MockProviderHandle = Eip1193Provider & {
-  emit: (event: string, ...args: ReadonlyArray<unknown>) => void;
-  requests: Array<{ method: string; params?: unknown }>;
-  setHandler: (method: string, handler: (params: unknown) => unknown) => void;
+  emit: (event: string, ...args: ReadonlyArray<Eip1193Value | undefined>) => void;
+  requests: Array<Eip1193RequestArgs>;
+  setHandler: (
+    method: string,
+    handler: (params: Eip1193RequestArgs["params"]) => Eip1193Value | undefined,
+  ) => void;
 };
 
 const createMockProvider = (): MockProviderHandle => {
   const listeners = new Map<string, Set<Eip1193Listener>>();
-  const handlers = new Map<string, (params: unknown) => unknown>();
-  const requests: Array<{ method: string; params?: unknown }> = [];
+  const handlers = new Map<
+    string,
+    (params: Eip1193RequestArgs["params"]) => Eip1193Value | undefined
+  >();
+  const requests: Array<Eip1193RequestArgs> = [];
 
   return {
     emit(event, ...args) {

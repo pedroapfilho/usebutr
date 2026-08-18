@@ -337,10 +337,10 @@ const reducer = (state: State, event: Event): State => {
       const sameAccount =
         nextAccount.walletAddress === wallet.account.walletAddress &&
         nextAccount.chain.id === wallet.account.chain.id;
-      const sameAccountsShape =
+      const hasSameAccounts =
         event.accounts.length === wallet.accounts.length &&
         event.accounts.every((a, i) => a.walletAddress === wallet.accounts[i]?.walletAddress);
-      if (sameAccount && sameAccountsShape) {
+      if (sameAccount && hasSameAccounts) {
         return state;
       }
       const updated: ConnectedWallet = {

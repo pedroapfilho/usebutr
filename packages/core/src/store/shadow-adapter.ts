@@ -82,7 +82,7 @@ const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
     default: {
       const _exhaustive: never = entry.chainPlatform;
       void _exhaustive;
-      throw new Error(`[butr] unknown chainPlatform: ${entry.chainPlatform as string}`);
+      throw new Error(`[butr] unknown chainPlatform: ${String(entry.chainPlatform)}`);
     }
   }
 };

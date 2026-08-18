@@ -17,6 +17,7 @@ type PolkadotSignMessageOutput = {
 
 type PolkadotSignMessageFeature = {
   signMessage: (input: PolkadotSignMessageInput) => Promise<PolkadotSignMessageOutput>;
+  version?: string;
 };
 
 export type { PolkadotSignMessageFeature, PolkadotSignMessageInput, PolkadotSignMessageOutput };

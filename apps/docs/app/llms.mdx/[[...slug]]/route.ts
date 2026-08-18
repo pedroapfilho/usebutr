@@ -1,28 +1,30 @@
+import { cacheLife } from "next/cache";
 import { notFound } from "next/navigation";
 
 import { getLLMText } from "@/lib/get-llm-text";
 import { source } from "@/lib/source";
 
-export const revalidate = false;
-
-/**
- * Serves a single docs page as Markdown for AI agents. Reached either by
- * appending `.mdx` to a docs URL or via the Accept-header proxy.
- */
-export const GET = async (
-  _req: Request,
-  { params }: { params: Promise<{ slug?: Array<string> }> },
-) => {
-  const { slug } = await params;
+const getPageMarkdown = async (slug?: Array<string>) => {
+  "use cache";
+  cacheLife("max");
   const page = source.getPage(slug);
-  if (!page) {
+  const markdown = page ? await getLLMText(page) : null;
+  return markdown;
+};
+
+const GET = async (_req: Request, { params }: { params: Promise<{ slug?: Array<string> }> }) => {
+  const { slug } = await params;
+  const markdown = await getPageMarkdown(slug);
+  if (markdown === null) {
     notFound();
   }
 
-  return new Response(await getLLMText(page), {
+  return new Response(markdown, {
     headers: { "Content-Type": "text/markdown; charset=utf-8" },
   });
 };
 
+const generateStaticParams = () => source.generateParams();
+
 // fallow-ignore-next-line unused-export
-export const generateStaticParams = () => source.generateParams();
+export { generateStaticParams, GET };

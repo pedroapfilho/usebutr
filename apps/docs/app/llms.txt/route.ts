@@ -1,11 +1,15 @@
 import { llms } from "fumadocs-core/source";
+import { cacheLife } from "next/cache";
 
 import { source } from "@/lib/source";
 
-export const revalidate = false;
+const getLlmsIndex = async () => {
+  "use cache";
+  cacheLife("max");
+  const index = await Promise.resolve(llms(source).index());
+  return index;
+};
 
-/**
- * Exposes the docs as an llms.txt index so language models can
- * discover every page, title, and summary in one fetch.
- */
-export const GET = () => new Response(llms(source).index());
+const GET = async () => new Response(await getLlmsIndex());
+
+export { GET };

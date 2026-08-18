@@ -1,14 +1,15 @@
+import { cacheLife } from "next/cache";
+
 import { getLLMText } from "@/lib/get-llm-text";
 import { source } from "@/lib/source";
 
-export const revalidate = false;
-
-/**
- * Concatenates every page's processed Markdown into a single document
- * an AI can read in one fetch.
- */
-export const GET = async () => {
+const getLlmsFull = async () => {
+  "use cache";
+  cacheLife("max");
   const scanned = await Promise.all(source.getPages().map(getLLMText));
-
-  return new Response(scanned.join("\n\n"));
+  return scanned.join("\n\n");
 };
+
+const GET = async () => new Response(await getLlmsFull());
+
+export { GET };

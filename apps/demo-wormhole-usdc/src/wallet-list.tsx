@@ -2,6 +2,8 @@ import type { Account, ChainPlatform, ConnectedWallet, WalletAdapter } from "@us
 import {
   useConnectWallet,
   useConnectedWallets,
+  useConnectionError,
+  useConnectingConnectorId,
   useDisconnectWallet,
   useDiscoveredWallets,
   useRequestAccounts,
@@ -36,7 +38,7 @@ const WalletRow = ({
   const showSwitcher = accounts.length > 1;
   const canAddAccounts = connector.capabilities.requestAccounts;
   return (
-    <div className="rounded-md border border-neutral-200 bg-white p-2.5">
+    <div className="rounded-md border border-neutral-200 bg-white px-2.5 py-2 sm:py-1.5">
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <span aria-hidden="true" className={active ? "text-emerald-500" : "text-neutral-300"}>
@@ -86,7 +88,7 @@ const WalletRow = ({
           {showSwitcher ? (
             <select
               aria-label={`Active account for ${connector.name}`}
-              className="min-w-0 flex-1 rounded border border-neutral-300 bg-white px-1.5 py-0.5 font-mono text-base text-neutral-700 focus:outline-none"
+              className="min-w-0 flex-1 rounded border border-neutral-300 bg-white px-1.5 py-0.5 font-mono text-base text-neutral-700 focus:outline-none sm:text-xs"
               onChange={(e) => {
                 const next = accounts.find((a) => a.id === e.target.value);
                 if (next) {
@@ -122,6 +124,7 @@ const WalletRow = ({
 const WalletGroup = ({
   connect,
   connected,
+  connectingId,
   disconnect,
   discovered,
   label,
@@ -133,6 +136,7 @@ const WalletGroup = ({
 }: {
   connect: (id: string) => void;
   connected: ReadonlyArray<ConnectedWallet>;
+  connectingId: string | null;
   disconnect: (id: string) => void;
   discovered: ReadonlyArray<WalletAdapter>;
   label: string;
@@ -169,7 +173,9 @@ const WalletGroup = ({
         <div className="mt-2 flex flex-wrap gap-2">
           {connectable.map((d) => (
             <button
-              className="flex items-center gap-2 rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-sm hover:bg-neutral-50"
+              aria-busy={connectingId === d.id}
+              className="flex min-h-11 items-center gap-2 rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50 sm:min-h-0"
+              disabled={connectingId === d.id}
               key={d.id}
               onClick={() => {
                 connect(d.id);
@@ -192,6 +198,8 @@ const WalletList = () => {
   const pool = useConnectedWallets();
   const discovered = useDiscoveredWallets();
   const connect = useConnectWallet();
+  const connectionError = useConnectionError();
+  const connectingId = useConnectingConnectorId();
   const disconnect = useDisconnectWallet();
   const setSelection = useSetSelection();
   const updateWalletAccount = useUpdateWalletAccount();
@@ -212,6 +220,7 @@ const WalletList = () => {
               void connect(id);
             }}
             connected={pool.filter((w) => w.connector.chainPlatform === platform)}
+            connectingId={connectingId}
             disconnect={disconnect}
             discovered={discovered.filter((d) => d.chainPlatform === platform)}
             key={platform}
@@ -226,6 +235,15 @@ const WalletList = () => {
           />
         ))}
       </div>
+      {connectionError === null ? null : (
+        <p
+          aria-live="assertive"
+          className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+          role="alert"
+        >
+          {connectionError.kind}: {connectionError.message}
+        </p>
+      )}
     </section>
   );
 };

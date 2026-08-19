@@ -1,6 +1,7 @@
 import { address as toAddress, createSolanaRpc } from "@solana/kit";
+import { useQuery } from "@tanstack/react-query";
 import { formatUnits } from "ethers";
-import { useEffect, useReducer } from "react";
+import { z } from "zod";
 
 import { type ChainSpec, USDC_DECIMALS } from "./chains";
 
@@ -12,41 +13,18 @@ type UsdcBalance = {
   uiAmountString: string | null;
 };
 
-type State = { status: Status; tick: number; uiAmountString: string | null };
+const evmResponseSchema = z.object({
+  error: z.object({ message: z.string() }).optional(),
+  result: z.string().optional(),
+});
 
-type Action =
-  | { type: "reset" }
-  | { type: "load" }
-  | { type: "success"; uiAmountString: string }
-  | { type: "error" }
-  | { type: "bump" };
-
-const INITIAL: State = { status: "idle", tick: 0, uiAmountString: null };
-
-const reducer = (state: State, action: Action): State => {
-  switch (action.type) {
-    case "reset": {
-      return { status: "idle", tick: state.tick, uiAmountString: null };
-    }
-    case "load": {
-      return { status: "loading", tick: state.tick, uiAmountString: null };
-    }
-    case "success": {
-      return { status: "success", tick: state.tick, uiAmountString: action.uiAmountString };
-    }
-    case "error": {
-      return { status: "error", tick: state.tick, uiAmountString: null };
-    }
-    case "bump": {
-      return { ...state, tick: state.tick + 1 };
-    }
-    default: {
-      const _exhaustive: never = action;
-      void _exhaustive;
-      return state;
-    }
-  }
-};
+const tokenAmountSchema = z.object({
+  uiAmount: z.number().optional(),
+  uiAmountString: z.string().optional(),
+});
+const tokenInfoSchema = z.object({ tokenAmount: tokenAmountSchema.optional() });
+const parsedTokenSchema = z.object({ info: tokenInfoSchema.optional() });
+const parsedTokenDataSchema = z.object({ parsed: parsedTokenSchema.optional() });
 
 const readEvmUsdc = async (spec: ChainSpec, owner: string): Promise<string> => {
   const padded = owner.slice(2).toLowerCase().padStart(64, "0");
@@ -61,8 +39,10 @@ const readEvmUsdc = async (spec: ChainSpec, owner: string): Promise<string> => {
     headers: { "content-type": "application/json" },
     method: "POST",
   });
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- JSON-RPC response is untyped `any`; this is the typed boundary
-  const json = (await response.json()) as { error?: { message: string }; result?: string };
+  if (!response.ok) {
+    throw new Error(`EVM RPC request failed with status ${response.status}`);
+  }
+  const json = evmResponseSchema.parse(await response.json());
   if (json.error !== undefined) {
     throw new Error(json.error.message);
   }
@@ -82,54 +62,42 @@ const readSvmUsdc = async (spec: ChainSpec, owner: string): Promise<string> => {
   if (first === undefined) {
     return "0";
   }
-  type ParsedTokenData = {
-    parsed?: { info?: { tokenAmount?: { uiAmount?: number; uiAmountString?: string } } };
-  };
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- jsonParsed SPL token account shape is untyped at the RPC boundary
-  const parsedData = first.account.data as unknown as ParsedTokenData;
+  const parsedData = parsedTokenDataSchema.parse(first.account.data);
   const info = parsedData.parsed?.info?.tokenAmount;
   return info?.uiAmountString ?? String(info?.uiAmount ?? 0);
 };
 
-/**
- * USDC balance for the given chain + owner, read from that chain's RPC.
- * Shape mirrors butr's `UseBalanceResult` (status + refetch) so the
- * demo renders source and destination symmetrically.
- */
 const useUsdcBalance = (spec: ChainSpec, owner: string | null | undefined): UsdcBalance => {
-  const [state, dispatch] = useReducer(reducer, INITIAL);
-
-  useEffect(() => {
-    if (owner === null || owner === undefined || owner === "") {
-      dispatch({ type: "reset" });
-      return undefined;
-    }
-    let cancelled = false;
-    dispatch({ type: "load" });
-    void (async () => {
-      try {
-        const uiAmountString =
-          spec.platform === "evm" ? await readEvmUsdc(spec, owner) : await readSvmUsdc(spec, owner);
-        if (!cancelled) {
-          dispatch({ type: "success", uiAmountString });
-        }
-      } catch {
-        if (!cancelled) {
-          dispatch({ type: "error" });
-        }
+  const hasOwner = owner !== null && owner !== undefined && owner !== "";
+  const query = useQuery({
+    enabled: hasOwner,
+    queryFn: () => {
+      if (!hasOwner) {
+        return Promise.resolve("0");
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [spec, owner, state.tick]);
+      return spec.platform === "evm" ? readEvmUsdc(spec, owner) : readSvmUsdc(spec, owner);
+    },
+    queryKey: ["usdc-balance", spec.chain, spec.rpcUrl, spec.usdc, owner],
+    retry: false,
+  });
+
+  let status: Status;
+  if (!hasOwner) {
+    status = "idle";
+  } else if (query.isFetching) {
+    status = "loading";
+  } else if (query.isError) {
+    status = "error";
+  } else {
+    status = "success";
+  }
 
   return {
     refetch: () => {
-      dispatch({ type: "bump" });
+      void query.refetch();
     },
-    status: state.status,
-    uiAmountString: state.status === "success" ? state.uiAmountString : null,
+    status,
+    uiAmountString: status === "success" ? (query.data ?? "0") : null,
   };
 };
 

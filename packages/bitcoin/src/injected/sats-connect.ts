@@ -1,17 +1,32 @@
-import type { Account, ChainBase, WalletAdapter, WalletCapabilities } from "@usebutr/core";
+import type {
+  Account,
+  ChainBase,
+  TransactionInput,
+  WalletAdapter,
+  WalletCapabilities,
+} from "@usebutr/core";
 import { base64ToBytes, bytesToBase64 } from "@usebutr/core";
 import { buildAccount } from "@usebutr/wallet-standard-shared";
+import { z } from "zod";
 
 import { BITCOIN_CHAINS } from "../chains";
 
 import { GENERIC_BITCOIN_ICON } from "./icon";
 
 /** sats-connect (Xverse) shape; a JSON-RPC-ish `request(method, params)`. */
+type RpcValue =
+  | boolean
+  | number
+  | string
+  | null
+  | ReadonlyArray<RpcValue>
+  | { readonly [key: string]: RpcValue | undefined };
+
 type SatsConnectProvider = {
   request: (
     method: string,
-    params?: Record<string, unknown>,
-  ) => Promise<{ error?: { message: string }; result?: unknown }>;
+    params?: Readonly<Record<string, RpcValue>>,
+  ) => Promise<{ error?: { message: string }; result?: RpcValue }>;
 };
 
 /** One address entry of a sats-connect account result. `purpose` tags the
@@ -47,6 +62,22 @@ const CAPS_SATS_CONNECT: WalletCapabilities = {
 const ACCOUNT_PURPOSES = ["payment", "ordinals"];
 const CONNECT_MESSAGE = "Connect to butr";
 
+const satsAddressSchema = z.object({
+  address: z.string(),
+  publicKey: z.string().optional(),
+  purpose: z.string().optional(),
+});
+
+const accountResultSchema = z
+  .object({ addresses: z.array(satsAddressSchema).optional() })
+  .nullable();
+const sendTransferResultSchema = z.object({ txid: z.string() });
+const signMessageResultSchema = z.object({
+  messageHash: z.string().optional(),
+  signature: z.string(),
+});
+const signPsbtResultSchema = z.object({ psbt: z.string() });
+
 const pickPaymentAddress = (addresses: ReadonlyArray<SatsAddress>): SatsAddress | undefined =>
   addresses.find((a) => a.purpose === "payment") ?? addresses[0];
 
@@ -63,20 +94,23 @@ const buildSatsConnectAdapter = (
   let chain: ChainBase = BITCOIN_CHAINS.mainnet;
   let session: Session = { status: "disconnected" };
 
-  // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- caller-supplied result shape for an untyped RPC bridge
-  const callRequest = async <T>(method: string, params?: Record<string, unknown>): Promise<T> => {
+  const callRequest = async <Schema extends z.ZodType>(
+    method: string,
+    schema: Schema,
+    params?: Readonly<Record<string, RpcValue>>,
+  ): Promise<z.output<Schema>> => {
     const response = await provider.request(method, params);
     if (response.error) {
       throw new Error(`[butr/bitcoin] sats-connect ${method} failed: ${response.error.message}`);
     }
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped sats-connect RPC result; caller declares the shape
-    return response.result as T;
+    return schema.parse(response.result);
   };
 
-  const startSession = async (method: string, params: Record<string, unknown>): Promise<void> => {
-    const result = await callRequest<{
-      addresses?: ReadonlyArray<SatsAddress>;
-    } | null>(method, params);
+  const startSession = async (
+    method: string,
+    params: Readonly<Record<string, RpcValue>>,
+  ): Promise<void> => {
+    const result = await callRequest(method, accountResultSchema, params);
     const addresses = result?.addresses ?? [];
     const payment = pickPaymentAddress(addresses);
     if (payment === undefined) {
@@ -107,7 +141,7 @@ const buildSatsConnectAdapter = (
     return match.address;
   };
 
-  const sendTransferTx = async (tx: unknown, account?: Account): Promise<string> => {
+  const sendTransferTx = async (tx: TransactionInput, account?: Account): Promise<string> => {
     const sender = resolveAddress(account);
     if (sender !== requireSession().payment) {
       throw new Error(
@@ -127,7 +161,7 @@ const buildSatsConnectAdapter = (
       );
     }
     const { amount, recipient } = tx;
-    const result = await callRequest<{ txid: string }>("sendTransfer", {
+    const result = await callRequest("sendTransfer", sendTransferResultSchema, {
       recipients: [{ address: recipient, amount: amount.toString() }],
     });
     return result.txid;
@@ -187,7 +221,7 @@ const buildSatsConnectAdapter = (
 
     async signMessage(msg, account) {
       const address = resolveAddress(account);
-      const result = await callRequest<{ messageHash?: string; signature: string }>("signMessage", {
+      const result = await callRequest("signMessage", signMessageResultSchema, {
         address,
         message: new TextDecoder().decode(msg),
       });
@@ -200,7 +234,7 @@ const buildSatsConnectAdapter = (
           "Bitcoin signTransaction expects a PSBT as Uint8Array (e.g. psbt.toBuffer())",
         );
       }
-      const result = await callRequest<{ psbt: string }>("signPsbt", {
+      const result = await callRequest("signPsbt", signPsbtResultSchema, {
         psbt: bytesToBase64(tx),
       });
       return base64ToBytes(result.psbt);
@@ -218,5 +252,5 @@ const buildSatsConnectAdapter = (
   };
 };
 
-export type { SatsConnectProvider };
+export type { RpcValue, SatsConnectProvider };
 export { buildSatsConnectAdapter };

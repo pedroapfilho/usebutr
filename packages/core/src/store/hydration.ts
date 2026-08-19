@@ -1,5 +1,4 @@
 import type { StoredPoolEntry, WalletPersistence } from "../storage";
-import { CHAIN_PLATFORMS } from "../types";
 import type {
   Account,
   ChainPlatform,
@@ -8,6 +7,9 @@ import type {
   WalletAdapter,
   WalletManagerConfig,
 } from "../types";
+import type { ErrorCause } from "../types/errors";
+import { toErrorCause } from "../types/errors";
+import { CHAIN_PLATFORMS } from "../types/platform";
 
 const VALID_CHAIN_PLATFORMS: ReadonlySet<string> = new Set(CHAIN_PLATFORMS);
 
@@ -20,7 +22,7 @@ const isChainPlatform = (value: string): value is ChainPlatform => VALID_CHAIN_P
  */
 type RestoreOutcome =
   | { connectorId: string; entry: ConnectedWallet; kind: "ok" }
-  | { connectorId: string; error: unknown; kind: "fail" };
+  | { connectorId: string; error: ErrorCause; kind: "fail" };
 
 /**
  * Snapshot returned by `HydrationCoordinator.hydrate()`; everything
@@ -34,7 +36,7 @@ type HydrateResult = {
    *  preserved so the next load can retry. The most common cause is
    *  EIP-1193 `eth_accounts: []` from a locked wallet, which clears as
    *  soon as the user unlocks and reloads. */
-  dropped: Array<{ connectorId: string; reason: unknown }>;
+  dropped: Array<{ connectorId: string; reason: ErrorCause }>;
   isUserDisconnected: boolean;
   /** Entries parked because `createConnector(id)` returned `null` at
    *  hydration time (typical for Wallet Standard adapters announced
@@ -98,7 +100,11 @@ const restoreOneEntry = async (
       kind: "ok",
     };
   } catch (error) {
-    return { connectorId, error, kind: "fail" };
+    return {
+      connectorId,
+      error: toErrorCause(error instanceof Error ? error : String(error)),
+      kind: "fail",
+    };
   }
 };
 
@@ -132,7 +138,7 @@ const createHydrationCoordinator = (
       ]);
 
       const pool = new Map<string, ConnectedWallet>();
-      const dropped: Array<{ connectorId: string; reason: unknown }> = [];
+      const dropped: Array<{ connectorId: string; reason: ErrorCause }> = [];
 
       pending.clear();
 

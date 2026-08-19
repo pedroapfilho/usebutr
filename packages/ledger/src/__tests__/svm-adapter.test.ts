@@ -22,7 +22,7 @@ const buildFakeSig = (fill: number): Uint8Array => {
 
 const buildFakeSolanaCtor = (onGetAddress?: (path: string) => void): SolanaAppConstructor => {
   return class FakeSolana implements SolanaAppLike {
-    constructor(private readonly _transport: unknown) {
+    constructor(private readonly _transport: TransportLike) {
       void _transport;
     }
     getAddress(path: string): Promise<{ address: Uint8Array }> {

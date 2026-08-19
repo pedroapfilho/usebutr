@@ -3,6 +3,7 @@
  * Spec: https://github.com/anza-xyz/wallet-standard
  */
 
+import type { SignInInput } from "@usebutr/core";
 import type { WalletStandardWalletAccount } from "@usebutr/wallet-standard-shared";
 
 type SolanaSignMessageInput = {
@@ -19,6 +20,7 @@ type SolanaSignMessageFeature = {
   signMessage: (
     ...inputs: ReadonlyArray<SolanaSignMessageInput>
   ) => Promise<ReadonlyArray<SolanaSignMessageOutput>>;
+  version?: string;
 };
 
 type SolanaSignAndSendTransactionInput = {
@@ -35,6 +37,7 @@ type SolanaSignAndSendTransactionFeature = {
   signAndSendTransaction: (
     ...inputs: ReadonlyArray<SolanaSignAndSendTransactionInput>
   ) => Promise<ReadonlyArray<SolanaSignAndSendTransactionOutput>>;
+  version?: string;
 };
 
 type SolanaSignTransactionInput = {
@@ -51,10 +54,10 @@ type SolanaSignTransactionFeature = {
   signTransaction: (
     ...inputs: ReadonlyArray<SolanaSignTransactionInput>
   ) => Promise<ReadonlyArray<SolanaSignTransactionOutput>>;
+  version?: string;
 };
 
-/** SIWS message fields, all optional; the wallet fills defaults. */
-type SolanaSignInInput = Record<string, unknown>;
+type SolanaSignInInput = SignInInput;
 
 type SolanaSignInOutput = {
   account: WalletStandardWalletAccount;
@@ -64,6 +67,7 @@ type SolanaSignInOutput = {
 
 type SolanaSignInFeature = {
   signIn: (input?: SolanaSignInInput) => Promise<ReadonlyArray<SolanaSignInOutput>>;
+  version?: string;
 };
 
 export type {

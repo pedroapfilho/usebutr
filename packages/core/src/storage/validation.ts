@@ -3,7 +3,7 @@ import { z } from "zod";
 import { logWarn } from "../logger";
 import { CHAIN_PLATFORMS } from "../types/platform";
 
-import type { StoredPoolRecord, StoredSelectionRecord } from "./persistence";
+import type { StoredPoolEntry, StoredPoolRecord, StoredSelectionRecord } from "./persistence";
 
 const chainPlatformSchema = z.enum(CHAIN_PLATFORMS);
 
@@ -31,7 +31,7 @@ const storedPoolEntrySchema = z.looseObject({
 
 const recordSchema = z.record(z.string(), z.unknown());
 
-const parseStoredPoolEntry = (key: string, value: unknown) => {
+const parseStoredPoolEntry = (key: string, value: StoredPoolEntry) => {
   const parsed = storedPoolEntrySchema.safeParse(value);
   if (!parsed.success || parsed.data.connectorId !== key) {
     return null;
@@ -78,7 +78,8 @@ const decodePool = (raw: string | null | undefined, label = "[butr]"): StoredPoo
   }
   const result: StoredPoolRecord = {};
   for (const [key, entryValue] of Object.entries(parsed.data)) {
-    const entry = parseStoredPoolEntry(key, entryValue);
+    const candidate = storedPoolEntrySchema.safeParse(entryValue);
+    const entry = candidate.success ? parseStoredPoolEntry(key, candidate.data) : null;
     if (entry === null) {
       logWarn(`${label} dropping invalid pool entry for ${key}`);
     } else {

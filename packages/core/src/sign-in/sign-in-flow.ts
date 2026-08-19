@@ -46,6 +46,10 @@ type SignInFlowOptions = {
   verify: (result: SignInResult) => Promise<void>;
 };
 
+type SignInFlow = {
+  signIn: (wallet: ConnectedWallet, account?: Account) => Promise<SignInResult>;
+};
+
 /** Thrown before any wallet interaction when the wallet can't sign at
  *  all. Distinct from a rejection: nothing was asked of the user, so UI
  *  should say "this wallet can't sign in" rather than "you declined". */
@@ -69,9 +73,7 @@ const defaultBuildMessage = ({ account, nonce }: SignInMessageContext): string =
  * `result.signedMessage` holds the wallet-composed statement and
  * `result.message` is absent. `preferSignMessage` opts out.
  */
-const createSignInFlow = (
-  options: SignInFlowOptions,
-): { signIn: (wallet: ConnectedWallet, account?: Account) => Promise<SignInResult> } => {
+const createSignInFlow = (options: SignInFlowOptions): SignInFlow => {
   const buildMessage = options.buildMessage ?? defaultBuildMessage;
 
   const sign = async (wallet: ConnectedWallet, account?: Account): Promise<SignInResult> => {
@@ -129,5 +131,5 @@ const createSignInFlow = (
   };
 };
 
-export type { SignInFlowOptions, SignInMessageContext, SignInResult };
+export type { SignInFlow, SignInFlowOptions, SignInMessageContext, SignInResult };
 export { SignInUnsupportedError, createSignInFlow };

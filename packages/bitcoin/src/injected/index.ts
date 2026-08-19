@@ -14,6 +14,16 @@ type InjectedHost = {
   XverseProviders?: { BitcoinProvider?: SatsConnectProvider };
 };
 
+declare global {
+  // oxlint-disable-next-line typescript/consistent-type-definitions -- DOM globals require interface merging.
+  interface Window {
+    btc?: UnisatProvider;
+    okxwallet?: { bitcoin?: UnisatProvider };
+    unisat?: UnisatProvider;
+    XverseProviders?: { BitcoinProvider?: SatsConnectProvider };
+  }
+}
+
 type InjectedBitcoinDiscoveryOptions = {
   /** Suppresses emission when Wallet Standard discovery has already
    *  registered a Bitcoin adapter for the same browser session. */
@@ -32,11 +42,7 @@ const readHost = (target: InjectedBitcoinDiscoveryOptions["target"]): InjectedHo
   if (typeof window === "undefined") {
     return null;
   }
-  // `window` carries the injected wallet globals (`unisat`, `okxwallet`,
-  // etc.) as an untyped host object; `InjectedHost` names the four keys
-  // butr probes, all optional and read defensively in `probeProviders`.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- untyped injected-wallet window globals
-  return window as unknown as InjectedHost;
+  return window;
 };
 
 const probeProviders = (host: InjectedHost): Array<WalletAdapter> => {

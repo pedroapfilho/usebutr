@@ -1,4 +1,4 @@
-import type { WalletAdapter } from "@usebutr/core";
+import type { WalletAdapter, WalletSigner } from "@usebutr/core";
 
 import type { Eip1193Provider, Eip6963ProviderInfo } from "./eip1193";
 import { buildEvmAdapter } from "./eip6963-adapter";
@@ -26,23 +26,28 @@ type InjectedDiscoveryOptions = {
    */
   settleMs?: number;
   /** Override the global `window` reference (tests, iframes). */
-  target?: { ethereum?: unknown } | null;
+  target?: { ethereum?: Partial<Eip1193Provider> } | null;
 };
 
-const isEip1193Provider = (value: unknown): value is Eip1193Provider =>
-  typeof value === "object" &&
-  value !== null &&
+declare global {
+  // oxlint-disable-next-line typescript/consistent-type-definitions -- DOM globals require interface merging.
+  interface Window {
+    ethereum?: Partial<Eip1193Provider>;
+  }
+}
+
+const isEip1193Provider = (value: WalletSigner | undefined): value is Eip1193Provider =>
+  value !== undefined &&
+  "on" in value &&
+  typeof value.on === "function" &&
+  "removeListener" in value &&
+  typeof value.removeListener === "function" &&
   "request" in value &&
   typeof value.request === "function";
 
 const readEthereum = (target: InjectedDiscoveryOptions["target"]): Eip1193Provider | null => {
-  const globalWindow: unknown = typeof window === "undefined" ? null : window;
-  const host: unknown = target === undefined ? globalWindow : target;
-  if (typeof host !== "object" || host === null || !("ethereum" in host)) {
-    return null;
-  }
-  const eth: unknown = host.ethereum;
-  return isEip1193Provider(eth) ? eth : null;
+  const host = target === undefined ? globalThis.window : target;
+  return isEip1193Provider(host?.ethereum) ? host.ethereum : null;
 };
 
 /**
@@ -83,4 +88,4 @@ const discoverInjectedAdapter = (
 };
 
 export type { InjectedDiscoveryOptions };
-export { GENERIC_INJECTED_ICON, discoverInjectedAdapter };
+export { GENERIC_INJECTED_ICON, discoverInjectedAdapter, isEip1193Provider };

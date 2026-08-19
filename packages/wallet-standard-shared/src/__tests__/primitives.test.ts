@@ -8,7 +8,11 @@ import {
   pickFirstAddress,
   slugify,
 } from "../primitives";
-import type { WalletStandardWallet, WalletStandardWalletAccount } from "../types";
+import type {
+  WalletStandardFeature,
+  WalletStandardWallet,
+  WalletStandardWalletAccount,
+} from "../types";
 
 const wallet = (overrides: Partial<WalletStandardWallet> = {}): WalletStandardWallet => ({
   accounts: [],
@@ -33,6 +37,11 @@ const chain: ChainBase = {
   reference: "chain",
 };
 
+const hasConnect = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & { connect: () => Promise<void> } =>
+  "connect" in feature && typeof feature.connect === "function";
+
 describe("slugify", () => {
   it("produces wallet-standard:<prefix>-<slug>", () => {
     expect(slugify("svm", "Phantom")).toBe("wallet-standard:svm-phantom");
@@ -48,13 +57,13 @@ describe("slugify", () => {
 
 describe("getFeature", () => {
   it("returns the feature value when present", () => {
-    const fakeFeature = { connect: () => Promise.resolve() };
+    const fakeFeature = { connect: () => Promise.resolve(), version: "1.0.0" };
     const w = wallet({ features: { "standard:connect": fakeFeature } });
-    expect(getFeature(w, "standard:connect")).toBe(fakeFeature);
+    expect(getFeature(w, "standard:connect", hasConnect)).toBe(fakeFeature);
   });
 
   it("returns undefined when absent", () => {
-    expect(getFeature(wallet(), "standard:connect")).toBeUndefined();
+    expect(getFeature(wallet(), "standard:connect", hasConnect)).toBeUndefined();
   });
 });
 

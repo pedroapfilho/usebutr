@@ -1,4 +1,4 @@
-import type { Account, SuiAdapter, WalletCapabilities } from "@usebutr/core";
+import type { Account, SuiAdapter, TransactionInput, WalletCapabilities } from "@usebutr/core";
 import { base64ToBytes, bytesToBase64 } from "@usebutr/core";
 
 import { CAIP_WC_CAPABILITIES, createCaipAdapterCore } from "./caip";
@@ -25,7 +25,7 @@ const WALLETCONNECT_SUI_CAPABILITIES: WalletCapabilities = { ...CAIP_WC_CAPABILI
 
 /** Consumers pass either a base64 string (already BCS-serialized by
  *  `@mysten/sui`) or a `Uint8Array` of BCS bytes. */
-const coerceTransactionToBase64 = (tx: unknown): string => {
+const coerceTransactionToBase64 = (tx: TransactionInput): string => {
   if (typeof tx === "string") {
     return tx;
   }
@@ -57,10 +57,10 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
       session,
     });
 
-    const executeTx = async (tx: unknown, account?: Account): Promise<string> => {
+    const executeTx = async (tx: TransactionInput, account?: Account): Promise<string> => {
       const address = resolveAddress(account);
       const transaction = coerceTransactionToBase64(tx);
-      const result: unknown = await provider.request({
+      const result = await provider.request({
         method: "sui_signAndExecuteTransaction",
         params: { address, transaction },
       });
@@ -97,7 +97,7 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
 
       async signMessage(msg, account) {
         const address = resolveAddress(account);
-        const result: unknown = await provider.request({
+        const result = await provider.request({
           method: "sui_signPersonalMessage",
           params: { address, message: bytesToBase64(msg) },
         });
@@ -115,7 +115,7 @@ const suiNamespace: WalletConnectNamespaceBuilder = {
       async signTransaction(tx, account) {
         const address = resolveAddress(account);
         const transaction = coerceTransactionToBase64(tx);
-        const result: unknown = await provider.request({
+        const result = await provider.request({
           method: "sui_signTransaction",
           params: { address, transaction },
         });

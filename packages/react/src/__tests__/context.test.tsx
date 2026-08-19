@@ -17,14 +17,15 @@ const sourceOf = (...adapters: Array<WalletAdapter>): WalletSource => ({
   },
 });
 
-// eslint-disable-next-line react/display-name -- test wrapper factory, display name not needed
-const wrap =
-  (props: Partial<React.ComponentProps<typeof WalletManagerProvider>>) =>
-  ({ children }: PropsWithChildren) => (
+const wrap = (props: Partial<React.ComponentProps<typeof WalletManagerProvider>>) => {
+  const TestWrapper = ({ children }: PropsWithChildren) => (
     <WalletManagerProvider storage={createFakePersistence()} {...props}>
       {children}
     </WalletManagerProvider>
   );
+  TestWrapper.displayName = "WalletManagerTestWrapper";
+  return TestWrapper;
+};
 
 describe("WalletManagerProvider (unified)", () => {
   it("hydrates and provides the store", async () => {

@@ -3,7 +3,7 @@ import { bytesToHexPrefixed } from "@usebutr/core";
 
 import { createLedgerAdapterCore } from "../adapter-core";
 import { LEDGER_SIGN_TRANSACTION_CAPABILITIES } from "../capabilities";
-import type { TransportFactory } from "../transport";
+import type { TransportFactory, TransportLike } from "../transport";
 
 /**
  * Declared inline so butr's typecheck doesn't depend on the optional peer dep.
@@ -18,7 +18,7 @@ type SuiAppLike = {
   signTransaction: (path: string, txn: Uint8Array) => Promise<{ signature: Uint8Array }>;
 };
 
-type SuiAppConstructor = new (transport: unknown) => SuiAppLike;
+type SuiAppConstructor = new (transport: TransportLike) => SuiAppLike;
 
 type SuiCluster = "mainnet" | "testnet" | "devnet" | "localnet";
 
@@ -52,18 +52,19 @@ const serializeEd25519Signature = (signature: Uint8Array, publicKey: Uint8Array)
 };
 
 const loadSui = async (): Promise<SuiAppConstructor> => {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- untyped optional peer-dep module boundary
-  const mod = (await import("@ledgerhq/hw-app-sui")) as unknown as {
+  const imported: unknown = await import("@ledgerhq/hw-app-sui");
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SAFETY: The supported peer range exports the Sui app constructor under default or Sui.
+  const moduleValue = imported as {
     default?: SuiAppConstructor;
     Sui?: SuiAppConstructor;
   };
-  const ctor = mod.default ?? mod.Sui;
-  if (!ctor) {
+  const constructor = moduleValue.default ?? moduleValue.Sui;
+  if (!constructor) {
     throw new Error(
       "[butr/ledger] failed to load @ledgerhq/hw-app-sui: install it as an optional peer dep",
     );
   }
-  return ctor;
+  return constructor;
 };
 
 /**
@@ -191,6 +192,7 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
       }
       const path = await core.resolvePath(account);
       const publicKey = await sui.getPublicKey(path);
+      // oxlint-disable-next-line react-doctor/server-sequential-independent-await -- Ledger transports allow one APDU exchange at a time.
       const result = await sui.signTransaction(path, tx);
       return {
         bytes: tx,

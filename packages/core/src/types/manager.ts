@@ -2,7 +2,7 @@ import type { WalletPersistence } from "../storage/persistence";
 import type { WalletSnapshot } from "../storage/snapshot";
 
 import type { ConnectorMeta } from "./connector";
-import type { ConnectionError } from "./errors";
+import type { ConnectionError, ErrorCause } from "./errors";
 import type { ChainPlatform } from "./platform";
 import type { ConnectedWallet, WalletAdapter } from "./wallet";
 
@@ -12,7 +12,7 @@ import type { ConnectedWallet, WalletAdapter } from "./wallet";
  * hundred ms. Only `dropped` entries have been removed from storage.
  */
 type HydrationOutcome = {
-  dropped: Array<{ connectorId: string; reason: unknown }>;
+  dropped: Array<{ connectorId: string; reason: ErrorCause }>;
   pendingIds: Array<string>;
   restoredIds: Array<string>;
 };
@@ -53,7 +53,7 @@ type WalletManagerConfig = {
    * cross-tab conflict) never breaks reducer state, it only surfaces
    * here. Defaults to `console.warn`.
    */
-  onStorageError?: (error: unknown, context: string) => void;
+  onStorageError?: (error: ErrorCause, context: string) => void;
   /** Threshold for `onSlowConnect`, in milliseconds. Defaults to 5_000. */
   slowConnectThresholdMs?: number;
   /** Optional custom persistence implementation (e.g., cookie-backed) */

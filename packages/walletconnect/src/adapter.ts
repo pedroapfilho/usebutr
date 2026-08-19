@@ -1,4 +1,5 @@
 import type { ChainPlatform, WalletAdapter } from "@usebutr/core";
+import { CHAIN_PLATFORMS } from "@usebutr/core";
 
 import type {
   UniversalProviderConstructor,
@@ -95,11 +96,36 @@ const namespaceRequest = (
  * import its builder + add the entry. Today EVM, SVM, Sui, and Bitcoin
  * (bip122) all ship.
  */
-const KNOWN_NAMESPACES: Readonly<Record<string, WalletConnectNamespaceBuilder | undefined>> = {
+const KNOWN_NAMESPACES = {
   bitcoin: bitcoinNamespace,
   evm: evmNamespace,
   sui: suiNamespace,
   svm: solanaNamespace,
+} satisfies Partial<Record<ChainPlatform, WalletConnectNamespaceBuilder>>;
+
+const namespaceBuilderFor = (
+  platform: ChainPlatform,
+): WalletConnectNamespaceBuilder | undefined => {
+  switch (platform) {
+    case "bitcoin": {
+      return KNOWN_NAMESPACES.bitcoin;
+    }
+    case "evm": {
+      return KNOWN_NAMESPACES.evm;
+    }
+    case "sui": {
+      return KNOWN_NAMESPACES.sui;
+    }
+    case "svm": {
+      return KNOWN_NAMESPACES.svm;
+    }
+    case "polkadot": {
+      return undefined;
+    }
+    default: {
+      throw new Error("Unknown chain platform");
+    }
+  }
 };
 
 /**
@@ -110,10 +136,19 @@ const KNOWN_NAMESPACES: Readonly<Record<string, WalletConnectNamespaceBuilder | 
 const createWalletConnectAdapters = async (
   options: WalletConnectOptions,
 ): Promise<Array<WalletAdapter>> => {
-  const requested: Array<[string, ReadonlyArray<string>]> = [];
-  for (const [key, value] of Object.entries(options.namespaces)) {
+  const unknownPlatforms = Object.keys(options.namespaces).filter(
+    (key) => !CHAIN_PLATFORMS.some((platform) => platform === key),
+  );
+  if (unknownPlatforms.length > 0) {
+    throw new Error(
+      `[butr/walletconnect] no namespace builder registered for: ${unknownPlatforms.join(", ")}. Today "evm", "svm", "sui", and "bitcoin" ship.`,
+    );
+  }
+  const requested: Array<[ChainPlatform, ReadonlyArray<string>]> = [];
+  for (const platform of CHAIN_PLATFORMS) {
+    const value = options.namespaces[platform];
     if (value !== undefined) {
-      requested.push([key, value]);
+      requested.push([platform, value]);
     }
   }
   if (requested.length === 0) {
@@ -121,22 +156,29 @@ const createWalletConnectAdapters = async (
       "[butr/walletconnect] createWalletConnectAdapters needs at least one namespace",
     );
   }
-  const unsupported = requested.filter(([platform]) => !KNOWN_NAMESPACES[platform]);
+  const unsupported: Array<ChainPlatform> = [];
+  const selected: Array<{
+    builder: WalletConnectNamespaceBuilder;
+    chains: ReadonlyArray<string>;
+    platform: ChainPlatform;
+  }> = [];
+  for (const [platform, chains] of requested) {
+    const builder = namespaceBuilderFor(platform);
+    if (builder === undefined) {
+      unsupported.push(platform);
+      continue;
+    }
+    selected.push({
+      builder,
+      chains: chains.length > 0 ? chains : builder.defaultChains,
+      platform,
+    });
+  }
   if (unsupported.length > 0) {
     throw new Error(
-      `[butr/walletconnect] no namespace builder registered for: ${unsupported
-        .map(([p]) => p)
-        .join(", ")}. Today "evm", "svm", "sui", and "bitcoin" ship.`,
+      `[butr/walletconnect] no namespace builder registered for: ${unsupported.join(", ")}. Today "evm", "svm", "sui", and "bitcoin" ship.`,
     );
   }
-
-  const selected = requested.map(([platform, chains]) => {
-    const builder = KNOWN_NAMESPACES[platform];
-    if (!builder) {
-      throw new Error(`Unreachable: builder missing for ${platform}`);
-    }
-    return { builder, chains: chains.length > 0 ? chains : builder.defaultChains, platform };
-  });
 
   const [primary, ...secondary] = selected;
   if (primary === undefined) {

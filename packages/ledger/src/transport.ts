@@ -6,22 +6,18 @@ type TransportFactory = {
   create: (timeout?: number) => Promise<TransportLike>;
 };
 
-/**
- * The import stays dynamic so the peer dep remains optional and consumers
- * without Ledger support pay no bundle cost. WebUSB ships on Chromium-based
- * browsers only; Firefox and Safari have no transport here.
- */
 const loadTransport = async (): Promise<TransportFactory> => {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- untyped optional peer-dep module boundary
-  const mod = (await import("@ledgerhq/hw-transport-webusb")) as unknown as {
+  const imported: unknown = await import("@ledgerhq/hw-transport-webusb");
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SAFETY: The supported peer range exports a WebUSB transport class with the static create contract.
+  const moduleValue = imported as {
     default?: TransportFactory;
   };
-  if (!mod.default) {
+  if (!moduleValue.default) {
     throw new Error(
       "[butr/ledger] failed to load @ledgerhq/hw-transport-webusb: install it as an optional peer dep",
     );
   }
-  return mod.default;
+  return moduleValue.default;
 };
 
 export type { TransportFactory, TransportLike };

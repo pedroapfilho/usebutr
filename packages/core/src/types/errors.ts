@@ -10,16 +10,19 @@ type ConnectionError =
   | { actualChain?: string; expectedChain?: string; kind: "ChainMismatch"; message: string }
   | { kind: "NotConnected"; message: string }
   | { kind: "Timeout"; message: string }
-  | { cause?: unknown; kind: "Unknown"; message: string };
+  | { cause?: ErrorCause; kind: "Unknown"; message: string };
 
 type ConnectionErrorKind = ConnectionError["kind"];
+type ErrorCause = Error | string;
+
+const toErrorCause = (value: ErrorCause): ErrorCause => value;
 
 /**
  * EIP-1193 codes: `4001` rejected, `-32002` pending, `4100`/`4900`/`4901`
  * unauthorized or disconnected. Message-substring matching is the last
  * resort for SDKs that ship no codes at all.
  */
-const mapConnectionError = (raw: unknown): ConnectionError => {
+const mapConnectionError = (raw: ErrorCause): ConnectionError => {
   if (raw instanceof Error) {
     const message = raw.message;
     const lower = message.toLowerCase();
@@ -62,5 +65,5 @@ const mapConnectionError = (raw: unknown): ConnectionError => {
   return { cause: raw, kind: "Unknown", message: "Connection failed" };
 };
 
-export type { ConnectionError, ConnectionErrorKind };
-export { mapConnectionError };
+export type { ConnectionError, ConnectionErrorKind, ErrorCause };
+export { mapConnectionError, toErrorCause };

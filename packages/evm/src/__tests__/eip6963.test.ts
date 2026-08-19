@@ -8,7 +8,7 @@ const noopProvider: Eip1193Provider = {
   on() {},
   removeListener() {},
   request() {
-    return Promise.resolve();
+    return Promise.resolve(undefined);
   },
 };
 

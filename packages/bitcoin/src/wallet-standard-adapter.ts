@@ -1,11 +1,11 @@
-import type { WalletAdapter } from "@usebutr/core";
+import type { TransactionInput, WalletAdapter } from "@usebutr/core";
 import {
   createWalletStandardCore,
   discoverWalletStandard,
   getFeature,
   slugify,
 } from "@usebutr/wallet-standard-shared";
-import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
+import type { WalletStandardFeature, WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
 import { resolveBitcoinCapabilities } from "./capabilities";
 import type {
@@ -17,6 +17,21 @@ import type {
 const BITCOIN_PREFIX = "bip122:";
 const BITCOIN_DECIMALS = 8;
 const BITCOIN_MAINNET_ID = "bip122:000000000019d6689c085ae165831e93";
+
+const isBitcoinSignMessageFeature = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & BitcoinSignMessageFeature =>
+  "signMessage" in feature && typeof feature.signMessage === "function";
+
+const isBitcoinSignPsbtFeature = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & BitcoinSignPsbtFeature =>
+  "signPsbt" in feature && typeof feature.signPsbt === "function";
+
+const isBitcoinSendTransferFeature = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & BitcoinSendTransferFeature =>
+  "sendTransfer" in feature && typeof feature.sendTransfer === "function";
 
 /**
  * `sendTx` takes `{ amount, recipient }` for `bitcoin:sendTransfer` and
@@ -45,9 +60,9 @@ const buildBitcoinAdapter = (
     return null;
   }
 
-  const signMessage = getFeature<BitcoinSignMessageFeature>(wallet, "bitcoin:signMessage");
-  const signPsbt = getFeature<BitcoinSignPsbtFeature>(wallet, "bitcoin:signPsbt");
-  const sendTransfer = getFeature<BitcoinSendTransferFeature>(wallet, "bitcoin:sendTransfer");
+  const signMessage = getFeature(wallet, "bitcoin:signMessage", isBitcoinSignMessageFeature);
+  const signPsbt = getFeature(wallet, "bitcoin:signPsbt", isBitcoinSignPsbtFeature);
+  const sendTransfer = getFeature(wallet, "bitcoin:sendTransfer", isBitcoinSendTransferFeature);
 
   /** Resolve a caller-supplied target into a chain the wallet advertises,
    *  accepting either a full CAIP-2 id or a bare genesis-hash reference. */
@@ -64,7 +79,7 @@ const buildBitcoinAdapter = (
   };
 
   const sendTransferTx = async (
-    tx: unknown,
+    tx: TransactionInput,
     account?: { walletAddress: string },
     chain?: string,
   ): Promise<string> => {
@@ -93,7 +108,7 @@ const buildBitcoinAdapter = (
     return output.txid;
   };
 
-  return {
+  const adapter: WalletAdapter = {
     ...core,
     capabilities: resolveBitcoinCapabilities({
       chainCount: core.chainCount,
@@ -143,26 +158,26 @@ const buildBitcoinAdapter = (
       });
       return { signature: output.signature, signedMessage: output.signedMessage };
     },
-
-    ...(signPsbt === undefined
-      ? {}
-      : {
-          async signTransaction(tx, account) {
-            const wsAccount = core.resolveAccount(account);
-            if (!(tx instanceof Uint8Array)) {
-              throw new TypeError(
-                "Bitcoin signTransaction expects a PSBT as Uint8Array (e.g. psbt.toBuffer())",
-              );
-            }
-            const output = await signPsbt.signPsbt({
-              account: wsAccount,
-              chain: core.currentChainId(),
-              psbt: tx,
-            });
-            return output.signedPsbt;
-          },
-        }),
   };
+
+  if (signPsbt !== undefined) {
+    adapter.signTransaction = async (tx, account) => {
+      const wsAccount = core.resolveAccount(account);
+      if (!(tx instanceof Uint8Array)) {
+        throw new TypeError(
+          "Bitcoin signTransaction expects a PSBT as Uint8Array (e.g. psbt.toBuffer())",
+        );
+      }
+      const output = await signPsbt.signPsbt({
+        account: wsAccount,
+        chain: core.currentChainId(),
+        psbt: tx,
+      });
+      return output.signedPsbt;
+    };
+  }
+
+  return adapter;
 };
 
 /** Requires the optional `@wallet-standard/app` peer dep. */

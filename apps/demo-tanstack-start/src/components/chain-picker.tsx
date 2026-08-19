@@ -32,7 +32,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
         Chain
       </label>
       <select
-        className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs"
+        className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-base"
         id={selectId}
         onChange={(event) => {
           void handleChange(event);

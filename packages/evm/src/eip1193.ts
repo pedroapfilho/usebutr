@@ -4,17 +4,28 @@
  * `request*` helpers narrow it at the boundary.
  */
 
+type Eip1193Object = { [key: string]: Eip1193Value | undefined };
+type Eip1193Value =
+  | bigint
+  | boolean
+  | number
+  | string
+  | null
+  | Uint8Array
+  | ReadonlyArray<Eip1193Value>
+  | Eip1193Object;
+
 type Eip1193RequestArgs = {
   method: string;
-  params?: ReadonlyArray<unknown> | object;
+  params?: ReadonlyArray<Eip1193Value> | Eip1193Object;
 };
 
-type Eip1193Listener = (...args: ReadonlyArray<unknown>) => void;
+type Eip1193Listener = (...args: ReadonlyArray<Eip1193Value | undefined>) => void;
 
 type Eip1193Provider = {
   on: (event: string, listener: Eip1193Listener) => void;
   removeListener: (event: string, listener: Eip1193Listener) => void;
-  request: (args: Eip1193RequestArgs) => Promise<unknown>;
+  request: (args: Eip1193RequestArgs) => Promise<Eip1193Value | undefined>;
 };
 
 type Eip6963ProviderInfo = {
@@ -63,8 +74,10 @@ export { requestString, requestStringArray };
 
 export type {
   Eip1193Listener,
+  Eip1193Object,
   Eip1193Provider,
   Eip1193RequestArgs,
+  Eip1193Value,
   Eip6963AnnounceEvent,
   Eip6963ProviderDetail,
   Eip6963ProviderInfo,

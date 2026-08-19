@@ -1,13 +1,8 @@
-import { logWarn } from "@usebutr/core";
-import type * as ButrCore from "@usebutr/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { KNOWN_DISCOVERERS, discoverWalletAdapters, resolveDiscoverOptions } from "../discover";
 
-vi.mock("@usebutr/core", async (importOriginal) => {
-  const actual = await importOriginal<typeof ButrCore>();
-  return { ...actual, logWarn: vi.fn() };
-});
+const warn = vi.fn<(...args: ReadonlyArray<unknown>) => void>();
 
 describe("resolveDiscoverOptions", () => {
   it("enables nothing for the empty object form", () => {
@@ -141,11 +136,10 @@ describe("resolveDiscoverOptions", () => {
 describe("discoverWalletAdapters", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.mocked(logWarn).mockClear();
+    warn.mockClear();
   });
   afterEach(() => {
     vi.useRealTimers();
-    vi.restoreAllMocks();
   });
 
   it("returns an unsubscribe function with default options", () => {
@@ -201,28 +195,28 @@ describe("discoverWalletAdapters", () => {
   });
 
   it("warns when the given options enable no platforms", () => {
-    discoverWalletAdapters(() => {}, {})();
+    discoverWalletAdapters(() => {}, {}, { warn })();
 
-    expect(logWarn).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(logWarn).mock.calls[0]?.[0]).toContain("no platforms");
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toContain("no platforms");
   });
 
   it("warns on an empty allowlist array", () => {
-    discoverWalletAdapters(() => {}, [])();
+    discoverWalletAdapters(() => {}, [], { warn })();
 
-    expect(logWarn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 
   it("stays silent when called with no options (the everything path)", () => {
-    discoverWalletAdapters(() => {})();
+    discoverWalletAdapters(() => {}, undefined, { warn })();
 
-    expect(logWarn).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it("stays silent when at least one platform is enabled", () => {
-    discoverWalletAdapters(() => {}, ["svm"])();
+    discoverWalletAdapters(() => {}, ["svm"], { warn })();
 
-    expect(logWarn).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
   });
 });
 

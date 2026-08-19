@@ -25,10 +25,13 @@ type SnapshotOptions = {
   keyPrefix?: string;
 };
 
+const EMPTY_POOL: StoredPoolRecord = Object.freeze({});
+const EMPTY_SELECTION: StoredSelectionRecord = Object.freeze({});
+
 const EMPTY_SNAPSHOT: WalletSnapshot = Object.freeze({
   activeConnectorId: null,
-  pool: Object.freeze({}) as StoredPoolRecord,
-  selection: Object.freeze({}) as StoredSelectionRecord,
+  pool: EMPTY_POOL,
+  selection: EMPTY_SELECTION,
 });
 
 const toCookieMap = (input: CookieSource): Map<string, string> => {

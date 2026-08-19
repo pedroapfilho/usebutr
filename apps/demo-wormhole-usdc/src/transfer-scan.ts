@@ -1,5 +1,4 @@
 import {
-  type Address,
   type Signature,
   address as toAddress,
   createSolanaRpc,
@@ -8,6 +7,7 @@ import {
 } from "@solana/kit";
 import type { Chain } from "@wormhole-foundation/sdk-connect";
 import { Interface, JsonRpcProvider, zeroPadValue } from "ethers";
+import { z } from "zod";
 
 import type { ChainSpec } from "./chains";
 
@@ -48,11 +48,16 @@ const mapPool = async <T, R>(
     while (cursor < items.length) {
       const index = cursor;
       cursor += 1;
-      // oxlint-disable-next-line no-await-in-loop
       results[index] = await fn(items[index]);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
+  const workers = await Promise.allSettled(
+    Array.from({ length: Math.min(limit, items.length) }, () => worker()),
+  );
+  const failure = workers.find((result) => result.status === "rejected");
+  if (failure?.status === "rejected") {
+    throw failure.reason instanceof Error ? failure.reason : new Error(String(failure.reason));
+  }
   return results;
 };
 
@@ -81,33 +86,46 @@ const scanEvmBurns = async (
   const latest = await provider.getBlockNumber();
   const fromBlock = Math.max(0, latest - EVM_LOOKBACK_BLOCKS);
   const depositorTopic = zeroPadValue(depositor.toLowerCase(), 32);
-  const seen = new Set<string>();
-  const burns: Array<DiscoveredBurn> = [];
-  let partial = false;
-  for (let start = fromBlock; start <= latest; start += EVM_CHUNK_BLOCKS) {
-    const end = Math.min(start + EVM_CHUNK_BLOCKS - 1, latest);
-    try {
-      // oxlint-disable-next-line no-await-in-loop
-      const logs = await provider.getLogs({
+  const chunks = Array.from(
+    { length: Math.ceil((latest - fromBlock + 1) / EVM_CHUNK_BLOCKS) },
+    (_, index) => {
+      const start = fromBlock + index * EVM_CHUNK_BLOCKS;
+      return { end: Math.min(start + EVM_CHUNK_BLOCKS - 1, latest), start };
+    },
+  );
+  const settledLogs = await Promise.allSettled(
+    chunks.map(({ end, start }) =>
+      provider.getLogs({
         address: tokenMessenger,
         fromBlock: start,
         toBlock: end,
         topics: [DEPOSIT_FOR_BURN_TOPIC, null, null, depositorTopic],
-      });
+      }),
+    ),
+  );
+  const seen = new Set<string>();
+  const burns: Array<DiscoveredBurn> = [];
+  for (const result of settledLogs) {
+    if (result.status === "fulfilled") {
+      const logs = result.value;
       for (const log of logs) {
         if (!seen.has(log.transactionHash)) {
           seen.add(log.transactionHash);
           burns.push({ sourceChain: spec.chain, txid: log.transactionHash });
         }
       }
-    } catch {
-      partial = true;
     }
   }
+  const partial = settledLogs.some((result) => result.status === "rejected");
   return { burns, fromBlock, partial, toBlock: latest };
 };
 
-type ParsedTx = { transaction?: { message?: { accountKeys?: Array<{ pubkey: string }> } } };
+const parsedAccountKeySchema = z.object({ pubkey: z.string() });
+const parsedMessageSchema = z.object({
+  accountKeys: z.array(parsedAccountKeySchema),
+});
+const parsedTransactionSchema = z.object({ message: parsedMessageSchema.optional() });
+const parsedTxSchema = z.object({ transaction: parsedTransactionSchema.optional() }).nullable();
 
 const scanSolanaBurns = async (
   spec: ChainSpec,
@@ -115,7 +133,7 @@ const scanSolanaBurns = async (
   owner: string,
 ): Promise<SolanaScanResult> => {
   const rpc = createSolanaRpc(spec.rpcUrl);
-  const ownerAddress = toAddress(owner) as Address;
+  const ownerAddress = toAddress(owner);
   const programSet = new Set(programIds);
 
   const candidates: Array<Signature> = [];
@@ -123,7 +141,6 @@ const scanSolanaBurns = async (
   let totalFetched = 0;
   let reachedEnd = false;
   while (totalFetched < SOLANA_SIGNATURE_LIMIT) {
-    // oxlint-disable-next-line no-await-in-loop
     const page = await rpc
       .getSignaturesForAddress(ownerAddress, { before, limit: SOLANA_PAGE_SIZE })
       .send();
@@ -155,8 +172,7 @@ const scanSolanaBurns = async (
           maxSupportedTransactionVersion: 0,
         })
         .send();
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- jsonParsed transaction shape is untyped at the RPC boundary
-      const keys = (tx as unknown as ParsedTx)?.transaction?.message?.accountKeys;
+      const keys = parsedTxSchema.parse(tx)?.transaction?.message?.accountKeys;
       return Boolean(keys?.some((k) => programSet.has(k.pubkey)));
     } catch {
       return false;

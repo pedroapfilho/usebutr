@@ -1,4 +1,4 @@
-import type { ChainBase, WalletAdapter, WalletCapabilities } from "@usebutr/core";
+import type { ChainBase, TransactionInput, WalletAdapter, WalletCapabilities } from "@usebutr/core";
 import { base64ToBytes, bytesToHex, hexToBytes } from "@usebutr/core";
 import { buildAccount } from "@usebutr/wallet-standard-shared";
 
@@ -14,17 +14,24 @@ type UnisatProvider = {
   getNetwork?: () => Promise<"livenet" | "mainnet" | "testnet" | "signet">;
   on?: (
     event: "accountsChanged" | "networkChanged",
-    listener: (...args: Array<unknown>) => void,
+    listener: (...args: Array<UnisatEventValue>) => void,
   ) => void;
   pushPsbt?: (psbtHex: string) => Promise<string>;
   removeListener?: (
     event: "accountsChanged" | "networkChanged",
-    listener: (...args: Array<unknown>) => void,
+    listener: (...args: Array<UnisatEventValue>) => void,
   ) => void;
   requestAccounts: () => Promise<ReadonlyArray<string>>;
   sendBitcoin?: (recipient: string, amount: number) => Promise<string>;
   signMessage: (message: string, type?: "ecdsa" | "bip322-simple") => Promise<string>;
-  signPsbt: (psbtHex: string, options?: Record<string, unknown>) => Promise<string>;
+  signPsbt: (psbtHex: string, options?: UnisatSignPsbtOptions) => Promise<string>;
+};
+
+type UnisatEventItem = number | string | null;
+type UnisatEventValue = ReadonlyArray<UnisatEventItem> | string | undefined;
+
+type UnisatSignPsbtOptions = {
+  autoFinalized?: boolean;
 };
 
 const CAPS_UNISAT: WalletCapabilities = {
@@ -40,7 +47,7 @@ const CAPS_UNISAT: WalletCapabilities = {
   switchChain: false,
 };
 
-const toStringArray = (value: unknown): Array<string> =>
+const toStringArray = (value: UnisatEventValue | undefined): Array<string> =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
 /**
@@ -51,7 +58,7 @@ const toStringArray = (value: unknown): Array<string> =>
 const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider): WalletAdapter => {
   let chain: ChainBase = BITCOIN_CHAINS.mainnet;
 
-  const sendBitcoinTx = async (tx: unknown): Promise<string> => {
+  const sendBitcoinTx = async (tx: TransactionInput): Promise<string> => {
     if (typeof provider.sendBitcoin !== "function") {
       throw new TypeError(`Wallet ${name} does not expose sendBitcoin`);
     }
@@ -173,7 +180,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     },
 
     subscribe(listener) {
-      const onAccountsChanged = (...args: ReadonlyArray<unknown>) => {
+      const onAccountsChanged = (...args: ReadonlyArray<UnisatEventValue>) => {
         const accounts = toStringArray(args[0]);
         if (accounts.length === 0) {
           listener({ type: "disconnected" });

@@ -1,34 +1,15 @@
 import type { WalletAdapter } from "@usebutr/core";
 import { describe, expect, it, vi } from "vitest";
 
+import { autoDiscovery } from "../auto-discovery";
+import type { DiscoverWalletAdapters } from "../auto-discovery";
 import type { DiscoverOptions } from "../discover";
 
-type DiscoverMod = {
-  discoverWalletAdapters: (
-    onAdapter: (adapter: unknown) => void,
-    options?: DiscoverOptions,
-  ) => () => void;
-  resolveDiscoverOptions: (auto: true | DiscoverOptions) => {
-    evm: boolean;
-    injected: boolean;
-    svm: boolean;
-  };
-};
-
-vi.mock("../discover", async (importOriginal) => {
-  const original = await importOriginal<DiscoverMod>();
-  return {
-    ...original,
-    discoverWalletAdapters: vi.fn(() => () => {}),
-  };
-});
-
-import { autoDiscovery } from "../auto-discovery";
-import { discoverWalletAdapters } from "../discover";
+const createDiscover = () => vi.fn<DiscoverWalletAdapters>(() => () => {});
 
 describe("autoDiscovery", () => {
   it("returns a WalletSource whose subscribe returns an unsubscribe fn", () => {
-    const source = autoDiscovery({ evm: false, injected: false, svm: false });
+    const source = autoDiscovery({ evm: false, injected: false, svm: false }, createDiscover());
     expect(typeof source.subscribe).toBe("function");
     const unsubscribe = source.subscribe(() => {});
     expect(typeof unsubscribe).toBe("function");
@@ -36,7 +17,7 @@ describe("autoDiscovery", () => {
   });
 
   it("subscribe with evm:false svm:false returns a no-op unsubscribe fn", () => {
-    const source = autoDiscovery({ evm: false, svm: false });
+    const source = autoDiscovery({ evm: false, svm: false }, createDiscover());
     const unsubscribe = source.subscribe(() => {});
     expect(typeof unsubscribe).toBe("function");
     expect(() => {
@@ -44,15 +25,15 @@ describe("autoDiscovery", () => {
     }).not.toThrow();
   });
 
-  it("forwards options to discoverWalletAdapters — evm:true svm:false activates EVM discovery only", () => {
-    vi.mocked(discoverWalletAdapters).mockClear();
-
+  it("forwards discovery options", () => {
+    const discover = createDiscover();
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
-    const source = autoDiscovery({ evm: true, svm: false });
+    const options: DiscoverOptions = { evm: true, svm: false };
+    const source = autoDiscovery(options, discover);
     const unsubscribe = source.subscribe(onAdapter);
 
-    expect(discoverWalletAdapters).toHaveBeenCalledOnce();
-    expect(discoverWalletAdapters).toHaveBeenCalledWith(onAdapter, { evm: true, svm: false });
+    expect(discover).toHaveBeenCalledOnce();
+    expect(discover).toHaveBeenCalledWith(onAdapter, options);
 
     unsubscribe();
   });

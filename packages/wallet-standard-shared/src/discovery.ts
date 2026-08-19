@@ -1,7 +1,34 @@
 import type { WalletAdapter } from "@usebutr/core";
 import { logWarn } from "@usebutr/core";
+import type { Wallets as ImportedWallets } from "@wallet-standard/app";
 
-import type { WalletStandardAppModule, WalletStandardWallet } from "./types";
+import type {
+  WalletStandardAppModule,
+  WalletStandardModuleLoader,
+  WalletStandardWallet,
+} from "./types";
+
+type ImportedWallet = ReturnType<ImportedWallets["get"]>[number];
+
+const mapWallet = (wallet: ImportedWallet): WalletStandardWallet => {
+  const features: Record<string, WalletStandardWallet["features"][string]> = {};
+  for (const [name, value] of Object.entries(wallet.features)) {
+    if (typeof value !== "object" || value === null) {
+      continue;
+    }
+    const version =
+      "version" in value && typeof value.version === "string" ? value.version : undefined;
+    features[name] = { ...value, version };
+  }
+  return {
+    accounts: wallet.accounts,
+    chains: wallet.chains,
+    features,
+    icon: wallet.icon,
+    name: wallet.name,
+    version: wallet.version,
+  };
+};
 
 let warnedMissingApp = false;
 
@@ -15,6 +42,28 @@ type WalletStandardAdapterBuilder = (
   registerDisconnector: (emit: () => void) => void,
 ) => WalletAdapter | null;
 
+const loadWalletStandardModule = async (): Promise<WalletStandardAppModule> => {
+  const imported = await import("@wallet-standard/app");
+  if (
+    typeof imported !== "object" ||
+    imported === null ||
+    !("getWallets" in imported) ||
+    typeof imported.getWallets !== "function"
+  ) {
+    throw new Error("@wallet-standard/app has no getWallets export");
+  }
+  const source = imported.getWallets();
+  return {
+    getWallets: () => ({
+      get: () => source.get().map(mapWallet),
+      on: (event, listener) =>
+        source.on(event, (...wallets) => {
+          listener(...wallets.map(mapWallet));
+        }),
+    }),
+  };
+};
+
 /**
  * `@wallet-standard/app` is an optional peer dep: a failed import quietly
  * disables discovery. Disconnectors are keyed by wallet identity rather
@@ -23,6 +72,7 @@ type WalletStandardAdapterBuilder = (
 const discoverWalletStandard = (
   onAdapter: (adapter: WalletAdapter) => void,
   build: WalletStandardAdapterBuilder,
+  loadModule: WalletStandardModuleLoader = loadWalletStandardModule,
 ): (() => void) => {
   let cancelled = false;
   let internalUnsub: (() => void) | null = null;
@@ -30,17 +80,7 @@ const discoverWalletStandard = (
   void (async () => {
     let mod: WalletStandardAppModule;
     try {
-      const imported: unknown = await import("@wallet-standard/app");
-      if (
-        typeof imported !== "object" ||
-        imported === null ||
-        !("getWallets" in imported) ||
-        typeof imported.getWallets !== "function"
-      ) {
-        throw new Error("@wallet-standard/app has no getWallets export");
-      }
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- validated getWallets export above; the rest of the untyped module is trusted
-      mod = imported as WalletStandardAppModule;
+      mod = await loadModule();
     } catch (error) {
       if (!warnedMissingApp) {
         warnedMissingApp = true;

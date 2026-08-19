@@ -1,4 +1,4 @@
-import type { Account, BitcoinAdapter, WalletCapabilities } from "@usebutr/core";
+import type { Account, BitcoinAdapter, TransactionInput, WalletCapabilities } from "@usebutr/core";
 import { base64ToBytes, bytesToBase64, hexToBytes } from "@usebutr/core";
 
 import { CAIP_WC_CAPABILITIES, createCaipAdapterCore } from "./caip";
@@ -32,7 +32,7 @@ const WALLETCONNECT_BITCOIN_CAPABILITIES: WalletCapabilities = { ...CAIP_WC_CAPA
  *  `signPsbt` method expects. Consumers pass either a base64 string
  *  (already serialized by their PSBT library) or a `Uint8Array` of raw
  *  PSBT bytes (e.g. `psbt.toBuffer()` from bitcoinjs-lib). */
-const coercePsbtToBase64 = (tx: unknown): string => {
+const coercePsbtToBase64 = (tx: TransactionInput): string => {
   if (typeof tx === "string") {
     return tx;
   }
@@ -64,10 +64,10 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
       session,
     });
 
-    const broadcastTx = async (tx: unknown, account?: Account): Promise<string> => {
+    const broadcastTx = async (tx: TransactionInput, account?: Account): Promise<string> => {
       const address = resolveAddress(account);
       const psbt = coercePsbtToBase64(tx);
-      const result: unknown = await provider.request({
+      const result = await provider.request({
         method: "signPsbt",
         params: { account: address, broadcast: true, psbt, signInputs: [] },
       });
@@ -110,7 +110,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
         } catch {
           message = bytesToBase64(msg);
         }
-        const result: unknown = await provider.request({
+        const result = await provider.request({
           method: "signMessage",
           params: { account: address, address, message },
         });
@@ -125,7 +125,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder = {
       async signTransaction(tx, account) {
         const address = resolveAddress(account);
         const psbt = coercePsbtToBase64(tx);
-        const result: unknown = await provider.request({
+        const result = await provider.request({
           method: "signPsbt",
           params: { account: address, broadcast: false, psbt, signInputs: [] },
         });

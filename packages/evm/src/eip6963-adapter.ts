@@ -1,21 +1,61 @@
-import type { Account, ChainBase, WalletAdapter } from "@usebutr/core";
+import type {
+  Account,
+  ChainBase,
+  TransactionInput,
+  TransactionValue,
+  WalletAdapter,
+} from "@usebutr/core";
 import { bytesToHexPrefixed as bytesToHex, hexToBytes, sanitizeIcon } from "@usebutr/core";
 
 import { resolveEip6963Capabilities } from "./capabilities";
-import type { Eip1193Listener, Eip1193Provider, Eip6963ProviderInfo } from "./eip1193";
+import type {
+  Eip1193Listener,
+  Eip1193Object,
+  Eip1193Provider,
+  Eip1193Value,
+  Eip6963ProviderInfo,
+} from "./eip1193";
 import { requestString, requestStringArray } from "./eip1193";
 import { readEvmBalance } from "./evm-balance";
 
 const HEX_PREFIX = "0x";
 
-const toStringArray = (value: unknown): Array<string> =>
+const toStringArray = (value: Eip1193Value | undefined): Array<string> =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
-/** Merge a `from` address into a transaction object of unknown shape.
- *  butr's `sendTx` accepts `tx: unknown` (viem/ethers/raw all differ);
- *  when it's an object we overlay `from`, otherwise pass it through. */
-const withFrom = (tx: unknown, from: string): unknown =>
-  typeof tx === "object" && tx !== null ? { ...tx, from } : tx;
+const toEip1193Value = (value: TransactionValue): Eip1193Value => {
+  if (typeof value === "function") {
+    throw new TypeError("EVM transactions cannot contain functions");
+  }
+  if (Array.isArray(value)) {
+    return value.map(toEip1193Value);
+  }
+  if (value instanceof Uint8Array) {
+    return value;
+  }
+  if (typeof value === "object" && value !== null) {
+    const result: Eip1193Object = {};
+    for (const [key, nested] of Object.entries(value)) {
+      result[key] = nested === undefined ? undefined : toEip1193Value(nested);
+    }
+    return result;
+  }
+  return value;
+};
+
+const withFrom = (tx: TransactionInput, from?: string): Eip1193Value => {
+  if (typeof tx === "string" || tx instanceof Uint8Array) {
+    return tx;
+  }
+  const result: Eip1193Object = {};
+  for (const [key, value] of Object.entries(tx)) {
+    result[key] = value === undefined ? undefined : toEip1193Value(value);
+  }
+  if (from !== undefined) {
+    result.from = from;
+  }
+  return result;
+};
 
 const chainIdHexToDecimal = (hex: string): string => BigInt(hex).toString(10);
 const chainIdDecimalToHex = (dec: string): string => `${HEX_PREFIX}${BigInt(dec).toString(16)}`;
@@ -142,7 +182,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
           method: "wallet_requestPermissions",
           params: [{ eth_accounts: {} }],
         });
-      } catch (error: unknown) {
+      } catch (error) {
         const outerCode =
           typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
         const errData =
@@ -171,7 +211,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     },
 
     async sendTx(tx, account) {
-      const txWithFrom = account ? withFrom(tx, account.walletAddress) : tx;
+      const txWithFrom = withFrom(tx, account?.walletAddress);
       const hash = await requestString(provider, {
         method: "eth_sendTransaction",
         params: [txWithFrom],
@@ -192,7 +232,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         });
         cb?.();
       }
-      const txWithFrom = account ? withFrom(tx, account.walletAddress) : tx;
+      const txWithFrom = withFrom(tx, account?.walletAddress);
       const hash = await requestString(provider, {
         method: "eth_sendTransaction",
         params: [txWithFrom],

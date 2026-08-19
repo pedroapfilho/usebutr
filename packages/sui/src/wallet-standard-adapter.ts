@@ -1,4 +1,4 @@
-import type { WalletAdapter } from "@usebutr/core";
+import type { TransactionInput, WalletAdapter } from "@usebutr/core";
 import { base64ToBytes, bytesToBase64 } from "@usebutr/core";
 import {
   createWalletStandardCore,
@@ -6,7 +6,7 @@ import {
   getFeature,
   slugify,
 } from "@usebutr/wallet-standard-shared";
-import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
+import type { WalletStandardFeature, WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
 import { resolveSuiCapabilities } from "./capabilities";
 import type {
@@ -19,11 +19,26 @@ const SUI_PREFIX = "sui:";
 const SUI_DECIMALS = 9;
 const SUI_MAINNET = "sui:mainnet";
 
+const isSuiSignPersonalMessageFeature = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & SuiSignPersonalMessageFeature =>
+  "signPersonalMessage" in feature && typeof feature.signPersonalMessage === "function";
+
+const isSuiSignAndExecuteTransactionFeature = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & SuiSignAndExecuteTransactionFeature =>
+  "signAndExecuteTransaction" in feature && typeof feature.signAndExecuteTransaction === "function";
+
+const isSuiSignTransactionFeature = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & SuiSignTransactionFeature =>
+  "signTransaction" in feature && typeof feature.signTransaction === "function";
+
 /** Coerce butr's `unknown` tx into the shape the Sui Wallet Standard features
  *  expect: an object with `toJSON()` returning a Promise<string>. A raw string
  *  or BCS byte array is wrapped, because wallets accept only the `toJSON()`
  *  form and a bare string reaches them as a shape they cannot consume. */
-const coerceSuiTransaction = (tx: unknown): { toJSON: () => Promise<string> } => {
+const coerceSuiTransaction = (tx: TransactionInput) => {
   if (typeof tx === "string") {
     return { toJSON: () => Promise.resolve(tx) };
   }
@@ -32,8 +47,7 @@ const coerceSuiTransaction = (tx: unknown): { toJSON: () => Promise<string> } =>
     return { toJSON: () => Promise.resolve(encoded) };
   }
   if (typeof tx === "object" && tx !== null && "toJSON" in tx && typeof tx.toJSON === "function") {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- validated toJSON() above; @mysten/sui Transaction is otherwise untyped here
-    return tx as { toJSON: () => Promise<string> };
+    return { toJSON: tx.toJSON };
   }
   throw new TypeError(
     "Sui sendTx/signTransaction expects a @mysten/sui Transaction (with toJSON()), a base64-encoded string, or BCS bytes",
@@ -67,12 +81,17 @@ const buildSuiAdapter = (
     return null;
   }
 
-  const signMessage = getFeature<SuiSignPersonalMessageFeature>(wallet, "sui:signPersonalMessage");
-  const signAndExecute = getFeature<SuiSignAndExecuteTransactionFeature>(
+  const signMessage = getFeature(
+    wallet,
+    "sui:signPersonalMessage",
+    isSuiSignPersonalMessageFeature,
+  );
+  const signAndExecute = getFeature(
     wallet,
     "sui:signAndExecuteTransaction",
+    isSuiSignAndExecuteTransactionFeature,
   );
-  const signTx = getFeature<SuiSignTransactionFeature>(wallet, "sui:signTransaction");
+  const signTx = getFeature(wallet, "sui:signTransaction", isSuiSignTransactionFeature);
 
   /** Resolve a caller-supplied target into a chain the wallet advertises,
    *  accepting either a full CAIP-2 id (`sui:testnet`) or a bare reference. */
@@ -89,7 +108,7 @@ const buildSuiAdapter = (
   };
 
   const executeTx = async (
-    tx: unknown,
+    tx: TransactionInput,
     account?: { walletAddress: string },
     chain?: string,
   ): Promise<string> => {
@@ -106,7 +125,7 @@ const buildSuiAdapter = (
     return output.digest;
   };
 
-  return {
+  const adapter: WalletAdapter = {
     ...core,
     capabilities: resolveSuiCapabilities({
       chainCount: core.chainCount,
@@ -159,25 +178,25 @@ const buildSuiAdapter = (
         signedMessage: base64ToBytes(output.bytes),
       };
     },
-
-    ...(signTx === undefined
-      ? {}
-      : {
-          async signTransaction(tx, account) {
-            const wsAccount = core.resolveAccount(account);
-            const transaction = coerceSuiTransaction(tx);
-            const output = await signTx.signTransaction({
-              account: wsAccount,
-              chain: core.currentChainId(),
-              transaction,
-            });
-            return {
-              bytes: base64ToBytes(output.bytes),
-              signature: base64ToBytes(output.signature),
-            };
-          },
-        }),
   };
+
+  if (signTx !== undefined) {
+    adapter.signTransaction = async (tx, account) => {
+      const wsAccount = core.resolveAccount(account);
+      const transaction = coerceSuiTransaction(tx);
+      const output = await signTx.signTransaction({
+        account: wsAccount,
+        chain: core.currentChainId(),
+        transaction,
+      });
+      return {
+        bytes: base64ToBytes(output.bytes),
+        signature: base64ToBytes(output.signature),
+      };
+    };
+  }
+
+  return adapter;
 };
 
 /**

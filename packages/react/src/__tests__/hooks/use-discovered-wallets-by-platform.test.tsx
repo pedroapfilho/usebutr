@@ -16,14 +16,15 @@ const sourceOf = (...adapters: Array<WalletAdapter>): WalletSource => ({
   },
 });
 
-// eslint-disable-next-line react/display-name -- test wrapper factory, display name not needed
-const wrap =
-  (discovery?: WalletSource) =>
-  ({ children }: PropsWithChildren) => (
+const wrap = (discovery?: WalletSource) => {
+  const TestWrapper = ({ children }: PropsWithChildren) => (
     <WalletManagerProvider discovery={discovery} storage={createFakePersistence()}>
       {children}
     </WalletManagerProvider>
   );
+  TestWrapper.displayName = "WalletManagerTestWrapper";
+  return TestWrapper;
+};
 
 describe("useDiscoveredWalletsByPlatform", () => {
   it("returns an empty map without a discovery source", () => {

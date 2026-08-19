@@ -1,4 +1,3 @@
-import { logWarn } from "@usebutr/core";
 import type * as ButrCore from "@usebutr/core";
 import { describe, expect, it, vi } from "vitest";
 
@@ -6,11 +5,6 @@ import { createDiscoveryBus } from "../discovery-bus";
 import type { DiscoveryPath } from "../discovery-bus";
 
 import { createMockConnector } from "./helpers";
-
-vi.mock("@usebutr/core", async (importOriginal) => {
-  const actual = await importOriginal<typeof ButrCore>();
-  return { ...actual, logWarn: vi.fn() };
-});
 
 const pathThatEmits = (
   ...adapterIds: ReadonlyArray<string>
@@ -130,14 +124,15 @@ describe("createDiscoveryBus", () => {
     expect(a.unsubscribe).toHaveBeenCalledTimes(1);
   });
 
-  it("survives an unsubscribe that throws — neighbours still tear down", () => {
+  it("survives an unsubscribe that throws while other paths tear down", () => {
     const a = {
       path: (() => () => {
         throw new Error("unsub blew up");
       }) as DiscoveryPath,
     };
     const b = pathThatEmits();
-    const bus = createDiscoveryBus(vi.fn<(adapter: ButrCore.WalletAdapter) => void>());
+    const warn = vi.fn<(...args: ReadonlyArray<unknown>) => void>();
+    const bus = createDiscoveryBus(vi.fn<(adapter: ButrCore.WalletAdapter) => void>(), warn);
     bus.register(a.path);
     bus.register(b.path);
 
@@ -145,6 +140,6 @@ describe("createDiscoveryBus", () => {
       bus.unsubscribeAll();
     }).not.toThrow();
     expect(b.unsubscribe).toHaveBeenCalledTimes(1);
-    expect(logWarn).toHaveBeenCalledWith("[butr] discovery unsubscribe threw:", expect.any(Error));
+    expect(warn).toHaveBeenCalledWith("[butr] discovery unsubscribe threw:", expect.any(Error));
   });
 });

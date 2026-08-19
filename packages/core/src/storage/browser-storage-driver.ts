@@ -11,10 +11,9 @@ type WebStorageKind = "localStorage" | "sessionStorage";
 
 const hasWebStorage = (kind: WebStorageKind): boolean => {
   try {
-    return (
-      typeof globalThis !== "undefined" &&
-      (globalThis as Record<string, unknown>)[kind] !== undefined
-    );
+    return kind === "localStorage"
+      ? globalThis.localStorage !== undefined
+      : globalThis.sessionStorage !== undefined;
   } catch {
     return false;
   }

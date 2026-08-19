@@ -13,7 +13,7 @@ const buildEthCtorWithAddress = (
   getAddress: (path: string) => Promise<{ address: string; publicKey: string }>,
 ): EthAppConstructor => {
   return class FakeEth implements EthAppLike {
-    constructor(private readonly _transport: unknown) {
+    constructor(private readonly _transport: TransportLike) {
       void _transport;
     }
     getAddress(path: string): Promise<{ address: string; publicKey: string }> {

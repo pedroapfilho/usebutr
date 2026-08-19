@@ -42,6 +42,13 @@ type InjectedWindow = {
   injectedWeb3?: Record<string, InjectedWindowProvider>;
 };
 
+declare global {
+  // oxlint-disable-next-line typescript/consistent-type-definitions -- DOM globals require interface merging.
+  interface Window {
+    injectedWeb3?: Record<string, InjectedWindowProvider>;
+  }
+}
+
 const BYTES_PREFIX = new TextEncoder().encode("<Bytes>");
 const BYTES_SUFFIX = new TextEncoder().encode("</Bytes>");
 
@@ -60,10 +67,7 @@ const readInjectedWindow = (target?: InjectedWindow | null): InjectedWindow | nu
   if (typeof window === "undefined") {
     return null;
   }
-  // `window.injectedWeb3` is the untyped Polkadot extension registry; the
-  // DOM lib doesn't declare it, so this boundary assertion is unavoidable.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- untyped window.injectedWeb3 extension registry
-  return window as unknown as InjectedWindow;
+  return window;
 };
 
 export type { Injected, InjectedAccount, InjectedSigner, InjectedWindow, InjectedWindowProvider };

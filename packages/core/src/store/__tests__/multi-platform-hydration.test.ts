@@ -54,7 +54,6 @@ const collectConnected = async (
     if (store.getState().isHydrated) {
       break;
     }
-    // eslint-disable-next-line no-await-in-loop -- sequential polling: each iteration must wait before checking state again
     await new Promise<void>((resolve) => {
       setTimeout(resolve, 10);
     });

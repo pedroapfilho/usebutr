@@ -2,6 +2,25 @@ import type { Account, Balance } from "./account";
 import type { ChainBase } from "./chain";
 import type { Connector } from "./connector";
 
+type SignInInput = { readonly [key: string]: SignInValue };
+type SignInValue = boolean | number | string | null | ReadonlyArray<SignInValue> | SignInInput;
+type TransactionObject = {
+  readonly [key: string]: TransactionValue | undefined;
+};
+type TransactionMethod = (...args: ReadonlyArray<never>) => Promise<string>;
+type TransactionValue =
+  | bigint
+  | boolean
+  | number
+  | string
+  | null
+  | Uint8Array
+  | ReadonlyArray<TransactionValue>
+  | TransactionObject
+  | TransactionMethod;
+type TransactionInput = TransactionObject | string | Uint8Array;
+type WalletSigner = object;
+
 /**
  * Methods every connected wallet supports regardless of chain. The
  * per-platform `Wallet` types extend this with their platform-specific
@@ -15,7 +34,7 @@ type WalletBase = {
   /** Returns a chain-specific signer. Consumers cast to the concrete
    *  type via the `SignerForPlatform` registry (or directly to the
    *  library shape they wrap: `WalletClient` on viem, etc.). */
-  getSigner: () => Promise<unknown>;
+  getSigner: () => Promise<WalletSigner>;
   /** Look up the status of a previously-submitted transaction. */
   getTransactionReceipt: (tx: string) => Promise<{
     status: "Success" | "Error" | "Pending";
@@ -23,13 +42,13 @@ type WalletBase = {
   /** `account` routes through a specific exposed address (EVM via
    *  `tx.from`, Wallet Standard via the feature's `account` input);
    *  omitting it lets the wallet pick. */
-  sendTx: (tx: unknown, account?: Account) => Promise<string>;
+  sendTx: (tx: TransactionInput, account?: Account) => Promise<string>;
   /** Submit a transaction targeting a specific chain. The optional
    *  callback fires after the connector has switched chain (consumers
    *  use this to re-enable UI). Pass an `account` to route through a
    *  specific exposed address (see `sendTx`). */
   sendTxToChain: (
-    tx: unknown,
+    tx: TransactionInput,
     targetChainId: string,
     account?: Account,
     cb?: () => void,
@@ -68,7 +87,7 @@ type SvmWallet = WalletBase & {
    *  consumer can verify server-side. `input` is the SIWS message fields
    *  (domain, statement, nonce, …); pass `{}` or omit for wallet
    *  defaults. */
-  signIn?: (input?: Record<string, unknown>) => Promise<{
+  signIn?: (input?: SignInInput) => Promise<{
     account: Account;
     signature: Uint8Array;
     signedMessage: Uint8Array;
@@ -76,7 +95,7 @@ type SvmWallet = WalletBase & {
   /** Sign a Solana transaction WITHOUT broadcasting it. butr ships no
    *  RPC, so the consumer broadcasts the returned bytes via
    *  `@solana/kit` / `@solana/web3.js` / etc. */
-  signTransaction?: (tx: unknown, account?: Account) => Promise<Uint8Array>;
+  signTransaction?: (tx: TransactionInput, account?: Account) => Promise<Uint8Array>;
 };
 
 /**
@@ -90,7 +109,7 @@ type SuiWallet = WalletBase & {
    *  `{ transactionBlock, signature }`, so a bare `Uint8Array` cannot express
    *  the result and a consumer holding one cannot tell which half they have. */
   signTransaction?: (
-    tx: unknown,
+    tx: TransactionInput,
     account?: Account,
   ) => Promise<{ bytes: Uint8Array; signature: Uint8Array }>;
 };
@@ -101,7 +120,7 @@ type SuiWallet = WalletBase & {
  * your own Esplora or Electrum client.
  */
 type BitcoinWallet = WalletBase & {
-  signTransaction?: (tx: unknown, account?: Account) => Promise<Uint8Array>;
+  signTransaction?: (tx: TransactionInput, account?: Account) => Promise<Uint8Array>;
 };
 
 /**
@@ -145,10 +164,17 @@ export type {
   EvmWallet,
   PolkadotAdapter,
   PolkadotWallet,
+  SignInInput,
+  SignInValue,
   SuiAdapter,
   SuiWallet,
   SvmAdapter,
   SvmWallet,
+  TransactionInput,
+  TransactionMethod,
+  TransactionObject,
+  TransactionValue,
   WalletAdapter,
   WalletBase,
+  WalletSigner,
 };

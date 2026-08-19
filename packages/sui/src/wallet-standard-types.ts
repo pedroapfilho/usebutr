@@ -19,6 +19,7 @@ type SuiSignPersonalMessageFeature = {
   signPersonalMessage: (
     input: SuiSignPersonalMessageInput,
   ) => Promise<SuiSignPersonalMessageOutput>;
+  version?: string;
 };
 
 type SuiSignTransactionInput = {
@@ -34,6 +35,7 @@ type SuiSignTransactionOutput = {
 
 type SuiSignTransactionFeature = {
   signTransaction: (input: SuiSignTransactionInput) => Promise<SuiSignTransactionOutput>;
+  version?: string;
 };
 
 type SuiSignAndExecuteTransactionInput = {
@@ -53,6 +55,7 @@ type SuiSignAndExecuteTransactionFeature = {
   signAndExecuteTransaction: (
     input: SuiSignAndExecuteTransactionInput,
   ) => Promise<SuiSignAndExecuteTransactionOutput>;
+  version?: string;
 };
 
 export type {

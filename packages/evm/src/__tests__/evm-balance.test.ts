@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Eip1193Provider } from "../eip1193";
+import type { Eip1193Provider, Eip1193RequestArgs, Eip1193Value } from "../eip1193";
 import { readEvmBalance } from "../evm-balance";
 
 const ADDRESS = "0x1234567890aBCDEF1234567890ABCDef12345678";
@@ -10,7 +10,7 @@ const DECIMALS = "0x313ce567";
 const SYMBOL = "0x95d89b41";
 
 const createProvider = (
-  handlers: Record<string, (params: unknown) => unknown>,
+  handlers: Record<string, (params: Eip1193RequestArgs["params"]) => Eip1193Value | undefined>,
 ): Eip1193Provider => ({
   on() {},
   removeListener() {},
@@ -20,7 +20,7 @@ const createProvider = (
   },
 });
 
-const selectorOf = (params: unknown): string => {
+const selectorOf = (params: Eip1193RequestArgs["params"]): string => {
   const call = (params as Array<{ data: string }>)[0];
   if (call === undefined) {
     throw new Error("missing call");

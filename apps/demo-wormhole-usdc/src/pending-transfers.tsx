@@ -8,24 +8,8 @@ import { getWormhole, makeSigner } from "./wormhole";
 
 const ATTESTATION_TIMEOUT_MS = 10 * 60 * 1000;
 
-const formatError = (error: unknown): string => {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  if (typeof error === "string") {
-    return error;
-  }
-  if (error !== null && typeof error === "object") {
-    if ("message" in error && typeof error.message === "string") {
-      return error.message;
-    }
-    try {
-      return JSON.stringify(error);
-    } catch {
-      return "unrecognized error";
-    }
-  }
-  return "unknown error";
+const formatError = (error: Error | string): string => {
+  return error instanceof Error ? error.message : error;
 };
 
 const truncate = (a: string): string => (a.length > 14 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a);
@@ -115,7 +99,10 @@ const PendingTransfers = () => {
       const txids = await xfer.completeTransfer(signer);
       setRow(item.key, { destTxHash: txids.at(-1) ?? "", kind: "done" });
     } catch (error) {
-      setRow(item.key, { kind: "error", message: formatError(error) });
+      setRow(item.key, {
+        kind: "error",
+        message: formatError(error instanceof Error ? error : String(error)),
+      });
     }
   };
 

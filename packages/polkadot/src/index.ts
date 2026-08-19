@@ -7,7 +7,7 @@ export {
 } from "./capabilities";
 
 export type { PolkadotSignerHandle } from "./injected/adapter";
-export { buildInjectedPolkadotAdapter } from "./injected/adapter";
+export { buildInjectedPolkadotAdapter, isPolkadotSignerHandle } from "./injected/adapter";
 export type { InjectedPolkadotDiscoveryOptions } from "./injected";
 export { discoverInjectedPolkadotAdapters } from "./injected";
 

@@ -1,4 +1,4 @@
-import type { Eip1193Provider, Eip6963ProviderInfo } from "@usebutr/evm";
+import type { Eip1193Provider, Eip1193Value, Eip6963ProviderInfo } from "@usebutr/evm";
 import { buildEvmAdapter } from "@usebutr/evm";
 import { describe, expect, it } from "vitest";
 
@@ -9,7 +9,7 @@ const baseInfo = (rdns: string, name: string): Eip6963ProviderInfo => ({
   uuid: `${rdns}-uuid`,
 });
 
-type MockResponse = () => unknown;
+type MockResponse = () => Eip1193Value | Promise<never> | undefined;
 type MockProvider = Eip1193Provider & { requests: Array<{ method: string }> };
 
 const createMockProvider = (responses: Record<string, MockResponse>): MockProvider => {

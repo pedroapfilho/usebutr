@@ -3,7 +3,7 @@ import { bytesToBase58 } from "@usebutr/core";
 
 import { createLedgerAdapterCore } from "../adapter-core";
 import { LEDGER_SIGN_TRANSACTION_CAPABILITIES } from "../capabilities";
-import type { TransportFactory } from "../transport";
+import type { TransportFactory, TransportLike } from "../transport";
 
 /**
  * Declared inline so butr's typecheck doesn't depend on the optional peer dep.
@@ -16,7 +16,7 @@ type SolanaAppLike = {
   signTransaction: (path: string, txBuffer: Uint8Array) => Promise<{ signature: Uint8Array }>;
 };
 
-type SolanaAppConstructor = new (transport: unknown) => SolanaAppLike;
+type SolanaAppConstructor = new (transport: TransportLike) => SolanaAppLike;
 
 type SolanaCluster = "mainnet" | "devnet" | "testnet";
 
@@ -25,18 +25,19 @@ const DEFAULT_DERIVATION_PATH_PREFIX = "44'/501'/0'";
 const DEFAULT_CLUSTER: SolanaCluster = "mainnet";
 
 const loadSolana = async (): Promise<SolanaAppConstructor> => {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- untyped optional peer-dep module boundary
-  const mod = (await import("@ledgerhq/hw-app-solana")) as unknown as {
+  const imported: unknown = await import("@ledgerhq/hw-app-solana");
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SAFETY: The supported peer range exports the Solana app constructor under default or Solana.
+  const moduleValue = imported as {
     default?: SolanaAppConstructor;
     Solana?: SolanaAppConstructor;
   };
-  const ctor = mod.default ?? mod.Solana;
-  if (!ctor) {
+  const constructor = moduleValue.default ?? moduleValue.Solana;
+  if (!constructor) {
     throw new Error(
       "[butr/ledger] failed to load @ledgerhq/hw-app-solana: install it as an optional peer dep",
     );
   }
-  return ctor;
+  return constructor;
 };
 
 /** SVM-specific Ledger adapter options. */

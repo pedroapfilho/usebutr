@@ -1,7 +1,6 @@
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Transaction } from "@mysten/sui/transactions";
 import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
-import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 import { useEffect, useMemo, useState } from "react";
 
 import { useDiscoveredWallets } from "./wallet-provider";
@@ -10,11 +9,11 @@ const RPC_URL = "https://fullnode.testnet.sui.io:443";
 
 const client = new SuiGrpcClient({ baseUrl: RPC_URL, network: "testnet" });
 
-const formatError = (e: unknown): string => {
-  if (e instanceof Error) {
-    return e.message;
+const formatError = (error: Error | string): string => {
+  if (error instanceof Error) {
+    return error.message;
   }
-  return String(e);
+  return error;
 };
 
 const Row = ({ children, label }: { children: React.ReactNode; label: string }) => (
@@ -33,7 +32,7 @@ const Connected = ({
   onDisconnect: () => void;
   wallet: ReturnType<typeof useActiveWallet> & object;
 }) => {
-  const [walletStd, setWalletStd] = useState<WalletStandardWallet | null>(null);
+  const [signerReady, setSignerReady] = useState(false);
   const [balance, setBalance] = useState<string>("…");
   const [signature, setSignature] = useState<string | null>(null);
   const [txDigest, setTxDigest] = useState<string | null>(null);
@@ -45,14 +44,13 @@ const Connected = ({
     let cancelled = false;
     void (async () => {
       try {
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: getSigner() returns the Wallet Standard wallet for Sui adapters
-        const ws = (await wallet.connector.getSigner()) as WalletStandardWallet;
+        await wallet.connector.getSigner();
         if (!cancelled) {
-          setWalletStd(ws);
+          setSignerReady(true);
         }
       } catch (error) {
         if (!cancelled) {
-          setErrorMsg(formatError(error));
+          setErrorMsg(formatError(error instanceof Error ? error : String(error)));
         }
       }
     })();
@@ -93,7 +91,7 @@ const Connected = ({
       }
       setSignature(hex);
     } catch (error) {
-      setErrorMsg(formatError(error));
+      setErrorMsg(formatError(error instanceof Error ? error : String(error)));
     }
   };
 
@@ -105,10 +103,10 @@ const Connected = ({
       const [coin] = tx.splitCoins(tx.gas, [0]);
       tx.transferObjects([coin], addr);
 
-      const digest = await wallet.connector.sendTx(tx);
+      const digest = await wallet.connector.sendTx(await tx.toJSON());
       setTxDigest(digest);
     } catch (error) {
-      setErrorMsg(formatError(error));
+      setErrorMsg(formatError(error instanceof Error ? error : String(error)));
     }
   };
 
@@ -133,7 +131,7 @@ const Connected = ({
       <div className="flex flex-wrap gap-2">
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
-          disabled={!walletStd}
+          disabled={!signerReady}
           onClick={() => {
             void handleSign();
           }}
@@ -143,7 +141,7 @@ const Connected = ({
         </button>
         <button
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
-          disabled={!walletStd}
+          disabled={!signerReady}
           onClick={() => {
             void handleSendTx();
           }}

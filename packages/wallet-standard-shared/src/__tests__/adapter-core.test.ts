@@ -30,6 +30,7 @@ const buildWalletAccount = (address: string): WalletStandardWalletAccount => ({
 
 const buildConnectFeature = (): StandardConnectFeature => ({
   connect: vi.fn().mockResolvedValue({ accounts: [] }),
+  version: "1.0.0",
 });
 
 const buildWallet = (overrides: WalletOverrides = {}): WalletStandardWallet => ({
@@ -53,6 +54,7 @@ const buildEventsFeature = () => {
         listeners.delete(listener);
       };
     }),
+    version: "1.0.0",
   };
   return {
     emit: (changes: Changes) => {

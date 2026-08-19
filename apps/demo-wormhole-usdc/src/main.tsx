@@ -7,9 +7,15 @@ import "./index.css";
 // oxlint-disable-next-line unicorn/prefer-node-protocol -- intentionally the npm browser polyfill, not the Node built-in
 import { Buffer } from "buffer";
 
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- attaching the browser Buffer polyfill onto the untyped global scope
-const globalScope = globalThis as unknown as { Buffer?: typeof Buffer };
-globalScope.Buffer ??= Buffer;
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+if (!("Buffer" in globalThis)) {
+  Object.defineProperty(globalThis, "Buffer", {
+    configurable: true,
+    value: Buffer,
+    writable: true,
+  });
+}
 
 import "@wormhole-foundation/sdk-evm-cctp";
 import "@wormhole-foundation/sdk-solana-cctp";
@@ -20,6 +26,8 @@ import ReactDOM from "react-dom/client";
 import { App } from "./app";
 import { WalletProvider } from "./wallet-provider";
 
+const queryClient = new QueryClient();
+
 const root = document.querySelector("#root");
 if (!root) {
   throw new Error("#root not found");
@@ -27,8 +35,10 @@ if (!root) {
 
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
-    <WalletProvider>
-      <App />
-    </WalletProvider>
+    <QueryClientProvider client={queryClient}>
+      <WalletProvider>
+        <App />
+      </WalletProvider>
+    </QueryClientProvider>
   </React.StrictMode>,
 );

@@ -1,5 +1,6 @@
 import type {
   StandardConnectFeature,
+  StandardEventsFeature,
   WalletStandardWallet,
   WalletStandardWalletAccount,
 } from "@usebutr/wallet-standard-shared";
@@ -15,7 +16,10 @@ const buildAccount = (address: string): WalletStandardWalletAccount => ({
   features: [],
 });
 
-type FeatureMap = Record<string, unknown>;
+type FeatureMap = Record<
+  string,
+  PolkadotSignMessageFeature | StandardConnectFeature | StandardEventsFeature
+>;
 
 const buildWallet = (overrides: Partial<WalletStandardWallet> = {}): WalletStandardWallet => ({
   accounts: [buildAccount("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY")],
@@ -37,6 +41,14 @@ const withFeatures = (
 
 const baseConnect: StandardConnectFeature = {
   connect: vi.fn().mockResolvedValue({ accounts: [] }),
+};
+
+const requireAdapter = (wallet: WalletStandardWallet) => {
+  const adapter = buildPolkadotWalletStandardAdapter(wallet);
+  if (adapter === null) {
+    throw new Error("expected a Polkadot Wallet Standard adapter");
+  }
+  return adapter;
 };
 
 describe("buildPolkadotWalletStandardAdapter", () => {
@@ -81,7 +93,7 @@ describe("buildPolkadotWalletStandardAdapter", () => {
   it("sets subscribe capability true when standard:events is advertised", () => {
     const wallet = withFeatures(buildWallet(), {
       "standard:connect": baseConnect,
-      "standard:events": { on: vi.fn() },
+      "standard:events": { on: vi.fn(), version: "1.0.0" },
     });
     const adapter = buildPolkadotWalletStandardAdapter(wallet);
     expect(adapter?.capabilities.subscribe).toBe(true);
@@ -150,5 +162,42 @@ describe("buildPolkadotWalletStandardAdapter", () => {
     const adapter = buildPolkadotWalletStandardAdapter(wallet);
     const signer = await adapter?.getSigner();
     expect(signer).toBe(wallet);
+  });
+
+  it("rejects signMessage when the wallet does not advertise it", async () => {
+    const wallet = withFeatures(buildWallet(), { "standard:connect": baseConnect });
+    const adapter = requireAdapter(wallet);
+
+    await expect(adapter.signMessage(new Uint8Array([1]))).rejects.toThrow(
+      /does not advertise polkadot:signMessage/v,
+    );
+  });
+
+  it("signs with the resolved account and preserves the wallet's signed message", async () => {
+    const signature = new Uint8Array([2]);
+    const message = new Uint8Array([1]);
+    const transformedMessage = new Uint8Array([3]);
+    const signMessage = vi
+      .fn<PolkadotSignMessageFeature["signMessage"]>()
+      .mockResolvedValueOnce({ signature })
+      .mockResolvedValueOnce({ signature, signedMessage: transformedMessage });
+    const wallet = withFeatures(buildWallet(), {
+      "polkadot:signMessage": { signMessage },
+      "standard:connect": baseConnect,
+    });
+    const adapter = requireAdapter(wallet);
+
+    await expect(adapter.signMessage(message)).resolves.toEqual({
+      signature,
+      signedMessage: message,
+    });
+    await expect(adapter.signMessage(message)).resolves.toEqual({
+      signature,
+      signedMessage: transformedMessage,
+    });
+    expect(signMessage).toHaveBeenNthCalledWith(1, {
+      account: wallet.accounts[0],
+      message,
+    });
   });
 });

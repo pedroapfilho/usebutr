@@ -60,13 +60,13 @@ type LedgerAdapterCoreInput<TApp> = {
   transport?: TransportFactory;
 };
 
-type LedgerAdapterCore<TApp> = {
+type LedgerAdapterCore<TApp extends object> = {
   connect: (opts?: { silent?: boolean }) => Promise<void>;
   /** Active address, or `null` before `connect()` / after `disconnect()`. */
   currentAddress: () => string | null;
   disconnect: () => Promise<void>;
   getBalance: () => Promise<never>;
-  getSigner: () => Promise<unknown>;
+  getSigner: () => Promise<TApp>;
   getTransactionReceipt: () => Promise<never>;
   icon: string;
   id: string;
@@ -91,7 +91,7 @@ type LedgerAdapterCore<TApp> = {
  * broadcasts and emits no events, so the RPC-backed methods reject from here
  * rather than each app package.
  */
-const createLedgerAdapterCore = <TApp>({
+const createLedgerAdapterCore = <TApp extends object>({
   accountCount: requestedAccountCount,
   addressAt,
   addressesEqual = (a, b) => a === b,
@@ -127,8 +127,18 @@ const createLedgerAdapterCore = <TApp>({
 
   const openSession = async (): Promise<void> => {
     const openedAt = generation;
-    const factory = transportFactory ?? (await loadTransport());
-    const bindApp = await loadApp();
+    const [factoryResult, bindAppResult] = await Promise.allSettled([
+      transportFactory === undefined ? loadTransport() : Promise.resolve(transportFactory),
+      loadApp(),
+    ]);
+    if (factoryResult.status === "rejected") {
+      throw factoryResult.reason;
+    }
+    if (bindAppResult.status === "rejected") {
+      throw bindAppResult.reason;
+    }
+    const factory = factoryResult.value;
+    const bindApp = bindAppResult.value;
     const transport = await factory.create();
     try {
       const app = bindApp(transport);
@@ -181,7 +191,7 @@ const createLedgerAdapterCore = <TApp>({
         new Error(`[butr/ledger] getBalance not supported: Ledger has no RPC. ${getBalanceHint}`),
       ),
 
-    getSigner: () => Promise.resolve(session?.app ?? null),
+    getSigner: () => Promise.resolve(requireApp()),
 
     getTransactionReceipt: () =>
       Promise.reject(
@@ -198,7 +208,7 @@ const createLedgerAdapterCore = <TApp>({
       }
       const addresses: Array<string> = [];
       for (let i = 0; i < accountCount; i += 1) {
-        // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
+        // oxlint-disable-next-line react-doctor/async-await-in-loop -- Ledger transports allow one APDU exchange at a time.
         addresses.push(await addressAt(active.app, pathAtIndex(i)));
       }
       return addresses;
@@ -214,7 +224,7 @@ const createLedgerAdapterCore = <TApp>({
       }
       for (let i = 0; i < accountCount; i += 1) {
         const candidatePath = pathAtIndex(i);
-        // eslint-disable-next-line no-await-in-loop -- Ledger device requires sequential APDU access; cannot parallelize
+        // oxlint-disable-next-line react-doctor/async-await-in-loop -- Ledger transports allow one APDU exchange at a time.
         const candidateAddress = await addressAt(active.app, candidatePath);
         if (addressesEqual(candidateAddress, account.walletAddress)) {
           return candidatePath;

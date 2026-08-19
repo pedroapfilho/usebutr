@@ -125,7 +125,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
         Chain
       </label>
       <select
-        className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs"
+        className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-base"
         id={selectId}
         onChange={(e) => {
           void handleChange(e.target.value);
@@ -243,13 +243,13 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
   );
 };
 
-const PLATFORM_LABELS: Record<ChainPlatform, string> = {
+const PLATFORM_LABELS = {
   bitcoin: "Bitcoin",
   evm: "EVM",
   polkadot: "Polkadot",
   sui: "Sui",
   svm: "SVM",
-};
+} satisfies Record<ChainPlatform, string>;
 
 const ConnectedList = ({ count }: { count: number }) => {
   const byPlatform = useConnectedWalletsByPlatform();
@@ -480,7 +480,7 @@ const Content = () => {
 const App = () => (
   <>
     <a
-      className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:shadow"
+      className="sr-only px-4 py-2 text-sm focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-white focus:shadow"
       href="#main"
     >
       Skip to content

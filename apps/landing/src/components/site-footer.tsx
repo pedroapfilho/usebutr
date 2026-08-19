@@ -32,8 +32,6 @@ const PROJECT_LINKS: Array<FooterLink> = [
   { href: NPM_URL, label: "npm" },
 ];
 
-const CURRENT_YEAR = new Date().getFullYear();
-
 const FooterColumn = ({ links, title }: FooterColumnProps) => (
   <div>
     <h2 className="text-foreground text-base font-medium sm:text-sm">{title}</h2>
@@ -52,30 +50,34 @@ const FooterColumn = ({ links, title }: FooterColumnProps) => (
   </div>
 );
 
-const SiteFooter = () => (
-  <footer className="border-border border-t">
-    <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-6 py-12 sm:grid-cols-4">
-      <div className="col-span-2">
-        <Link
-          aria-label="Homepage"
-          className="focus-visible:outline-ring inline-flex rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"
-          href="/"
-        >
-          <BrandLogo />
-        </Link>
-        <p className="text-muted-foreground mt-4 max-w-[56ch] text-base text-pretty sm:max-w-[36ch] sm:text-sm">
-          Multi-chain wallet discovery and connection state for React.
-        </p>
+const SiteFooter = () => {
+  const currentYear = new Date().getFullYear();
+
+  return (
+    <footer className="border-border border-t">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-6 py-12 sm:grid-cols-4">
+        <div className="col-span-2">
+          <Link
+            aria-label="Homepage"
+            className="focus-visible:outline-ring inline-flex rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"
+            href="/"
+          >
+            <BrandLogo />
+          </Link>
+          <p className="text-muted-foreground mt-4 max-w-[56ch] text-base text-pretty sm:max-w-[36ch] sm:text-sm">
+            Multi-chain wallet discovery and connection state for React.
+          </p>
+        </div>
+
+        <FooterColumn links={RESOURCE_LINKS} title="Resources" />
+        <FooterColumn links={PROJECT_LINKS} title="Project" />
       </div>
 
-      <FooterColumn links={RESOURCE_LINKS} title="Resources" />
-      <FooterColumn links={PROJECT_LINKS} title="Project" />
-    </div>
-
-    <div className="mx-auto w-full max-w-6xl px-6 pb-10">
-      <p className="text-muted-foreground text-base sm:text-sm">© {CURRENT_YEAR} butr</p>
-    </div>
-  </footer>
-);
+      <div className="mx-auto w-full max-w-6xl px-6 pb-10">
+        <p className="text-muted-foreground text-base sm:text-sm">© {currentYear} butr</p>
+      </div>
+    </footer>
+  );
+};
 
 export { SiteFooter };

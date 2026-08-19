@@ -12,8 +12,9 @@ import {
 } from "@solana/web3.js";
 import type { WalletAdapter as ButrWalletAdapter } from "@usebutr/core";
 import { bytesToBase58 } from "@usebutr/core";
-import type { SolanaSignAndSendTransactionFeature, SolanaSignMessageFeature } from "@usebutr/svm";
+import { isSolanaSignAndSendTransactionFeature, isSolanaSignMessageFeature } from "@usebutr/svm";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
+import { getFeature } from "@usebutr/wallet-standard-shared";
 
 // @solana/wallet-adapter's interface declares Promise-returning methods whose
 // bodies are synchronous here; async would only trip require-await. Disable
@@ -47,7 +48,7 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
 
   // fallow-ignore-next-line unused-class-member
   get name(): WalletName {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: bridging butr's string id to @solana/wallet-adapter's branded WalletName
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SAFETY: WalletName is a compile-time brand over the adapter's display name.
     return this.butr.name as WalletName;
   }
 
@@ -102,10 +103,7 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
 
   // fallow-ignore-next-line unused-class-member
   async signMessage(message: Uint8Array): Promise<Uint8Array> {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: untyped Wallet Standard feature registry
-    const feature = this._wallet.features["solana:signMessage"] as
-      | SolanaSignMessageFeature
-      | undefined;
+    const feature = getFeature(this._wallet, "solana:signMessage", isSolanaSignMessageFeature);
     if (feature === undefined) {
       throw new Error("Wallet does not advertise solana:signMessage");
     }
@@ -135,10 +133,11 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     _connection: Connection,
     _options?: SendTransactionOptions,
   ): Promise<string> {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: untyped Wallet Standard feature registry
-    const feature = this._wallet.features["solana:signAndSendTransaction"] as
-      | SolanaSignAndSendTransactionFeature
-      | undefined;
+    const feature = getFeature(
+      this._wallet,
+      "solana:signAndSendTransaction",
+      isSolanaSignAndSendTransactionFeature,
+    );
     if (feature === undefined) {
       throw new Error("Wallet does not advertise solana:signAndSendTransaction");
     }

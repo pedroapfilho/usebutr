@@ -1,14 +1,15 @@
+import { isEip1193Provider } from "@usebutr/evm";
 import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
 import { useEffect, useMemo, useState } from "react";
 import {
   type Address,
-  type EIP1193Provider,
   type WalletClient,
   createPublicClient,
   createWalletClient,
   custom,
   formatEther,
   http,
+  isAddress,
   parseEther,
 } from "viem";
 import { sepolia } from "viem/chains";
@@ -22,11 +23,11 @@ const publicClient = createPublicClient({
   transport: http(),
 });
 
-const formatError = (e: unknown): string => {
-  if (e instanceof Error) {
-    return e.message;
+const formatError = (error: Error | string): string => {
+  if (error instanceof Error) {
+    return error.message;
   }
-  return String(e);
+  return error;
 };
 
 const Row = ({ children, label }: { children: React.ReactNode; label: string }) => (
@@ -51,11 +52,13 @@ const Connected = ({
   const [txHash, setTxHash] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const account: Address = useMemo(
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: butr addresses are hex strings; narrow to viem's Address
-    () => wallet.account.walletAddress as Address,
-    [wallet.account.walletAddress],
-  );
+  const account: Address = useMemo(() => {
+    const candidate = wallet.account.walletAddress;
+    if (!isAddress(candidate)) {
+      throw new Error(`Invalid EVM address: ${candidate}`);
+    }
+    return candidate;
+  }, [wallet.account.walletAddress]);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,8 +67,10 @@ const Connected = ({
         if (cancelled) {
           return;
         }
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- demo: EVM adapter getSigner() returns the raw EIP-1193 provider
-        const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
+        const provider = await wallet.connector.getSigner();
+        if (!isEip1193Provider(provider)) {
+          throw new Error("EVM signer is not an EIP-1193 provider");
+        }
         if (cancelled) {
           return;
         }
@@ -78,7 +83,7 @@ const Connected = ({
         );
       } catch (error) {
         if (!cancelled) {
-          setErrorMsg(formatError(error));
+          setErrorMsg(formatError(error instanceof Error ? error : String(error)));
         }
       }
     })();
@@ -116,7 +121,7 @@ const Connected = ({
       const sig = await walletClient.signMessage({ account, message: "Hello from butr + viem" });
       setSignature(sig);
     } catch (error) {
-      setErrorMsg(formatError(error));
+      setErrorMsg(formatError(error instanceof Error ? error : String(error)));
     }
   };
 
@@ -134,7 +139,7 @@ const Connected = ({
       });
       setTxHash(hash);
     } catch (error) {
-      setErrorMsg(formatError(error));
+      setErrorMsg(formatError(error instanceof Error ? error : String(error)));
     }
   };
 
@@ -262,7 +267,7 @@ const Content = () => {
 const App = () => (
   <>
     <a
-      className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:shadow"
+      className="sr-only px-4 py-2 text-sm focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-white focus:shadow"
       href="#main"
     >
       Skip to content

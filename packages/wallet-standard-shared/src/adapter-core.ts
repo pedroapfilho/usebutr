@@ -6,9 +6,25 @@ import type {
   StandardConnectFeature,
   StandardDisconnectFeature,
   StandardEventsFeature,
+  WalletStandardFeature,
   WalletStandardWallet,
   WalletStandardWalletAccount,
 } from "./types";
+
+const isStandardConnectFeature = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & StandardConnectFeature =>
+  "connect" in feature && typeof feature.connect === "function";
+
+const isStandardDisconnectFeature = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & StandardDisconnectFeature =>
+  "disconnect" in feature && typeof feature.disconnect === "function";
+
+const isStandardEventsFeature = (
+  feature: WalletStandardFeature,
+): feature is WalletStandardFeature & StandardEventsFeature =>
+  "on" in feature && typeof feature.on === "function";
 
 type WalletStandardCoreInput = {
   /** CAIP-2 prefix including its colon (`solana:`, `sui:`, `bip122:`). */
@@ -45,7 +61,7 @@ type WalletStandardCore = {
   disconnect: () => Promise<void>;
   getAccount: () => Promise<Account | null>;
   getAccounts: () => Promise<Array<Account>>;
-  getSigner: () => Promise<unknown>;
+  getSigner: () => Promise<WalletStandardWallet>;
   /** Whether the wallet advertises `standard:events`; feeds capability gating. */
   hasEvents: boolean;
   icon: string | undefined;
@@ -77,8 +93,9 @@ const createWalletStandardCore = ({
   trackChainChanges,
   wallet,
 }: WalletStandardCoreInput): WalletStandardCore | null => {
+  const preferredChains = new Set(preferredChainIds);
   const pickChain = (chains: ReadonlyArray<string>): string | null =>
-    chains.find((c) => preferredChainIds.includes(c)) ??
+    chains.find((c) => preferredChains.has(c)) ??
     chains.find((c) => c.startsWith(chainPrefix)) ??
     null;
 
@@ -86,13 +103,13 @@ const createWalletStandardCore = ({
   if (initialChainId === null) {
     return null;
   }
-  const connect = getFeature<StandardConnectFeature>(wallet, "standard:connect");
+  const connect = getFeature(wallet, "standard:connect", isStandardConnectFeature);
   if (connect === undefined) {
     return null;
   }
 
-  const disconnect = getFeature<StandardDisconnectFeature>(wallet, "standard:disconnect");
-  const events = getFeature<StandardEventsFeature>(wallet, "standard:events");
+  const disconnect = getFeature(wallet, "standard:disconnect", isStandardDisconnectFeature);
+  const events = getFeature(wallet, "standard:events", isStandardEventsFeature);
 
   let currentChainId = initialChainId;
   const toChain = (): ChainBase => ({

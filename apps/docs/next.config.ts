@@ -11,6 +11,20 @@ const config: NextConfig = {
       { destination: "/llms.mdx/:path*", source: "/:path*.md" },
     ];
   },
+  turbopack: {
+    rules: {
+      "*.{ts,tsx}": {
+        condition: {
+          all: [
+            { not: "foreign" },
+            // oxlint-disable-next-line eslint/require-unicode-regexp -- Turbopack rejects RegExp flags.
+            { content: /[Zz]od/ },
+          ],
+        },
+        loaders: ["zod-compiler/turbopack"],
+      },
+    },
+  },
 };
 
 export default withMDX(config);

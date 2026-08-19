@@ -43,6 +43,14 @@ const baseConnect: StandardConnectFeature = {
   connect: vi.fn().mockResolvedValue({ accounts: [] }),
 };
 
+const requireAdapter = (wallet: WalletStandardWallet) => {
+  const adapter = buildPolkadotWalletStandardAdapter(wallet);
+  if (adapter === null) {
+    throw new Error("expected a Polkadot Wallet Standard adapter");
+  }
+  return adapter;
+};
+
 describe("buildPolkadotWalletStandardAdapter", () => {
   it("returns null when the wallet advertises no polkadot: chain", () => {
     const wallet = buildWallet({ chains: ["eip155:1"] });
@@ -154,5 +162,42 @@ describe("buildPolkadotWalletStandardAdapter", () => {
     const adapter = buildPolkadotWalletStandardAdapter(wallet);
     const signer = await adapter?.getSigner();
     expect(signer).toBe(wallet);
+  });
+
+  it("rejects signMessage when the wallet does not advertise it", async () => {
+    const wallet = withFeatures(buildWallet(), { "standard:connect": baseConnect });
+    const adapter = requireAdapter(wallet);
+
+    await expect(adapter.signMessage(new Uint8Array([1]))).rejects.toThrow(
+      /does not advertise polkadot:signMessage/v,
+    );
+  });
+
+  it("signs with the resolved account and preserves the wallet's signed message", async () => {
+    const signature = new Uint8Array([2]);
+    const message = new Uint8Array([1]);
+    const transformedMessage = new Uint8Array([3]);
+    const signMessage = vi
+      .fn<PolkadotSignMessageFeature["signMessage"]>()
+      .mockResolvedValueOnce({ signature })
+      .mockResolvedValueOnce({ signature, signedMessage: transformedMessage });
+    const wallet = withFeatures(buildWallet(), {
+      "polkadot:signMessage": { signMessage },
+      "standard:connect": baseConnect,
+    });
+    const adapter = requireAdapter(wallet);
+
+    await expect(adapter.signMessage(message)).resolves.toEqual({
+      signature,
+      signedMessage: message,
+    });
+    await expect(adapter.signMessage(message)).resolves.toEqual({
+      signature,
+      signedMessage: transformedMessage,
+    });
+    expect(signMessage).toHaveBeenNthCalledWith(1, {
+      account: wallet.accounts[0],
+      message,
+    });
   });
 });

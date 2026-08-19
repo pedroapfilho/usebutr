@@ -8,6 +8,7 @@
     "start": "next start -p 4000",
     "postinstall": "fumadocs-mdx",
     "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
     "clean": "rm -rf .next .source node_modules"
   },
   "dependencies": {
@@ -24,6 +25,8 @@
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@next/playwright": "16.3.0",
+    "@playwright/test": "^1.62.1",
     "@repo/typescript-config": "workspace:*",
     "@types/mdx": "^2.0.14",
     "@types/node": "^26.2.0",

@@ -48,7 +48,6 @@ const mapPool = async <T, R>(
     while (cursor < items.length) {
       const index = cursor;
       cursor += 1;
-      // oxlint-disable-next-line no-await-in-loop
       results[index] = await fn(items[index]);
     }
   };
@@ -142,7 +141,6 @@ const scanSolanaBurns = async (
   let totalFetched = 0;
   let reachedEnd = false;
   while (totalFetched < SOLANA_SIGNATURE_LIMIT) {
-    // oxlint-disable-next-line no-await-in-loop
     const page = await rpc
       .getSignaturesForAddress(ownerAddress, { before, limit: SOLANA_PAGE_SIZE })
       .send();

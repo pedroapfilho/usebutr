@@ -48,14 +48,11 @@ class ButrEvmWormholeSigner<N extends Network, C extends Chain> implements SignA
     const provider = new BrowserProvider(this._eip1193);
     const signer = await provider.getSigner(this._address);
     const hashes: Array<TxHash> = [];
-    // oxlint-disable-next-line no-await-in-loop
     for (const tx of txs) {
       const parsedTx = evmUnsignedTxSchema.parse(tx);
-      // oxlint-disable-next-line no-await-in-loop, no-console
+      // oxlint-disable-next-line no-console
       console.log(`[wormhole/evm] sending: ${parsedTx.description}`);
-      // oxlint-disable-next-line no-await-in-loop
       const response = await signer.sendTransaction(parsedTx.transaction);
-      // oxlint-disable-next-line no-await-in-loop
       await response.wait(1);
       hashes.push(response.hash);
     }

@@ -23,7 +23,6 @@ const confirmSignature = async (rpc: SolanaRpc, sig: string): Promise<void> => {
   assertIsSignature(sig);
   const deadline = Date.now() + CONFIRM_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    // oxlint-disable-next-line no-await-in-loop
     const { value } = await rpc.getSignatureStatuses([sig]).send();
     const status = value[0];
     if (status) {
@@ -34,7 +33,6 @@ const confirmSignature = async (rpc: SolanaRpc, sig: string): Promise<void> => {
         return;
       }
     }
-    // oxlint-disable-next-line no-await-in-loop
     await sleep(CONFIRM_POLL_MS);
   }
   throw new Error(`Solana tx ${sig} not confirmed within ${CONFIRM_TIMEOUT_MS}ms`);
@@ -134,7 +132,6 @@ class ButrSvmWormholeSigner<N extends Network, C extends Chain> implements SignA
       // oxlint-disable-next-line no-console
       console.log(`[wormhole/svm] sending: ${parsedTx.description}`);
       const { signers, transaction } = parsedTx.transaction;
-      // oxlint-disable-next-line no-await-in-loop
       const { value } = await rpc.getLatestBlockhash().send();
       let serialized: Uint8Array;
       if (isVersioned(transaction)) {
@@ -153,9 +150,7 @@ class ButrSvmWormholeSigner<N extends Network, C extends Chain> implements SignA
           verifySignatures: false,
         });
       }
-      // oxlint-disable-next-line no-await-in-loop
       const signature = await this._connector.sendTx(serialized);
-      // oxlint-disable-next-line no-await-in-loop
       await confirmSignature(rpc, signature);
       hashes.push(signature);
     }

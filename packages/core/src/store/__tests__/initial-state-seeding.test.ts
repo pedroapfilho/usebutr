@@ -145,7 +145,6 @@ describe("reducer — reconnectingIds lifecycle", () => {
     await driver.setItem("butr-selection", JSON.stringify(baseSnapshot.selection));
     await driver.setItem("butr-active", "metamask");
 
-    // The wallet is installed but locked, so the silent reconnect rejects.
     const locked = createMockConnector({ chainPlatform: "evm", id: "metamask" });
     locked.connect = () => Promise.reject(new Error("wallet is locked"));
 

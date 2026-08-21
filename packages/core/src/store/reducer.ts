@@ -256,9 +256,6 @@ const reducer = (state: State, event: Event): State => {
 
       return {
         ...state,
-        // Only adopt the restored wallet as active when nothing else is. A
-        // background restore must not steal focus from an explicit selection
-        // or from the seeded active id.
         activeConnectorId: state.activeConnectorId ?? connectorId,
         pool: new Map([...state.pool, [connectorId, entry] as const]),
         reconnectingIds: nextReconnecting,
@@ -267,8 +264,6 @@ const reducer = (state: State, event: Event): State => {
     }
 
     case "CONNECT_FAILED": {
-      // Ignore a failure from a superseded attempt; only the connect currently
-      // in flight owns the status triple.
       if (state.connectingConnectorId !== event.connectorId) {
         return state;
       }

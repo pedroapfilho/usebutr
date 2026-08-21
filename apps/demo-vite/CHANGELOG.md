@@ -1,5 +1,11 @@
 # demo-vite
 
+## 0.0.12
+
+### Patch Changes
+
+- @usebutr/wallets@1.1.2
+
 ## 0.0.11
 
 ### Patch Changes

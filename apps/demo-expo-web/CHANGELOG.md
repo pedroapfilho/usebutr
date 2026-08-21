@@ -1,5 +1,11 @@
 # demo-expo-web
 
+## 0.0.13
+
+### Patch Changes
+
+- @usebutr/wallets@1.1.2
+
 ## 0.0.12
 
 ### Patch Changes

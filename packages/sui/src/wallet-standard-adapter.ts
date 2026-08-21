@@ -154,8 +154,6 @@ const buildSuiAdapter = (
 
     sendTx: (tx, account) => executeTx(tx, account),
 
-    // Async so an unadvertised chain surfaces as a rejection rather than a
-    // synchronous throw; the declared return type is a promise either way.
     async sendTxToChain(tx, targetChainId, account, cb) {
       const target = resolveTargetChain(targetChainId);
       if (target !== core.currentChainId()) {

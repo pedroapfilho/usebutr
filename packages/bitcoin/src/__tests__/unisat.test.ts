@@ -397,10 +397,6 @@ describe("buildUnisatAdapter", () => {
       expect(await chainIdOf(adapter)).toBe(BITCOIN_CHAINS.testnet.id);
     });
 
-    // The wallet's network is authoritative: UniSat exposes no switch RPC, and
-    // every account read re-reads it. switchChain must therefore report what
-    // the wallet says rather than the requested target, or the next read
-    // silently contradicts it.
     it("reports the wallet's network, not the requested one, when they differ", async () => {
       const provider = buildProvider();
       provider.getNetwork.mockResolvedValue("livenet");

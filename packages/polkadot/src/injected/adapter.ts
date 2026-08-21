@@ -78,9 +78,6 @@ const buildInjectedPolkadotAdapter = (
   const listenersSet = new Set<(event: ConnectorEvent) => void>();
 
   const emit = (event: ConnectorEvent): void => {
-    // Snapshot: a listener is free to unsubscribe others from inside its
-    // callback, and every listener registered at emit time still gets this
-    // event.
     const snapshot = [...listenersSet];
     for (const listener of snapshot) {
       listener(event);

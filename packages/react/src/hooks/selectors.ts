@@ -37,10 +37,6 @@ const accountsEqual = (a: ReadonlyArray<Account>, b: ReadonlyArray<Account>) => 
 const useConnectionStatus = () => {
   const store = useWalletStoreContext();
   return useStore(store, (state) => {
-    // A live connect attempt outranks the derived value. The two answer
-    // different questions ("how is the user's attempt going" vs "is the active
-    // wallet still a placeholder"), and letting the derivation win hid an
-    // in-flight spinner and, worse, a connection error.
     if (state.connectionStatus === "connecting" || state.connectionStatus === "error") {
       return state.connectionStatus;
     }

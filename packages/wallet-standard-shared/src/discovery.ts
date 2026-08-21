@@ -4,30 +4,53 @@ import type { Wallets as ImportedWallets } from "@wallet-standard/app";
 
 import type {
   WalletStandardAppModule,
+  WalletStandardFeature,
   WalletStandardModuleLoader,
   WalletStandardWallet,
 } from "./types";
 
 type ImportedWallet = ReturnType<ImportedWallets["get"]>[number];
 
-const mapWallet = (wallet: ImportedWallet): WalletStandardWallet => {
-  const features: Record<string, WalletStandardWallet["features"][string]> = {};
-  for (const [name, value] of Object.entries(wallet.features)) {
+const toFeatureRecord = (features: ImportedWallet["features"]) => {
+  const record: Record<string, WalletStandardFeature> = {};
+  for (const [name, value] of Object.entries(features)) {
     if (typeof value !== "object" || value === null) {
       continue;
     }
-    const version =
-      "version" in value && typeof value.version === "string" ? value.version : undefined;
-    features[name] = { ...value, version };
+    // The feature object is stored as-is rather than spread: a spread would
+    // detach its methods from the wallet's own object, breaking any
+    // implementation whose `connect` / `signMessage` reads `this`.
+    record[name] = value;
   }
-  return {
-    accounts: wallet.accounts,
-    chains: wallet.chains,
-    features,
+  return record;
+};
+
+const wrappers = new WeakMap<ImportedWallet, WalletStandardWallet>();
+
+/**
+ * Reads through to the wallet: it re-points `accounts` on connect, so a copy
+ * pins the pre-connect empty list and every `getAccount()` then resolves null.
+ * Memoised because `unregister` is matched to `register` by object identity.
+ */
+const mapWallet = (wallet: ImportedWallet): WalletStandardWallet => {
+  const cached = wrappers.get(wallet);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const wrapper: WalletStandardWallet = {
+    get accounts() {
+      return wallet.accounts;
+    },
+    get chains() {
+      return wallet.chains;
+    },
+    features: toFeatureRecord(wallet.features),
     icon: wallet.icon,
     name: wallet.name,
     version: wallet.version,
   };
+  wrappers.set(wallet, wrapper);
+  return wrapper;
 };
 
 let warnedMissingApp = false;
@@ -142,4 +165,4 @@ const discoverWalletStandard = (
 };
 
 export type { WalletStandardAdapterBuilder };
-export { discoverWalletStandard };
+export { discoverWalletStandard, mapWallet };

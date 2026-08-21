@@ -1,5 +1,14 @@
 # @usebutr/wallets
 
+## 1.1.2
+
+### Patch Changes
+
+- @usebutr/bitcoin@1.1.1
+- @usebutr/polkadot@1.1.1
+- @usebutr/sui@2.0.1
+- @usebutr/svm@2.0.1
+
 ## 1.1.1
 
 ### Patch Changes

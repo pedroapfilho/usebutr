@@ -1,5 +1,11 @@
 # demo-with-bitcoin
 
+## 0.0.12
+
+### Patch Changes
+
+- @usebutr/bitcoin@1.1.1
+
 ## 0.0.11
 
 ### Patch Changes

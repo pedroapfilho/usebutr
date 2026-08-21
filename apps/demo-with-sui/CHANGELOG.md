@@ -1,5 +1,13 @@
 # demo-with-sui
 
+## 0.0.12
+
+### Patch Changes
+
+- Updated dependencies [302ae4a]
+  - @usebutr/wallet-standard-shared@0.5.1
+  - @usebutr/sui@2.0.1
+
 ## 0.0.11
 
 ### Patch Changes

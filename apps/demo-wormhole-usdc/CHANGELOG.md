@@ -1,5 +1,11 @@
 # demo-wormhole-usdc
 
+## 0.0.11
+
+### Patch Changes
+
+- @usebutr/svm@2.0.1
+
 ## 0.0.10
 
 ### Patch Changes

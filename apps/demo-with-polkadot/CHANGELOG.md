@@ -1,5 +1,12 @@
 # demo-with-polkadot
 
+## 0.0.9
+
+### Patch Changes
+
+- @usebutr/polkadot@1.1.1
+- @usebutr/wallets@1.1.2
+
 ## 0.0.8
 
 ### Patch Changes

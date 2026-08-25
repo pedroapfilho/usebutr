@@ -1,0 +1,41 @@
+name: Publish Checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Dispatched by release.yml for the changeset-release/main PR, whose
+  # pull_request runs are parked unexecuted behind an approval gate.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  packaging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/setup@5d160c5bc68a09337ad0d5654e237e03253b5879 # v1.0.0
+        with:
+          runtime: node@24
+          cache: true
+      - run: pnpm typecheck
+      - run: pnpm build
+      # Packaging hygiene for the published packages (ESM-only).
+      - name: publint
+        run: |
+          for pkg in bitcoin core evm ledger polkadot react sui svm testing wallet-standard-shared walletconnect wallets; do
+            (cd "packages/$pkg" && pnpm dlx publint --strict)
+          done
+      - name: are-the-types-wrong
+        run: |
+          for pkg in bitcoin core evm ledger polkadot react sui svm testing wallet-standard-shared walletconnect wallets; do
+            (cd "packages/$pkg" && pnpm dlx @arethetypeswrong/cli --pack --profile esm-only)
+          done

@@ -66,9 +66,6 @@ const createFakeAdapter = (options: FakeAdapterOptions = {}): WalletAdapter => {
     switchChain: () => Promise.resolve(),
   };
 
-  // Each platform's sign-only surface differs, so the fake is built per variant
-  // rather than spread into one shape: Sui returns the bytes/signature pair its
-  // RPC needs, EVM and Polkadot have no sign-only path at all.
   switch (chainPlatform) {
     case "bitcoin": {
       return { ...base, chainPlatform: "bitcoin", signTransaction: signBytes };

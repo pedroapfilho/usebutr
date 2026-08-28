@@ -137,7 +137,6 @@ const Connected = ({
       tx.recentBlockhash = blockhash;
       tx.feePayer = publicKey;
 
-      // Hand the serialized tx to the wallet's Wallet Standard feature.
       const feature = getFeature(
         walletStd,
         "solana:signAndSendTransaction",

@@ -118,8 +118,6 @@ const buildSvmAdapter = (
     if (output === undefined) {
       throw new Error("signAndSendTransaction returned no outputs");
     }
-    // Base58 is the encoding every Solana explorer, `getSignatureStatuses`,
-    // and the WalletConnect SVM namespace use for a transaction signature.
     return bytesToBase58(output.signature);
   };
 
@@ -153,8 +151,6 @@ const buildSvmAdapter = (
 
     sendTx: (tx, account) => signAndSend(tx, account),
 
-    // Async so an unadvertised chain surfaces as a rejection rather than a
-    // synchronous throw; the declared return type is a promise either way.
     async sendTxToChain(tx, targetChainId, account, cb) {
       const target = resolveTargetChain(targetChainId);
       if (target !== core.currentChainId()) {

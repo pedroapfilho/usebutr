@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["usebutr.demo-next.localhost", "*.usebutr.demo-next.localhost"],
   reactStrictMode: true,
   transpilePackages: ["@usebutr/core", "@usebutr/evm", "@usebutr/react"],
   turbopack: {

@@ -6,7 +6,7 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "vite dev --port 3001",
+    "dev": "portless run --name usebutr.demo-tanstack-start vite dev",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",

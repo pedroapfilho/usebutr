@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "portless run --name usebutr.demo-with-solana-wallet-adapter vite",
     "build": "tsc -b && vite build",
     "start": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",

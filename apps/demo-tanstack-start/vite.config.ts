@@ -16,6 +16,7 @@ const config = defineConfig({
     viteReact(),
   ],
   resolve: { tsconfigPaths: true },
+  server: { allowedHosts: [".localhost"] },
 });
 
 export default config;

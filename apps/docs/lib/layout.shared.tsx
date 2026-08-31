@@ -1,7 +1,7 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 
 const GITHUB_URL = "https://github.com/pedroapfilho/usebutr";
-const DEMO_URL = "https://demo.usebutr.com";
+const DEMO_URL = process.env.NEXT_PUBLIC_DEMO_URL ?? "https://demo.usebutr.com";
 
 export const baseOptions = (): BaseLayoutProps => ({
   githubUrl: GITHUB_URL,

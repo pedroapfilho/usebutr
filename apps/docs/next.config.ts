@@ -9,6 +9,7 @@ if (exposeTestingApi) {
 }
 
 const config: NextConfig = {
+  allowedDevOrigins: ["usebutr.docs.localhost", "*.usebutr.docs.localhost"],
   cacheComponents: true,
   experimental: {
     exposeTestingApiInProductionBuild: exposeTestingApi,

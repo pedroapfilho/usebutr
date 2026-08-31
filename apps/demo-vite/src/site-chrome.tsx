@@ -1,6 +1,7 @@
 import { BrandLogo } from "./brand-logo";
 
-const DOCS_URL = "https://docs.usebutr.com";
+const DOCS_URL = import.meta.env.VITE_DOCS_URL ?? "https://docs.usebutr.com";
+const WEB_URL = import.meta.env.VITE_WEB_URL ?? "https://usebutr.com";
 const GITHUB_URL = "https://github.com/pedroapfilho/usebutr";
 const NPM_URL = "https://www.npmjs.com/org/usebutr";
 
@@ -19,11 +20,7 @@ const GitHubIcon = () => (
 const SiteHeader = () => (
   <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white/80 backdrop-blur-md">
     <div className="mx-auto flex h-16 max-w-2xl items-center justify-between px-6">
-      <a
-        aria-label="butr homepage"
-        className="flex items-center gap-2 rounded-sm"
-        href="https://usebutr.com"
-      >
+      <a aria-label="butr homepage" className="flex items-center gap-2 rounded-sm" href={WEB_URL}>
         <BrandLogo className="h-5" />
         <span className="bg-brand/15 text-brand-foreground rounded-full px-2 py-0.5 text-xs font-medium">
           Demo

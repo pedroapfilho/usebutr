@@ -3,7 +3,7 @@
   "version": "0.0.11",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "portless run --name usebutr.demo-next next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "test:browser": "playwright test",

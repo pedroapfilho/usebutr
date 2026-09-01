@@ -261,5 +261,4 @@ const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<Wall
 };
 
 export type { BitcoinAddressFormat, BitcoinLedgerOptions, BtcAppConstructor, BtcAppLike };
-export { LEDGER_ICON as LEDGER_BITCOIN_DEFAULT_ICON } from "../adapter-core";
 export { createBitcoinLedgerAdapter };

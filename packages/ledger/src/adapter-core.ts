@@ -3,9 +3,8 @@ import { logWarn } from "@usebutr/core";
 import type { TransportFactory, TransportLike } from "./transport";
 import { loadTransport } from "./transport";
 
-/** Generic Ledger device glyph, shared by every app adapter. Each app
- *  re-exports it under its own public name. */
-const LEDGER_ICON =
+/** Generic Ledger device glyph, shared by every app adapter. */
+const LEDGER_DEFAULT_ICON =
   "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwMCI+PHJlY3QgeD0iMyIgeT0iNyIgd2lkdGg9IjEzIiBoZWlnaHQ9IjEwIiByeD0iMSIvPjxyZWN0IHg9IjE3IiB5PSI3IiB3aWR0aD0iNCIgaGVpZ2h0PSIzIiBmaWxsPSIjMDAwIi8+PHJlY3QgeD0iMTciIHk9IjE0IiB3aWR0aD0iNCIgaGVpZ2h0PSIzIiBmaWxsPSIjMDAwIi8+PHJlY3QgeD0iNiIgeT0iMTAiIHdpZHRoPSI3IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiLz48L3N2Zz4=";
 
 const NOT_CONNECTED = "[butr/ledger] not connected: call connect() first";
@@ -97,7 +96,7 @@ const createLedgerAdapterCore = <TApp extends object>({
   addressesEqual = (a, b) => a === b,
   derivationPathPrefix,
   getBalanceHint,
-  icon = LEDGER_ICON,
+  icon = LEDGER_DEFAULT_ICON,
   id = "ledger",
   loadApp,
   name = "Ledger",
@@ -259,4 +258,4 @@ const createLedgerAdapterCore = <TApp extends object>({
 };
 
 export type { LedgerAdapterCore, LedgerAdapterCoreInput };
-export { createLedgerAdapterCore, LEDGER_ICON };
+export { createLedgerAdapterCore, LEDGER_DEFAULT_ICON };

@@ -235,5 +235,4 @@ const createSuiLedgerAdapter = (options: SuiLedgerOptions): Promise<WalletAdapte
 };
 
 export type { SuiAppConstructor, SuiAppLike, SuiCluster, SuiLedgerOptions };
-export { LEDGER_ICON as LEDGER_SUI_DEFAULT_ICON } from "../adapter-core";
 export { createSuiLedgerAdapter, serializeEd25519Signature };

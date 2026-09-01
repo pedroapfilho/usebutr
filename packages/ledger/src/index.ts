@@ -19,10 +19,7 @@ export type {
   TransportLike,
 } from "./adapter";
 export {
-  LEDGER_BITCOIN_DEFAULT_ICON,
   LEDGER_DEFAULT_ICON,
-  LEDGER_SUI_DEFAULT_ICON,
-  LEDGER_SVM_DEFAULT_ICON,
   createBitcoinLedgerAdapter,
   createEvmLedgerAdapter,
   createLedgerAdapter,

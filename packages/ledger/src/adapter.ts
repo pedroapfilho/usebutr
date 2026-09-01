@@ -59,8 +59,9 @@ export type {
 export type { SuiAppConstructor, SuiAppLike, SuiCluster, SuiLedgerOptions } from "./apps/sui";
 export type { TransportFactory, TransportLike } from "./transport";
 export type { LedgerOptions };
-export { createBitcoinLedgerAdapter, LEDGER_BITCOIN_DEFAULT_ICON } from "./apps/bitcoin";
-export { createEvmLedgerAdapter, LEDGER_DEFAULT_ICON } from "./apps/evm";
-export { createSuiLedgerAdapter, LEDGER_SUI_DEFAULT_ICON } from "./apps/sui";
-export { createSvmLedgerAdapter, LEDGER_SVM_DEFAULT_ICON } from "./apps/svm";
+export { LEDGER_DEFAULT_ICON } from "./adapter-core";
+export { createBitcoinLedgerAdapter } from "./apps/bitcoin";
+export { createEvmLedgerAdapter } from "./apps/evm";
+export { createSuiLedgerAdapter } from "./apps/sui";
+export { createSvmLedgerAdapter } from "./apps/svm";
 export { createLedgerAdapter };

@@ -65,49 +65,46 @@ The dispatch's `default` branch is a true `never` exhaustiveness check; every
 
 ### `SvmLedgerOptions`
 
-| Field                  | Type                   | Default                   |
-| ---------------------- | ---------------------- | ------------------------- |
-| `platform`             | `"svm"` (required)     | —                         |
-| `cluster`              | `SolanaCluster`        | `"mainnet"`               |
-| `accountCount`         | `number`               | `1`                       |
-| `derivationPathPrefix` | `string`               | `"44'/501'/0'"`           |
-| `id` / `name` / `icon` | `string`               | `LEDGER_SVM_DEFAULT_ICON` |
-| `loadSolana`           | `SolanaAppConstructor` | DI for tests              |
-| `transportFactory`     | `TransportFactory`     | DI for tests              |
+| Field                  | Type                   | Default               |
+| ---------------------- | ---------------------- | --------------------- |
+| `platform`             | `"svm"` (required)     | —                     |
+| `cluster`              | `SolanaCluster`        | `"mainnet"`           |
+| `accountCount`         | `number`               | `1`                   |
+| `derivationPathPrefix` | `string`               | `"44'/501'/0'"`       |
+| `id` / `name` / `icon` | `string`               | `LEDGER_DEFAULT_ICON` |
+| `loadSolana`           | `SolanaAppConstructor` | DI for tests          |
+| `transportFactory`     | `TransportFactory`     | DI for tests          |
 
 ### `SuiLedgerOptions`
 
-| Field                  | Type                | Default                   |
-| ---------------------- | ------------------- | ------------------------- |
-| `platform`             | `"sui"` (required)  | —                         |
-| `cluster`              | `SuiCluster`        | `"mainnet"`               |
-| `accountCount`         | `number`            | `1`                       |
-| `derivationPathPrefix` | `string`            | `"44'/784'/0'/0'"`        |
-| `id` / `name` / `icon` | `string`            | `LEDGER_SUI_DEFAULT_ICON` |
-| `loadSui`              | `SuiAppConstructor` | DI for tests              |
-| `transportFactory`     | `TransportFactory`  | DI for tests              |
+| Field                  | Type                | Default               |
+| ---------------------- | ------------------- | --------------------- |
+| `platform`             | `"sui"` (required)  | —                     |
+| `cluster`              | `SuiCluster`        | `"mainnet"`           |
+| `accountCount`         | `number`            | `1`                   |
+| `derivationPathPrefix` | `string`            | `"44'/784'/0'/0'"`    |
+| `id` / `name` / `icon` | `string`            | `LEDGER_DEFAULT_ICON` |
+| `loadSui`              | `SuiAppConstructor` | DI for tests          |
+| `transportFactory`     | `TransportFactory`  | DI for tests          |
 
 ### `BitcoinLedgerOptions`
 
-| Field                  | Type                                          | Default                       |
-| ---------------------- | --------------------------------------------- | ----------------------------- |
-| `platform`             | `"bitcoin"` (required)                        | —                             |
-| `chainId`              | `string` (CAIP-2)                             | `"bip122:0000…1e93"` mainnet  |
-| `addressFormat`        | `"legacy" \| "p2sh" \| "bech32" \| "bech32m"` | `"bech32"`                    |
-| `accountCount`         | `number`                                      | `1`                           |
-| `derivationPathPrefix` | `string`                                      | `"84'/0'/0'/0"`               |
-| `id` / `name` / `icon` | `string`                                      | `LEDGER_BITCOIN_DEFAULT_ICON` |
-| `loadBtc`              | `BtcAppConstructor`                           | DI for tests                  |
-| `transportFactory`     | `TransportFactory`                            | DI for tests                  |
+| Field                  | Type                                          | Default                      |
+| ---------------------- | --------------------------------------------- | ---------------------------- |
+| `platform`             | `"bitcoin"` (required)                        | —                            |
+| `chainId`              | `string` (CAIP-2)                             | `"bip122:0000…1e93"` mainnet |
+| `addressFormat`        | `"legacy" \| "p2sh" \| "bech32" \| "bech32m"` | `"bech32"`                   |
+| `accountCount`         | `number`                                      | `1`                          |
+| `derivationPathPrefix` | `string`                                      | `"84'/0'/0'/0"`              |
+| `id` / `name` / `icon` | `string`                                      | `LEDGER_DEFAULT_ICON`        |
+| `loadBtc`              | `BtcAppConstructor`                           | DI for tests                 |
+| `transportFactory`     | `TransportFactory`                            | DI for tests                 |
 
 `LedgerOptions = EvmLedgerOptions | SvmLedgerOptions | SuiLedgerOptions | BitcoinLedgerOptions`.
 
 ## Constants
 
-- `LEDGER_DEFAULT_ICON: string`: EVM default SVG.
-- `LEDGER_SVM_DEFAULT_ICON: string`: SVM default SVG.
-- `LEDGER_SUI_DEFAULT_ICON: string`: Sui default SVG.
-- `LEDGER_BITCOIN_DEFAULT_ICON: string`: Bitcoin default SVG.
+- `LEDGER_DEFAULT_ICON: string`: generic Ledger device SVG, the default `icon` for every app adapter.
 - `LEDGER_CAPABILITIES: WalletCapabilities`: signing-only baseline. Sui
   overrides `signMessage: false` since `@ledgerhq/hw-app-sui` doesn't expose
   `signPersonalMessage` at the current version.

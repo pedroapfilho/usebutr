@@ -181,5 +181,4 @@ const createEvmLedgerAdapter = (options: EvmLedgerOptions): Promise<WalletAdapte
 };
 
 export type { EthAppConstructor, EthAppLike, EvmLedgerOptions };
-export { LEDGER_ICON as LEDGER_DEFAULT_ICON } from "../adapter-core";
 export { createEvmLedgerAdapter };

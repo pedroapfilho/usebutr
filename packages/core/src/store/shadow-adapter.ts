@@ -7,7 +7,7 @@ import type { WalletAdapter, WalletCapabilities } from "../types";
  * silent reconnect swapped in the live adapter.
  */
 class ShadowConnectorError extends Error {
-  // fallow-ignore-next-line unused-class-member
+  // fallow-ignore-next-line unused-class-member -- read by types/errors.ts mapConnectionError
   readonly code = "BUTR_RECONNECTING";
   readonly connectorId: string;
   readonly method: string;

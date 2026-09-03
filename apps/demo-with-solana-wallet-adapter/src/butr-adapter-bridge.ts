@@ -17,8 +17,7 @@ import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 import { getFeature } from "@usebutr/wallet-standard-shared";
 
 // @solana/wallet-adapter's interface declares Promise-returning methods whose
-// bodies are synchronous here; async would only trip require-await. Disable
-// file-wide so the per-method fallow-ignore comments stay adjacent to methods.
+// bodies are synchronous here; async would only trip require-await.
 // oxlint-disable typescript/promise-function-async
 
 /**
@@ -27,9 +26,8 @@ import { getFeature } from "@usebutr/wallet-standard-shared";
  * resolve without a second connection handshake.
  */
 class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
-  // fallow-ignore-next-line unused-class-member
+  // fallow-ignore-next-line unused-class-member -- optional BaseWalletAdapter contract read by @solana/wallet-adapter-base
   readonly supportedTransactionVersions = new Set<0>([0]);
-  // fallow-ignore-next-line unused-class-member
   readonly url = "https://github.com/pedroapfilho/usebutr";
 
   private _connecting = false;
@@ -46,28 +44,23 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     this._publicKey = new PublicKey(address);
   }
 
-  // fallow-ignore-next-line unused-class-member
   get name(): WalletName {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SAFETY: WalletName is a compile-time brand over the adapter's display name.
     return this.butr.name as WalletName;
   }
 
-  // fallow-ignore-next-line unused-class-member
   get icon(): string {
     return this.butr.icon ?? "";
   }
 
-  // fallow-ignore-next-line unused-class-member
   get readyState(): WalletReadyState {
     return WalletReadyState.Installed;
   }
 
-  // fallow-ignore-next-line unused-class-member
   get publicKey(): PublicKey | null {
     return this._publicKey;
   }
 
-  // fallow-ignore-next-line unused-class-member
   get connecting(): boolean {
     return this._connecting;
   }
@@ -76,7 +69,6 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     return this._publicKey !== null;
   }
 
-  // fallow-ignore-next-line unused-class-member
   connect(): Promise<void> {
     if (this.connected) {
       return Promise.resolve();
@@ -94,14 +86,12 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     }
   }
 
-  // fallow-ignore-next-line unused-class-member
   disconnect(): Promise<void> {
     this._publicKey = null;
     this.emit("disconnect");
     return Promise.resolve();
   }
 
-  // fallow-ignore-next-line unused-class-member
   async signMessage(message: Uint8Array): Promise<Uint8Array> {
     const feature = getFeature(this._wallet, "solana:signMessage", isSolanaSignMessageFeature);
     if (feature === undefined) {
@@ -118,7 +108,6 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     return output.signature;
   }
 
-  // fallow-ignore-next-line unused-class-member
   signTransaction<T extends Transaction | VersionedTransaction>(_transaction: T): Promise<T> {
     return Promise.reject(
       new Error(
@@ -127,7 +116,6 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     );
   }
 
-  // fallow-ignore-next-line unused-class-member
   async sendTransaction(
     transaction: Transaction | VersionedTransaction,
     _connection: Connection,

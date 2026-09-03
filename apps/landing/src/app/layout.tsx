@@ -35,10 +35,7 @@ const metadata: Metadata = {
 };
 
 const viewport: Viewport = {
-  themeColor: [
-    { color: "oklch(1 0 0)", media: "(prefers-color-scheme: light)" },
-    { color: "oklch(0.145 0 0)", media: "(prefers-color-scheme: dark)" },
-  ],
+  themeColor: "oklch(1 0 0)",
 };
 
 const RootLayout = ({ children }: { children: ReactNode }) => (

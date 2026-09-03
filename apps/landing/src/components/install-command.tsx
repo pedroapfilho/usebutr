@@ -22,7 +22,7 @@ const InstallCommand = () => {
   };
 
   return (
-    <div className="bg-card text-card-foreground inline-flex items-center gap-3 rounded-md py-2 pr-2 pl-4 font-mono text-base shadow-sm ring-1 ring-black/5 sm:text-sm dark:shadow-none dark:ring-white/10">
+    <div className="bg-card text-card-foreground inline-flex items-center gap-3 rounded-md py-2 pr-2 pl-4 font-mono text-base shadow-sm ring-1 ring-black/5 sm:text-sm">
       <span aria-hidden="true" className="text-muted-foreground select-none">
         $
       </span>

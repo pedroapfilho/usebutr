@@ -1,13 +1,12 @@
 import type { StoredPoolEntry } from "../storage/persistence";
-import type { WalletAdapter, WalletCapabilities } from "../types";
+import type { CodedError, WalletAdapter, WalletCapabilities } from "../types";
 
 /**
  * Loud failure for consumers that called a wallet method without gating
  * on `capabilities.*` (all `false` here) or `reconnectingIds`, before
  * silent reconnect swapped in the live adapter.
  */
-class ShadowConnectorError extends Error {
-  // fallow-ignore-next-line unused-class-member
+class ShadowConnectorError extends Error implements CodedError {
   readonly code = "BUTR_RECONNECTING";
   readonly connectorId: string;
   readonly method: string;

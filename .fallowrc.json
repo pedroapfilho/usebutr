@@ -51,5 +51,18 @@
       "implements": "SignAndSendSigner",
       "members": ["address", "chain", "signAndSend"]
     }
+  ],
+  "typeAware": {
+    "enabled": true,
+    "require": "best-effort"
+  },
+  "rules": {
+    "private-type-leaks": "off"
+  },
+  "ignoreExports": [
+    {
+      "file": "apps/docs/app/llms.mdx/**/route.ts",
+      "exports": ["generateStaticParams"]
+    }
   ]
 }

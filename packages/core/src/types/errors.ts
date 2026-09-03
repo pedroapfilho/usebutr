@@ -15,6 +15,10 @@ type ConnectionError =
 type ConnectionErrorKind = ConnectionError["kind"];
 type ErrorCause = Error | string;
 
+type CodedError = Error & { code: number | string };
+
+const isCodedError = (error: Error): error is CodedError => "code" in error;
+
 const toErrorCause = (value: ErrorCause): ErrorCause => value;
 
 /**
@@ -34,7 +38,7 @@ const mapConnectionError = (raw: ErrorCause): ConnectionError => {
       return { kind: "NotConnected", message };
     }
 
-    const code = "code" in raw ? raw.code : undefined;
+    const code = isCodedError(raw) ? raw.code : undefined;
     if (code === 4001) {
       return { kind: "UserRejected", message };
     }
@@ -65,5 +69,5 @@ const mapConnectionError = (raw: ErrorCause): ConnectionError => {
   return { cause: raw, kind: "Unknown", message: "Connection failed" };
 };
 
-export type { ConnectionError, ConnectionErrorKind, ErrorCause };
+export type { CodedError, ConnectionError, ConnectionErrorKind, ErrorCause };
 export { mapConnectionError, toErrorCause };

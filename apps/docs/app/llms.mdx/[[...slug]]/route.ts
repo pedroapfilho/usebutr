@@ -26,5 +26,4 @@ const GET = async (_req: Request, { params }: { params: Promise<{ slug?: Array<s
 
 const generateStaticParams = () => source.generateParams();
 
-// fallow-ignore-next-line unused-export
 export { generateStaticParams, GET };

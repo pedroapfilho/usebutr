@@ -13,19 +13,19 @@ type CodeBlockProps = {
   theme?: BundledTheme;
 };
 
-/** Server-rendered Shiki panel. The landing is light-only, so one theme. */
+/** Server-rendered Shiki panel: one light theme, one border, no shadow. */
 const CodeBlock = async ({
   className,
   code,
   lang = "tsx",
-  theme = "vitesse-light",
+  theme = "github-light",
 }: CodeBlockProps) => {
   const hast = await codeToHast(code, { lang, theme });
 
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg font-mono text-sm shadow-lg ring-1 ring-black/5 [&_pre]:overflow-x-auto [&_pre]:p-5 [&_pre]:leading-6",
+        "border-border overflow-hidden rounded-lg border font-mono text-sm [&_pre]:overflow-x-auto [&_pre]:p-5 [&_pre]:leading-6",
         className,
       )}
     >

@@ -1,3 +1,4 @@
+import { AltSwitcher } from "@/components/alt-switcher";
 import { Chains } from "@/components/chains";
 import { CodeExample } from "@/components/code-example";
 import { DocsCta } from "@/components/docs-cta";
@@ -17,6 +18,8 @@ const Page = () => (
       <DocsCta />
     </main>
     <SiteFooter />
+    {/* Design-review aid while the three /alt worlds are under evaluation. */}
+    <AltSwitcher current="current" />
   </>
 );
 

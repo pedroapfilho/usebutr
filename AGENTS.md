@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in the **usebutr** monorepo — a multi-chain browser-wallet management library for React (`@usebutr/*`), plus fifteen demo apps and a Fumadocs site.
+Guidance for AI coding agents working in the **usebutr** monorepo — a multi-chain browser-wallet management library for React (`@usebutr/*`), plus fifteen demo apps, a marketing landing page and a Fumadocs site.
 
 ## Stack
 
@@ -16,7 +16,7 @@ Guidance for AI coding agents working in the **usebutr** monorepo — a multi-ch
 ## Layout
 
 ```
-apps/                 # 16 apps: 4 framework demos + 11 integration demos + docs
+apps/                 # 17 apps: 4 framework demos + 11 integration demos + docs + landing
 packages/             # @usebutr/* library packages + 2 @repo/* configs + 1 @repo/* internal
 .changeset/           # Changesets — version bumps + release notes
 .github/workflows/    # CI: test, lint, format, fallow, release (Changesets publish)
@@ -56,6 +56,8 @@ docs/                 # Repo-level design notes (not the Fumadocs site)
 | `demo-with-polkadot`              | `polkadot-api`                 | `http://localhost:5185` |
 
 **Docs:** `apps/docs` — Fumadocs (Next.js 16 + Turbopack) on `http://localhost:4000`.
+
+**Landing:** `apps/landing` — Next.js 16 marketing site on `https://usebutr.landing.localhost` (portless).
 
 ### Packages
 
@@ -104,15 +106,15 @@ There is no Docker, no Prisma, no Playwright, no e2e suite — this is a pure li
 
 ## Conventions & gotchas
 
-- **Library profile.** This repo is `library` in orchestrator. Many SaaS verifiers (auth-config, prisma-config, e2e, i18n, theme, primitives, dev/portless, base-styles) intentionally skip here. The canonical set is: versions, lint, naming, gitignore, no-tracked-ignored, no-pointless-async, agents-md, ci, root-scripts, tsconfig — all profile-aware against `usebutr` as the `LIBRARY_SOURCE_OF_TRUTH`.
+- **Library profile.** This repo is `library` in orchestrator. SaaS checks (auth-config, prisma-config, e2e, i18n-leak, theme, primitives, dev, base-styles) intentionally skip here. The applicable set is profile-aware and compared against the `library` base, `acme-package`; run `orchestrator verify --repo usebutr` for the current list.
 - **CI shape.** 4 workflows + `release.yml`: `test`, `lint`, `format`, `fallow`. No `e2e.yml`.
-- **Per-app gitignores allowed.** Unlike SaaS repos, library demos may carry their own `.gitignore` files (verifier is lenient).
+- **Per-app gitignores allowed.** Unlike SaaS repos, library demos may carry their own `.gitignore` files (the `gitignore` check is lenient here).
 - **Path aliases.** `@/*` → `src/*` in most apps; TanStack Start also maps `app/*`. Demo apps consume the library via workspace deps (`"@usebutr/core": "workspace:*"`) and tsconfig via `@repo/typescript-config`.
 - **Distinct ports.** Each web demo binds a unique localhost port so all framework demos can run concurrently. Expo web uses `expo start --web` on `:8081`; native iOS/Android go through Metro/Expo Go on their own transport.
 - **Wallet discovery, not connect-modal UI.** The library only handles discovery + connection state; consumer apps own the modal/picker. Demos exercise that boundary on each framework.
 - **Releases via Changesets.** `release.yml` publishes from `main` after `version-packages` opens a release PR. Don't bump versions manually in `package.json` — author a changeset instead.
 - **pnpm `allowBuilds` matters.** The native crypto deps (`keccak`, `bufferutil`, `bigint-buffer`, etc.) gate on `pnpm-workspace.yaml`'s `allowBuilds` and `onlyBuiltDependencies`. When adding a chain or wallet that pulls in new native deps, list them there or `pnpm install` will silently skip the build step.
-- **No App Router server-component verifier surface here.** Only `apps/docs` and `demo-next` are App Router; the rest are SPA / SSR-via-Vite. The orchestrator's `no-pointless-async` AST scan still applies.
+- **No App Router server-component check surface here.** Only `apps/docs` and `demo-next` are App Router; the rest are SPA / SSR-via-Vite. The orchestrator's `no-pointless-async` AST scan still applies.
 
 ## Notable decisions
 
@@ -127,5 +129,5 @@ There is no Docker, no Prisma, no Playwright, no e2e suite — this is a pure li
 - Library docs: `https://docs.usebutr.com` (built from `apps/docs`)
 - Repo: `https://github.com/pedroapfilho/usebutr`
 - Orchestrator (shared standards across sibling repos): `~/dev/orchestrator`
-- Sibling library repo: `astro-awesomeness` (`~/dev/astro-awesomeness-monorepo`)
+- Sibling library repo: `astro-awesomeness` (`~/dev/astro-theme-awesomeness`)
 - SaaS source of truth: `acme` (`~/dev/acme-monorepo`) — most SaaS-only patterns there do not apply here

@@ -11,19 +11,7 @@ export default defineConfig({
         "new-cap": [
           "error",
           {
-            capIsNewExceptions: [
-              "Geist",
-              "Geist_Mono",
-              "Inter",
-              "Scalar",
-              "Barlow",
-              "Barlow_Condensed",
-              "Courier_Prime",
-              "Fragment_Mono",
-              "Jost",
-              "Marcellus",
-              "Red_Hat_Mono",
-            ],
+            capIsNewExceptions: ["Geist", "Geist_Mono", "Inter", "Scalar"],
           },
         ],
       },

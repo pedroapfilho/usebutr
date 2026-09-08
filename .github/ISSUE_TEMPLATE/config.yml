@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://docs.usebutr.com
+    about: Installation, concepts, API references, and integration guides.
+  - name: Troubleshooting
+    url: https://docs.usebutr.com/troubleshooting
+    about: Check common wallet discovery and connection problems.
+  - name: Security report
+    url: https://github.com/pedroapfilho/usebutr/blob/main/SECURITY.md
+    about: Report vulnerabilities privately using the security policy.

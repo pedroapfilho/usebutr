@@ -1,0 +1,71 @@
+name: Bug report
+description: Report a reproducible problem in butr, its docs, or a demo.
+title: "[Bug]: "
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Affected package or surface
+      options:
+        - "@usebutr/core"
+        - "@usebutr/react"
+        - "@usebutr/evm"
+        - "@usebutr/svm"
+        - "@usebutr/sui"
+        - "@usebutr/bitcoin"
+        - "@usebutr/polkadot"
+        - "@usebutr/wallets"
+        - "@usebutr/walletconnect"
+        - "@usebutr/ledger"
+        - "@usebutr/wallet-standard-shared"
+        - "@usebutr/testing"
+        - Docs
+        - Demo
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Package version, or commit/deployment for a demo or docs.
+    validations:
+      required: true
+  - type: input
+    id: framework
+    attributes:
+      label: Framework and version
+      placeholder: React 19, Next.js 16 / Vite / Expo / TanStack Start
+    validations:
+      required: true
+  - type: input
+    id: wallet
+    attributes:
+      label: Wallet and chain platform
+      placeholder: Phantom, Solana devnet (or N/A)
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and operating system
+    validations:
+      required: true
+  - type: input
+    id: reproduction
+    attributes:
+      label: Reproduction link
+      description: A minimal repository, runnable sandbox, or affected docs/demo URL.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Steps, expected behavior, and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: Include relevant messages with the [butr] prefix. Remove credentials and private data.
+      render: text

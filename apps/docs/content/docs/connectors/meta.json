@@ -6,6 +6,7 @@
     "solana-wallet-standard",
     "sui-wallet-standard",
     "bitcoin-wallet-standard",
+    "polkadot-injected-web3",
     "walletconnect",
     "ledger"
   ]

@@ -22,12 +22,68 @@ scored ranking of any one product.
 | Capability                                               | EVM connect kits | Solana wallet adapters | Embedded / MPC platforms | butr |
 | -------------------------------------------------------- | ---------------- | ---------------------- | ------------------------ | ---- |
 | Multi-chain in one pool, equal footing                   | EVM only         | SVM only               | Varies, vendor-defined   | Yes  |
-| Framework-agnostic, React-free core                      | No               | No                     | Varies                   | Yes  |
+| Framework-agnostic, React-free core                      | Varies           | Base adapters          | Varies                   | Yes  |
 | No chain-library lock-in (raw signer escape hatch)       | Coupled          | Coupled                | Vendor SDK               | Yes  |
 | Modular install: drop a platform entirely                | N/A              | N/A                    | No                       | Yes  |
 | Connector-shaped extension seam (bring your own adapter) | Limited          | Standard-bound         | No                       | Yes  |
 | Standards compliance (EIP-6963 / EIP-1193 / Wallet Std)  | EIP only         | Wallet Std only        | Abstracted away          | Both |
 | Built-in mock adapters for unit tests                    | Rare             | Rare                   | Vendor mocks             | Yes  |
+
+## Named products
+
+Verified against each project's documentation on **2026-09-08**. Chain support
+below refers to the documented integration, not every chain a connected wallet
+might support. “Not documented” means the linked documentation does not establish
+the capability; it is not a claim that an extension is impossible.
+
+| Product                                      | EVM                  | Solana                   | Sui                      | Bitcoin                  | Polkadot                   | Connect modal               | Chain-library dependency                 | React-free core           | Discovery                                                      | Raw provider access                          | Test fakes           |
+| -------------------------------------------- | -------------------- | ------------------------ | ------------------------ | ------------------------ | -------------------------- | --------------------------- | ---------------------------------------- | ------------------------- | -------------------------------------------------------------- | -------------------------------------------- | -------------------- |
+| [wagmi][wagmi-start]                         | Yes                  | Outside Ethereum scope   | Outside Ethereum scope   | Outside Ethereum scope   | Outside Ethereum scope     | Consumer UI                 | viem                                     | `@wagmi/core`             | EIP-6963 / injected connectors                                 | Connector provider                           | `mock` connector     |
+| [RainbowKit][rainbow-intro]                  | Yes                  | Outside documented scope | Outside documented scope | Outside documented scope | Outside documented scope   | Yes                         | wagmi + viem                             | React UI; uses wagmi core | EIP-6963 / EIP-1193                                            | Through wagmi connectors                     | Through wagmi `mock` |
+| [`@solana/wallet-adapter-react`][solana-app] | Outside Solana scope | Yes                      | Outside Solana scope     | Outside Solana scope     | Outside Solana scope       | Separate `react-ui` package | `@solana/web3.js`                        | Separate base/adapters    | Wallet Standard / Mobile Wallet Adapter / legacy adapters      | Adapter methods; wallet-dependent            | Not documented       |
+| [Reown AppKit][reown-start]                  | Yes                  | Solana adapter           | AppKit Core              | Bitcoin adapter          | Namespace option; see note | Yes                         | Adapter-specific (wagmi, ethers, Solana) | JavaScript integration    | EIP-6963; adapter-specific discovery                           | `useAppKitProvider` returns adapter provider | Not documented       |
+| [butr](/getting-started/installation)        | Yes                  | Yes                      | Yes                      | Yes                      | Yes                        | Consumer UI                 | None in discovery/core                   | `@usebutr/core`           | EIP-6963 / Wallet Standard / injected fallbacks / injectedWeb3 | `getSigner`; platform-specific handle        | `@usebutr/testing`   |
+
+Reown's JavaScript guide provides a Sui example through **AppKit Core's Universal
+Connector**. Its options reference lists a Polkadot namespace; the reviewed
+installation guide does not establish an injectedWeb3 integration. These are
+separate capabilities from the dedicated discovery adapters in butr.
+
+“Raw provider access” is not a uniform type across ecosystems. wagmi exposes
+connector providers, AppKit exposes its adapter's provider, Solana Wallet Adapter
+exposes adapter methods, and butr returns an EIP-1193 provider, a Wallet Standard
+wallet, or a platform-specific handle. See [signer bridges](/integrations/viem).
+
+Sources for the architectural columns:
+
+- **wagmi:** [React setup][wagmi-start], [vanilla core][wagmi-core],
+  [EIP-6963 discovery][wagmi-discovery], [injected provider][wagmi-injected], and
+  [mock connector][wagmi-mock].
+- **RainbowKit:** [introduction and standards][rainbow-intro] and
+  [wagmi/viem installation][rainbow-install]. The provider and mock entries refer
+  to that underlying wagmi API, not separate RainbowKit APIs.
+- **Solana Wallet Adapter:** [application setup and separate UI][solana-app],
+  [wallet standards][solana-wallet], and [package inventory][solana-packages].
+- **Reown:** [JavaScript adapters and AppKit Core][reown-start],
+  [options, EIP-6963, and namespaces][reown-options], and
+  [provider hooks][reown-hooks]. No public test-double API is described on these pages.
+- **butr:** [packages and peers](/getting-started/installation),
+  [discovery](/api/wallets), [Polkadot signer](/api/polkadot), and
+  [test fixtures](/testing).
+
+[wagmi-start]: https://wagmi.sh/react/getting-started
+[wagmi-core]: https://wagmi.sh/core/getting-started
+[wagmi-discovery]: https://wagmi.sh/core/api/createConfig#multiinjectedproviderdiscovery
+[wagmi-injected]: https://wagmi.sh/core/api/connectors/injected
+[wagmi-mock]: https://wagmi.sh/core/api/connectors/mock
+[rainbow-intro]: https://rainbowkit.com/docs/introduction
+[rainbow-install]: https://rainbowkit.com/docs/installation
+[solana-app]: https://github.com/anza-xyz/wallet-adapter/blob/master/APP.md
+[solana-wallet]: https://github.com/anza-xyz/wallet-adapter/blob/master/WALLET.md
+[solana-packages]: https://github.com/anza-xyz/wallet-adapter/blob/master/PACKAGES.md
+[reown-start]: https://docs.reown.com/appkit/javascript/core/installation
+[reown-options]: https://docs.reown.com/appkit/react/core/options
+[reown-hooks]: https://docs.reown.com/appkit/react/core/hooks
 
 ## What butr deliberately does not do
 
@@ -46,5 +102,5 @@ connected.
 
 <Callout type="info">
   This matrix reflects typical behavior of each category, not a feature-by-feature scoring of a
-  specific named product. A named-product comparison may be added later.
+  specific named product. The named-product table above documents individual products separately.
 </Callout>

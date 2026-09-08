@@ -7,9 +7,11 @@
     "connect-disconnect",
     "multi-chain",
     "signing",
+    "sign-in",
     "transactions",
     "balances",
     "custom-storage",
+    "ssr-no-flash",
     "lifecycle-callbacks"
   ]
 }

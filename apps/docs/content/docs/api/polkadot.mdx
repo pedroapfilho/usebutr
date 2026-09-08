@@ -1,0 +1,86 @@
+---
+title: "@usebutr/polkadot"
+description: injectedWeb3 and Wallet Standard discovery, signer handles, capabilities, and Polkadot chains.
+---
+
+## Discovery
+
+`discoverInjectedPolkadotAdapters(onAdapter, options?)` reads `window.injectedWeb3`
+without prompting. It returns an unsubscribe function that cancels pending polls.
+`InjectedPolkadotDiscoveryOptions` accepts `pollMs` (offsets in milliseconds;
+default `[250, 750]`) and `target` (a host override for tests or iframes).
+
+```tsx
+import { createWalletSource } from "@usebutr/core";
+import { discoverInjectedPolkadotAdapters } from "@usebutr/polkadot";
+
+export const discovery = createWalletSource(discoverInjectedPolkadotAdapters);
+```
+
+`discoverPolkadotWalletStandardAdapters(onAdapter)` discovers wallets advertising
+`polkadot:*` features. This path requires `@wallet-standard/app`.
+`polkadotDiscoverer` is the `PlatformDiscoverer` used by `autoDiscovery()`:
+injectedWeb3 is primary, and Wallet Standard is a deferred fallback when no
+primary adapter has been found.
+
+## Adapter builders
+
+- `buildInjectedPolkadotAdapter(extensionName, displayName, provider)` creates a
+  Polkadot adapter. `connect()` enables the extension; construction does not.
+- `buildPolkadotWalletStandardAdapter(wallet, registerDisconnector)` creates an
+  adapter for a compatible Wallet Standard wallet, or returns `null`.
+
+## Signer
+
+Injected adapters return `PolkadotSignerHandle` from `getSigner()`:
+
+```tsx
+import { isPolkadotSignerHandle } from "@usebutr/polkadot";
+import type { ConnectedWallet } from "@usebutr/core";
+
+export const getInjectedSigner = async (wallet: ConnectedWallet) => {
+  const signer = await wallet.connector.getSigner();
+  if (!isPolkadotSignerHandle(signer)) {
+    throw new Error("This wallet does not expose an injectedWeb3 signer");
+  }
+  return signer.extension.signer;
+};
+```
+
+The handle carries `address` (SS58), `extensionName` (the injected registry key),
+and `extension` (the enabled provider). Wallet Standard adapters return the
+Wallet Standard wallet instead. See the [PAPI integration](/integrations/polkadot)
+for transaction construction and submission.
+
+## Capabilities
+
+`resolveInjectedPolkadotCapabilities()` enables message signing, subscriptions,
+and local chain switching. `resolveWalletStandardPolkadotCapabilities(input)`
+uses advertised message-signing and event features plus the chain count.
+Neither path advertises standalone transaction signing or sending.
+
+Injected message signing wraps bytes in `<Bytes>…</Bytes>` before `signRaw`.
+Verify the returned `signedMessage`, which contains that wrapper.
+
+## Chains
+
+`POLKADOT_CHAINS` has `polkadot`, `kusama`, `paseo`, and `westend` entries;
+`POLKADOT_CHAINS_LIST` is their array form. CAIP-2 identifiers use the
+`polkadot:` namespace and the first 32 hexadecimal characters of the genesis
+hash. Accounts retain their SS58 address.
+
+`switchChain()` changes butr's local chain context; it does not switch an RPC
+connection. Injected wallets default to Polkadot. Use Paseo for the demo.
+
+## No RPC
+
+Balance reads, receipts, extrinsic construction, and submission belong to your
+chain client. Use `getSigner()` with PAPI; the adapter does not fetch chain metadata.
+
+## Types
+
+`InjectedPolkadotDiscoveryOptions`, `PolkadotSignerHandle`,
+`WalletStandardPolkadotCapabilityInput`, `PolkadotSignMessageFeature`,
+`PolkadotSignMessageInput`, and `PolkadotSignMessageOutput`.
+
+**Source:** `packages/polkadot/src/index.ts`.

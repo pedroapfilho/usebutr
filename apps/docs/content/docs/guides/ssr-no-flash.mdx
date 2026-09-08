@@ -1,4 +1,7 @@
-# SSR without the hydration flash
+---
+title: SSR without the hydration flash
+description: Seed persisted wallet state from cookies so the first server render shows the connected shell.
+---
 
 When a user lands on a page with a wallet already connected, the default
 butr setup produces a brief flash: the server renders the empty pre-
@@ -17,7 +20,7 @@ rendering.
 1. The storage layer needs to be **server-readable** so the cookie payload
    the browser persisted is the cookie payload the server sees. That's
    `createCookieStorageDriver({ initialCookies })` from
-   [ADR 0002 §1](../adr/0002-ssr-snapshot-channel.md).
+   [ADR 0002 §1](https://github.com/pedroapfilho/usebutr/blob/main/docs/adr/0002-ssr-snapshot-channel.md).
 
 2. The React tree needs a **server-safe view of the persisted state** that
    doesn't require a `Connector` instance (impossible on the server). That's
@@ -285,8 +288,14 @@ prerendered before and you want to keep it that way, you can either:
 
 ## See also
 
-- [ADR 0002 — SSR snapshot channel](../adr/0002-ssr-snapshot-channel.md)
+- [ADR 0002 — SSR snapshot channel](https://github.com/pedroapfilho/usebutr/blob/main/docs/adr/0002-ssr-snapshot-channel.md)
   for the architectural reasoning.
 - `apps/demo-next/` for the end-to-end worked example.
 - `createCookieStorageDriver` in `@usebutr/core` for the full set of
   cookie driver options (`domain`, `path`, `sameSite`, `maxAgeSeconds`).
+
+<Callout type="info">
+  **Source:** the SSR snapshot design in ADR 0002. See the [Next.js
+  guide](/getting-started/frameworks/nextjs) and [synchronous
+  seeding](/concepts/hydration#synchronous-seeding-ssr).
+</Callout>

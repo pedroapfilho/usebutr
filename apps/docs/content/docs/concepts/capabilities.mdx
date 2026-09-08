@@ -14,6 +14,7 @@ type WalletCapabilities = {
   getTransactionReceipt: boolean; // returns a real RPC response
   requestAccounts: boolean; // requestAccounts will actually do something
   sendTransaction: boolean; // sendTx / sendTxToChain will work
+  signIn?: boolean; // wallet supports a native sign-in flow (e.g. SIWS)
   signMessage: boolean; // signMessage will work
   subscribe: boolean; // wallet emits events butr can bridge
   switchAccount: boolean; // switchAccount is real (rare for auto adapters)

@@ -8,8 +8,10 @@
     "svm",
     "sui",
     "bitcoin",
+    "polkadot",
     "wallets",
     "walletconnect",
-    "ledger"
+    "ledger",
+    "wallet-standard-shared"
   ]
 }

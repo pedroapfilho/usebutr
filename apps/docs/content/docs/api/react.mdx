@@ -49,6 +49,7 @@ used in custom discovery wiring).
 | `useWalletConnected()`             | `boolean` (pool non-empty)                                         |
 | `useIsHydrated()`                  | `boolean`                                                          |
 | `useIsUserDisconnected()`          | `boolean` (session-scoped)                                         |
+| `useWalletEntry(connectorId?)`     | `ConnectedWallet \| undefined`                                     |
 | `usePool()`                        | `Map<string, ConnectedWallet>`                                     |
 | `useConnectedWallets()`            | `Array<ConnectedWallet>`                                           |
 | `useSelection()`                   | `Map<ChainPlatform, string>`                                       |
@@ -149,13 +150,12 @@ type AsyncState<T> =
 type UseBalanceResult = AsyncState<Balance> & { refetch: () => void };
 ```
 
-| Hook                              | Returns                        |
-| --------------------------------- | ------------------------------ |
-| `useSigner(connectorId?)`         | `AsyncState<unknown>`          |
-| `useBalance(connectorId?, mint?)` | `UseBalanceResult`             |
-| `useWalletEntry(connectorId?)`    | `ConnectedWallet \| undefined` |
+| Hook                              | Returns               |
+| --------------------------------- | --------------------- |
+| `useSigner(connectorId?)`         | `AsyncState<unknown>` |
+| `useBalance(connectorId?, mint?)` | `UseBalanceResult`    |
 
 These use `walletEqual` so internal metadata changes don't invalidate the
 signer/balance. See [balances](/guides/balances).
 
-**Source:** `packages/react/src/index.ts`, `hooks.ts`, `hooks-async.ts`.
+**Source:** `packages/react/src/index.ts`, `hooks/selectors.ts`, `hooks/actions.ts`, `hooks/async-resources.ts`, `hooks/grouped.ts`.

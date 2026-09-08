@@ -17,16 +17,17 @@ const geistMono = Geist_Mono({
 });
 
 const metadata: Metadata = {
+  alternates: { canonical: "/" },
   description:
     "butr discovers EVM, Solana, Sui, Bitcoin, and Polkadot wallets and manages their connection state through one React hook surface. Bring your own chain library.",
-  metadataBase: new URL("https://usebutr.com"),
+  metadataBase: new URL("https://www.usebutr.com"),
   openGraph: {
     description:
       "Discover and manage EVM, Solana, Sui, Bitcoin, and Polkadot wallets through one React hook surface.",
     siteName: "butr",
     title: "butr: multi-chain wallet management for React",
     type: "website",
-    url: "https://usebutr.com",
+    url: "https://www.usebutr.com",
   },
   title: {
     default: "butr: multi-chain wallet management for React",

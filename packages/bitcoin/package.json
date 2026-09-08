@@ -2,6 +2,22 @@
   "name": "@usebutr/bitcoin",
   "version": "1.1.1",
   "description": "Wallet Standard + injected (sats-connect / Unisat / OKX) wallet discovery and adapters for butr (Bitcoin).",
+  "keywords": [
+    "bitcoin",
+    "butr",
+    "dapp",
+    "psbt",
+    "react",
+    "typescript",
+    "unisat",
+    "wallet",
+    "web3",
+    "xverse"
+  ],
+  "homepage": "https://docs.usebutr.com/api/bitcoin",
+  "bugs": {
+    "url": "https://github.com/pedroapfilho/usebutr/issues"
+  },
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
@@ -10,7 +26,8 @@
     "directory": "packages/bitcoin"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "type": "module",
   "sideEffects": false,

@@ -2,6 +2,24 @@
   "name": "@usebutr/wallets",
   "version": "1.1.2",
   "description": "Batteries-included EVM + SVM + Sui + Bitcoin + Polkadot discovery: autoDiscovery() WalletSource + combined chain registries.",
+  "keywords": [
+    "bitcoin",
+    "butr",
+    "dapp",
+    "ethereum",
+    "polkadot",
+    "react",
+    "solana",
+    "sui",
+    "typescript",
+    "wallet",
+    "wallet-standard",
+    "web3"
+  ],
+  "homepage": "https://docs.usebutr.com/api/wallets",
+  "bugs": {
+    "url": "https://github.com/pedroapfilho/usebutr/issues"
+  },
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
@@ -10,7 +28,8 @@
     "directory": "packages/wallets"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "type": "module",
   "sideEffects": false,
@@ -40,7 +59,8 @@
     "@usebutr/polkadot": "workspace:*",
     "@usebutr/react": "workspace:*",
     "@usebutr/sui": "workspace:*",
-    "@usebutr/svm": "workspace:*"
+    "@usebutr/svm": "workspace:*",
+    "@wallet-standard/app": "^1.1.0"
   },
   "devDependencies": {
     "@repo/config-vitest": "workspace:*",

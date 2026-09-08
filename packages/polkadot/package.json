@@ -2,6 +2,21 @@
   "name": "@usebutr/polkadot",
   "version": "1.1.1",
   "description": "injectedWeb3 + Wallet Standard adapter for butr (Polkadot/Substrate).",
+  "keywords": [
+    "butr",
+    "dapp",
+    "injectedweb3",
+    "polkadot",
+    "react",
+    "substrate",
+    "typescript",
+    "wallet",
+    "web3"
+  ],
+  "homepage": "https://docs.usebutr.com/api/polkadot",
+  "bugs": {
+    "url": "https://github.com/pedroapfilho/usebutr/issues"
+  },
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
@@ -10,7 +25,8 @@
     "directory": "packages/polkadot"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "type": "module",
   "sideEffects": false,

@@ -2,6 +2,20 @@
   "name": "@usebutr/react",
   "version": "0.3.0",
   "description": "React provider and hooks for butr. Depends on @usebutr/core, react, zustand.",
+  "keywords": [
+    "butr",
+    "dapp",
+    "react",
+    "react-hooks",
+    "typescript",
+    "wallet",
+    "web3",
+    "zustand"
+  ],
+  "homepage": "https://docs.usebutr.com/api/react",
+  "bugs": {
+    "url": "https://github.com/pedroapfilho/usebutr/issues"
+  },
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
@@ -10,7 +24,8 @@
     "directory": "packages/react"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "type": "module",
   "sideEffects": false,

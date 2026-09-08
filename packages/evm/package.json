@@ -2,6 +2,21 @@
   "name": "@usebutr/evm",
   "version": "1.1.0",
   "description": "EIP-1193 / EIP-6963 / injected wallet discovery + adapters for butr.",
+  "keywords": [
+    "butr",
+    "dapp",
+    "eip-6963",
+    "ethereum",
+    "metamask",
+    "react",
+    "typescript",
+    "wallet",
+    "web3"
+  ],
+  "homepage": "https://docs.usebutr.com/api/evm",
+  "bugs": {
+    "url": "https://github.com/pedroapfilho/usebutr/issues"
+  },
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
@@ -10,7 +25,8 @@
     "directory": "packages/evm"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "type": "module",
   "sideEffects": false,

@@ -1,6 +1,6 @@
 ---
-title: 'Turbo cache omits the generated TanStack route tree'
-severity: 'minor'
+title: "Turbo cache omits the generated TanStack route tree"
+severity: "minor"
 ---
 
 ## Expected Behavior

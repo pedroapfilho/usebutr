@@ -215,6 +215,92 @@ const StatusPanel = ({
   );
 };
 
+const TransferButtons = ({
+  canSwap,
+  destinationLabel,
+  missingWallet,
+  onRedeem,
+  onReset,
+  onRetryAttestation,
+  onSwap,
+  transfer,
+}: {
+  canSwap: boolean;
+  destinationLabel: string;
+  missingWallet: ChainSpec["platform"] | null;
+  onRedeem: () => Promise<void>;
+  onReset: () => void;
+  onRetryAttestation: () => Promise<void>;
+  onSwap: () => Promise<void>;
+  transfer: Transfer;
+}) => {
+  const { phase } = transfer;
+  const isWorking =
+    phase.kind === "initiating" ||
+    phase.kind === "waiting-attestation" ||
+    phase.kind === "redeeming";
+  const canRetryAttestation = phase.kind === "waiting-attestation" && transfer.error !== null;
+
+  return (
+    <>
+      <button
+        className="w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+        disabled={!canSwap}
+        onClick={() => {
+          void onSwap();
+        }}
+        type="button"
+      >
+        {isWorking && !canRetryAttestation ? "Working…" : "Swap"}
+      </button>
+
+      {missingWallet ? (
+        <p className="text-center text-xs text-amber-700">
+          Connect and activate a {missingWallet.toUpperCase()} wallet above to bridge between these
+          chains.
+        </p>
+      ) : null}
+
+      {canRetryAttestation ? (
+        <button
+          className="w-full rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
+          onClick={() => {
+            void onRetryAttestation();
+          }}
+          type="button"
+        >
+          Retry attestation
+        </button>
+      ) : null}
+
+      {phase.kind === "ready-to-redeem" || phase.kind === "redeeming" ? (
+        <button
+          className="w-full rounded-md border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+          disabled={phase.kind === "redeeming"}
+          onClick={() => {
+            void onRedeem();
+          }}
+          type="button"
+        >
+          {phase.kind === "redeeming"
+            ? `Minting on ${destinationLabel}…`
+            : `Mint on ${destinationLabel}`}
+        </button>
+      ) : null}
+
+      {phase.kind === "complete" ? (
+        <button
+          className="w-full rounded-md border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
+          onClick={onReset}
+          type="button"
+        >
+          Reset
+        </button>
+      ) : null}
+    </>
+  );
+};
+
 const App = () => {
   const evmWallet = useSelectedWallet("evm");
   const svmWallet = useSelectedWallet("svm");
@@ -235,12 +321,7 @@ const App = () => {
   const srcBalance = useUsdcBalance(srcSpec, srcWallet?.account.walletAddress);
   const dstBalance = useUsdcBalance(dstSpec, dstWallet?.account.walletAddress);
 
-  const isWorking =
-    phase.kind === "initiating" ||
-    phase.kind === "waiting-attestation" ||
-    phase.kind === "redeeming";
   const isTransferOpen = phase.kind !== "idle" && phase.kind !== "complete";
-  const canRetryAttestation = phase.kind === "waiting-attestation" && transfer.error !== null;
 
   const resetTransfer = () => {
     setTransfer({ error: null, phase: { kind: "idle" } });
@@ -407,66 +488,22 @@ const App = () => {
       </section>
 
       <section className="mt-6 space-y-3">
-        <button
-          className="w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
-          disabled={
-            !srcWallet ||
-            !dstWallet ||
-            isTransferOpen ||
-            phase.kind === "complete" ||
-            amountInput === ""
-          }
-          onClick={() => {
-            void handleSwap();
-          }}
-          type="button"
-        >
-          {isWorking && !canRetryAttestation ? "Working…" : "Swap"}
-        </button>
-
-        {missingWallet ? (
-          <p className="text-center text-xs text-amber-700">
-            Connect and activate a {missingWallet.toUpperCase()} wallet above to bridge between
-            these chains.
-          </p>
-        ) : null}
-
-        {canRetryAttestation ? (
-          <button
-            className="w-full rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
-            onClick={() => {
-              void handleRetryAttestation();
-            }}
-            type="button"
-          >
-            Retry attestation
-          </button>
-        ) : null}
-
-        {phase.kind === "ready-to-redeem" || phase.kind === "redeeming" ? (
-          <button
-            className="w-full rounded-md border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
-            disabled={phase.kind === "redeeming"}
-            onClick={() => {
-              void handleRedeem();
-            }}
-            type="button"
-          >
-            {phase.kind === "redeeming"
-              ? `Minting on ${dstSpec.label}…`
-              : `Mint on ${dstSpec.label}`}
-          </button>
-        ) : null}
-
-        {phase.kind === "complete" ? (
-          <button
-            className="w-full rounded-md border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
-            onClick={resetTransfer}
-            type="button"
-          >
-            Reset
-          </button>
-        ) : null}
+        <TransferButtons
+          canSwap={Boolean(
+            srcWallet &&
+            dstWallet &&
+            !isTransferOpen &&
+            phase.kind !== "complete" &&
+            amountInput !== "",
+          )}
+          destinationLabel={dstSpec.label}
+          missingWallet={missingWallet}
+          onRedeem={handleRedeem}
+          onReset={resetTransfer}
+          onRetryAttestation={handleRetryAttestation}
+          onSwap={handleSwap}
+          transfer={transfer}
+        />
 
         <StatusPanel dstSpec={dstSpec} error={transfer.error} phase={phase} srcSpec={srcSpec} />
 

@@ -7,7 +7,15 @@
     "build": {
       "env": ["EXPOSE_TESTING_API"],
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**", ".output/**", ".vinxi/**", ".expo/**"]
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**",
+        ".output/**",
+        ".vinxi/**",
+        ".expo/**",
+        "src/routeTree.gen.ts"
+      ]
     },
     "typecheck": {
       "dependsOn": ["^build"]

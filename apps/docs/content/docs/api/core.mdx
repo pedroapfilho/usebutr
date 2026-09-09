@@ -69,6 +69,32 @@ Discovery already applies this at adapter construction, so `Connector.icon` is
 safe to render as-is; reach for this only when building adapter or
 `ConnectorMeta` metadata yourself.
 
+### `createSignInFlow(options)`
+
+Returns an object with `signIn(wallet, account?)`, which checks capabilities,
+fetches a nonce, obtains a wallet signature, and calls your verifier. Options are
+`getNonce`, `verify`, optional `buildMessage`, and optional `preferSignMessage`.
+See the [sign-in guide](/guides/sign-in) for SIWS routing and backend boundaries.
+`SignInUnsupportedError` is thrown before the nonce request when message signing
+is unsupported; it exposes `connectorId`.
+
+## Encoding
+
+All helpers are exported from `@usebutr/core`:
+
+| Function             | Conversion                             |
+| -------------------- | -------------------------------------- |
+| `bytesToHex`         | Bytes to hexadecimal without a prefix. |
+| `bytesToHexPrefixed` | Bytes to `0x`-prefixed hexadecimal.    |
+| `hexToBytes`         | Hexadecimal to bytes.                  |
+| `bytesToBase64`      | Bytes to base64.                       |
+| `base64ToBytes`      | Base64 to bytes.                       |
+| `bytesToBase58`      | Bytes to base58.                       |
+| `base58ToBytes`      | Base58 to bytes.                       |
+
+Use base64 when sending signature bytes through JSON. Verify against the
+returned signed bytes, which may differ from the original message.
+
 ## Storage
 
 ### `createBrowserStorageDriver(): StorageDriver`
@@ -100,7 +126,9 @@ Wallet model: `Account`, `Balance`, `ChainBase`, `ChainPlatform`,
 `WalletAdapter`, `WalletAvailability`, `WalletCapabilities`,
 `WalletManagerConfig`, `HydrationOutcome`.
 
-Errors: `ConnectionError`, `ConnectionErrorKind`.
+Errors: `ConnectionError`, `ConnectionErrorKind`, `SignInUnsupportedError`.
+
+Sign-in: `SignInInput`, `SignInValue`, `SignInFlowOptions`, `SignInMessageContext`, `SignInResult`.
 
 Storage: `BrowserStorageDrivers`, `CookieDriverOptions`, `MaybePromise`,
 `StorageDriver`, `StoredPoolEntry`, `StoredPoolRecord`,

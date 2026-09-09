@@ -2,6 +2,20 @@
   "name": "@usebutr/walletconnect",
   "version": "0.3.0",
   "description": "WalletConnect v2 adapter for butr.",
+  "keywords": [
+    "butr",
+    "dapp",
+    "react",
+    "reown",
+    "typescript",
+    "wallet",
+    "walletconnect",
+    "web3"
+  ],
+  "homepage": "https://docs.usebutr.com/api/walletconnect",
+  "bugs": {
+    "url": "https://github.com/pedroapfilho/usebutr/issues"
+  },
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
@@ -10,7 +24,8 @@
     "directory": "packages/walletconnect"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "type": "module",
   "sideEffects": false,

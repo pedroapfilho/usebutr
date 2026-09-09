@@ -18,18 +18,15 @@ import { ButtonLink } from "@/components/button-link";
 import { CodeBlock } from "@/components/code-block";
 import { InstallTabs } from "@/components/install-tabs";
 import { SiteFooter } from "@/components/site-footer";
-import { DEMO_URL, DOCS_URL, GITHUB_URL, INTEGRATIONS_URL, QUICKSTART_URL } from "@/lib/site";
-
-const DIRECTION_CONTRACT = `<!--
-THESIS: The category standard played straight - an open-source TypeScript library landing at viem's craft level, every fact true, nothing invented; chosen over three authored alternatives on 2026-09-03.
-OWN-WORLD: The incumbent butr system (Geist, butter-yellow primary, light only, 10px radius) executed at benchmark fidelity: wordmark-as-headline, bolded-keyword subline, install tabs card, fact chips, four feature cards, numbered overview code, ghosted butter mark watermark.
-STORY: A React dev recognizes the viem/wagmi genre instantly, reads the chains in bold, picks their package manager, copies the install, reads the numbered overview, and goes to the docs.
-FIRST VIEWPORT: Header (wordmark, Docs/Demo/GitHub, version chip); left: giant wordmark, subline, Get started / Why butr? / GitHub; right: install tabs card over fact chips (MIT, v1.1.2, 12 packages, React 18+); faint butter mark bleeding off the right edge.
-FORM: Canon, competitor-benchmarked against viem; seed 4b42851a. No signature interaction by design - the genre's own affordances are the interaction.
-FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
--->`;
-
-const WALLETS_VERSION = "1.1.2";
+import {
+  CONCEPTS_URL,
+  DEMO_URL,
+  DOCS_URL,
+  GITHUB_URL,
+  INTEGRATIONS_URL,
+  QUICKSTART_URL,
+  WALLETS_VERSION,
+} from "@/lib/site";
 
 const CHIPS = [
   { label: "license", value: "MIT" },
@@ -41,12 +38,12 @@ const CHIPS = [
 const FEATURES = [
   {
     body: "Connect MetaMask and Phantom at the same time. One pool, each platform tracked on its own.",
-    href: `${DOCS_URL}/core-concepts`,
+    href: CONCEPTS_URL,
     title: "Multi-chain",
   },
   {
     body: "Injected, WalletConnect, Ledger, or your own: every wallet is a WalletAdapter on one seam.",
-    href: `${DOCS_URL}/core-concepts`,
+    href: CONCEPTS_URL,
     title: "Connector-shaped",
   },
   {
@@ -79,6 +76,7 @@ import {
   WalletManagerProvider,
   useConnectWallet,
   useDiscoveredWallets,
+  useIsHydrated,
 } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
 
@@ -95,27 +93,43 @@ export const App = () => (
 const WalletPicker = () => {
   const wallets = useDiscoveredWallets();
   const connect = useConnectWallet();
+  const isHydrated = useIsHydrated();
+  // Wait for persisted connections before showing the picker.
+  if (!isHydrated) return null;
 
   return wallets.map(({ id, name }) => (
-    <button key={id} onClick={() => connect(id)}>
+    <button key={id} onClick={() => connect(id)} type="button">
       Connect {name}
     </button>
   ));
 };`;
 
 const BRIDGE_CODE = `import { useSelectedWallet, useSigner } from "@usebutr/react";
-import { createWalletClient, custom } from "viem";
+import { createWalletClient, custom, type Address, type EIP1193Provider } from "viem";
 import { sepolia } from "viem/chains";
 
-const wallet = useSelectedWallet("evm");
-const signer = useSigner(wallet?.connector.id);
+export const useSelectedWalletClient = () => {
+  const wallet = useSelectedWallet("evm");
+  const signer = useSigner(wallet?.connector.id);
+  if (!wallet || signer.status !== "success") return null;
 
-// signer.data is the raw EIP-1193 provider.
-const client = createWalletClient({
-  account: wallet.account.walletAddress,
-  chain: sepolia,
-  transport: custom(signer.data),
-});`;
+  return createWalletClient({
+    account: wallet.account.walletAddress as Address,
+    chain: sepolia,
+    transport: custom(signer.data as EIP1193Provider),
+  });
+};`;
+
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  codeRepository: GITHUB_URL,
+  description: "Multi-chain wallet discovery and connection state for React.",
+  license: `${GITHUB_URL}/blob/main/LICENSE`,
+  name: "butr",
+  programmingLanguage: "TypeScript",
+  url: "https://www.usebutr.com",
+};
 
 const NAV_LINKS = [
   { href: DOCS_URL, label: "Docs" },
@@ -125,10 +139,6 @@ const NAV_LINKS = [
 
 const Page = () => (
   <div className="bg-background text-foreground min-h-dvh">
-    {/* The direction contract must land in the served markup as a comment. */}
-    {/* eslint-disable-next-line react/no-danger -- static build-time constant, no user input */}
-    <div dangerouslySetInnerHTML={{ __html: DIRECTION_CONTRACT }} hidden />
-
     <header className="border-border/60 bg-background/80 sticky top-0 z-40 border-b backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-6">
         <Link
@@ -156,6 +166,14 @@ const Page = () => (
     </header>
 
     <main>
+      {/* oxlint-disable react/no-danger -- static structured data, escaped for HTML */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(JSON_LD).replaceAll("<", String.raw`\u003c`),
+        }}
+        type="application/ld+json"
+      />
+      {/* oxlint-enable react/no-danger */}
       {/* Hero */}
       <section className="relative overflow-hidden">
         <BrandMark className="pointer-events-none absolute top-1/2 -right-24 w-[min(46rem,70vw)] -translate-y-1/2 opacity-[0.06] select-none max-lg:hidden" />

@@ -36,14 +36,32 @@ jobs:
             turbo-${{ runner.os }}-${{ runner.arch }}-node24-publish-checks-push-main-
       - run: pnpm typecheck
       - run: pnpm build --filter="./packages/*"
-      # Packaging hygiene for the published packages (ESM-only).
-      - name: publint
+      - name: Resolve publishable packages
+        id: packages
         run: |
-          for pkg in bitcoin core evm ledger polkadot react sui svm testing wallet-standard-shared walletconnect wallets; do
-            (cd "packages/$pkg" && pnpm dlx publint --strict)
+          node --input-type=module <<'JS'
+          import { appendFileSync, readdirSync, readFileSync } from "node:fs";
+          const dirs = readdirSync("packages", { withFileTypes: true })
+            .filter((entry) => entry.isDirectory())
+            .map((entry) => `packages/${entry.name}`)
+            .filter((dir) => !JSON.parse(readFileSync(`${dir}/package.json`, "utf8")).private)
+            .sort();
+          if (dirs.length === 0) throw new Error("No publishable packages found");
+          appendFileSync(process.env.GITHUB_OUTPUT, `dirs=${dirs.join(" ")}\n`);
+          JS
+      - name: publint
+        env:
+          DIRS: ${{ steps.packages.outputs.dirs }}
+        run: |
+          set -euo pipefail
+          for dir in $DIRS; do
+            (cd "$dir" && pnpm exec publint --strict)
           done
       - name: are-the-types-wrong
+        env:
+          DIRS: ${{ steps.packages.outputs.dirs }}
         run: |
-          for pkg in bitcoin core evm ledger polkadot react sui svm testing wallet-standard-shared walletconnect wallets; do
-            (cd "packages/$pkg" && pnpm dlx @arethetypeswrong/cli --pack --profile esm-only)
+          set -euo pipefail
+          for dir in $DIRS; do
+            (cd "$dir" && pnpm exec attw --pack --profile esm-only)
           done

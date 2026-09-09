@@ -39,6 +39,11 @@
     },
     "clean": {
       "cache": false
+    },
+    "landing#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/wallets/package.json"],
+      "outputs": [".next/**", "!.next/cache/**"]
     }
   }
 }

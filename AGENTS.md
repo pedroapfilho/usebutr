@@ -19,7 +19,7 @@ Guidance for AI coding agents working in the **usebutr** monorepo — a multi-ch
 apps/                 # 17 apps: 4 framework demos + 11 integration demos + docs + landing
 packages/             # @usebutr/* library packages + 2 @repo/* configs + 1 @repo/* internal
 .changeset/           # Changesets — version bumps + release notes
-.github/workflows/    # CI: test, lint, format, fallow, release (Changesets publish)
+.github/workflows/    # 7 workflows: build, lint, typecheck, test, publish-checks, react-doctor, release
 .fallow/              # Fallow cache + reports
 .husky/               # Pre-commit hooks (lint-staged)
 oxlint.config.ts      # Repo-wide oxlint config (TS-based)
@@ -32,30 +32,30 @@ docs/                 # Repo-level design notes (not the Fumadocs site)
 
 **Framework demos** (kitchen-sink references for one React framework each):
 
-| App                   | Framework                       | Dev URL                 |
-| --------------------- | ------------------------------- | ----------------------- |
-| `demo-vite`           | Vite 7 + React 19 (SPA)         | `http://localhost:5173` |
-| `demo-next`           | Next.js 16 (App Router)         | `http://localhost:3000` |
-| `demo-tanstack-start` | TanStack Start (Vite SSR)       | `http://localhost:3001` |
-| `demo-expo-web`       | Expo (React Native, web target) | `http://localhost:8081` |
+| App                   | Framework                       | Dev URL                                         |
+| --------------------- | ------------------------------- | ----------------------------------------------- |
+| `demo-vite`           | Vite 7 + React 19 (SPA)         | `https://usebutr.demo-vite.localhost`           |
+| `demo-next`           | Next.js 16 (App Router)         | `https://usebutr.demo-next.localhost`           |
+| `demo-tanstack-start` | TanStack Start (Vite SSR)       | `https://usebutr.demo-tanstack-start.localhost` |
+| `demo-expo-web`       | Expo (React Native, web target) | `https://usebutr.demo-expo-web.localhost`       |
 
 **Integration demos** (one library each, on the chain's testnet):
 
-| App                               | Library                        | Dev URL                 |
-| --------------------------------- | ------------------------------ | ----------------------- |
-| `demo-with-viem`                  | viem                           | `http://localhost:5175` |
-| `demo-with-wagmi`                 | wagmi (`@wagmi/core`)          | `http://localhost:5176` |
-| `demo-with-solana-web3js`         | `@solana/web3.js`              | `http://localhost:5177` |
-| `demo-with-solana-wallet-adapter` | `@solana/wallet-adapter-react` | `http://localhost:5178` |
-| `demo-with-solana-kit`            | `@solana/kit`                  | `http://localhost:5179` |
-| `demo-with-sui`                   | `@mysten/sui`                  | `http://localhost:5180` |
-| `demo-with-bitcoin`               | `bitcoinjs-lib`                | `http://localhost:5181` |
-| `demo-with-gill`                  | gill                           | `http://localhost:5182` |
-| `demo-with-solana-framework-kit`  | `@solana/react-hooks`          | `http://localhost:5183` |
-| `demo-wormhole-usdc`              | `@wormhole-foundation/sdk`     | `http://localhost:5184` |
-| `demo-with-polkadot`              | `polkadot-api`                 | `http://localhost:5185` |
+| App                               | Library                        | Dev URL                                                     |
+| --------------------------------- | ------------------------------ | ----------------------------------------------------------- |
+| `demo-with-viem`                  | viem                           | `https://usebutr.demo-with-viem.localhost`                  |
+| `demo-with-wagmi`                 | wagmi (`@wagmi/core`)          | `https://usebutr.demo-with-wagmi.localhost`                 |
+| `demo-with-solana-web3js`         | `@solana/web3.js`              | `https://usebutr.demo-with-solana-web3js.localhost`         |
+| `demo-with-solana-wallet-adapter` | `@solana/wallet-adapter-react` | `https://usebutr.demo-with-solana-wallet-adapter.localhost` |
+| `demo-with-solana-kit`            | `@solana/kit`                  | `https://usebutr.demo-with-solana-kit.localhost`            |
+| `demo-with-sui`                   | `@mysten/sui`                  | `https://usebutr.demo-with-sui.localhost`                   |
+| `demo-with-bitcoin`               | `bitcoinjs-lib`                | `https://usebutr.demo-with-bitcoin.localhost`               |
+| `demo-with-gill`                  | gill                           | `https://usebutr.demo-with-gill.localhost`                  |
+| `demo-with-solana-framework-kit`  | `@solana/react-hooks`          | `https://usebutr.demo-with-solana-framework-kit.localhost`  |
+| `demo-wormhole-usdc`              | `@wormhole-foundation/sdk`     | `https://usebutr.demo-wormhole-usdc.localhost`              |
+| `demo-with-polkadot`              | `polkadot-api`                 | `https://usebutr.demo-with-polkadot.localhost`              |
 
-**Docs:** `apps/docs` — Fumadocs (Next.js 16 + Turbopack) on `http://localhost:4000`.
+**Docs:** `apps/docs` — Fumadocs (Next.js 16 + Turbopack) on `https://usebutr.docs.localhost`.
 
 **Landing:** `apps/landing` — Next.js 16 marketing site on `https://usebutr.landing.localhost` (portless).
 
@@ -102,15 +102,15 @@ pnpm version-packages                   # bump versions from changesets
 pnpm release                            # build + changeset publish (CI runs this)
 ```
 
-There is no Docker, no Prisma, no Playwright, no e2e suite — this is a pure library + demo repo.
+This is a library + demo repo, with no Docker or Prisma. Vitest covers the library; existing Playwright checks cover docs navigation and selected demos. Browser checks do not run in unit-test CI.
 
 ## Conventions & gotchas
 
 - **Library profile.** This repo is `library` in orchestrator. SaaS checks (auth-config, prisma-config, e2e, i18n-leak, theme, primitives, dev, base-styles) intentionally skip here. The applicable set is profile-aware and compared against the `library` base, `acme-package`; run `orchestrator verify --repo usebutr` for the current list.
-- **CI shape.** 4 workflows + `release.yml`: `test`, `lint`, `format`, `fallow`. No `e2e.yml`.
+- **CI shape.** Seven workflows: `test`, `lint` (includes format and fallow jobs), `typecheck`, `build`, `publish-checks`, `react-doctor` (advisory), and `release`. No `e2e.yml`.
 - **Per-app gitignores allowed.** Unlike SaaS repos, library demos may carry their own `.gitignore` files (the `gitignore` check is lenient here).
 - **Path aliases.** `@/*` → `src/*` in most apps; TanStack Start also maps `app/*`. Demo apps consume the library via workspace deps (`"@usebutr/core": "workspace:*"`) and tsconfig via `@repo/typescript-config`.
-- **Distinct ports.** Each web demo binds a unique localhost port so all framework demos can run concurrently. Expo web uses `expo start --web` on `:8081`; native iOS/Android go through Metro/Expo Go on their own transport.
+- **Stable portless URLs.** `scripts/dev.mjs` resolves app links through Portless and forwards CLI arguments to Turbo. `pnpm dev --filter=<app>` includes dependency builds; direct `pnpm --filter=<app> dev` does not. Worktrees add a branch prefix to the listed URLs. Expo native iOS/Android use Metro/Expo Go on their own transport.
 - **Wallet discovery, not connect-modal UI.** The library only handles discovery + connection state; consumer apps own the modal/picker. Demos exercise that boundary on each framework.
 - **Releases via Changesets.** `release.yml` publishes from `main` after `version-packages` opens a release PR. Don't bump versions manually in `package.json` — author a changeset instead.
 - **pnpm `allowBuilds` matters.** The native crypto deps (`keccak`, `bufferutil`, `bigint-buffer`, etc.) gate on `pnpm-workspace.yaml`'s `allowBuilds` and `onlyBuiltDependencies`. When adding a chain or wallet that pulls in new native deps, list them there or `pnpm install` will silently skip the build step.
@@ -118,7 +118,7 @@ There is no Docker, no Prisma, no Playwright, no e2e suite — this is a pure li
 
 ## Notable decisions
 
-- **No auth, no DB, no e2e.** Deliberately — this is a client-side library. The SaaS standards stack (Better Auth, Prisma, Playwright, portless `*.localhost`) is N/A here. If you're applying a cross-repo change from `acme`, check whether it's library-relevant before propagating.
+- **No auth or DB.** Deliberately — this is a client-side library. SaaS-only standards (Better Auth, Prisma) are N/A here. Existing browser tests are limited to docs and selected demo behavior. If you're applying a cross-repo change from `acme`, check whether it's library-relevant before propagating.
 - **`@usebutr/*` published, `@repo/*` private.** The `@repo/*` namespace is a workspace-internal convention shared with the SaaS repos; only the public connector packages live under `@usebutr/*`.
 - **`tsdown` over `tsup`/`unbuild`.** Faster builds, ESM-first, matches the React 19 + Node 24 baseline.
 - **Fumadocs over plain Next.js content.** `apps/docs` is the source of `docs.usebutr.com`; content lives as MDX under that app.

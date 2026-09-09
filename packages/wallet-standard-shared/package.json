@@ -2,6 +2,20 @@
   "name": "@usebutr/wallet-standard-shared",
   "version": "0.5.1",
   "description": "Shared Wallet Standard discovery primitives used by @usebutr/svm, @usebutr/sui, @usebutr/bitcoin.",
+  "keywords": [
+    "butr",
+    "dapp",
+    "discovery",
+    "react",
+    "typescript",
+    "wallet",
+    "wallet-standard",
+    "web3"
+  ],
+  "homepage": "https://docs.usebutr.com/api/wallet-standard-shared",
+  "bugs": {
+    "url": "https://github.com/pedroapfilho/usebutr/issues"
+  },
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
@@ -10,7 +24,8 @@
     "directory": "packages/wallet-standard-shared"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "type": "module",
   "sideEffects": false,
@@ -20,6 +35,9 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsdown",

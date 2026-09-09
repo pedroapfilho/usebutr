@@ -50,7 +50,23 @@ export const generateMetadata = async ({ params }: PageProps): Promise<Metadata>
   }
 
   return {
+    alternates: { canonical: page.url },
     description: page.data.description,
+    openGraph: {
+      description: page.data.description,
+      images: [
+        {
+          alt: page.data.title,
+          height: 630,
+          url: `/og/${[...page.slugs, "image.png"].join("/")}`,
+          width: 1200,
+        },
+      ],
+      siteName: "butr docs",
+      title: page.data.title,
+      type: "website",
+      url: page.url,
+    },
     title: page.data.title,
   };
 };

@@ -1,0 +1,79 @@
+---
+title: Sign in with a wallet
+description: Coordinate a nonce, wallet signature, and backend verification with createSignInFlow.
+---
+
+`createSignInFlow` from `@usebutr/core` coordinates signing with an already
+connected wallet. Your application owns nonce issuance, signature verification,
+and sessions. butr defines no wire format: use the authentication format your
+backend understands, such as SIWE or SIWS.
+
+## Wire the flow
+
+Provide a single-use nonce fetcher and a verifier. This factory keeps those
+application-specific operations explicit:
+
+```tsx
+import { createSignInFlow, type SignInFlowOptions } from "@usebutr/core";
+
+export const makeSignIn = (
+  getNonce: SignInFlowOptions["getNonce"],
+  verify: SignInFlowOptions["verify"],
+  buildMessage: NonNullable<SignInFlowOptions["buildMessage"]>,
+) => createSignInFlow({ buildMessage, getNonce, verify });
+
+// const flow = makeSignIn(fetchNonce, verifyOnServer, buildSiweMessage);
+// await flow.signIn(connectedWallet);
+```
+
+The `getNonce` callback receives `{ account, wallet }`. `buildMessage` receives
+`{ account, nonce, wallet }`. `verify` receives the signed result and must reject
+if verification fails. Callback failures and wallet rejections propagate to the
+caller; `signIn()` resolves only after `verify()` succeeds.
+
+## What runs, and when
+
+1. Check `wallet.connector.capabilities.signMessage`. If false, throw
+   `SignInUnsupportedError` before fetching a nonce or touching the wallet.
+2. Fetch a nonce for the explicit account argument, or `wallet.account`.
+3. For an SVM wallet advertising `signIn` and providing `connector.signIn`, use
+   the wallet's SIWS path unless `preferSignMessage: true` was passed.
+4. Otherwise build the message and call `signMessage` with its UTF-8 bytes and
+   the selected account.
+5. Add base64 mirrors of the signature and signed bytes, then call `verify`.
+
+The SIWS path passes `{ nonce }` to the wallet. The wallet composes the statement,
+so `result.message` is absent and `result.account` comes from the wallet's output.
+`buildMessage` is unused on that path. With `preferSignMessage: true`, every
+platform uses your message builder instead.
+
+`buildMessage` is optional in the API. Its default is a simple address-and-nonce
+message; it is not a complete SIWE or SIWS authentication statement. Supply a
+builder matching your backend's format when using the message-signing path.
+
+## Verify the bytes the wallet signed
+
+`SignInResult` includes `account`, `wallet`, `nonce`, optional `message`,
+`signature`, `signedMessage`, `signatureBase64`, and `signedMessageBase64`.
+
+Verify against **`signedMessageBase64`**, decoded to bytes on the server, with
+`signatureBase64`. Wallets may wrap or re-encode the original message. Comparing
+only `message` can verify different bytes from those actually signed.
+
+Send the fields your backend expects rather than serializing the whole result:
+`wallet` contains connector methods, and raw `Uint8Array` fields do not retain
+their byte-array shape through JSON. Base64 mirrors are provided for this boundary.
+The backend must validate the expected identity, nonce, domain, and expiry for
+its chosen authentication format before establishing a session.
+
+## Unsupported wallets
+
+Catch `SignInUnsupportedError` separately from user rejection. Its `connectorId`
+identifies the wallet that cannot sign in; no signing prompt or nonce request
+has occurred. Offer a signing-capable wallet in that case.
+
+<Callout type="info">
+  **Source:** `packages/core/src/sign-in/sign-in-flow.ts` and
+  `packages/core/src/__tests__/sign-in-flow.test.ts`. No demo currently uses this flow. See
+  [signing](/guides/signing), [capabilities](/concepts/capabilities), and the [core API](/api/core).
+</Callout>

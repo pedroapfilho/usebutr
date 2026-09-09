@@ -2,6 +2,21 @@
   "name": "@usebutr/ledger",
   "version": "0.5.0",
   "description": "Ledger hardware-wallet adapter for butr (EVM + SVM + Sui + Bitcoin).",
+  "keywords": [
+    "butr",
+    "dapp",
+    "hardware-wallet",
+    "ledger",
+    "react",
+    "typescript",
+    "wallet",
+    "web3",
+    "webusb"
+  ],
+  "homepage": "https://docs.usebutr.com/api/ledger",
+  "bugs": {
+    "url": "https://github.com/pedroapfilho/usebutr/issues"
+  },
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
@@ -10,7 +25,8 @@
     "directory": "packages/ledger"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "type": "module",
   "sideEffects": false,

@@ -1,0 +1,65 @@
+---
+title: "@usebutr/wallet-standard-shared"
+description: Shared discovery, adapter lifecycle, capability mapping, and types for Wallet Standard integrations.
+---
+
+This package is for authors of Wallet Standard adapters. App developers normally
+use `@usebutr/wallets` or a chain package. The shared layer has no React dependency.
+
+```npm
+npm install @usebutr/wallet-standard-shared @wallet-standard/app zustand
+```
+
+`@wallet-standard/app` is an optional peer in the manifest, but is required for
+`discoverWalletStandard`'s default loader. A custom loader can supply a registry
+for tests. `@usebutr/wallets` installs the peer for you.
+
+## Wallet and feature types
+
+- `WalletStandardWallet` and `WalletStandardWalletAccount`: wallet metadata,
+  chains, features, and accounts.
+- `StandardConnectFeature`, `StandardDisconnectFeature`, `StandardEventsFeature`,
+  and `StandardEventsListener`: standard lifecycle feature shapes.
+- `WalletStandardFeature`: a versioned feature record.
+- `WalletsApp`, `WalletStandardAppModule`, and `WalletStandardModuleLoader`:
+  the discovery registry and its injectable loader.
+
+## Helpers
+
+| Export                   | Purpose                                                           |
+| ------------------------ | ----------------------------------------------------------------- |
+| `slugify`                | Build a stable identifier from a platform prefix and wallet name. |
+| `getFeature`             | Read a named feature after applying the supplied type guard.      |
+| `isWalletStandardWallet` | Narrow a `WalletSigner` to the wallet shape.                      |
+| `pickFirstAddress`       | Return the first account address, or `null`.                      |
+| `pickAccountByAddress`   | Find an account by address, falling back to the first account.    |
+| `buildAccount`           | Construct butr's account shape from an address and chain.         |
+
+```tsx
+import { slugify } from "@usebutr/wallet-standard-shared";
+
+export const walletId = slugify("svm", "Phantom");
+```
+
+## Adapter core
+
+`createWalletStandardCore` owns connection state, account selection, chain
+selection, and event cleanup for a chain adapter. Its return type is
+`WalletStandardCore`. Chain packages supply their platform and chains, then
+implement the chain's signing features around that lifecycle.
+
+`discoverWalletStandard(onAdapter, build, loadModule?)` loads the registry,
+announces existing wallets, listens for registration, and returns cleanup.
+`WalletStandardAdapterBuilder` returns an adapter or `null` for unsupported
+wallets. Its `registerDisconnector` callback bridges registry unregistration
+into a connector disconnect. A missing default loader dependency logs a warning
+and disables this discovery source.
+
+`buildWalletCapabilities(profile)` maps a `WalletCapabilityProfile` into
+butr's capability flags. The profile declares signing, sending, events, and
+chain-count support; it does not add RPC implementations.
+
+See the [Solana](/api/svm), [Sui](/api/sui), [Bitcoin](/api/bitcoin), and
+[Polkadot](/api/polkadot) packages for complete adapters.
+
+**Source:** `packages/wallet-standard-shared/src/index.ts`.

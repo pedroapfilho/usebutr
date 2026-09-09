@@ -5,7 +5,10 @@ const DEMO_URL = process.env.NEXT_PUBLIC_DEMO_URL ?? "https://demo.usebutr.com";
 
 export const baseOptions = (): BaseLayoutProps => ({
   githubUrl: GITHUB_URL,
-  links: [{ external: true, text: "Demo", url: DEMO_URL }],
+  links: [
+    { external: true, text: "usebutr.com", url: "https://www.usebutr.com" },
+    { external: true, text: "Demo", url: DEMO_URL },
+  ],
   nav: {
     title: (
       <picture>

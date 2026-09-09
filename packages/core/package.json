@@ -2,6 +2,21 @@
   "name": "@usebutr/core",
   "version": "2.0.0",
   "description": "Core types, store, storage, and discovery seam for butr. No React, no protocols.",
+  "keywords": [
+    "butr",
+    "dapp",
+    "discovery",
+    "react",
+    "state-management",
+    "typescript",
+    "wallet",
+    "web3",
+    "zustand"
+  ],
+  "homepage": "https://docs.usebutr.com/api/core",
+  "bugs": {
+    "url": "https://github.com/pedroapfilho/usebutr/issues"
+  },
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
@@ -10,7 +25,8 @@
     "directory": "packages/core"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "type": "module",
   "sideEffects": false,

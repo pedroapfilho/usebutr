@@ -2,6 +2,20 @@
   "name": "@usebutr/testing",
   "version": "0.3.0",
   "description": "Test helpers for butr: fake adapters, fake persistence, mock storage.",
+  "keywords": [
+    "butr",
+    "dapp",
+    "react",
+    "testing",
+    "typescript",
+    "vitest",
+    "wallet",
+    "web3"
+  ],
+  "homepage": "https://docs.usebutr.com/testing",
+  "bugs": {
+    "url": "https://github.com/pedroapfilho/usebutr/issues"
+  },
   "license": "MIT",
   "author": "Pedro Filho <pedro@filho.me>",
   "repository": {
@@ -10,7 +24,8 @@
     "directory": "packages/testing"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "type": "module",
   "sideEffects": false,

@@ -1,0 +1,74 @@
+---
+title: Polkadot injectedWeb3
+description: Discover Polkadot extensions without prompting, then bridge their signer into your chain client.
+---
+
+`@usebutr/polkadot` reads `window.injectedWeb3`. With `autoDiscovery()` from
+`@usebutr/wallets`, it is the primary Polkadot source; Wallet Standard
+`polkadot:*` discovery runs as a deferred fallback if no primary adapter exists.
+
+## Install and discover
+
+For an existing React app:
+
+```npm
+npm install @usebutr/react @usebutr/wallets zustand
+```
+
+For injected Polkadot alone, use `createWalletSource(discoverInjectedPolkadotAdapters)`
+from `@usebutr/core` and `@usebutr/polkadot`. The Wallet Standard fallback requires
+`@wallet-standard/app`, already included by `@usebutr/wallets`.
+
+Discovery scans immediately and again at 250 ms and 750 ms for late-injecting
+extensions. `pollMs: []` disables the delayed scans. Unsubscribing cancels them.
+Only `connect()` calls `enable("butr")` and may raise an authorization prompt.
+
+Known display names cover Enkrypt, Nova Wallet, `Polkadot{.js}`, SubWallet, and
+Talisman. Other registry entries are discovered too, with a name derived from
+their key. An extension must inject into the current browser context.
+
+## Capabilities and account changes
+
+Injected adapters support message signing through `signRaw`, account-change
+subscriptions, and local chain switching. An empty account notification clears
+the session and emits a disconnect. Wallet Standard capabilities follow the
+wallet's advertised features.
+
+The adapters do not provide RPC balances, receipts, transaction construction,
+or submission. Message signatures include the returned `signedMessage`; injected
+signing wraps the input in `<Bytes>…</Bytes>`.
+
+## Bridge the signer
+
+Install `polkadot-api` for this bridge. Call it after connecting a wallet:
+
+```tsx
+import type { ConnectedWallet } from "@usebutr/core";
+import { isPolkadotSignerHandle } from "@usebutr/polkadot";
+import { connectInjectedExtension } from "polkadot-api/pjs-signer";
+
+export const getPapiSigner = async (wallet: ConnectedWallet) => {
+  const handle = await wallet.connector.getSigner();
+  if (!isPolkadotSignerHandle(handle)) {
+    throw new Error("Select an injectedWeb3 wallet for this PAPI bridge");
+  }
+  const extension = await connectInjectedExtension(handle.extensionName);
+  const account = extension.getAccounts().find((entry) => entry.address === handle.address);
+  if (!account) throw new Error("Active account not found in the extension");
+  return account.polkadotSigner;
+};
+```
+
+Use the returned signer with PAPI's `signSubmitAndWatch`. The
+[integration guide](/integrations/polkadot) shows a complete Paseo transaction.
+
+## Chains
+
+`POLKADOT_CHAINS` contains Polkadot, Kusama, Paseo, and Westend. The chain ID is
+`polkadot:<genesis-prefix>`; the reference is the first 32 hex characters of the
+genesis hash. Local chain selection does not change your PAPI provider.
+
+<Callout type="info">
+  **Source:** `packages/polkadot/src/injected`, `discoverer.ts`, and `wallet-standard-adapter.ts`.
+  See the [API reference](/api/polkadot).
+</Callout>

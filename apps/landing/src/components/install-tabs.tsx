@@ -7,10 +7,10 @@ import { cn } from "@/lib/cn";
 const RESET_DELAY_MS = 2000;
 
 const MANAGERS = [
-  { command: "npm i @usebutr/wallets", label: "npm" },
-  { command: "pnpm add @usebutr/wallets", label: "pnpm" },
-  { command: "yarn add @usebutr/wallets", label: "yarn" },
-  { command: "bun add @usebutr/wallets", label: "bun" },
+  { command: "npm i @usebutr/react @usebutr/wallets zustand", label: "npm" },
+  { command: "pnpm add @usebutr/react @usebutr/wallets zustand", label: "pnpm" },
+  { command: "yarn add @usebutr/react @usebutr/wallets zustand", label: "yarn" },
+  { command: "bun add @usebutr/react @usebutr/wallets zustand", label: "bun" },
 ] as const;
 
 type Manager = (typeof MANAGERS)[number]["label"];

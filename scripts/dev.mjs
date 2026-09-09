@@ -9,7 +9,7 @@ const env = applyPortlessUrls({
   VITE_WEB_URL: ["usebutr.landing"],
 });
 
-const { status } = spawnSync("pnpm", ["exec", "turbo", "run", "dev"], {
+const { status } = spawnSync("pnpm", ["exec", "turbo", "run", "dev", ...process.argv.slice(2)], {
   env,
   stdio: "inherit",
 });

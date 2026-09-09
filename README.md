@@ -3,8 +3,14 @@
     <source media="(prefers-color-scheme: dark)" srcset="./assets/butr-logo-dark.svg">
     <img alt="butr" src="./assets/butr-logo-light.svg" width="320">
   </picture>
-  <br />
-  <br />
+  <p>Multi-chain wallet discovery and connection state for React</p>
+  <p><a href="https://www.usebutr.com">Website</a> · <a href="https://docs.usebutr.com">Docs</a> · <a href="https://demo.usebutr.com">Live demo</a> · <a href="https://www.npmjs.com/package/@usebutr/wallets">npm package page</a></p>
+  <p>
+    <a href="https://www.npmjs.com/package/@usebutr/react"><img alt="React package version" src="https://img.shields.io/npm/v/@usebutr/react?label=react"></a>
+    <a href="https://www.npmjs.com/package/@usebutr/wallets"><img alt="Wallets package version" src="https://img.shields.io/npm/v/@usebutr/wallets?label=wallets"></a>
+    <a href="https://github.com/pedroapfilho/usebutr/actions/workflows/test.yml"><img alt="Tests" src="https://github.com/pedroapfilho/usebutr/actions/workflows/test.yml/badge.svg"></a>
+    <a href="./LICENSE"><img alt="MIT license" src="https://img.shields.io/npm/l/@usebutr/react"></a>
+  </p>
 </div>
 
 butr is a multi-chain wallet management library for React. It discovers EVM, Solana, Sui, Bitcoin, and Polkadot wallets in the browser, manages their connections across the lifetime of an app, and exposes them through composable hooks, so a single component can talk to a MetaMask account, a Phantom Solana account, a Sui Wallet account, and an Xverse Bitcoin account in the same render pass.
@@ -21,7 +27,7 @@ The library is split across small focused packages so consumers bundle only what
 ## Quickstart
 
 ```bash
-pnpm add @usebutr/react @usebutr/wallets
+pnpm add @usebutr/react @usebutr/wallets zustand
 ```
 
 Mount the provider once. `autoDiscovery()` returns a discovery source that finds every EIP-6963 EVM wallet, every Wallet Standard SVM / Sui / Bitcoin wallet, and every `window.injectedWeb3` Polkadot extension (with a Wallet Standard `polkadot:*` fallback), plus injected legacy fallbacks for EVM (`window.ethereum`) and Bitcoin (`window.unisat`, `window.XverseProviders`, `window.btc`).
@@ -105,20 +111,20 @@ butr deliberately does **not** ship an RPC client, a connect-modal UI, key custo
 
 Twelve published packages, each with a single responsibility.
 
-| Package                           | Purpose                                                                                               | Install                                    |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `@usebutr/core`                   | Types, store, storage, and the `WalletSource` discovery seam. No React, no protocols.                 | `pnpm add @usebutr/core`                   |
-| `@usebutr/react`                  | React provider and hooks on top of `@usebutr/core`.                                                   | `pnpm add @usebutr/react`                  |
-| `@usebutr/evm`                    | EIP-1193 / EIP-6963 / injected wallet discovery and adapters.                                         | `pnpm add @usebutr/evm`                    |
-| `@usebutr/svm`                    | Wallet Standard adapter for Solana / SVM.                                                             | `pnpm add @usebutr/svm`                    |
-| `@usebutr/sui`                    | Wallet Standard adapter for Sui.                                                                      | `pnpm add @usebutr/sui`                    |
-| `@usebutr/bitcoin`                | Wallet Standard adapter for Bitcoin + injected fallback (sats-connect / Unisat / OKX / `window.btc`). | `pnpm add @usebutr/bitcoin`                |
-| `@usebutr/polkadot`               | Polkadot adapter: `window.injectedWeb3` discovery + Wallet Standard `polkadot:*` fallback.            | `pnpm add @usebutr/polkadot`               |
-| `@usebutr/wallet-standard-shared` | Shared Wallet Standard plumbing used by the SVM / Sui / Bitcoin / Polkadot adapters.                  | `pnpm add @usebutr/wallet-standard-shared` |
-| `@usebutr/wallets`                | Batteries-included composition: EVM + SVM + Sui + Bitcoin + Polkadot discovery + `autoDiscovery()`.   | `pnpm add @usebutr/wallets`                |
-| `@usebutr/walletconnect`          | WalletConnect v2 adapter for EVM / SVM / Sui / Bitcoin namespaces, single or multi-namespace.         | `pnpm add @usebutr/walletconnect`          |
-| `@usebutr/ledger`                 | Ledger hardware-wallet adapter for EVM / SVM / Sui / Bitcoin over WebUSB.                             | `pnpm add @usebutr/ledger`                 |
-| `@usebutr/testing`                | Fake adapters, fake persistence, mock storage for tests.                                              | `pnpm add -D @usebutr/testing`             |
+| Package                           | Purpose                                                                                               | Install                                                                               |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `@usebutr/core`                   | Types, store, storage, and the `WalletSource` discovery seam. No React, no protocols.                 | `pnpm add @usebutr/core zustand`                                                      |
+| `@usebutr/react`                  | React provider and hooks on top of `@usebutr/core`.                                                   | `pnpm add @usebutr/react zustand`                                                     |
+| `@usebutr/evm`                    | EIP-1193 / EIP-6963 / injected wallet discovery and adapters.                                         | `pnpm add @usebutr/evm zustand`                                                       |
+| `@usebutr/svm`                    | Wallet Standard adapter for Solana / SVM.                                                             | `pnpm add @usebutr/svm zustand @wallet-standard/app`                                  |
+| `@usebutr/sui`                    | Wallet Standard adapter for Sui.                                                                      | `pnpm add @usebutr/sui zustand @wallet-standard/app`                                  |
+| `@usebutr/bitcoin`                | Wallet Standard adapter for Bitcoin + injected fallback (sats-connect / Unisat / OKX / `window.btc`). | `pnpm add @usebutr/bitcoin zustand @wallet-standard/app`                              |
+| `@usebutr/polkadot`               | Polkadot adapter: `window.injectedWeb3` discovery + Wallet Standard `polkadot:*` fallback.            | `pnpm add @usebutr/polkadot zustand @wallet-standard/app`                             |
+| `@usebutr/wallet-standard-shared` | Shared Wallet Standard plumbing used by the SVM / Sui / Bitcoin / Polkadot adapters.                  | `pnpm add @usebutr/wallet-standard-shared zustand @wallet-standard/app`               |
+| `@usebutr/wallets`                | Batteries-included composition: EVM + SVM + Sui + Bitcoin + Polkadot discovery + `autoDiscovery()`.   | `pnpm add @usebutr/react @usebutr/wallets zustand`                                    |
+| `@usebutr/walletconnect`          | WalletConnect v2 adapter for EVM / SVM / Sui / Bitcoin namespaces, single or multi-namespace.         | `pnpm add @usebutr/walletconnect zustand @walletconnect/universal-provider`           |
+| `@usebutr/ledger`                 | Ledger hardware-wallet adapter for EVM / SVM / Sui / Bitcoin over WebUSB.                             | `pnpm add @usebutr/ledger zustand @ledgerhq/hw-app-eth @ledgerhq/hw-transport-webusb` |
+| `@usebutr/testing`                | Fake adapters, fake persistence, mock storage for tests.                                              | `pnpm add -D @usebutr/testing zustand`                                                |
 
 > Workspace-internal packages (`@repo/typescript-config`, `@repo/config-vitest`, `@repo/wallet-extensions`) back the monorepo's tooling and tests and are not published.
 
@@ -477,32 +483,32 @@ Two flavors of demo ship in this repo.
 
 Each one exercises every public hook in `@usebutr/react` against discovered wallets. Use them as the canonical example for the framework you're targeting.
 
-| App                   | Framework                       | Dev URL                 |
-| --------------------- | ------------------------------- | ----------------------- |
-| `demo-vite`           | Vite 7 + React 19 (SPA)         | `http://localhost:5173` |
-| `demo-next`           | Next.js 16 (App Router)         | `http://localhost:3000` |
-| `demo-tanstack-start` | TanStack Start (Vite SSR)       | `http://localhost:3001` |
-| `demo-expo-web`       | Expo (React Native, web target) | `http://localhost:8081` |
+| App                   | Framework                       | Dev URL                                         |
+| --------------------- | ------------------------------- | ----------------------------------------------- |
+| `demo-vite`           | Vite 7 + React 19 (SPA)         | `https://usebutr.demo-vite.localhost`           |
+| `demo-next`           | Next.js 16 (App Router)         | `https://usebutr.demo-next.localhost`           |
+| `demo-tanstack-start` | TanStack Start (Vite SSR)       | `https://usebutr.demo-tanstack-start.localhost` |
+| `demo-expo-web`       | Expo (React Native, web target) | `https://usebutr.demo-expo-web.localhost`       |
 
 ### Integration demos: butr + existing web3 libraries
 
 Each integration demo shows butr composing with a library you may already be using. butr handles wallet discovery and connection state; the integration library handles chain reads, signing, and submission. EVM/SVM/Sui demos cover **connect → read balance → sign message → send transaction**; the Bitcoin demo covers **connect → sign message → sign PSBT** (`bitcoinjs-lib` builds transactions but doesn't broadcast; pair it with an Esplora/Electrum client).
 
-| App                               | Library                               | Network                  | Dev URL                 |
-| --------------------------------- | ------------------------------------- | ------------------------ | ----------------------- |
-| `demo-with-viem`                  | viem                                  | EVM, Sepolia             | `http://localhost:5175` |
-| `demo-with-wagmi`                 | wagmi + `@wagmi/core`                 | EVM, Sepolia             | `http://localhost:5176` |
-| `demo-with-solana-web3js`         | `@solana/web3.js` (legacy v1)         | SVM, Devnet              | `http://localhost:5177` |
-| `demo-with-solana-wallet-adapter` | `@solana/wallet-adapter-react`        | SVM, Devnet              | `http://localhost:5178` |
-| `demo-with-solana-kit`            | `@solana/kit`                         | SVM, Devnet              | `http://localhost:5179` |
-| `demo-with-sui`                   | `@mysten/sui`                         | Sui, Testnet             | `http://localhost:5180` |
-| `demo-with-bitcoin`               | `bitcoinjs-lib`                       | Bitcoin                  | `http://localhost:5181` |
-| `demo-with-gill`                  | `gill`                                | SVM, Devnet              | `http://localhost:5182` |
-| `demo-with-solana-framework-kit`  | framework-kit (`@solana/react-hooks`) | SVM, Devnet              | `http://localhost:5183` |
-| `demo-wormhole-usdc`              | Wormhole SDK (CCTP USDC bridging)     | EVM Sepolia + SVM Devnet | `http://localhost:5184` |
-| `demo-with-polkadot`              | `polkadot-api` (PAPI)                 | Polkadot, Paseo          | `http://localhost:5185` |
+| App                               | Library                               | Network                  | Dev URL                                                     |
+| --------------------------------- | ------------------------------------- | ------------------------ | ----------------------------------------------------------- |
+| `demo-with-viem`                  | viem                                  | EVM, Sepolia             | `https://usebutr.demo-with-viem.localhost`                  |
+| `demo-with-wagmi`                 | wagmi + `@wagmi/core`                 | EVM, Sepolia             | `https://usebutr.demo-with-wagmi.localhost`                 |
+| `demo-with-solana-web3js`         | `@solana/web3.js` (legacy v1)         | SVM, Devnet              | `https://usebutr.demo-with-solana-web3js.localhost`         |
+| `demo-with-solana-wallet-adapter` | `@solana/wallet-adapter-react`        | SVM, Devnet              | `https://usebutr.demo-with-solana-wallet-adapter.localhost` |
+| `demo-with-solana-kit`            | `@solana/kit`                         | SVM, Devnet              | `https://usebutr.demo-with-solana-kit.localhost`            |
+| `demo-with-sui`                   | `@mysten/sui`                         | Sui, Testnet             | `https://usebutr.demo-with-sui.localhost`                   |
+| `demo-with-bitcoin`               | `bitcoinjs-lib`                       | Bitcoin                  | `https://usebutr.demo-with-bitcoin.localhost`               |
+| `demo-with-gill`                  | `gill`                                | SVM, Devnet              | `https://usebutr.demo-with-gill.localhost`                  |
+| `demo-with-solana-framework-kit`  | framework-kit (`@solana/react-hooks`) | SVM, Devnet              | `https://usebutr.demo-with-solana-framework-kit.localhost`  |
+| `demo-wormhole-usdc`              | Wormhole SDK (CCTP USDC bridging)     | EVM Sepolia + SVM Devnet | `https://usebutr.demo-wormhole-usdc.localhost`              |
+| `demo-with-polkadot`              | `polkadot-api` (PAPI)                 | Polkadot, Paseo          | `https://usebutr.demo-with-polkadot.localhost`              |
 
-All web demos bind distinct ports so they can run concurrently.
+Portless assigns each web demo a stable URL. Worktrees add a branch prefix; use the URL printed by `pnpm dev`. React examples require React 18+ in the consuming app.
 
 ## Stack
 
@@ -516,7 +522,8 @@ All web demos bind distinct ports so they can run concurrently.
 ### Prerequisites
 
 - **Node.js 24** (`nvm install 24 && nvm use 24`)
-- **pnpm 10** (`npm install -g pnpm@10`)
+- **pnpm 11.13.1** (via Corepack; see [CONTRIBUTING](./CONTRIBUTING.md))
+- **Portless** (`npm install -g portless && portless trust`)
 
 ### 1. Install dependencies
 
@@ -524,7 +531,13 @@ All web demos bind distinct ports so they can run concurrently.
 pnpm install
 ```
 
-### 2. Run a demo
+### 2. Build packages once
+
+```bash
+pnpm build --filter="./packages/*"
+```
+
+### 3. Run a demo
 
 ```bash
 pnpm dev --filter=demo-vite
@@ -537,7 +550,7 @@ pnpm dev --filter=demo-vite
 #   demo-with-polkadot, demo-wormhole-usdc
 ```
 
-Open the URL from the table above. Distinct ports let every demo run side by side.
+Open the URL printed by Portless. The root dev wrapper forwards filters to Turbo and builds workspace dependencies. Direct `pnpm --filter=<app> dev` commands bypass that wrapper, so build packages first.
 
 ## Scripts
 
@@ -553,6 +566,12 @@ Open the URL from the table above. Distinct ports let every demo run side by sid
 | `pnpm clean`        | Clean all build artifacts.                 |
 | `pnpm fallow:dead`  | Find unused exports.                       |
 
-## Contributing & docs
+## Contributing
 
 Docs live in [`apps/docs`](./apps/docs) and are published at [`docs.usebutr.com`](https://docs.usebutr.com). Releases go out via Changesets: run `pnpm changeset` alongside any package change and follow the prompts.
+
+See [CONTRIBUTING](./CONTRIBUTING.md), [SECURITY](./SECURITY.md), and the [Code of Conduct](./CODE_OF_CONDUCT.md).
+
+## License
+
+[MIT](./LICENSE), copyright 2026 Pedro Filho.

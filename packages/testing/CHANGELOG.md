@@ -1,5 +1,16 @@
 # @usebutr/testing
 
+## 1.0.0
+
+### Major Changes
+
+- [#179](https://github.com/pedroapfilho/usebutr/pull/179) [`bc5b58c`](https://github.com/pedroapfilho/usebutr/commit/bc5b58cd87601be38dbb77a14e16eaaa36e8f012) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - Promote to 1.0.0 for the public launch. No API changes in this promotion; the bump marks the hook and adapter surface as stable under semver. Include package documentation, licensing, and npm metadata.
+
+### Patch Changes
+
+- Updated dependencies [[`bc5b58c`](https://github.com/pedroapfilho/usebutr/commit/bc5b58cd87601be38dbb77a14e16eaaa36e8f012)]:
+  - @usebutr/core@2.0.1
+
 ## 0.3.0
 
 ### Minor Changes

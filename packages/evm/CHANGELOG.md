@@ -1,5 +1,13 @@
 # @usebutr/evm
 
+## 1.1.1
+
+### Patch Changes
+
+- [#179](https://github.com/pedroapfilho/usebutr/pull/179) [`bc5b58c`](https://github.com/pedroapfilho/usebutr/commit/bc5b58cd87601be38dbb77a14e16eaaa36e8f012) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - Include package READMEs, MIT licenses, and documentation and issue links on npm.
+- Updated dependencies [[`bc5b58c`](https://github.com/pedroapfilho/usebutr/commit/bc5b58cd87601be38dbb77a14e16eaaa36e8f012)]:
+  - @usebutr/core@2.0.1
+
 ## 1.1.0
 
 ### Minor Changes

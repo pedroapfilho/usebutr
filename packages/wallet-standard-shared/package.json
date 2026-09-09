@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/wallet-standard-shared",
-  "version": "0.5.1",
+  "version": "1.0.0",
   "description": "Shared Wallet Standard discovery primitives used by @usebutr/svm, @usebutr/sui, @usebutr/bitcoin.",
   "keywords": [
     "butr",

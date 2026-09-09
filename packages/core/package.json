@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/core",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Core types, store, storage, and discovery seam for butr. No React, no protocols.",
   "keywords": [
     "butr",

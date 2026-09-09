@@ -1,5 +1,22 @@
 # @usebutr/wallets
 
+## 1.2.0
+
+### Minor Changes
+
+- [#179](https://github.com/pedroapfilho/usebutr/pull/179) [`bc5b58c`](https://github.com/pedroapfilho/usebutr/commit/bc5b58cd87601be38dbb77a14e16eaaa36e8f012) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - autoDiscovery() now installs @wallet-standard/app so Solana, Sui, Bitcoin Wallet Standard discovery and the Polkadot Wallet Standard fallback work out of the box.
+
+### Patch Changes
+
+- Updated dependencies [[`bc5b58c`](https://github.com/pedroapfilho/usebutr/commit/bc5b58cd87601be38dbb77a14e16eaaa36e8f012), [`bc5b58c`](https://github.com/pedroapfilho/usebutr/commit/bc5b58cd87601be38dbb77a14e16eaaa36e8f012)]:
+  - @usebutr/react@1.0.0
+  - @usebutr/core@2.0.1
+  - @usebutr/evm@1.1.1
+  - @usebutr/bitcoin@1.1.2
+  - @usebutr/polkadot@1.1.2
+  - @usebutr/sui@2.0.2
+  - @usebutr/svm@2.0.2
+
 ## 1.1.2
 
 ### Patch Changes

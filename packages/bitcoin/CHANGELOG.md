@@ -1,5 +1,13 @@
 # @usebutr/bitcoin
 
+## 1.1.2
+
+### Patch Changes
+
+- Updated dependencies [[`bc5b58c`](https://github.com/pedroapfilho/usebutr/commit/bc5b58cd87601be38dbb77a14e16eaaa36e8f012), [`bc5b58c`](https://github.com/pedroapfilho/usebutr/commit/bc5b58cd87601be38dbb77a14e16eaaa36e8f012)]:
+  - @usebutr/wallet-standard-shared@1.0.0
+  - @usebutr/core@2.0.1
+
 ## 1.1.1
 
 ### Patch Changes

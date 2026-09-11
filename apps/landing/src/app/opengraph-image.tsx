@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
 const logo = await readFile(join(process.cwd(), "public/butr-logo-light.svg"), "base64");
-const alt = "butr — multi-chain wallet management for React";
+const alt = "butr: multi-chain wallet management for React";
 const size = { height: 630, width: 1200 };
 const contentType = "image/png";
 

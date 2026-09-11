@@ -55,7 +55,7 @@ jobs:
         run: |
           set -euo pipefail
           for dir in $DIRS; do
-            (cd "$dir" && pnpm exec publint --strict)
+            (cd "$dir" && pnpm dlx publint --strict)
           done
       - name: are-the-types-wrong
         env:
@@ -63,5 +63,5 @@ jobs:
         run: |
           set -euo pipefail
           for dir in $DIRS; do
-            (cd "$dir" && pnpm exec attw --pack --profile esm-only)
+            (cd "$dir" && pnpm dlx @arethetypeswrong/cli --pack --profile esm-only)
           done

@@ -24,7 +24,6 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "0.18.5",
     "@changesets/changelog-github": "^1.0.1",
     "@changesets/cli": "^3.0.0",
     "@playwright/test": "^1.62.1",
@@ -36,7 +35,6 @@
     "oxlint-config-awesomeness": "^4.5.0",
     "oxlint-plugin-react-doctor": "^0.9.13",
     "oxlint-tsgolint": "^7.0.2001",
-    "publint": "0.3.24",
     "tsdown": "^0.22.14",
     "turbo": "^2.10.12",
     "zod-compiler": "^1.27.0"

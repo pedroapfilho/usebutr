@@ -56,7 +56,7 @@
     "@repo/typescript-config": "workspace:*",
     "@wallet-standard/app": "^1.1.1",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
     "@wallet-standard/app": "^1.1.0"

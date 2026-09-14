@@ -1,7 +1,10 @@
 "use client";
+import type { VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import { cn } from "../../lib/cn";
+
+import { buttonVariants } from "./button";
 
 type PopoverContextValue = {
   popoverId: string;
@@ -16,9 +19,17 @@ const Popover = ({ children }: { children: React.ReactNode }) => {
   return <PopoverContext value={contextValue}>{children}</PopoverContext>;
 };
 
-type PopoverTriggerProps = React.ComponentPropsWithRef<"button">;
+type PopoverTriggerProps = React.ComponentPropsWithRef<"button"> &
+  VariantProps<typeof buttonVariants>;
 
-const PopoverTrigger = ({ children, className, ref, ...props }: PopoverTriggerProps) => {
+const PopoverTrigger = ({
+  children,
+  className,
+  color,
+  ref,
+  size,
+  ...props
+}: PopoverTriggerProps) => {
   const ctx = React.use(PopoverContext);
   if (!ctx) {
     throw new Error("PopoverTrigger must be used inside Popover");
@@ -28,7 +39,11 @@ const PopoverTrigger = ({ children, className, ref, ...props }: PopoverTriggerPr
       ref={ref}
       type="button"
       {...props}
-      className={cn("[anchor-name:--fd-popover-anchor]", className)}
+      className={cn(
+        (color ?? size) && buttonVariants({ color, size }),
+        "[anchor-name:--fd-popover-anchor]",
+        className,
+      )}
       popoverTarget={ctx.popoverId}
     >
       {children}

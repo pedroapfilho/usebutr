@@ -4,7 +4,15 @@ import awesomeness from "oxlint-config-awesomeness";
 export default defineConfig({
   extends: [awesomeness],
   ignorePatterns: ["apps/demo-with-polkadot/.papi/**"],
+  jsPlugins: ["@shadcn/lint"],
   overrides: [
+    {
+      files: ["apps/docs/components/ui/**"],
+      rules: {
+        "shadcn/no-restyle": "off",
+        "shadcn/require-static-classes": "off",
+      },
+    },
     {
       files: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
       rules: {
@@ -76,4 +84,20 @@ export default defineConfig({
       },
     },
   ],
+  rules: {
+    "shadcn/no-restyle": [
+      "error",
+      {
+        allow: ["layout"],
+        contracts: [
+          {
+            allow: ["layout", "gap-*"],
+            pattern: "^PopoverTrigger$",
+          },
+        ],
+      },
+    ],
+    "shadcn/no-unknown-classes": "error",
+    "shadcn/require-static-classes": "error",
+  },
 });

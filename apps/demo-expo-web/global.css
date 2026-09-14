@@ -1,0 +1,378 @@
+@import "tailwindcss";
+@import "uniwind";
+
+.native-account-address {
+  color: #404040;
+  flex: 1;
+  font-family: "Menlo";
+  font-size: 12px;
+}
+
+.native-account-address-active {
+  color: #047857;
+  flex: 1;
+  font-family: "Menlo";
+  font-size: 12px;
+}
+
+.native-account-list {
+  flex: 1;
+  gap: 4px;
+}
+
+.native-account-row {
+  align-items: center;
+  border-color: #e5e5e5;
+  border-radius: 6px;
+  border-width: 1px;
+  flex-direction: row;
+  gap: 8px;
+  justify-content: space-between;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.native-account-row-actions {
+  align-items: center;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.native-account-row-current {
+  background-color: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.native-action-row {
+  flex-direction: row;
+  gap: 8px;
+}
+
+.native-active-badge {
+  background-color: #d1fae5;
+  border-radius: 999px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.native-active-badge-text {
+  color: #047857;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.native-active-card {
+  background-color: #ffffff;
+  border-color: #e5e5e5;
+  border-radius: 8px;
+  border-width: 1px;
+  gap: 12px;
+  padding: 20px;
+}
+
+.native-active-header {
+  align-items: flex-start;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.native-active-icon {
+  border-radius: 4px;
+  height: 32px;
+  width: 32px;
+}
+
+.native-active-name {
+  color: #171717;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.native-body-small {
+  color: #525252;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.native-brand-platform-list {
+  flex-direction: row;
+  gap: 8px;
+}
+
+.native-chain-chip {
+  border-color: #d4d4d4;
+  border-radius: 6px;
+  border-width: 1px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.native-chain-chip-current {
+  background-color: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.native-chain-chip-text {
+  color: #404040;
+  font-size: 12px;
+}
+
+.native-chain-chip-text-current {
+  color: #047857;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.native-chain-list {
+  flex: 1;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.native-container {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 672px;
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-top: 40px;
+  padding-bottom: 40px;
+  width: 100%;
+}
+
+.native-count-pill {
+  background-color: #f5f5f5;
+  border-radius: 999px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.native-count-pill-text {
+  color: #737373;
+  font-family: "Menlo";
+  font-size: 12px;
+}
+
+.native-dd {
+  color: #171717;
+  flex: 1;
+  font-family: "Menlo";
+  font-size: 12px;
+}
+
+.native-dl-row {
+  flex-direction: row;
+}
+
+.native-dt {
+  color: #737373;
+  font-size: 14px;
+  width: 112px;
+}
+
+.native-empty-card {
+  background-color: #fafafa;
+  border-color: #e5e5e5;
+  border-radius: 8px;
+  border-width: 1px;
+  padding: 24px;
+}
+
+.native-error-box {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  border-radius: 6px;
+  border-width: 1px;
+  padding: 12px;
+}
+
+.native-error-text {
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+.native-group-header {
+  align-items: center;
+  flex-direction: row;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.native-group-heading {
+  color: #404040;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.native-h1 {
+  color: #171717;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.native-h2 {
+  color: #171717;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.native-header {
+  margin-bottom: 32px;
+}
+
+.native-lede {
+  color: #737373;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.native-muted {
+  color: #737373;
+  font-size: 12px;
+}
+
+.native-outline-button {
+  align-self: flex-start;
+  border-color: #d4d4d4;
+  border-radius: 6px;
+  border-width: 1px;
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.native-outline-button-text {
+  color: #404040;
+  font-size: 14px;
+}
+
+.native-platform-chip {
+  border-color: #d4d4d4;
+  border-radius: 6px;
+  border-width: 1px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.native-platform-chip-text {
+  color: #404040;
+  font-family: "Menlo";
+  font-size: 12px;
+}
+
+.native-root {
+  background-color: #ffffff;
+  flex: 1;
+}
+
+.native-sign-button {
+  background-color: #ffffff;
+  border-color: #d4d4d4;
+  border-radius: 4px;
+  border-width: 1px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.native-sign-button-text {
+  color: #404040;
+  font-size: 12px;
+}
+
+.native-sign-error {
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.native-sign-ok {
+  color: #047857;
+  font-size: 12px;
+}
+
+.native-stack {
+  gap: 24px;
+}
+
+.native-stack-small {
+  gap: 8px;
+}
+
+.native-status-label {
+  color: #525252;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.native-status-pill {
+  background-color: #f5f5f5;
+  border-radius: 999px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.native-status-pill-text {
+  color: #525252;
+  font-family: "Menlo";
+  font-size: 12px;
+}
+
+.native-status-row {
+  align-items: center;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.native-title-row {
+  align-items: center;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.native-wallet-icon {
+  border-radius: 4px;
+  height: 24px;
+  width: 24px;
+}
+
+.native-wallet-name {
+  color: #171717;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.native-wallet-row {
+  align-items: center;
+  background-color: #ffffff;
+  border-color: #e5e5e5;
+  border-radius: 8px;
+  border-width: 1px;
+  flex-direction: row;
+  justify-content: space-between;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.native-wallet-row-left {
+  align-items: center;
+  flex-direction: row;
+  gap: 12px;
+}

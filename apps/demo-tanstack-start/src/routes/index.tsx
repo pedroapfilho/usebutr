@@ -22,7 +22,7 @@ const Content = () => {
       {error ? (
         <p
           aria-live="assertive"
-          className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+          className="border-danger-border bg-danger-surface text-danger-foreground rounded-md border p-3 text-sm"
           role="alert"
         >
           {error.kind}: {error.message}
@@ -40,10 +40,10 @@ const Home = () => (
     >
       Skip to content
     </a>
-    <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900" id="main">
+    <main className="text-foreground-primary mx-auto max-w-2xl px-6 py-10 font-sans" id="main">
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">butr · TanStack Start</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="text-foreground-muted mt-1 text-sm">
           EVM-only manual wiring under SSR with <code>@usebutr/react</code> +{" "}
           <code>@usebutr/evm</code>. Discovery via EIP-6963; no SVM in the bundle.
         </p>

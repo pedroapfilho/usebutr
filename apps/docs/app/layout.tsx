@@ -28,8 +28,7 @@ const RootLayout = ({ children }: { children: ReactNode }) => (
       {/* Scroll-driven reading progress bar; hidden when user prefers reduced motion via CSS */}
       <div
         aria-hidden="true"
-        className="reading-progress-bar fixed top-0 left-0 z-50 h-0.5 bg-[--primary] [animation-range:0%_100%]"
-        style={{ width: "0%" }}
+        className="reading-progress-bar reading-progress-range fixed top-0 left-0 z-50 h-0.5 w-0 bg-(--primary)"
       />
       {/* oxlint-disable-next-line typescript/no-deprecated -- fumadocs static-search `type` option; migration to the re-created dialog is tracked upstream */}
       <RootProvider search={{ options: { type: "static" } }}>{children}</RootProvider>

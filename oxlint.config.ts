@@ -3,7 +3,7 @@ import awesomeness from "oxlint-config-awesomeness";
 
 export default defineConfig({
   extends: [awesomeness],
-  ignorePatterns: ["apps/demo-with-polkadot/.papi/**"],
+  ignorePatterns: ["apps/demo-expo-web/src/uniwind-types.d.ts", "apps/demo-with-polkadot/.papi/**"],
   jsPlugins: ["@shadcn/lint"],
   overrides: [
     {
@@ -85,6 +85,9 @@ export default defineConfig({
     },
   ],
   rules: {
+    "shadcn/no-arbitrary-values": "error",
+    "shadcn/no-inline-styles": "error",
+    "shadcn/no-raw-colors": "error",
     "shadcn/no-restyle": [
       "error",
       {

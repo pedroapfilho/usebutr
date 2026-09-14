@@ -1,9 +1,9 @@
 const StatusBar = ({ status }: { status: string }) => (
-  <div className="flex items-center gap-2 text-sm text-neutral-600">
+  <div className="text-foreground-subtle flex items-center gap-2 text-sm">
     <span className="font-medium">Status:</span>
     <output
       aria-live="polite"
-      className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-xs"
+      className="bg-surface-muted rounded-full px-2 py-0.5 font-mono text-xs"
     >
       {status}
     </output>

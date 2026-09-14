@@ -64,7 +64,7 @@ const SiteFooter = () => {
           >
             <BrandLogo />
           </Link>
-          <p className="text-muted-foreground mt-4 max-w-[56ch] text-base text-pretty sm:max-w-[36ch] sm:text-sm">
+          <p className="text-muted-foreground max-w-measure-56 sm:max-w-measure-36 mt-4 text-base text-pretty sm:text-sm">
             Multi-chain wallet discovery and connection state for React.
           </p>
         </div>

@@ -31,7 +31,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-5">
+    <div className="border-border-default space-y-3 rounded-lg border bg-white p-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {wallet.connector.icon !== undefined && wallet.connector.icon !== "" ? (
@@ -41,18 +41,18 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
             <div className="flex items-center gap-2">
               <h3 className="font-semibold">{wallet.connector.name}</h3>
               {isActive ? (
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                <span className="bg-success-surface-hover text-success-foreground rounded-full px-2 py-0.5 text-xs font-medium">
                   active
                 </span>
               ) : null}
             </div>
-            <p className="text-xs text-neutral-500">{wallet.account.chain.name}</p>
+            <p className="text-foreground-muted text-xs">{wallet.account.chain.name}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {isActive ? null : (
             <button
-              className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+              className="border-border-strong hover:bg-surface-subtle rounded-md border px-3 py-1.5 text-sm"
               onClick={() => {
                 setActive(wallet.connector.id);
               }}
@@ -62,7 +62,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
             </button>
           )}
           <button
-            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+            className="border-border-strong hover:bg-surface-subtle rounded-md border px-3 py-1.5 text-sm"
             onClick={() => {
               disconnect(wallet.connector.id);
             }}
@@ -72,16 +72,16 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
           </button>
         </div>
       </div>
-      <dl className="grid grid-cols-[120px_1fr] gap-y-1.5 text-sm">
-        <dt className="text-neutral-500">Address</dt>
+      <dl className="grid-cols-wallet-detail grid gap-y-1.5 text-sm">
+        <dt className="text-foreground-muted">Address</dt>
         <dd>
           <AccountList wallet={wallet} />
         </dd>
-        <dt className="text-neutral-500">Balance</dt>
+        <dt className="text-foreground-muted">Balance</dt>
         <dd className="font-mono text-xs">{balanceText}</dd>
         {capabilities.switchChain ? (
           <>
-            <dt className="text-neutral-500">Chain</dt>
+            <dt className="text-foreground-muted">Chain</dt>
             <dd>
               <ChainPicker wallet={wallet} />
             </dd>
@@ -90,7 +90,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
       </dl>
       {capabilities.requestAccounts ? (
         <button
-          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+          className="border-border-strong hover:bg-surface-subtle rounded-md border px-3 py-1.5 text-sm"
           onClick={() => {
             void requestAccounts(wallet.connector.id);
           }}
@@ -107,7 +107,7 @@ const ConnectedList = ({ wallets }: { wallets: ReadonlyArray<ConnectedWallet> })
   <section>
     <h2 className="mb-3 flex items-center gap-2 font-semibold">
       Connected
-      <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-xs text-neutral-500">
+      <span className="bg-surface-muted text-foreground-muted rounded-full px-2 py-0.5 font-mono text-xs">
         {wallets.length}
       </span>
     </h2>

@@ -32,7 +32,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
         Chain
       </label>
       <select
-        className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-base"
+        className="border-border-strong w-full rounded-md border bg-white px-2 py-1 text-base"
         id={selectId}
         onChange={(event) => {
           void handleChange(event);
@@ -49,7 +49,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
         ))}
       </select>
       {switchError === null ? null : (
-        <p className="mt-1 text-xs text-red-600" role="alert">
+        <p className="text-danger-accent mt-1 text-xs" role="alert">
           {switchError}
         </p>
       )}

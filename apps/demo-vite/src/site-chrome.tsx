@@ -18,7 +18,7 @@ const GitHubIcon = () => (
 );
 
 const SiteHeader = () => (
-  <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white/80 backdrop-blur-md">
+  <header className="border-border-default sticky top-0 z-50 border-b bg-white/80 backdrop-blur-md">
     <div className="mx-auto flex h-16 max-w-2xl items-center justify-between px-6">
       <a aria-label="butr homepage" className="flex items-center gap-2 rounded-sm" href={WEB_URL}>
         <BrandLogo className="h-5" />
@@ -28,14 +28,14 @@ const SiteHeader = () => (
       </a>
       <nav aria-label="Primary" className="flex items-center gap-1">
         <a
-          className="rounded-md px-3 py-1.5 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900"
+          className="text-foreground-subtle hover:text-foreground-primary rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
           href={DOCS_URL}
         >
           Docs
         </a>
         <a
           aria-label="butr on GitHub"
-          className="relative inline-flex size-9 items-center justify-center rounded-md text-neutral-600 transition-colors hover:text-neutral-900"
+          className="text-foreground-subtle hover:text-foreground-primary relative inline-flex size-9 items-center justify-center rounded-md transition-colors"
           href={GITHUB_URL}
           rel="noopener noreferrer"
           target="_blank"
@@ -43,7 +43,7 @@ const SiteHeader = () => (
           <GitHubIcon />
           <span
             aria-hidden="true"
-            className="absolute top-1/2 left-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden"
+            className="size-touch-target absolute top-1/2 left-1/2 -translate-1/2 pointer-fine:hidden"
           />
         </a>
       </nav>
@@ -61,14 +61,14 @@ const SiteFooter = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="mt-16 border-t border-neutral-200">
-      <div className="mx-auto flex max-w-2xl flex-col gap-3 px-6 py-8 text-sm text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
+    <footer className="border-border-default mt-16 border-t">
+      <div className="text-foreground-muted mx-auto flex max-w-2xl flex-col gap-3 px-6 py-8 text-sm sm:flex-row sm:items-center sm:justify-between">
         <p>© {currentYear} butr</p>
         <ul className="flex items-center gap-5">
           {FOOTER_LINKS.map((link) => (
             <li key={link.label}>
               <a
-                className="font-normal text-neutral-600 transition-colors hover:text-neutral-900"
+                className="text-foreground-subtle hover:text-foreground-primary font-normal transition-colors"
                 href={link.href}
                 rel="noopener noreferrer"
                 target="_blank"

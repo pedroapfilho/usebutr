@@ -28,7 +28,7 @@ const RootLayout = async ({ children }: { children: ReactNode }) => {
   const initialState = readWalletSnapshot(initialCookies, { keyPrefix: STORAGE_KEY_PREFIX });
 
   return (
-    <html lang="en" style={{ colorScheme: "light" }}>
+    <html className="scheme-light" lang="en">
       <body className={geist.className}>
         <WalletProvider initialCookies={initialCookies} initialState={initialState}>
           {children}

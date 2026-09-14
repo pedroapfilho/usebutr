@@ -22,7 +22,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.63.0",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",

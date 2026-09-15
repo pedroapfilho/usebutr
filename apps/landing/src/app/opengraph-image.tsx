@@ -1,10 +1,8 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-
 import { svgText } from "@repo/social-image";
 import { ImageResponse } from "next/og";
 
-const logo = await readFile(join(process.cwd(), "public/butr-logo-light.svg"), "base64");
+import { brandPaths } from "@/lib/brand-paths";
+
 const alt = "butr: multi-chain wallet management for React";
 const size = { height: 630, width: 1200 };
 const contentType = "image/png";
@@ -13,7 +11,7 @@ const Image = () =>
   new ImageResponse(
     <svg height={630} viewBox="0 0 1200 630" width={1200}>
       <rect fill={COLORS.paper} height={630} width={1200} />
-      <image height={100} href={`data:image/svg+xml;base64,${logo}`} width={400} x={72} y={153} />
+      <g transform="translate(109.06 153) scale(0.39)">{brandPaths(true)}</g>
       <rect fill={COLORS.accent} height={6} width={96} x={72} y={293} />
       {svgText("Multi-chain wallet management for React", {
         color: COLORS.ink,

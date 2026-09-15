@@ -7,13 +7,6 @@ export default defineConfig({
   jsPlugins: ["@shadcn/lint"],
   overrides: [
     {
-      files: ["apps/docs/components/ui/**"],
-      rules: {
-        "shadcn/no-restyle": "off",
-        "shadcn/require-static-classes": "off",
-      },
-    },
-    {
       files: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
       rules: {
         "new-cap": [

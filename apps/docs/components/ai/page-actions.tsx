@@ -229,14 +229,9 @@ const ViewOptionsPopover = ({
     <Popover>
       <PopoverTrigger
         {...props}
-        className={cn(
-          buttonVariants({
-            color: "secondary",
-            size: "sm",
-          }),
-          "gap-2",
-          props.className,
-        )}
+        className={cn("gap-2", props.className)}
+        color="secondary"
+        size="sm"
       >
         {props.children ?? "Open"}
         <ChevronDown className="text-fd-muted-foreground size-3.5" />

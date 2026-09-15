@@ -26,3 +26,56 @@
     outline-offset: 2px;
   }
 }
+
+@utility size-touch-target {
+  width: max(100%, 3rem);
+  height: max(100%, 3rem);
+}
+
+@utility grid-cols-wallet-detail {
+  grid-template-columns: 120px 1fr;
+}
+
+@utility transition-filter {
+  transition-property: filter;
+  transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+  transition-duration: var(--tw-duration, var(--default-transition-duration));
+}
+
+@theme {
+  --container-measure-24: 24ch;
+}
+
+@theme {
+  --container-measure-60: 60ch;
+}
+
+@theme inline {
+  --color-border-default: var(--color-neutral-200);
+  --color-border-faint: var(--color-neutral-100);
+  --color-border-strong: var(--color-neutral-300);
+  --color-danger-border: var(--color-red-200);
+  --color-danger-foreground: var(--color-red-700);
+  --color-danger-surface: var(--color-red-50);
+  --color-divider: var(--color-neutral-100);
+  --color-foreground-disabled: var(--color-neutral-400);
+  --color-foreground-muted: var(--color-neutral-500);
+  --color-foreground-primary: var(--color-neutral-900);
+  --color-foreground-secondary: var(--color-neutral-700);
+  --color-foreground-subtle: var(--color-neutral-600);
+  --color-info-accent: var(--color-blue-600);
+  --color-success-border: var(--color-emerald-200);
+  --color-success-foreground: var(--color-emerald-700);
+  --color-success-foreground-deep: var(--color-emerald-900);
+  --color-success-surface: var(--color-emerald-50);
+  --color-success-surface-hover: var(--color-emerald-100);
+  --color-surface-muted: var(--color-neutral-100);
+  --color-surface-subtle: var(--color-neutral-50);
+}
+
+@theme {
+  --color-brand-light: #fdd754;
+  --color-brand-gold: #f6ba48;
+  --color-brand-shadow: #eda134;
+  --color-brand-mid: #f2a337;
+}

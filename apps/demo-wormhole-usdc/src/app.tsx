@@ -55,7 +55,7 @@ const ChainSelect = ({
 }) => (
   <select
     aria-label={label}
-    className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-base text-neutral-700 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:outline-none disabled:opacity-50"
+    className="border-border-strong text-foreground-secondary focus-visible:border-info-indicator focus-visible:ring-info-indicator/30 rounded-md border bg-white px-2 py-1 text-base focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
     disabled={disabled}
     onChange={(event) => {
       const chain = CHAIN_LIST.find((spec) => spec.chain === event.target.value)?.chain;
@@ -86,9 +86,9 @@ const TokenIO = ({
   networkSlot: ReactNode;
   onAmountChange?: (next: string) => void;
 }) => (
-  <div className="rounded-lg border border-neutral-200 bg-white p-4">
+  <div className="border-border-default rounded-lg border bg-white p-4">
     <div className="flex items-center justify-between text-xs">
-      <span className="font-medium tracking-wide text-neutral-500 uppercase">
+      <span className="text-foreground-muted font-medium tracking-wide uppercase">
         {direction === "out" ? "You send" : "You receive"}
       </span>
       {networkSlot}
@@ -97,7 +97,7 @@ const TokenIO = ({
       {onAmountChange ? (
         <input
           aria-label="USDC amount to send"
-          className="w-full rounded-sm bg-transparent text-2xl font-semibold text-neutral-900 placeholder-neutral-300 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:outline-none"
+          className="text-foreground-primary placeholder-placeholder focus-visible:ring-info-indicator/30 w-full rounded-sm bg-transparent text-2xl font-semibold focus-visible:ring-2 focus-visible:outline-none"
           inputMode="decimal"
           onChange={(e) => {
             onAmountChange(e.target.value);
@@ -106,13 +106,13 @@ const TokenIO = ({
           value={amountValue ?? ""}
         />
       ) : (
-        <span className="text-2xl font-semibold text-neutral-900">
+        <span className="text-foreground-primary text-2xl font-semibold">
           {amountValue === undefined || amountValue === "" ? "0" : amountValue}
         </span>
       )}
-      <span className="text-base font-medium text-neutral-500">USDC</span>
+      <span className="text-foreground-muted text-base font-medium">USDC</span>
     </div>
-    <p className="mt-1 text-right font-mono text-xs text-neutral-500">Balance: {balance}</p>
+    <p className="text-foreground-muted mt-1 text-right font-mono text-xs">Balance: {balance}</p>
   </div>
 );
 
@@ -123,7 +123,7 @@ const TxLink = ({ hash, spec }: { hash: string; spec: ChainSpec }) => {
   return (
     <p>
       <a
-        className="font-mono text-xs break-all text-blue-600 hover:underline"
+        className="text-info-accent font-mono text-xs break-all hover:underline"
         href={spec.explorerTx(hash)}
         rel="noreferrer noopener"
         target="_blank"
@@ -148,7 +148,7 @@ const PhaseBody = ({
   }
   if (phase.kind === "initiating") {
     return (
-      <p className="text-sm text-neutral-600">
+      <p className="text-foreground-subtle text-sm">
         Burning USDC on {srcSpec.label} via CCTP. Approve in your wallet…
       </p>
     );
@@ -156,9 +156,9 @@ const PhaseBody = ({
   if (phase.kind === "waiting-attestation") {
     return (
       <div className="space-y-1 text-sm">
-        <p className="text-neutral-600">Waiting for Circle to attest the burn…</p>
+        <p className="text-foreground-subtle">Waiting for Circle to attest the burn…</p>
         <TxLink hash={phase.sourceTxHash} spec={srcSpec} />
-        <p className="text-xs text-neutral-500">
+        <p className="text-foreground-muted text-xs">
           Typically a few minutes, depending on source-chain finality.
         </p>
       </div>
@@ -167,7 +167,9 @@ const PhaseBody = ({
   if (phase.kind === "ready-to-redeem") {
     return (
       <div className="space-y-1 text-sm">
-        <p className="text-emerald-700">Attestation ready. Approve the mint on {dstSpec.label}.</p>
+        <p className="text-success-foreground">
+          Attestation ready. Approve the mint on {dstSpec.label}.
+        </p>
         <TxLink hash={phase.sourceTxHash} spec={srcSpec} />
       </div>
     );
@@ -175,14 +177,14 @@ const PhaseBody = ({
   if (phase.kind === "redeeming") {
     return (
       <div className="space-y-1 text-sm">
-        <p className="text-neutral-600">Minting native USDC on {dstSpec.label}…</p>
+        <p className="text-foreground-subtle">Minting native USDC on {dstSpec.label}…</p>
         <TxLink hash={phase.sourceTxHash} spec={srcSpec} />
       </div>
     );
   }
   return (
     <div className="space-y-1 text-sm">
-      <p className="text-emerald-700">Transfer complete.</p>
+      <p className="text-success-foreground">Transfer complete.</p>
       <TxLink hash={phase.sourceTxHash} spec={srcSpec} />
       <TxLink hash={phase.destTxHash} spec={dstSpec} />
     </div>
@@ -204,10 +206,13 @@ const StatusPanel = ({
     return null;
   }
   return (
-    <div aria-live="polite" className="space-y-2 rounded-lg border border-neutral-200 bg-white p-4">
+    <div
+      aria-live="polite"
+      className="border-border-default space-y-2 rounded-lg border bg-white p-4"
+    >
       <PhaseBody dstSpec={dstSpec} phase={phase} srcSpec={srcSpec} />
       {error === null ? null : (
-        <p className="text-sm text-red-700" role="alert">
+        <p className="text-danger-foreground text-sm" role="alert">
           {error}
         </p>
       )}
@@ -244,7 +249,7 @@ const TransferButtons = ({
   return (
     <>
       <button
-        className="w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+        className="bg-surface-inverse hover:bg-surface-raised-inverse w-full rounded-md px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
         disabled={!canSwap}
         onClick={() => {
           void onSwap();
@@ -255,7 +260,7 @@ const TransferButtons = ({
       </button>
 
       {missingWallet ? (
-        <p className="text-center text-xs text-amber-700">
+        <p className="text-warning-foreground text-center text-xs">
           Connect and activate a {missingWallet.toUpperCase()} wallet above to bridge between these
           chains.
         </p>
@@ -263,7 +268,7 @@ const TransferButtons = ({
 
       {canRetryAttestation ? (
         <button
-          className="w-full rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
+          className="border-warning-border-strong bg-warning-surface text-warning-foreground-deep hover:bg-warning-surface-hover w-full rounded-md border px-4 py-2 text-sm font-medium"
           onClick={() => {
             void onRetryAttestation();
           }}
@@ -275,7 +280,7 @@ const TransferButtons = ({
 
       {phase.kind === "ready-to-redeem" || phase.kind === "redeeming" ? (
         <button
-          className="w-full rounded-md border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+          className="border-success-border-strong bg-success-surface text-success-foreground-strong hover:bg-success-surface-hover w-full rounded-md border px-4 py-2 text-sm font-medium disabled:opacity-50"
           disabled={phase.kind === "redeeming"}
           onClick={() => {
             void onRedeem();
@@ -290,7 +295,7 @@ const TransferButtons = ({
 
       {phase.kind === "complete" ? (
         <button
-          className="w-full rounded-md border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
+          className="border-border-strong text-foreground-subtle hover:bg-surface-subtle w-full rounded-md border px-4 py-2 text-sm"
           onClick={onReset}
           type="button"
         >
@@ -435,10 +440,10 @@ const App = () => {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900">
+    <main className="text-foreground-primary mx-auto max-w-2xl px-6 py-10 font-sans">
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">butr · Wormhole USDC</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="text-foreground-muted mt-1 text-sm">
           Native USDC via Circle CCTP. Pick any two testnets, swap direction, manage multiple
           wallets.
         </p>
@@ -464,7 +469,7 @@ const App = () => {
         <div className="flex justify-center">
           <button
             aria-label="Swap source and destination"
-            className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-50 disabled:opacity-50"
+            className="border-border-default text-foreground-muted hover:bg-surface-subtle rounded-full border bg-white px-2 py-1 text-xs disabled:opacity-50"
             disabled={isTransferOpen}
             onClick={flip}
             type="button"
@@ -507,10 +512,10 @@ const App = () => {
 
         <StatusPanel dstSpec={dstSpec} error={transfer.error} phase={phase} srcSpec={srcSpec} />
 
-        <p className="text-center text-xs text-neutral-500">
+        <p className="text-foreground-muted text-center text-xs">
           Need testnet USDC?{" "}
           <a
-            className="text-blue-600 hover:underline"
+            className="text-info-accent hover:underline"
             href="https://faucet.circle.com/"
             rel="noreferrer noopener"
             target="_blank"

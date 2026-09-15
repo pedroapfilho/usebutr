@@ -89,6 +89,7 @@ minimumReleaseAgeExclude:
   - "@oxlint/plugins@1.79.0"
   - oxlint@1.79.0
   - cn@0.2.4
+  - "@shadcn/lint@0.1.0"
 
 onlyBuiltDependencies:
   - "@parcel/watcher"

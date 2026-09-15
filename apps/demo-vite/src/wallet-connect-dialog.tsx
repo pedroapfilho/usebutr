@@ -50,7 +50,7 @@ const WalletBrandRow = ({
             <button
               aria-busy={isConnecting}
               aria-label={`${brand.name} (${adapter.chainPlatform})`}
-              className="min-h-[44px] rounded-md border border-neutral-300 px-2 py-1 font-mono text-xs uppercase hover:bg-neutral-50 disabled:opacity-50"
+              className="border-border-strong hover:bg-surface-subtle min-h-11 rounded-md border px-2 py-1 font-mono text-xs uppercase disabled:opacity-50"
               disabled={isConnecting}
               key={adapter.id}
               onClick={() => {
@@ -104,23 +104,23 @@ const WalletConnectDialog = ({
     <dialog
       aria-label="Connect wallet"
       aria-modal="true"
-      className="m-auto w-full max-w-sm rounded-xl border border-neutral-200 bg-white p-0 shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm open:flex open:flex-col"
+      className="border-border-default m-auto w-full max-w-sm rounded-xl border bg-white p-0 shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm open:flex open:flex-col"
       onClick={handleBackdropClick}
       onClose={onClose}
       ref={dialogRef}
     >
-      <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
+      <div className="border-border-faint flex items-center justify-between border-b px-5 py-4">
         <h2 className="font-semibold">Connect a wallet</h2>
         <button
           aria-label="Close dialog"
-          className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+          className="text-foreground-disabled hover:bg-surface-muted hover:text-foreground-secondary rounded p-1"
           onClick={onClose}
           type="button"
         >
           ✕
         </button>
       </div>
-      <ul className="divide-y divide-neutral-100">
+      <ul className="divide-divider divide-y">
         {brands.map((brand) => (
           <li key={brand.name}>
             <div className="px-4 py-3">

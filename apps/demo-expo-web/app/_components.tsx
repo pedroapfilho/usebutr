@@ -13,11 +13,12 @@ import {
 } from "@usebutr/react";
 import type { UseBalanceResult } from "@usebutr/react";
 import { CHAINS_BY_PLATFORM } from "@usebutr/wallets";
-import { Image } from "expo-image";
+import { Image as ExpoImage } from "expo-image";
 import { useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
+import { withUniwind } from "uniwind";
 
-import { styles } from "./_styles";
+const Image = withUniwind(ExpoImage);
 
 type SignState =
   | { kind: "idle" }
@@ -86,27 +87,31 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
 
   let signStatusNode: React.ReactNode = null;
   if (state.kind === "ok") {
-    signStatusNode = <Text style={styles.signOk}>✓ signed</Text>;
+    signStatusNode = <Text className="native-sign-ok">✓ signed</Text>;
   } else if (state.kind === "error") {
-    signStatusNode = <Text style={styles.signError}>✗ failed</Text>;
+    signStatusNode = <Text className="native-sign-error">✗ failed</Text>;
   }
 
   return (
-    <View style={[styles.accountRow, isCurrent ? styles.accountRowCurrent : null]}>
-      <Text style={isCurrent ? styles.accountAddressActive : styles.accountAddress}>
+    <View
+      className={isCurrent ? "native-account-row native-account-row-current" : "native-account-row"}
+    >
+      <Text className={isCurrent ? "native-account-address-active" : "native-account-address"}>
         {account.walletAddress}
       </Text>
       {canSign ? (
-        <View style={styles.accountRowActions}>
+        <View className="native-account-row-actions">
           {signStatusNode}
           <Pressable
+            className="native-sign-button"
             disabled={state.kind === "signing"}
             onPress={() => {
               void handleSign();
             }}
-            style={styles.signButton}
           >
-            <Text style={styles.signButtonText}>{state.kind === "signing" ? "…" : "Sign"}</Text>
+            <Text className="native-sign-button-text">
+              {state.kind === "signing" ? "…" : "Sign"}
+            </Text>
           </Pressable>
         </View>
       ) : null}
@@ -115,11 +120,11 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
 };
 
 const AccountPicker = ({ wallet }: { wallet: ConnectedWallet }) => (
-  <View style={styles.accountList}>
+  <View className="native-account-list">
     {wallet.accounts.map((account) => (
       <AccountRow account={account} key={account.id} wallet={wallet} />
     ))}
-    <Text style={styles.muted}>
+    <Text className="native-muted">
       Active account is set in your wallet. Use Sign to test per-account signing.
     </Text>
   </View>
@@ -142,33 +147,37 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
   };
 
   return (
-    <View style={styles.chainList}>
+    <View className="native-chain-list">
       {chains.map((chain) => {
         const isCurrent = chain.id === wallet.account.chain.id;
         return (
           <Pressable
+            className={
+              isCurrent ? "native-chain-chip native-chain-chip-current" : "native-chain-chip"
+            }
             key={chain.id}
             onPress={() => {
               void handleSwitch(chain);
             }}
-            style={[styles.chainChip, isCurrent ? styles.chainChipCurrent : null]}
           >
-            <Text style={isCurrent ? styles.chainChipTextCurrent : styles.chainChipText}>
+            <Text
+              className={isCurrent ? "native-chain-chip-text-current" : "native-chain-chip-text"}
+            >
               {chain.name}
             </Text>
           </Pressable>
         );
       })}
-      {switchError === null ? null : <Text style={styles.signError}>{switchError}</Text>}
+      {switchError === null ? null : <Text className="native-sign-error">{switchError}</Text>}
     </View>
   );
 };
 
 const StatusBar = ({ status }: { status: string }) => (
-  <View style={styles.statusRow}>
-    <Text style={styles.statusLabel}>Status:</Text>
-    <View style={styles.statusPill}>
-      <Text style={styles.statusPillText}>{status}</Text>
+  <View className="native-status-row">
+    <Text className="native-status-label">Status:</Text>
+    <View className="native-status-pill">
+      <Text className="native-status-pill-text">{status}</Text>
     </View>
   </View>
 );
@@ -184,69 +193,69 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
   const balanceText = getBalanceText(balance);
 
   return (
-    <View style={styles.activeCard}>
-      <View style={styles.activeHeader}>
-        <View style={styles.walletRowLeft}>
+    <View className="native-active-card">
+      <View className="native-active-header">
+        <View className="native-wallet-row-left">
           {wallet.connector.icon !== undefined && wallet.connector.icon !== "" ? (
-            <Image source={{ uri: wallet.connector.icon }} style={styles.activeIcon} />
+            <Image className="native-active-icon" source={{ uri: wallet.connector.icon }} />
           ) : null}
           <View>
-            <View style={styles.titleRow}>
-              <Text style={styles.activeName}>{wallet.connector.name}</Text>
+            <View className="native-title-row">
+              <Text className="native-active-name">{wallet.connector.name}</Text>
               {isActive ? (
-                <View style={styles.activeBadge}>
-                  <Text style={styles.activeBadgeText}>active</Text>
+                <View className="native-active-badge">
+                  <Text className="native-active-badge-text">active</Text>
                 </View>
               ) : null}
             </View>
-            <Text style={styles.muted}>{wallet.account.chain.name}</Text>
+            <Text className="native-muted">{wallet.account.chain.name}</Text>
           </View>
         </View>
-        <View style={styles.actionRow}>
+        <View className="native-action-row">
           {isActive ? null : (
             <Pressable
+              className="native-outline-button"
               onPress={() => {
                 setActive(wallet.connector.id);
               }}
-              style={styles.outlineButton}
             >
-              <Text style={styles.outlineButtonText}>Make active</Text>
+              <Text className="native-outline-button-text">Make active</Text>
             </Pressable>
           )}
           <Pressable
+            className="native-outline-button"
             onPress={() => {
               disconnect(wallet.connector.id);
             }}
-            style={styles.outlineButton}
           >
-            <Text style={styles.outlineButtonText}>Disconnect</Text>
+            <Text className="native-outline-button-text">Disconnect</Text>
           </Pressable>
         </View>
       </View>
-      <View style={styles.dlRow}>
-        <Text style={styles.dt}>Address</Text>
+      <View className="native-dl-row">
+        <Text className="native-dt">Address</Text>
         <AccountPicker wallet={wallet} />
       </View>
-      <View style={styles.dlRow}>
-        <Text style={styles.dt}>Balance</Text>
-        <Text style={styles.dd}>{balanceText}</Text>
+      <View className="native-dl-row">
+        <Text className="native-dt">Balance</Text>
+        <Text className="native-dd">{balanceText}</Text>
       </View>
       {capabilities.switchChain ? (
-        <View style={styles.dlRow}>
-          <Text style={styles.dt}>Chain</Text>
-          <View style={styles.dd}>
+        <View className="native-dl-row">
+          <Text className="native-dt">Chain</Text>
+          <View className="native-dd">
             <ChainPicker wallet={wallet} />
           </View>
         </View>
       ) : null}
       {capabilities.requestAccounts ? (
         <Pressable
+          className="native-outline-button"
           onPress={() => {
             void requestAccounts(wallet.connector.id);
           }}
-          style={styles.outlineButton}
         >
-          <Text style={styles.outlineButtonText}>Request more accounts</Text>
+          <Text className="native-outline-button-text">Request more accounts</Text>
         </Pressable>
       ) : null}
     </View>
@@ -255,13 +264,13 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
 
 const ConnectedList = ({ wallets }: { wallets: ReadonlyArray<ConnectedWallet> }) => (
   <View>
-    <View style={styles.groupHeader}>
-      <Text style={styles.h2}>Connected</Text>
-      <View style={styles.countPill}>
-        <Text style={styles.countPillText}>{wallets.length}</Text>
+    <View className="native-group-header">
+      <Text className="native-h2">Connected</Text>
+      <View className="native-count-pill">
+        <Text className="native-count-pill-text">{wallets.length}</Text>
       </View>
     </View>
-    <View style={styles.stackSmall}>
+    <View className="native-stack-small">
       {wallets.map((wallet) => (
         <ConnectedWalletCard key={wallet.connector.id} wallet={wallet} />
       ))}
@@ -276,23 +285,23 @@ const WalletBrandRow = ({
   brand: WalletBrand;
   connect: (id: string) => void;
 }) => (
-  <View style={styles.walletRow}>
-    <View style={styles.walletRowLeft}>
+  <View className="native-wallet-row">
+    <View className="native-wallet-row-left">
       {brand.icon !== undefined && brand.icon !== "" ? (
-        <Image source={{ uri: brand.icon }} style={styles.walletIcon} />
+        <Image className="native-wallet-icon" source={{ uri: brand.icon }} />
       ) : null}
-      <Text style={styles.walletName}>{brand.name}</Text>
+      <Text className="native-wallet-name">{brand.name}</Text>
     </View>
-    <View style={styles.brandPlatformList}>
+    <View className="native-brand-platform-list">
       {brand.adapters.map((adapter) => (
         <Pressable
+          className="native-platform-chip"
           key={adapter.id}
           onPress={() => {
             connect(adapter.id);
           }}
-          style={styles.platformChip}
         >
-          <Text style={styles.platformChipText}>{adapter.chainPlatform.toUpperCase()}</Text>
+          <Text className="native-platform-chip-text">{adapter.chainPlatform.toUpperCase()}</Text>
         </Pressable>
       ))}
     </View>
@@ -310,19 +319,19 @@ const WalletPicker = ({
 
   if (available.length === 0 && !hasConnected) {
     return (
-      <View style={styles.emptyCard}>
-        <Text style={styles.h2}>No wallets detected</Text>
-        <Text style={styles.bodySmall}>
+      <View className="native-empty-card">
+        <Text className="native-h2">No wallets detected</Text>
+        <Text className="native-body-small">
           Wallet discovery on native requires WalletConnect or a chain-specific SDK. The web target
           discovers browser-extension wallets via EIP-6963 and the Solana Wallet Standard.
         </Text>
         <Pressable
+          className="native-outline-button"
           onPress={() => {
             void Linking.openURL("https://metamask.io/download");
           }}
-          style={styles.outlineButton}
         >
-          <Text style={styles.outlineButtonText}>Install MetaMask</Text>
+          <Text className="native-outline-button-text">Install MetaMask</Text>
         </Pressable>
       </View>
     );
@@ -335,8 +344,8 @@ const WalletPicker = ({
 
   return (
     <View>
-      <Text style={styles.h2}>{hasConnected ? "Connect another" : "Available wallets"}</Text>
-      <View style={[styles.stackSmall, { marginTop: 12 }]}>
+      <Text className="native-h2">{hasConnected ? "Connect another" : "Available wallets"}</Text>
+      <View className="native-stack-small mt-3">
         {brands.map((brand) => (
           <WalletBrandRow
             brand={brand}
@@ -360,13 +369,13 @@ const Content = () => {
   const available = discovered.filter((d) => !connected.some((c) => c.connector.id === d.id));
 
   return (
-    <View style={styles.stack}>
+    <View className="native-stack">
       <StatusBar status={status} />
       {connected.length > 0 ? <ConnectedList wallets={connected} /> : null}
       <WalletPicker available={available} hasConnected={connected.length > 0} />
       {connectionError ? (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>
+        <View className="native-error-box">
+          <Text className="native-error-text">
             {connectionError.kind}: {connectionError.message}
           </Text>
         </View>

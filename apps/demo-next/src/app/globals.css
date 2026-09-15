@@ -15,3 +15,28 @@
     outline-offset: 2px;
   }
 }
+
+@utility grid-cols-wallet-detail {
+  grid-template-columns: 120px 1fr;
+}
+
+@theme inline {
+  --color-border-default: var(--color-neutral-200);
+  --color-border-strong: var(--color-neutral-300);
+  --color-danger-accent: var(--color-red-600);
+  --color-danger-border: var(--color-red-200);
+  --color-danger-foreground: var(--color-red-700);
+  --color-danger-surface: var(--color-red-50);
+  --color-foreground-muted: var(--color-neutral-500);
+  --color-foreground-primary: var(--color-neutral-900);
+  --color-foreground-secondary: var(--color-neutral-700);
+  --color-foreground-subtle: var(--color-neutral-600);
+  --color-info-accent: var(--color-blue-600);
+  --color-success-border: var(--color-emerald-200);
+  --color-success-foreground: var(--color-emerald-700);
+  --color-success-foreground-deep: var(--color-emerald-900);
+  --color-success-surface: var(--color-emerald-50);
+  --color-success-surface-hover: var(--color-emerald-100);
+  --color-surface-muted: var(--color-neutral-100);
+  --color-surface-subtle: var(--color-neutral-50);
+}

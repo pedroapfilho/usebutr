@@ -131,3 +131,7 @@ This is a library + demo repo, with no Docker or Prisma. Vitest covers the libra
 - Orchestrator (shared standards across sibling repos): `~/dev/orchestrator`
 - Sibling library repo: `astro-awesomeness` (`~/dev/astro-theme-awesomeness`)
 - SaaS source of truth: `acme` (`~/dev/acme-monorepo`) — most SaaS-only patterns there do not apply here
+
+## Design-system linting
+
+Run `pnpm lint` after changes and fix every error. `oxlint.config.ts` registers `@shadcn/lint` and enforces all six rules as errors: component contracts, known Tailwind classes, static component class names, semantic colors, theme or scale values, and class-based styling. Use CSS custom properties for runtime geometry and named theme tokens for custom values. Use component variants for appearance and layout classes at call sites. All six rules also apply inside primitive directories. Shared styles belong to component variants or the owning stylesheet. Keep theme discovery local to each app. Exact class-merging fixture allowances apply only to the named test files.

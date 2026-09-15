@@ -26,8 +26,8 @@ const BrandMark = ({ className }: { className?: string }) => (
         y1="-.252"
         y2="255.051"
       >
-        <stop stopColor="#FDD754" />
-        <stop offset="1" stopColor="#F6BA48" />
+        <stop stopColor="var(--color-brand-light)" />
+        <stop offset="1" stopColor="var(--color-brand-gold)" />
       </linearGradient>
       <linearGradient
         gradientUnits="userSpaceOnUse"
@@ -37,8 +37,8 @@ const BrandMark = ({ className }: { className?: string }) => (
         y1="137.885"
         y2="255.36"
       >
-        <stop stopColor="#EDA134" />
-        <stop offset="1" stopColor="#F2A337" />
+        <stop stopColor="var(--color-brand-shadow)" />
+        <stop offset="1" stopColor="var(--color-brand-mid)" />
       </linearGradient>
     </defs>
   </svg>

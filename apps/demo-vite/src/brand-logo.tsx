@@ -5,7 +5,7 @@
 const BrandLogo = ({ className }: { className?: string }) => (
   <svg
     aria-hidden="true"
-    className={`h-6 w-auto text-neutral-900 ${className ?? ""}`}
+    className={`text-foreground-primary h-6 w-auto ${className ?? ""}`}
     fill="none"
     viewBox="0 0 831 255"
     xmlns="http://www.w3.org/2000/svg"
@@ -31,8 +31,8 @@ const BrandLogo = ({ className }: { className?: string }) => (
         y1="-.252"
         y2="255.051"
       >
-        <stop stopColor="#FDD754" />
-        <stop offset="1" stopColor="#F6BA48" />
+        <stop stopColor="var(--color-brand-light)" />
+        <stop offset="1" stopColor="var(--color-brand-gold)" />
       </linearGradient>
       <linearGradient
         gradientUnits="userSpaceOnUse"
@@ -42,8 +42,8 @@ const BrandLogo = ({ className }: { className?: string }) => (
         y1="137.885"
         y2="255.36"
       >
-        <stop stopColor="#EDA134" />
-        <stop offset="1" stopColor="#F2A337" />
+        <stop stopColor="var(--color-brand-shadow)" />
+        <stop offset="1" stopColor="var(--color-brand-mid)" />
       </linearGradient>
     </defs>
   </svg>

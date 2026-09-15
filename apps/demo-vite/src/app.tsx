@@ -50,10 +50,10 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
 
   let signIndicator: ReactNode = null;
   if (state.kind === "ok") {
-    signIndicator = <span className="text-xs text-emerald-700">✓ signed</span>;
+    signIndicator = <span className="text-success-foreground text-xs">✓ signed</span>;
   } else if (state.kind === "error") {
     signIndicator = (
-      <span className="text-xs text-red-700" title={state.message}>
+      <span className="text-danger-foreground text-xs" title={state.message}>
         ✗ failed
       </span>
     );
@@ -63,8 +63,8 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
     <li
       className={`flex items-center justify-between gap-2 rounded-md border px-2 py-1 ${
         isCurrent
-          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-          : "border-neutral-200 text-neutral-700"
+          ? "border-success-border bg-success-surface text-success-foreground-deep"
+          : "border-border-default text-foreground-secondary"
       }`}
     >
       <span className="font-mono text-xs break-all">{account.walletAddress}</span>
@@ -73,7 +73,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
           {signIndicator}
           <button
             aria-label={state.kind === "signing" ? "Signing…" : "Sign"}
-            className="rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs hover:bg-neutral-50 disabled:opacity-50"
+            className="border-border-strong hover:bg-surface-subtle rounded border bg-white px-2 py-0.5 text-xs disabled:opacity-50"
             disabled={state.kind === "signing"}
             onClick={() => {
               void handleSign();
@@ -95,7 +95,7 @@ const AccountPicker = ({ wallet }: { wallet: ConnectedWallet }) => (
         <AccountRow account={account} key={account.id} wallet={wallet} />
       ))}
     </ul>
-    <p className="text-xs text-neutral-500">
+    <p className="text-foreground-muted text-xs">
       Active account is set in your wallet. Use Sign to test per-account signing.
     </p>
   </div>
@@ -125,7 +125,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
         Chain
       </label>
       <select
-        className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-base"
+        className="border-border-strong w-full rounded-md border bg-white px-2 py-1 text-base"
         id={selectId}
         onChange={(e) => {
           void handleChange(e.target.value);
@@ -142,7 +142,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
         ))}
       </select>
       {error !== null && error !== "" ? (
-        <p className="mt-1 text-xs text-red-700" role="alert">
+        <p className="text-danger-foreground mt-1 text-xs" role="alert">
           {error}
         </p>
       ) : null}
@@ -171,7 +171,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-5">
+    <div className="border-border-default space-y-3 rounded-lg border bg-white p-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {wallet.connector.icon !== undefined && wallet.connector.icon !== "" ? (
@@ -181,18 +181,18 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
             <div className="flex items-center gap-2">
               <h4 className="font-semibold">{wallet.connector.name}</h4>
               {isActive ? (
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                <span className="bg-success-surface-hover text-success-foreground rounded-full px-2 py-0.5 text-xs font-medium">
                   active
                 </span>
               ) : null}
             </div>
-            <p className="text-xs text-neutral-500">{wallet.account.chain.name}</p>
+            <p className="text-foreground-muted text-xs">{wallet.account.chain.name}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {isActive ? null : (
             <button
-              className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+              className="border-border-strong hover:bg-surface-subtle rounded-md border px-3 py-1.5 text-sm"
               onClick={() => {
                 setActive(wallet.connector.id);
               }}
@@ -202,7 +202,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
             </button>
           )}
           <button
-            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+            className="border-border-strong hover:bg-surface-subtle rounded-md border px-3 py-1.5 text-sm"
             onClick={() => {
               disconnect(wallet.connector.id);
             }}
@@ -212,16 +212,16 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
           </button>
         </div>
       </div>
-      <dl className="grid grid-cols-[120px_1fr] gap-y-1.5 text-sm">
-        <dt className="text-neutral-500">Address</dt>
+      <dl className="grid-cols-wallet-detail grid gap-y-1.5 text-sm">
+        <dt className="text-foreground-muted">Address</dt>
         <dd>
           <AccountPicker wallet={wallet} />
         </dd>
-        <dt className="text-neutral-500">Balance</dt>
+        <dt className="text-foreground-muted">Balance</dt>
         <dd className="font-mono text-xs">{balanceText}</dd>
         {capabilities.switchChain ? (
           <>
-            <dt className="text-neutral-500">Chain</dt>
+            <dt className="text-foreground-muted">Chain</dt>
             <dd>
               <ChainPicker wallet={wallet} />
             </dd>
@@ -230,7 +230,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
       </dl>
       {capabilities.requestAccounts ? (
         <button
-          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+          className="border-border-strong hover:bg-surface-subtle rounded-md border px-3 py-1.5 text-sm"
           onClick={() => {
             void requestAccounts(wallet.connector.id);
           }}
@@ -257,14 +257,14 @@ const ConnectedList = ({ count }: { count: number }) => {
     <section>
       <h2 className="mb-4 flex items-center gap-2 font-semibold">
         Connected
-        <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-xs text-neutral-500">
+        <span className="bg-surface-muted text-foreground-muted rounded-full px-2 py-0.5 font-mono text-xs">
           {count}
         </span>
       </h2>
       <div className="space-y-6">
         {[...byPlatform].map(([platform, wallets]) => (
           <div key={platform}>
-            <h3 className="mb-2 font-mono text-xs tracking-wide text-neutral-500 uppercase">
+            <h3 className="text-foreground-muted mb-2 font-mono text-xs tracking-wide uppercase">
               {PLATFORM_LABELS[platform]} · {wallets.length}
             </h3>
             <ul className="space-y-3">
@@ -282,11 +282,11 @@ const ConnectedList = ({ count }: { count: number }) => {
 };
 
 const StatusBar = ({ status }: { status: string }) => (
-  <div className="flex items-center gap-2 text-sm text-neutral-600">
+  <div className="text-foreground-subtle flex items-center gap-2 text-sm">
     <span className="font-medium">Status:</span>
     <output
       aria-live="polite"
-      className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-xs"
+      className="bg-surface-muted rounded-full px-2 py-0.5 font-mono text-xs"
     >
       {status}
     </output>
@@ -323,7 +323,7 @@ const WalletBrandRow = ({
 }) => {
   const connectingId = useConnectingConnectorId();
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3">
+    <div className="border-border-default rounded-lg border bg-white px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-3">
           {brand.icon !== undefined && brand.icon !== "" ? (
@@ -338,7 +338,7 @@ const WalletBrandRow = ({
               <button
                 aria-busy={isConnecting}
                 aria-label={`${brand.name} (${adapter.chainPlatform})`}
-                className="hover:border-brand hover:bg-brand/10 hover:text-brand-foreground min-h-[44px] rounded-md border border-neutral-300 px-2 py-1 font-mono text-xs uppercase transition-colors disabled:opacity-50 motion-reduce:transition-none"
+                className="hover:border-brand hover:bg-brand/10 hover:text-brand-foreground border-border-strong min-h-11 rounded-md border px-2 py-1 font-mono text-xs uppercase transition-colors disabled:opacity-50 motion-reduce:transition-none"
                 disabled={isConnecting}
                 key={adapter.id}
                 onClick={() => {
@@ -367,12 +367,12 @@ const WalletPicker = ({
 
   if (available.length === 0 && !hasConnected) {
     return (
-      <section className="rounded-lg border border-neutral-200 bg-neutral-50 p-6">
+      <section className="border-border-default bg-surface-subtle rounded-lg border p-6">
         <h2 className="font-semibold">No wallets detected</h2>
-        <p className="mt-2 text-sm text-neutral-600">
+        <p className="text-foreground-subtle mt-2 text-sm">
           Install a browser wallet to get started. Try{" "}
           <a
-            className="text-blue-600 underline"
+            className="text-info-accent underline"
             href="https://metamask.io/download"
             rel="noopener noreferrer"
             target="_blank"
@@ -381,7 +381,7 @@ const WalletPicker = ({
           </a>{" "}
           (EVM) or{" "}
           <a
-            className="text-blue-600 underline"
+            className="text-info-accent underline"
             href="https://phantom.app/download"
             rel="noopener noreferrer"
             target="_blank"
@@ -435,7 +435,7 @@ const Content = () => {
       {connected.length > 0 ? <ConnectedList count={connected.length} /> : null}
       <WalletPicker available={available} hasConnected={connected.length > 0} />
       {hasWalletConnectProjectId ? null : (
-        <p className="text-xs text-neutral-400">
+        <p className="text-foreground-disabled text-xs">
           Set <code>VITE_WC_PROJECT_ID</code> in <code>.env.local</code> to enable WalletConnect.
         </p>
       )}
@@ -443,11 +443,11 @@ const Content = () => {
       {/* Dialog-based connect UX; recommended pattern for modal wallet pickers */}
       {available.length > 0 ? (
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-neutral-500">
+          <h2 className="text-foreground-muted mb-3 text-sm font-semibold">
             Dialog pattern (recommended for modal UX)
           </h2>
           <button
-            className="bg-brand text-brand-foreground rounded-md px-4 py-2 text-sm font-medium ring-1 ring-black/5 transition-[filter] ring-inset hover:brightness-95"
+            className="bg-brand text-brand-foreground transition-filter rounded-md px-4 py-2 text-sm font-medium ring-1 ring-black/5 ring-inset hover:brightness-95"
             onClick={() => {
               setDialogOpen(true);
             }}
@@ -467,7 +467,7 @@ const Content = () => {
       {error === null ? null : (
         <p
           aria-live="assertive"
-          className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+          className="border-danger-border bg-danger-surface text-danger-foreground rounded-md border p-3 text-sm"
           role="alert"
         >
           {error.kind}: {error.message}
@@ -486,13 +486,13 @@ const App = () => (
       Skip to content
     </a>
     <SiteHeader />
-    <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900" id="main">
+    <main className="text-foreground-primary mx-auto max-w-2xl px-6 py-10 font-sans" id="main">
       <header className="mb-10">
         <p className="text-brand-foreground font-mono text-xs tracking-wide uppercase">Live demo</p>
-        <h1 className="mt-3 max-w-[24ch] text-4xl font-semibold tracking-tight text-balance">
+        <h1 className="max-w-measure-24 mt-3 text-4xl font-semibold tracking-tight text-balance">
           Connect a wallet on any chain.
         </h1>
-        <p className="mt-4 max-w-[60ch] text-base text-pretty text-neutral-600">
+        <p className="max-w-measure-60 text-foreground-subtle mt-4 text-base text-pretty">
           Batteries-included install via <code>@usebutr/wallets</code>. EVM, Solana, Sui, Bitcoin,
           and Polkadot discovered in one provider, plus WalletConnect and Ledger; persisted in
           localStorage.

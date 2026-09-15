@@ -38,19 +38,22 @@ const WalletRow = ({
   const showSwitcher = accounts.length > 1;
   const canAddAccounts = connector.capabilities.requestAccounts;
   return (
-    <div className="rounded-md border border-neutral-200 bg-white px-2.5 py-2 sm:py-1.5">
+    <div className="border-border-default rounded-md border bg-white px-2.5 py-2 sm:py-1.5">
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span aria-hidden="true" className={active ? "text-emerald-500" : "text-neutral-300"}>
+          <span
+            aria-hidden="true"
+            className={active ? "text-success-indicator" : "text-foreground-pale"}
+          >
             ●
           </span>
           {connector.icon !== undefined && connector.icon !== "" ? (
             <img alt="" className="size-4 rounded" src={connector.icon} />
           ) : null}
           <div className="min-w-0">
-            <p className="text-sm font-medium text-neutral-900">{connector.name}</p>
+            <p className="text-foreground-primary text-sm font-medium">{connector.name}</p>
             {showSwitcher ? null : (
-              <p className="truncate font-mono text-xs text-neutral-500">
+              <p className="text-foreground-muted truncate font-mono text-xs">
                 {truncate(wallet.account.walletAddress)}
               </p>
             )}
@@ -58,12 +61,12 @@ const WalletRow = ({
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {active ? (
-            <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+            <span className="bg-success-surface text-success-foreground rounded px-2 py-0.5 text-xs font-medium">
               active
             </span>
           ) : (
             <button
-              className="rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs hover:bg-neutral-50"
+              className="border-border-strong hover:bg-surface-subtle rounded border bg-white px-2 py-0.5 text-xs"
               onClick={() => {
                 onUse(connector.id);
               }}
@@ -73,7 +76,7 @@ const WalletRow = ({
             </button>
           )}
           <button
-            className="rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs text-neutral-600 hover:bg-neutral-50"
+            className="border-border-strong text-foreground-subtle hover:bg-surface-subtle rounded border bg-white px-2 py-0.5 text-xs"
             onClick={() => {
               onDisconnect(connector.id);
             }}
@@ -88,7 +91,7 @@ const WalletRow = ({
           {showSwitcher ? (
             <select
               aria-label={`Active account for ${connector.name}`}
-              className="min-w-0 flex-1 rounded border border-neutral-300 bg-white px-1.5 py-0.5 font-mono text-base text-neutral-700 focus:outline-none sm:text-xs"
+              className="border-border-strong text-foreground-secondary min-w-0 flex-1 rounded border bg-white px-1.5 py-0.5 font-mono text-base focus:outline-none sm:text-xs"
               onChange={(e) => {
                 const next = accounts.find((a) => a.id === e.target.value);
                 if (next) {
@@ -106,7 +109,7 @@ const WalletRow = ({
           ) : null}
           {canAddAccounts ? (
             <button
-              className="shrink-0 rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs hover:bg-neutral-50"
+              className="border-border-strong hover:bg-surface-subtle shrink-0 rounded border bg-white px-2 py-0.5 text-xs"
               onClick={() => {
                 onRequestAccounts(connector.id);
               }}
@@ -148,11 +151,13 @@ const WalletGroup = ({
 }) => {
   const connectable = discovered.filter((d) => !connected.some((w) => w.connector.id === d.id));
   return (
-    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
-      <p className="mb-2 text-xs font-medium tracking-wide text-neutral-500 uppercase">{label}</p>
+    <div className="border-border-default bg-surface-subtle rounded-lg border p-3">
+      <p className="text-foreground-muted mb-2 text-xs font-medium tracking-wide uppercase">
+        {label}
+      </p>
       <div className="space-y-1.5">
         {connected.length === 0 ? (
-          <p className="text-sm text-neutral-500">No {label} wallets connected.</p>
+          <p className="text-foreground-muted text-sm">No {label} wallets connected.</p>
         ) : (
           connected.map((w) => (
             <WalletRow
@@ -174,7 +179,7 @@ const WalletGroup = ({
           {connectable.map((d) => (
             <button
               aria-busy={connectingId === d.id}
-              className="flex min-h-11 items-center gap-2 rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50 sm:min-h-0"
+              className="border-border-default hover:bg-surface-subtle flex min-h-11 items-center gap-2 rounded-md border bg-white px-2.5 py-1.5 text-sm disabled:opacity-50 sm:min-h-0"
               disabled={connectingId === d.id}
               key={d.id}
               onClick={() => {
@@ -212,7 +217,7 @@ const WalletList = () => {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-xs font-medium tracking-wide text-neutral-500 uppercase">Wallets</h2>
+      <h2 className="text-foreground-muted text-xs font-medium tracking-wide uppercase">Wallets</h2>
       <div className="grid gap-3 sm:grid-cols-2">
         {PLATFORMS.map(({ label, platform }) => (
           <WalletGroup
@@ -238,7 +243,7 @@ const WalletList = () => {
       {connectionError === null ? null : (
         <p
           aria-live="assertive"
-          className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+          className="border-danger-border bg-danger-surface text-danger-foreground rounded-md border p-3 text-sm"
           role="alert"
         >
           {connectionError.kind}: {connectionError.message}

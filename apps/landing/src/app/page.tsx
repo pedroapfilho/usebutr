@@ -176,14 +176,14 @@ const Page = () => (
       {/* oxlint-enable react/no-danger */}
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <BrandMark className="pointer-events-none absolute top-1/2 -right-24 w-[min(46rem,70vw)] -translate-y-1/2 opacity-[0.06] select-none max-lg:hidden" />
-        <div className="relative mx-auto grid w-full max-w-6xl gap-12 px-6 pt-20 pb-16 lg:grid-cols-[1fr_1fr] lg:pt-28 lg:pb-24">
+        <BrandMark className="w-hero-glow pointer-events-none absolute top-1/2 -right-24 -translate-y-1/2 opacity-6 select-none max-lg:hidden" />
+        <div className="lg:grid-cols-equal-pair relative mx-auto grid w-full max-w-6xl gap-12 px-6 pt-20 pb-16 lg:pt-28 lg:pb-24">
           <div>
             <h1>
               <BrandLogo className="h-16 sm:h-20" />
               <span className="sr-only">butr</span>
             </h1>
-            <p className="text-muted-foreground mt-7 max-w-[44ch] text-xl text-pretty">
+            <p className="text-muted-foreground max-w-measure-44 mt-7 text-xl text-pretty">
               Discover and connect <strong className="text-foreground font-semibold">EVM</strong>,{" "}
               <strong className="text-foreground font-semibold">Solana</strong>,{" "}
               <strong className="text-foreground font-semibold">Sui</strong>,{" "}
@@ -245,7 +245,7 @@ const Page = () => (
       <section className="mx-auto w-full max-w-6xl scroll-mt-20 px-6 pt-24 sm:pt-32" id="why">
         <div className="mx-auto max-w-3xl">
           <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Overview</h2>
-          <p className="text-muted-foreground mt-4 max-w-[60ch] text-lg text-pretty">
+          <p className="text-muted-foreground max-w-measure-60 mt-4 text-lg text-pretty">
             Wrap the tree once, read the discovered pool through hooks, and keep the picker UI
             yours. butr handles discovery and connection state across reloads; it ships no modal and
             no RPC stack.
@@ -259,7 +259,7 @@ const Page = () => (
       {/* Chains */}
       <section className="mx-auto w-full max-w-6xl px-6 pt-24 sm:pt-32">
         <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Supported chains</h2>
-        <p className="text-muted-foreground mt-4 max-w-[60ch] text-lg text-pretty">
+        <p className="text-muted-foreground max-w-measure-60 mt-4 text-lg text-pretty">
           One discovery seam across EVM networks, Solana, Sui, Bitcoin, and Polkadot: EIP-6963, the
           Wallet Standard, injected fallbacks, and injectedWeb3.
         </p>
@@ -282,7 +282,7 @@ const Page = () => (
           <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
             Hand the signer to your library.
           </h2>
-          <p className="text-muted-foreground mt-4 max-w-[48ch] text-lg text-pretty">
+          <p className="text-muted-foreground max-w-measure-48 mt-4 text-lg text-pretty">
             <code className="bg-card border-border rounded-sm border px-1.5 py-0.5 font-mono text-base">
               getSigner()
             </code>{" "}
@@ -305,7 +305,7 @@ const Page = () => (
             <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
               Get started in a few lines.
             </h2>
-            <p className="text-muted-foreground mx-auto mt-4 max-w-[48ch] text-lg text-pretty">
+            <p className="text-muted-foreground max-w-measure-48 mx-auto mt-4 text-lg text-pretty">
               Install, quickstart, core concepts, and the full API reference are in the docs.
             </p>
           </div>

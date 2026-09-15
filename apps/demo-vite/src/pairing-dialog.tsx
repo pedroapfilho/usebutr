@@ -71,15 +71,15 @@ const PairingDialog = () => {
     <dialog
       aria-label="WalletConnect pairing"
       aria-modal="true"
-      className="m-auto w-full max-w-sm rounded-xl border border-neutral-200 bg-white p-0 shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm open:flex open:flex-col"
+      className="border-border-default m-auto w-full max-w-sm rounded-xl border bg-white p-0 shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm open:flex open:flex-col"
       onClick={handleBackdropClick}
       ref={dialogRef}
     >
-      <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
+      <div className="border-border-faint flex items-center justify-between border-b px-5 py-4">
         <h2 className="font-semibold">Scan with your wallet</h2>
         <button
           aria-label="Close dialog"
-          className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+          className="text-foreground-disabled hover:bg-surface-muted hover:text-foreground-secondary rounded p-1"
           onClick={clearPairingUri}
           type="button"
         >
@@ -90,14 +90,14 @@ const PairingDialog = () => {
         {qrSrc !== null && qrSrc !== "" ? (
           <img
             alt="WalletConnect pairing QR code"
-            className="size-56 rounded-lg border border-neutral-100"
+            className="border-border-faint size-56 rounded-lg border"
             height={224}
             src={qrSrc}
             width={224}
           />
         ) : null}
         <button
-          className="min-h-[44px] rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+          className="border-border-strong hover:bg-surface-subtle min-h-11 rounded-md border px-3 py-1.5 text-sm"
           onClick={() => {
             void handleCopy();
           }}
@@ -105,7 +105,7 @@ const PairingDialog = () => {
         >
           {copied ? "Copied" : "Copy URI"}
         </button>
-        <p aria-live="polite" className="text-center text-xs text-neutral-500">
+        <p aria-live="polite" className="text-foreground-muted text-center text-xs">
           Scan the code with a WalletConnect-compatible mobile wallet, or copy the URI into a
           desktop wallet.
         </p>

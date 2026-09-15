@@ -31,7 +31,7 @@ const WalletBrandRow = ({
 }) => {
   const connectingId = useConnectingConnectorId();
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3">
+    <div className="border-border-default rounded-lg border bg-white px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-3">
           {brand.icon !== undefined && brand.icon !== "" ? (
@@ -46,7 +46,7 @@ const WalletBrandRow = ({
               <button
                 aria-busy={isConnecting}
                 aria-label={`${brand.name} (${adapter.chainPlatform})`}
-                className="min-h-[44px] rounded-md border border-neutral-300 px-2 py-1 font-mono text-xs uppercase hover:bg-neutral-50 disabled:opacity-50"
+                className="border-border-strong hover:bg-surface-subtle min-h-11 rounded-md border px-2 py-1 font-mono text-xs uppercase disabled:opacity-50"
                 disabled={isConnecting}
                 key={adapter.id}
                 onClick={() => {
@@ -75,12 +75,12 @@ const WalletPicker = ({
 
   if (available.length === 0 && !hasConnected) {
     return (
-      <section className="rounded-lg border border-neutral-200 bg-neutral-50 p-6">
+      <section className="border-border-default bg-surface-subtle rounded-lg border p-6">
         <h2 className="font-semibold">No wallets detected</h2>
-        <p className="mt-2 text-sm text-neutral-600">
+        <p className="text-foreground-subtle mt-2 text-sm">
           Install a browser wallet to get started. Try{" "}
           <a
-            className="text-blue-600 underline"
+            className="text-info-accent underline"
             href="https://metamask.io/download"
             rel="noopener noreferrer"
             target="_blank"
@@ -89,7 +89,7 @@ const WalletPicker = ({
           </a>{" "}
           (EVM) or{" "}
           <a
-            className="text-blue-600 underline"
+            className="text-info-accent underline"
             href="https://phantom.app/download"
             rel="noopener noreferrer"
             target="_blank"

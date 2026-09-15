@@ -39,21 +39,21 @@ const DestHint = ({
 }) => {
   if (!supported) {
     return (
-      <p className="text-xs text-amber-700">
+      <p className="text-warning-foreground text-xs">
         Destination {destLabel} isn’t one of this demo’s chains.
       </p>
     );
   }
   if (walletMissing) {
     return (
-      <p className="text-xs text-amber-700">
+      <p className="text-warning-foreground text-xs">
         Connect a {destPlatform?.toUpperCase() ?? "destination"} wallet to complete.
       </p>
     );
   }
   if (!ownedByActive) {
     return (
-      <p className="text-xs text-amber-700">
+      <p className="text-warning-foreground text-xs">
         Wrong wallet: this transfer was sent to {truncate(recipient)}, which the active{" "}
         {destPlatform?.toUpperCase() ?? ""} wallet doesn’t own. Switch to that account, then Scan
         again.
@@ -109,11 +109,11 @@ const PendingTransfers = () => {
   return (
     <section className="mt-8 space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-medium tracking-wide text-neutral-500 uppercase">
+        <h2 className="text-foreground-muted text-xs font-medium tracking-wide uppercase">
           Incomplete transfers
         </h2>
         <button
-          className="rounded-md border border-neutral-300 bg-white px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+          className="border-border-strong text-foreground-secondary hover:bg-surface-subtle rounded-md border bg-white px-3 py-1 text-xs font-medium disabled:opacity-50"
           disabled={state === "scanning" || noWallets}
           onClick={() => {
             void rescan();
@@ -124,18 +124,20 @@ const PendingTransfers = () => {
         </button>
       </div>
 
-      <p className="text-xs text-neutral-500">
+      <p className="text-foreground-muted text-xs">
         Finds USDC you burned on a source chain but never minted on the destination, and lets you
         complete the mint.
       </p>
 
       {noWallets ? (
-        <p className="text-xs text-amber-700">Connect a wallet above to scan for your burns.</p>
+        <p className="text-warning-foreground text-xs">
+          Connect a wallet above to scan for your burns.
+        </p>
       ) : null}
 
       {state === "error" ? (
         <p
-          className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+          className="border-danger-border bg-danger-surface text-danger-foreground rounded-md border p-3 text-sm"
           role="alert"
         >
           {scanError}
@@ -143,7 +145,7 @@ const PendingTransfers = () => {
       ) : null}
 
       {state === "done" && items.length === 0 ? (
-        <p className="rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-600">
+        <p className="border-border-default text-foreground-subtle rounded-lg border bg-white p-4 text-sm">
           No incomplete transfers found.
         </p>
       ) : null}
@@ -156,20 +158,20 @@ const PendingTransfers = () => {
         const blocked = !destSpec || !destWallet || !item.destOwnedByActive;
         return (
           <div
-            className="space-y-2 rounded-lg border border-neutral-200 bg-white p-4"
+            className="border-border-default space-y-2 rounded-lg border bg-white p-4"
             key={item.key}
           >
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-neutral-900">
+              <p className="text-foreground-primary text-sm font-medium">
                 {chainLabel(item.sourceChain)} → {chainLabel(item.destChain)}
               </p>
-              <p className="font-mono text-sm text-neutral-900">{item.amount} USDC</p>
+              <p className="text-foreground-primary font-mono text-sm">{item.amount} USDC</p>
             </div>
-            <p className="font-mono text-xs break-all text-neutral-500">
+            <p className="text-foreground-muted font-mono text-xs break-all">
               to {truncate(item.destAddress)}
             </p>
             <a
-              className="block font-mono text-xs break-all text-blue-600 hover:underline"
+              className="text-info-accent block font-mono text-xs break-all hover:underline"
               href={srcSpec.explorerTx(item.sourceTxid)}
               rel="noreferrer noopener"
               target="_blank"
@@ -179,10 +181,12 @@ const PendingTransfers = () => {
 
             {row.kind === "done" ? (
               <div className="space-y-1">
-                <p className="text-sm text-emerald-700">Minted on {chainLabel(item.destChain)}.</p>
+                <p className="text-success-foreground text-sm">
+                  Minted on {chainLabel(item.destChain)}.
+                </p>
                 {destSpec && row.destTxHash ? (
                   <a
-                    className="block font-mono text-xs break-all text-blue-600 hover:underline"
+                    className="text-info-accent block font-mono text-xs break-all hover:underline"
                     href={destSpec.explorerTx(row.destTxHash)}
                     rel="noreferrer noopener"
                     target="_blank"
@@ -191,7 +195,7 @@ const PendingTransfers = () => {
                   </a>
                 ) : null}
                 <button
-                  className="rounded-md border border-neutral-300 px-3 py-1 text-xs text-neutral-600 hover:bg-neutral-50"
+                  className="border-border-strong text-foreground-subtle hover:bg-surface-subtle rounded-md border px-3 py-1 text-xs"
                   onClick={() => {
                     dismiss(item.key);
                   }}
@@ -203,7 +207,7 @@ const PendingTransfers = () => {
             ) : (
               <div className="space-y-1">
                 <button
-                  className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+                  className="border-success-border-strong bg-success-surface text-success-foreground-strong hover:bg-success-surface-hover rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
                   disabled={blocked || row.kind === "redeeming"}
                   onClick={() => {
                     void handleComplete(item);
@@ -223,7 +227,7 @@ const PendingTransfers = () => {
                   walletMissing={!destWallet}
                 />
                 {row.kind === "error" ? (
-                  <p className="text-sm text-red-700" role="alert">
+                  <p className="text-danger-foreground text-sm" role="alert">
                     {row.message}
                   </p>
                 ) : null}
@@ -234,7 +238,7 @@ const PendingTransfers = () => {
       })}
 
       {summary ? (
-        <p className="text-xs text-neutral-400">
+        <p className="text-foreground-disabled text-xs">
           Scanned {summary.scannedChains} chain{summary.scannedChains === 1 ? "" : "s"} · last{" "}
           {summary.evmLookbackBlocks.toLocaleString()} blocks per EVM chain · last{" "}
           {summary.solanaSignatureLimit} Solana txs.

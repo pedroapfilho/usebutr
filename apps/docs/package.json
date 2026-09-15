@@ -12,9 +12,10 @@
     "clean": "rm -rf .next .source node_modules"
   },
   "dependencies": {
+    "@repo/social-image": "workspace:*",
     "@tailwindcss/postcss": "^4.3.3",
     "class-variance-authority": "^0.7.1",
-    "cn": "^0.2.4",
+    "cn": "^0.2.6",
     "fumadocs-core": "^16.14.3",
     "fumadocs-mdx": "^15.2.3",
     "fumadocs-ui": "^16.14.3",

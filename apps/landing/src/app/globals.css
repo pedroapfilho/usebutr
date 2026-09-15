@@ -96,3 +96,43 @@
     background-color: color-mix(in oklab, var(--primary) 35%, transparent);
   }
 }
+
+@utility size-touch-target {
+  width: max(100%, 3rem);
+  height: max(100%, 3rem);
+}
+
+@theme {
+  --container-measure-56: 56ch;
+}
+
+@theme {
+  --container-measure-36: 36ch;
+}
+
+@utility w-hero-glow {
+  width: min(46rem, 70vw);
+}
+
+@utility grid-cols-equal-pair {
+  grid-template-columns: 1fr 1fr;
+}
+
+@theme {
+  --container-measure-44: 44ch;
+}
+
+@theme {
+  --container-measure-60: 60ch;
+}
+
+@theme {
+  --container-measure-48: 48ch;
+}
+
+@theme {
+  --color-brand-light: #fdd754;
+  --color-brand-gold: #f6ba48;
+  --color-brand-shadow: #eda134;
+  --color-brand-mid: #f2a337;
+}

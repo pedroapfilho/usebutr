@@ -38,11 +38,11 @@ const formatError = (error: Error | string): string => {
 };
 
 const Row = ({ children, label }: { children: React.ReactNode; label: string }) => (
-  <div className="flex items-baseline gap-3 rounded-lg border border-neutral-200 bg-white p-4">
-    <span className="w-28 shrink-0 text-xs font-medium tracking-wide text-neutral-500 uppercase">
+  <div className="border-border-default flex items-baseline gap-3 rounded-lg border bg-white p-4">
+    <span className="text-foreground-muted w-28 shrink-0 text-xs font-medium tracking-wide uppercase">
       {label}
     </span>
-    <span className="text-sm text-neutral-900">{children}</span>
+    <span className="text-foreground-primary text-sm">{children}</span>
   </div>
 );
 
@@ -180,14 +180,16 @@ const Connected = ({
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+      <div className="border-success-border bg-success-surface flex items-center justify-between rounded-lg border p-4">
         <div>
-          <p className="text-xs font-medium tracking-wide text-emerald-700 uppercase">Connected</p>
-          <p className="font-mono text-sm text-neutral-900">{wallet.connector.name}</p>
-          <p className="font-mono text-xs break-all text-neutral-500">{addr}</p>
+          <p className="text-success-foreground text-xs font-medium tracking-wide uppercase">
+            Connected
+          </p>
+          <p className="text-foreground-primary font-mono text-sm">{wallet.connector.name}</p>
+          <p className="text-foreground-muted font-mono text-xs break-all">{addr}</p>
         </div>
         <button
-          className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
+          className="border-border-strong hover:bg-surface-subtle rounded-md border bg-white px-3 py-1.5 text-sm"
           onClick={onDisconnect}
           type="button"
         >
@@ -198,7 +200,7 @@ const Connected = ({
       <Row label="Balance">{balance}</Row>
       <div className="flex flex-wrap gap-2">
         <button
-          className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
+          className="border-border-strong hover:bg-surface-subtle rounded-md border bg-white px-3 py-1.5 text-sm disabled:opacity-50"
           disabled={!walletStd}
           onClick={() => {
             void handleSign();
@@ -208,7 +210,7 @@ const Connected = ({
           Sign &quot;Hello from butr + gill&quot;
         </button>
         <button
-          className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50"
+          className="border-border-strong hover:bg-surface-subtle rounded-md border bg-white px-3 py-1.5 text-sm disabled:opacity-50"
           disabled={!walletStd}
           onClick={() => {
             void handleSendTx();
@@ -226,7 +228,7 @@ const Connected = ({
       {txSignature !== null && txSignature !== "" ? (
         <Row label="Tx signature">
           <a
-            className="font-mono text-xs break-all text-blue-600 hover:underline"
+            className="text-info-accent font-mono text-xs break-all hover:underline"
             href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
             rel="noreferrer noopener"
             target="_blank"
@@ -236,7 +238,7 @@ const Connected = ({
         </Row>
       ) : null}
       {errorMsg !== null && errorMsg !== "" ? (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <p className="border-danger-border bg-danger-surface text-danger-foreground rounded-md border p-3 text-sm">
           {errorMsg}
         </p>
       ) : null}
@@ -255,7 +257,7 @@ const Content = () => {
       <section className="space-y-3">
         <h2 className="font-semibold">Available wallets</h2>
         {discovered.length === 0 ? (
-          <p className="text-sm text-neutral-500">
+          <p className="text-foreground-muted text-sm">
             No Wallet Standard wallets detected. Install Phantom, Solflare, or Backpack and refresh.
           </p>
         ) : (
@@ -263,7 +265,7 @@ const Content = () => {
             {discovered.map((wallet) => (
               <li key={wallet.id}>
                 <button
-                  className="flex w-full items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-left hover:bg-neutral-50"
+                  className="border-border-default hover:bg-surface-subtle flex w-full items-center gap-3 rounded-lg border bg-white px-4 py-3 text-left"
                   onClick={() => {
                     void connect(wallet.id);
                   }}
@@ -306,10 +308,10 @@ const App = () => (
     >
       Skip to content
     </a>
-    <main className="mx-auto max-w-2xl px-6 py-10 font-sans text-neutral-900" id="main">
+    <main className="text-foreground-primary mx-auto max-w-2xl px-6 py-10 font-sans" id="main">
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">butr + gill</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="text-foreground-muted mt-1 text-sm">
           gill is the ergonomic SDK built on <code>@solana/kit</code>, the path the Solana
           Foundation recommends for most apps. butr discovers and manages the wallet; gill handles
           the RPC and transaction builder; the wallet&apos;s Wallet Standard features supply signing

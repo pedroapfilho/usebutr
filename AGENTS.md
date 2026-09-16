@@ -135,3 +135,7 @@ This is a library + demo repo, with no Docker or Prisma. Vitest covers the libra
 ## Design-system linting
 
 Run `pnpm lint` after changes and fix every error. `oxlint.config.ts` registers `@shadcn/lint` and enforces all six rules as errors: component contracts, known Tailwind classes, static component class names, semantic colors, theme or scale values, and class-based styling. Use CSS custom properties for runtime geometry and named theme tokens for custom values. Use component variants for appearance and layout classes at call sites. All six rules also apply inside primitive directories. Shared styles belong to component variants or the owning stylesheet. Keep theme discovery local to each app. Exact class-merging fixture allowances apply only to the named test files.
+
+## Upstream UI components
+
+Keep registry modules in `apps/docs/components/ui` aligned with the configured shadcn Base UI APIs. Preserve branding in semantic theme tokens, load `shadcn/tailwind.css`, and place product compositions outside the primitive directory. Run `pnpm check:shadcn` along with the normal validation suite; read `apps/docs/SHADCN.md` before updating the reviewed source lock.

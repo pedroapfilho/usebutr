@@ -7,7 +7,8 @@
     "apps/docs/app/layout.tsx",
     "apps/docs/source.config.ts",
     "oxlint.config.ts",
-    "**/tsdown.config.ts"
+    "**/tsdown.config.ts",
+    "apps/docs/components/ui/*.tsx"
   ],
   "ignorePatterns": [
     "apps/docs/content/**",

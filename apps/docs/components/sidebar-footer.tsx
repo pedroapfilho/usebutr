@@ -9,7 +9,7 @@ const SidebarFooter = () => (
   <nav aria-label="Project links" className="flex flex-wrap gap-x-3 gap-y-2 px-2 py-3 text-sm">
     {LINKS.map(({ href, label }) => (
       <a
-        className="text-fd-muted-foreground hover:text-fd-foreground focus-visible:outline-fd-ring rounded-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+        className="text-docs-muted-foreground hover:text-docs-foreground focus-visible:outline-docs-ring rounded-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
         href={href}
         key={label}
       >

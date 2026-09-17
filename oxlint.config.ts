@@ -3,7 +3,11 @@ import awesomeness from "oxlint-config-awesomeness";
 
 export default defineConfig({
   extends: [awesomeness],
-  ignorePatterns: ["apps/demo-expo-web/src/uniwind-types.d.ts", "apps/demo-with-polkadot/.papi/**"],
+  ignorePatterns: [
+    ".github/ci/*.mjs",
+    "apps/demo-expo-web/src/uniwind-types.d.ts",
+    "apps/demo-with-polkadot/.papi/**",
+  ],
   jsPlugins: ["@shadcn/lint"],
   overrides: [
     {

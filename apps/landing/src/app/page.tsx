@@ -10,7 +10,6 @@ import {
   NetworkSolana,
   NetworkSui,
 } from "@web3icons/react";
-import Link from "next/link";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { BrandMark } from "@/components/brand-mark";
@@ -18,6 +17,7 @@ import { ButtonLink } from "@/components/button-link";
 import { CodeBlock } from "@/components/code-block";
 import { InstallTabs } from "@/components/install-tabs";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
 import {
   CONCEPTS_URL,
   DEMO_URL,
@@ -104,8 +104,16 @@ const WalletPicker = () => {
   ));
 };`;
 
-const BRIDGE_CODE = `import { useSelectedWallet, useSigner } from "@usebutr/react";
-import { createWalletClient, custom, type Address, type EIP1193Provider } from "viem";
+const BRIDGE_CODE = `import {
+  useSelectedWallet,
+  useSigner,
+} from "@usebutr/react";
+import {
+  createWalletClient,
+  custom,
+  type Address,
+  type EIP1193Provider,
+} from "viem";
 import { sepolia } from "viem/chains";
 
 export const useSelectedWalletClient = () => {
@@ -131,39 +139,9 @@ const JSON_LD = {
   url: "https://www.usebutr.com",
 };
 
-const NAV_LINKS = [
-  { href: DOCS_URL, label: "Docs" },
-  { href: DEMO_URL, label: "Demo" },
-  { href: GITHUB_URL, label: "GitHub" },
-];
-
 const Page = () => (
   <div className="bg-background text-foreground min-h-dvh">
-    <header className="border-border/60 bg-background/80 sticky top-0 z-40 border-b backdrop-blur-md">
-      <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-6">
-        <Link
-          aria-label="Homepage"
-          className="focus-visible:outline-ring flex items-center gap-3 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"
-          href="/"
-        >
-          <BrandLogo className="h-5" />
-          <span className="bg-muted text-muted-foreground rounded-md px-1.5 py-0.5 font-mono text-xs">
-            v{WALLETS_VERSION}
-          </span>
-        </Link>
-        <nav aria-label="Primary" className="flex items-center gap-1">
-          {NAV_LINKS.map(({ href, label }) => (
-            <a
-              className="text-muted-foreground hover:text-foreground focus-visible:outline-ring rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
-              href={href}
-              key={label}
-            >
-              {label}
-            </a>
-          ))}
-        </nav>
-      </div>
-    </header>
+    <SiteHeader />
 
     <main>
       {/* oxlint-disable react/no-danger -- static structured data, escaped for HTML */}

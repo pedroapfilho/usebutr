@@ -9,7 +9,8 @@ behavior in and out.
 
 ## The picture in one diagram
 
-```mermaid
+<Mermaid
+  chart={`
 graph TD
   subgraph discovery["Discovery layer"]
     eip6963["EIP-6963 (EVM)"]
@@ -19,37 +20,38 @@ graph TD
     source["WalletSource: discovery seam"]
   end
 
-  subgraph adapters["Adapter contract"]
-    adapter["WalletAdapter: discriminated by chainPlatform<br>evm | svm | sui | bitcoin | polkadot"]
-  end
+subgraph adapters["Adapter contract"]
+adapter["WalletAdapter: discriminated by chainPlatform<br>evm | svm | sui | bitcoin | polkadot"]
+end
 
-  subgraph core["@usebutr/core"]
-    store["WalletStore (zustand)<br>pool · selection · active · status"]
-    storage["WalletStorage<br>persistent + session drivers"]
-    hydration["Hydration coordinator"]
-  end
+subgraph core["@usebutr/core"]
+store["WalletStore (zustand)<br>pool · selection · active · status"]
+storage["WalletStorage<br>persistent + session drivers"]
+hydration["Hydration coordinator"]
+end
 
-  subgraph react["@usebutr/react"]
-    provider["WalletManagerProvider"]
-    hooks["Selectors / Actions / Async resources"]
-  end
+subgraph react["@usebutr/react"]
+provider["WalletManagerProvider"]
+hooks["Selectors / Actions / Async resources"]
+end
 
-  subgraph integration["Integration"]
-    signer["getSigner(): escape hatch<br>EIP-1193 / WalletStandardWallet / PolkadotSignerHandle"]
-  end
+subgraph integration["Integration"]
+signer["getSigner(): escape hatch<br>EIP-1193 / WalletStandardWallet / PolkadotSignerHandle"]
+end
 
-  eip6963 --> source
-  walletstandard --> source
-  injectedweb3 --> source
-  injected --> source
-  source --> adapter
-  adapter --> store
-  storage --> hydration
-  hydration --> store
-  store --> provider
-  provider --> hooks
-  hooks --> signer
-```
+eip6963 --> source
+walletstandard --> source
+injectedweb3 --> source
+injected --> source
+source --> adapter
+adapter --> store
+storage --> hydration
+hydration --> store
+store --> provider
+provider --> hooks
+hooks --> signer
+`}
+/>
 
 ## Layer 1: Discovery
 

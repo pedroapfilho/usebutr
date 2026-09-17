@@ -16,7 +16,6 @@ import {
 import { CHAINS_BY_PLATFORM } from "@usebutr/wallets";
 import { type ReactNode, useState } from "react";
 
-import { hasWalletConnectProjectId } from "./extra-connectors";
 import { PairingDialog } from "./pairing-dialog";
 import { SiteFooter, SiteHeader } from "./site-chrome";
 import { WalletConnectDialog } from "./wallet-connect-dialog";
@@ -73,7 +72,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
           {signIndicator}
           <button
             aria-label={state.kind === "signing" ? "Signing…" : "Sign"}
-            className="border-border-strong hover:bg-surface-subtle rounded border bg-white px-2 py-0.5 text-xs disabled:opacity-50"
+            className="border-border-strong hover:bg-surface-subtle bg-surface-base rounded border px-2 py-0.5 text-xs disabled:opacity-50"
             disabled={state.kind === "signing"}
             onClick={() => {
               void handleSign();
@@ -125,7 +124,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
         Chain
       </label>
       <select
-        className="border-border-strong w-full rounded-md border bg-white px-2 py-1 text-base"
+        className="border-border-strong bg-surface-base w-full rounded-md border px-2 py-1 text-base"
         id={selectId}
         onChange={(e) => {
           void handleChange(e.target.value);
@@ -171,7 +170,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
   }
 
   return (
-    <div className="border-border-default space-y-3 rounded-lg border bg-white p-5">
+    <div className="border-border-default bg-surface-base space-y-3 rounded-lg border p-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {wallet.connector.icon !== undefined && wallet.connector.icon !== "" ? (
@@ -323,7 +322,7 @@ const WalletBrandRow = ({
 }) => {
   const connectingId = useConnectingConnectorId();
   return (
-    <div className="border-border-default rounded-lg border bg-white px-4 py-3">
+    <div className="border-border-default bg-surface-base rounded-lg border px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-3">
           {brand.icon !== undefined && brand.icon !== "" ? (
@@ -338,7 +337,7 @@ const WalletBrandRow = ({
               <button
                 aria-busy={isConnecting}
                 aria-label={`${brand.name} (${adapter.chainPlatform})`}
-                className="hover:border-brand hover:bg-brand/10 hover:text-brand-foreground border-border-strong min-h-11 rounded-md border px-2 py-1 font-mono text-xs uppercase transition-colors disabled:opacity-50 motion-reduce:transition-none"
+                className="hover:border-brand hover:bg-brand/10 hover:text-brand-accent border-border-strong min-h-11 rounded-md border px-2 py-1 font-mono text-xs uppercase transition-colors disabled:opacity-50 motion-reduce:transition-none"
                 disabled={isConnecting}
                 key={adapter.id}
                 onClick={() => {
@@ -434,11 +433,6 @@ const Content = () => {
       <StatusBar status={status} />
       {connected.length > 0 ? <ConnectedList count={connected.length} /> : null}
       <WalletPicker available={available} hasConnected={connected.length > 0} />
-      {hasWalletConnectProjectId ? null : (
-        <p className="text-foreground-disabled text-xs">
-          Set <code>VITE_WC_PROJECT_ID</code> in <code>.env.local</code> to enable WalletConnect.
-        </p>
-      )}
       <PairingDialog />
       {/* Dialog-based connect UX; recommended pattern for modal wallet pickers */}
       {available.length > 0 ? (
@@ -478,17 +472,20 @@ const Content = () => {
 };
 
 const App = () => (
-  <>
+  <div className="flex min-h-dvh flex-col">
     <a
-      className="sr-only px-4 py-2 text-sm focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-white focus:shadow"
+      className="focus:bg-surface-base sr-only px-4 py-2 text-sm focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:shadow"
       href="#main"
     >
       Skip to content
     </a>
     <SiteHeader />
-    <main className="text-foreground-primary mx-auto max-w-2xl px-6 py-10 font-sans" id="main">
+    <main
+      className="text-foreground-primary mx-auto w-full max-w-2xl flex-1 px-6 py-10 font-sans"
+      id="main"
+    >
       <header className="mb-10">
-        <p className="text-brand-foreground font-mono text-xs tracking-wide uppercase">Live demo</p>
+        <p className="text-brand-accent font-mono text-xs tracking-wide uppercase">Live demo</p>
         <h1 className="max-w-measure-24 mt-3 text-4xl font-semibold tracking-tight text-balance">
           Connect a wallet on any chain.
         </h1>
@@ -501,7 +498,7 @@ const App = () => (
       <Content />
     </main>
     <SiteFooter />
-  </>
+  </div>
 );
 
 export { App };

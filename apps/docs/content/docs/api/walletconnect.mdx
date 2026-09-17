@@ -1,6 +1,6 @@
 ---
 title: "@usebutr/walletconnect"
-description: createWalletConnectAdapter(s), namespace builders, per-platform capabilities.
+description: createWalletConnectAdapters, namespace builders, per-platform capabilities.
 ---
 
 WalletConnect v2 transport for EVM, SVM, Sui, and Bitcoin mobile wallets.
@@ -68,8 +68,8 @@ the builders directly.
 ## Constants
 
 - `WALLETCONNECT_DEFAULT_ICON: string`: default SVG data URI.
-- `WALLETCONNECT_CAPABILITIES: WalletCapabilities`: EVM (used by the
-  single-platform factory).
+- `WALLETCONNECT_CAPABILITIES: WalletCapabilities`: EVM (used by
+  `evmNamespace`).
 - `WALLETCONNECT_SVM_CAPABILITIES: WalletCapabilities`: Solana.
 - `WALLETCONNECT_SUI_CAPABILITIES: WalletCapabilities`: Sui.
 - `WALLETCONNECT_BITCOIN_CAPABILITIES: WalletCapabilities`: Bitcoin.

@@ -8,8 +8,6 @@ const LEDGER_PLATFORMS = ["evm", "svm", "sui", "bitcoin"] as const;
 
 const WC_PROJECT_ID = import.meta.env.VITE_WC_PROJECT_ID;
 
-const hasWalletConnectProjectId = Boolean(WC_PROJECT_ID);
-
 type OnAdapter = (adapter: WalletAdapter) => void;
 
 const createLedgerSafe = async (
@@ -65,4 +63,4 @@ const registerExtraAdapters = (onAdapter: OnAdapter): void => {
   }
 };
 
-export { hasWalletConnectProjectId, registerExtraAdapters };
+export { registerExtraAdapters };

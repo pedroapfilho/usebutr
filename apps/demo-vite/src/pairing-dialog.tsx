@@ -71,7 +71,7 @@ const PairingDialog = () => {
     <dialog
       aria-label="WalletConnect pairing"
       aria-modal="true"
-      className="border-border-default m-auto w-full max-w-sm rounded-xl border bg-white p-0 shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm open:flex open:flex-col"
+      className="border-border-default bg-surface-base m-auto w-full max-w-sm rounded-xl border p-0 shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm open:flex open:flex-col"
       onClick={handleBackdropClick}
       ref={dialogRef}
     >

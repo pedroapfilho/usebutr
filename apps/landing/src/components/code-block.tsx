@@ -1,7 +1,6 @@
 import { toJsxRuntime } from "hast-util-to-jsx-runtime";
 import { Fragment } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
-import type { BundledTheme } from "shiki";
 import { codeToHast } from "shiki";
 
 import { cn } from "@/lib/cn";
@@ -10,17 +9,15 @@ type CodeBlockProps = {
   className?: string;
   code: string;
   lang?: string;
-  theme?: BundledTheme;
 };
 
-/** Server-rendered Shiki panel: one light theme, one border, no shadow. */
-const CodeBlock = async ({
-  className,
-  code,
-  lang = "tsx",
-  theme = "github-light",
-}: CodeBlockProps) => {
-  const hast = await codeToHast(code, { lang, theme });
+/** Server-rendered Shiki panel: one border, no shadow, light and dark themes. */
+const CodeBlock = async ({ className, code, lang = "tsx" }: CodeBlockProps) => {
+  const hast = await codeToHast(code, {
+    defaultColor: false,
+    lang,
+    themes: { dark: "github-dark", light: "github-light" },
+  });
 
   return (
     <div

@@ -18,11 +18,11 @@ const GitHubIcon = () => (
 );
 
 const SiteHeader = () => (
-  <header className="border-border-default sticky top-0 z-50 border-b bg-white/80 backdrop-blur-md">
+  <header className="border-border-default bg-surface-base/80 sticky top-0 z-50 border-b backdrop-blur-md">
     <div className="mx-auto flex h-16 max-w-2xl items-center justify-between px-6">
       <a aria-label="butr homepage" className="flex items-center gap-2 rounded-sm" href={WEB_URL}>
         <BrandLogo className="h-5" />
-        <span className="bg-brand/15 text-brand-foreground rounded-full px-2 py-0.5 text-xs font-medium">
+        <span className="bg-brand/15 text-brand-accent rounded-full px-2 py-0.5 text-xs font-medium">
           Demo
         </span>
       </a>

@@ -7,9 +7,64 @@
   --color-brand-foreground: oklch(0.421 0.095 57.708);
 }
 
+:root {
+  color-scheme: light dark;
+  --brand-accent: oklch(0.421 0.095 57.708);
+  --border-default: var(--color-neutral-200);
+  --border-faint: var(--color-neutral-100);
+  --border-strong: var(--color-neutral-300);
+  --danger-border: var(--color-red-200);
+  --danger-foreground: var(--color-red-700);
+  --danger-surface: var(--color-red-50);
+  --divider: var(--color-neutral-100);
+  --foreground-disabled: var(--color-neutral-400);
+  --foreground-muted: var(--color-neutral-500);
+  --foreground-primary: var(--color-neutral-900);
+  --foreground-secondary: var(--color-neutral-700);
+  --foreground-subtle: var(--color-neutral-600);
+  --info-accent: var(--color-blue-600);
+  --success-border: var(--color-emerald-200);
+  --success-foreground: var(--color-emerald-700);
+  --success-foreground-deep: var(--color-emerald-900);
+  --success-surface: var(--color-emerald-50);
+  --success-surface-hover: var(--color-emerald-100);
+  --surface-base: var(--color-white);
+  --surface-muted: var(--color-neutral-100);
+  --surface-subtle: var(--color-neutral-50);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand-accent: oklch(0.852 0.199 91.936);
+    --border-default: var(--color-neutral-800);
+    --border-faint: var(--color-neutral-900);
+    --border-strong: var(--color-neutral-700);
+    --danger-border: var(--color-red-900);
+    --danger-foreground: var(--color-red-300);
+    --danger-surface: var(--color-red-950);
+    --divider: var(--color-neutral-800);
+    --foreground-disabled: var(--color-neutral-600);
+    --foreground-muted: var(--color-neutral-400);
+    --foreground-primary: var(--color-neutral-50);
+    --foreground-secondary: var(--color-neutral-200);
+    --foreground-subtle: var(--color-neutral-300);
+    --info-accent: var(--color-blue-400);
+    --success-border: var(--color-emerald-900);
+    --success-foreground: var(--color-emerald-300);
+    --success-foreground-deep: var(--color-emerald-100);
+    --success-surface: var(--color-emerald-950);
+    --success-surface-hover: var(--color-emerald-900);
+    --surface-base: var(--color-neutral-950);
+    --surface-muted: var(--color-neutral-800);
+    --surface-subtle: var(--color-neutral-900);
+  }
+}
+
 @layer base {
   body {
     font-family: var(--font-sans);
+    background-color: var(--surface-base);
+    color: var(--foreground-primary);
   }
 
   button:not(:disabled),
@@ -51,26 +106,28 @@
 }
 
 @theme inline {
-  --color-border-default: var(--color-neutral-200);
-  --color-border-faint: var(--color-neutral-100);
-  --color-border-strong: var(--color-neutral-300);
-  --color-danger-border: var(--color-red-200);
-  --color-danger-foreground: var(--color-red-700);
-  --color-danger-surface: var(--color-red-50);
-  --color-divider: var(--color-neutral-100);
-  --color-foreground-disabled: var(--color-neutral-400);
-  --color-foreground-muted: var(--color-neutral-500);
-  --color-foreground-primary: var(--color-neutral-900);
-  --color-foreground-secondary: var(--color-neutral-700);
-  --color-foreground-subtle: var(--color-neutral-600);
-  --color-info-accent: var(--color-blue-600);
-  --color-success-border: var(--color-emerald-200);
-  --color-success-foreground: var(--color-emerald-700);
-  --color-success-foreground-deep: var(--color-emerald-900);
-  --color-success-surface: var(--color-emerald-50);
-  --color-success-surface-hover: var(--color-emerald-100);
-  --color-surface-muted: var(--color-neutral-100);
-  --color-surface-subtle: var(--color-neutral-50);
+  --color-brand-accent: var(--brand-accent);
+  --color-border-default: var(--border-default);
+  --color-border-faint: var(--border-faint);
+  --color-border-strong: var(--border-strong);
+  --color-danger-border: var(--danger-border);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-surface: var(--danger-surface);
+  --color-divider: var(--divider);
+  --color-foreground-disabled: var(--foreground-disabled);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-foreground-primary: var(--foreground-primary);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-subtle: var(--foreground-subtle);
+  --color-info-accent: var(--info-accent);
+  --color-success-border: var(--success-border);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-foreground-deep: var(--success-foreground-deep);
+  --color-success-surface: var(--success-surface);
+  --color-success-surface-hover: var(--success-surface-hover);
+  --color-surface-base: var(--surface-base);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-subtle: var(--surface-subtle);
 }
 
 @theme {

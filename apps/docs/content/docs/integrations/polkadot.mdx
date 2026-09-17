@@ -58,7 +58,6 @@ if (!account) throw new Error("Active account not found in the injected extensio
 
 // Self-transfer of 0.1 PAS (1_000_000_000 Planck; Paseo uses 10 decimals).
 const tx = api.tx.Balances.transfer_keep_alive({
-  // oxlint-disable-next-line new-cap -- MultiAddress.Id is a polkadot-api enum-variant constructor
   dest: MultiAddress.Id(handle.address),
   value: 1_000_000_000n,
 });

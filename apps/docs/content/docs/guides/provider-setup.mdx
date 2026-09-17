@@ -9,9 +9,10 @@ prop, or both. Pick the setup that fits your bundle constraints.
 
 ## Auto (batteries-included)
 
-Use `autoDiscovery()` from `@usebutr/wallets`. It discovers EVM (EIP-6963) and SVM
-(Wallet Standard) wallets and persists state to `localStorage`. Hoist the source
-to module scope so it is created once.
+Use `autoDiscovery()` from `@usebutr/wallets`. It discovers EVM (EIP-6963),
+SVM, Sui, and Bitcoin (Wallet Standard), and Polkadot (injectedWeb3) wallets
+and persists state to `localStorage`. Hoist the source to module scope so it
+is created once.
 
 ```tsx title="src/wallet-provider.tsx"
 import type { ReactNode } from "react";

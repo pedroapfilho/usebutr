@@ -38,6 +38,7 @@
     ".vinxi/**",
     "**/routeTree.gen.ts",
     "pnpm-lock.yaml",
-    "apps/demo-with-polkadot/.papi/**"
+    "apps/demo-with-polkadot/.papi/**",
+    "apps/demo-expo-web/src/uniwind-types.d.ts"
   ]
 }

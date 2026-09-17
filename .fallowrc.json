@@ -14,7 +14,8 @@
     "apps/docs/content/**",
     "apps/demo-next/next-env.d.ts",
     "apps/landing/next-env.d.ts",
-    "apps/demo-tanstack-start/src/router.tsx"
+    "apps/demo-tanstack-start/src/router.tsx",
+    ".github/ci/*.mjs"
   ],
   "ignoreDependencies": [
     "@ledgerhq/hw-app-btc",

@@ -11,11 +11,24 @@ export const baseOptions = (): BaseLayoutProps => ({
   ],
   nav: {
     title: (
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcSet="/butr-logo-dark.svg" />
+      <>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img alt="butr" className="h-5 w-auto" height={20} src="/butr-logo-light.svg" width={80} />
-      </picture>
+        <img
+          alt="butr"
+          className="block h-5 w-auto dark:hidden"
+          height={20}
+          src="/butr-logo-light.svg"
+          width={80}
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          alt="butr"
+          className="hidden h-5 w-auto dark:block"
+          height={20}
+          src="/butr-logo-dark.svg"
+          width={80}
+        />
+      </>
     ),
     transparentMode: "top",
   },

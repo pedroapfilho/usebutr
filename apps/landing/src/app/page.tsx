@@ -144,14 +144,7 @@ const Page = () => (
     <SiteHeader />
 
     <main>
-      {/* oxlint-disable react/no-danger -- static structured data, escaped for HTML */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(JSON_LD).replaceAll("<", String.raw`\u003c`),
-        }}
-        type="application/ld+json"
-      />
-      {/* oxlint-enable react/no-danger */}
+      <script type="application/ld+json">{JSON.stringify(JSON_LD)}</script>
       {/* Hero */}
       <section className="relative overflow-hidden">
         <BrandMark className="w-hero-glow pointer-events-none absolute top-1/2 -right-24 -translate-y-1/2 opacity-6 select-none max-lg:hidden" />

@@ -1432,6 +1432,9 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0
     devDependencies:
+      '@repo/config-vitest':
+        specifier: workspace:*
+        version: link:../config-vitest
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../config-typescript
@@ -1447,6 +1450,9 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.1(@types/node@26.2.0)(@vitest/coverage-v8@5.0.1)(jsdom@30.0.1(@noble/hashes@2.3.0))(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(yaml@2.9.0))
 
   packages/sui:
     dependencies:

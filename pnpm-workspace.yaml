@@ -1,4 +1,7 @@
 overrides:
+  # expo-router depends on ^6.9.1, which resolves to 6.10.0: the 7.0.0 release
+  # published as a minor and deprecated. One jest-dom line serves the whole tree.
+  "@testing-library/jest-dom": "^7.0.1"
   # Security: force patched transitive releases to clear pnpm audit advisories.
   # Each pin is the lowest release that carries the fix.
   "@xmldom/xmldom@<0.9.0": "^0.8.15"
@@ -14,7 +17,6 @@ overrides:
   stream-json: "^3.5.0"
   toml: "^4.2.0"
   "uuid@<11.1.1": "^11.1.1"
-  vitest: "^4.1.11"
 
 packages:
   - apps/*
@@ -90,20 +92,3 @@ minimumReleaseAgeExclude:
   - oxlint@1.79.0
   - cn@0.2.4
   - "@shadcn/lint@0.1.0"
-
-onlyBuiltDependencies:
-  - "@parcel/watcher"
-  - "@prisma/client"
-  - "@prisma/engines"
-  - "@swc/core"
-  - "@tailwindcss/oxide"
-  - bufferutil
-  - esbuild
-  - fallow
-  - keccak
-  - lightningcss
-  - msw
-  - prisma
-  - sharp
-  - unrs-resolver
-  - utf-8-validate

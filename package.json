@@ -16,7 +16,7 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "turbo run build && changeset publish",
-    "fallow": "^3.24.1",
+    "fallow": "fallow",
     "fallow:dead": "fallow dead-code",
     "fallow:dupes": "fallow dupes",
     "fallow:health": "fallow health --score",

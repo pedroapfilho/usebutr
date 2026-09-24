@@ -1,4 +1,4 @@
-import type { Eip1193Provider } from "@usebutr/evm";
+import type { Eip1193Listener, Eip1193RequestArgs, Eip1193Value } from "@usebutr/evm";
 
 /**
  * Declared here rather than imported, so butr's type-check never requires
@@ -11,7 +11,7 @@ type WcNamespaceRequest = {
   rpcMap?: Record<string, string>;
 };
 
-type UniversalProviderLike = Eip1193Provider & {
+type UniversalProviderLike = {
   connect: (opts: {
     namespaces: Record<string, WcNamespaceRequest>;
     /**
@@ -22,6 +22,14 @@ type UniversalProviderLike = Eip1193Provider & {
     optionalNamespaces?: Record<string, WcNamespaceRequest>;
   }) => Promise<WcSession | undefined>;
   disconnect: () => Promise<void>;
+  on: (event: string, listener: Eip1193Listener) => void;
+  removeListener: (event: string, listener: Eip1193Listener) => void;
+  /**
+   * `chain` is the request's CAIP-2 chain. Without it, UniversalProvider
+   * routes to the session's FIRST namespace, so a Solana request in an
+   * EVM + Solana session reaches the eip155 provider.
+   */
+  request: (args: Eip1193RequestArgs, chain?: string) => Promise<Eip1193Value | undefined>;
   session: WcSession | null | undefined;
 };
 

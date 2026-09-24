@@ -1,87 +1,52 @@
-import { buildAccount } from "@usebutr/core";
-import { describe, expect, it } from "vitest";
+import type { ConnectedWallet } from "@usebutr/core";
+import { buildAccount, SUI_CHAINS } from "@usebutr/core";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { createFakeAdapter } from "../fake-adapter";
 import { createFakeConnectedWallet } from "../fake-connected-wallet";
 
 describe("createFakeConnectedWallet", () => {
-  it("returns a renderable pool entry with no arguments", () => {
+  it("builds an EVM pool entry whose accounts match what its adapter exposes", async () => {
     const wallet = createFakeConnectedWallet();
-
     expect(wallet.connector.chainPlatform).toBe("evm");
-    expect(wallet.accounts).toHaveLength(1);
     expect(wallet.account).toBe(wallet.accounts[0]);
+    expect(wallet.account.id).toBe("eip155:1:0x0000000000000000000000000000000000000001");
+    expect(await wallet.connector.getAccounts()).toEqual(wallet.accounts);
   });
 
-  it("builds account ids through buildAccount rather than restating the format", () => {
-    const wallet = createFakeConnectedWallet({ addresses: ["0xabc"] });
-    const chain = wallet.account.chain;
-
-    expect(wallet.account.id).toBe(buildAccount("0xabc", chain).id);
-  });
-
-  it("defaults the chain to the platform's mainnet", () => {
-    expect(createFakeConnectedWallet({ chainPlatform: "svm" }).account.chain.id).toBe(
-      "solana:mainnet",
-    );
-    expect(createFakeConnectedWallet({ chainPlatform: "sui" }).account.chain.id).toBe(
-      "sui:mainnet",
-    );
-    expect(createFakeConnectedWallet({ chainPlatform: "evm" }).account.chain.id).toBe("eip155:1");
-  });
-
-  it("honors an explicit chain", () => {
-    const chain = { id: "eip155:8453", name: "Base", namespace: "eip155", reference: "8453" };
-    const wallet = createFakeConnectedWallet({ chain });
-
-    expect(wallet.account.chain).toBe(chain);
-    expect(wallet.account.id).toBe(buildAccount(wallet.account.walletAddress, chain).id);
-  });
-
-  it("builds one account per address, first one active", () => {
-    const wallet = createFakeConnectedWallet({ addresses: ["0x1", "0x2", "0x3"] });
-
-    expect(wallet.accounts.map((a) => a.walletAddress)).toEqual(["0x1", "0x2", "0x3"]);
-    expect(wallet.account.walletAddress).toBe("0x1");
-  });
-
-  it("passes adapter options through to the connector", () => {
+  it("builds accounts from addresses on a chain, active first", () => {
     const wallet = createFakeConnectedWallet({
-      capabilities: { signMessage: false },
-      chainPlatform: "bitcoin",
-      id: "unisat",
-      name: "Unisat",
+      addresses: ["0xa", "0xb"],
+      chain: SUI_CHAINS.testnet,
+      chainPlatform: "sui",
     });
-
-    expect(wallet.connector.id).toBe("unisat");
-    expect(wallet.connector.name).toBe("Unisat");
-    expect(wallet.connector.capabilities.signMessage).toBe(false);
-    expect(wallet.connector.capabilities.signTransaction).toBe(true);
+    expect(wallet.accounts).toEqual([
+      buildAccount("0xa", SUI_CHAINS.testnet),
+      buildAccount("0xb", SUI_CHAINS.testnet),
+    ]);
+    expect(wallet.account.walletAddress).toBe("0xa");
   });
 
-  it("wraps an existing adapter and takes its platform", () => {
-    const adapter = createFakeAdapter({ chainPlatform: "svm", id: "phantom" });
-    const wallet = createFakeConnectedWallet({ adapter });
-
-    expect(wallet.connector).toBe(adapter);
-    expect(wallet.account.chain.id).toBe("solana:mainnet");
+  it("takes prebuilt accounts and adapter options", async () => {
+    const account = buildAccount("0xabc", SUI_CHAINS.mainnet);
+    const wallet = createFakeConnectedWallet({
+      accounts: [account],
+      chainPlatform: "sui",
+      id: "suiet",
+      omit: ["signTransaction"],
+    });
+    expect(wallet.connector.id).toBe("suiet");
+    expect(wallet.connector.signTransaction).toBeUndefined();
+    expect(await wallet.connector.signMessage?.(new Uint8Array([1]))).toBeDefined();
+    expect(wallet.account).toBe(account);
   });
 
-  it("keeps the connector's accounts in sync with the entry", async () => {
-    const wallet = createFakeConnectedWallet({ addresses: ["0x1", "0x2"] });
-
-    await expect(wallet.connector.getAccounts?.()).resolves.toEqual(wallet.accounts);
-    await expect(wallet.connector.getAccount()).resolves.toEqual(wallet.account);
+  it("types the entry to its platform and exposes the fake's controls", () => {
+    const wallet = createFakeConnectedWallet({ chainPlatform: "svm" });
+    expectTypeOf(wallet).toExtend<ConnectedWallet<"svm">>();
+    expectTypeOf(wallet.connector.emit).toBeFunction();
   });
 
-  it("throws rather than returning an entry with no active account", () => {
-    expect(() => createFakeConnectedWallet({ accounts: [] })).toThrow(/at least one account/v);
-  });
-
-  it("rejects an adapter combined with explicit addresses, which cannot agree", () => {
-    const adapter = createFakeAdapter({ chainPlatform: "evm", id: "metamask" });
-    expect(() => createFakeConnectedWallet({ adapter, addresses: ["0xdead"] })).toThrow(
-      /not both/v,
-    );
+  it("refuses an entry without accounts", () => {
+    expect(() => createFakeConnectedWallet({ addresses: [] })).toThrow("at least one account");
   });
 });

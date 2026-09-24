@@ -7,16 +7,18 @@ Vite is the simplest case: a client-only SPA, so no server/hydration concerns.
 This is the `demo-vite` reference (multi-chain, localStorage).
 
 ```tsx title="src/wallet-provider.tsx"
-import type { ReactNode } from "react";
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
+import type { ReactNode } from "react";
 
-const discovery = autoDiscovery();
+const config: WalletManagerConfig = {
+  sources: [autoDiscovery()],
+  storageKeyPrefix: "butr-demo",
+};
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <WalletManagerProvider discovery={discovery} storageKeyPrefix="butr-demo">
-    {children}
-  </WalletManagerProvider>
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 
 export { WalletProvider };
@@ -33,6 +35,10 @@ ReactDOM.createRoot(document.querySelector("#root")!).render(
   </WalletProvider>,
 );
 ```
+
+The demo also offers WalletConnect and Ledger. Those adapters are built, not
+discovered, so it adds them as a second source with `fromAdapters`; see
+[Provider setup](/guides/provider-setup#adding-walletconnect-and-ledger).
 
 Then use the hooks anywhere under the provider; see
 [Connect & disconnect](/guides/connect-disconnect). Gate the first render

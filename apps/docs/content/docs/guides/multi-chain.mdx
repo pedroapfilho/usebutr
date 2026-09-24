@@ -1,45 +1,69 @@
 ---
 title: Multi-wallet and chain switching
-description: Hold several wallets at once, choose the active one, and switch an EVM wallet's chain.
+description: Hold several wallets at once, choose the active one, act on each platform, and switch a wallet's chain.
 ---
 
 ## Several wallets at once
 
 The pool holds every connected wallet. A user can connect MetaMask and Phantom
 together; `useConnectedWallets()` returns both. Mark one the active wallet with
-`useSetActiveConnector()`:
+`setActive` from `useWalletManager()`:
 
 ```tsx
-import { useActiveWallet, useSetActiveConnector } from "@usebutr/react";
+import { useWallet, useWalletManager } from "@usebutr/react";
 
-const active = useActiveWallet();
-const setActive = useSetActiveConnector();
+const active = useWallet();
+const { setActive } = useWalletManager();
 
 const isActive = active?.connector.id === wallet.connector.id;
 {
-  isActive ? null : <button onClick={() => setActive(wallet.connector.id)}>Make active</button>;
+  isActive ? null : (
+    <button type="button" onClick={() => setActive(wallet.connector.id)}>
+      Make active
+    </button>
+  );
 }
 ```
 
 See [pool, selection, active](/concepts/pool-selection-active) for why
 these are separate.
 
-## Switch an EVM wallet's chain
+## One wallet per platform
 
-`wallet.connector.switchChain(chain)` takes a `ChainBase`. Get the right chain
-list for the wallet's platform from `CHAINS_BY_PLATFORM`:
+When your app acts on several platforms at once, read each platform's selected
+wallet. `useSelectedWallet` is typed to that platform, so its `sendTx` takes
+that platform's transaction with no narrowing:
 
 ```tsx
-import { CHAINS_BY_PLATFORM } from "@usebutr/wallets";
+import { useSelectedWallet } from "@usebutr/react";
 
-const ChainPicker = ({ wallet }) => {
+const evm = useSelectedWallet("evm"); // ConnectedWallet<"evm"> | undefined
+const svm = useSelectedWallet("svm"); // ConnectedWallet<"svm"> | undefined
+```
+
+Switch which wallet serves a platform with `setSelection(platform, id)` from
+`useWalletManager()`. `useConnectedWalletsByPlatform()` groups the pool for a
+per-platform picker.
+
+## Switch a wallet's chain
+
+`wallet.connector.switchChain(chain)` takes a `ChainBase`. Get the right chain
+list for the wallet's platform from `CHAINS_BY_PLATFORM` in `@usebutr/core`:
+
+```tsx
+import type { ConnectedWallet } from "@usebutr/core";
+import { CHAINS_BY_PLATFORM } from "@usebutr/core";
+
+const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
   const chains = CHAINS_BY_PLATFORM[wallet.connector.chainPlatform];
   return (
     <select
       value={wallet.account.chain.id}
-      onChange={(e) => {
-        const target = chains.find((c) => c.id === e.target.value);
-        if (target) void wallet.connector.switchChain(target);
+      onChange={(event) => {
+        const target = chains.find((chain) => chain.id === event.target.value);
+        if (target) {
+          void wallet.connector.switchChain?.(target);
+        }
       }}
     >
       {chains.map((chain) => (
@@ -52,22 +76,35 @@ const ChainPicker = ({ wallet }) => {
 };
 ```
 
-Gate the picker on the capability; not every wallet can switch:
+Render the picker only when the wallet can switch; `switchChain` exists only
+then:
 
 ```tsx
 {
-  wallet.connector.capabilities.switchChain ? <ChainPicker wallet={wallet} /> : null;
+  wallet.connector.switchChain ? <ChainPicker wallet={wallet} /> : null;
 }
 ```
 
-EVM wallets switch for real via `wallet_switchEthereumChain`. SVM "switching"
-is local state plus a per-call `chain` input. The new chain shows up on the
-next `accountChanged` event, bridged automatically into
-`wallet.account.chain`.
+What switching means depends on the transport:
+
+- **EVM** wallets switch for real via `wallet_switchEthereumChain`, which may
+  prompt the user.
+- **Wallet Standard** wallets (Solana, Sui, Bitcoin) have no switch call.
+  `switchChain` re-points butr's view of the wallet, and every later call's
+  `chain` input, to the new chain. It exists only when the wallet advertises
+  more than one chain.
+- **Injected Bitcoin** wallets switch their network when the provider can
+  (Unisat, Xverse).
+- **Ledger** and **injected Polkadot** adapters have no `switchChain`.
+
+Either way the new chain arrives as an `accountsChanged` event, bridged
+automatically into `wallet.account.chain`. To send one transaction on another
+chain without switching the UI, pass `chain` to `sendTx` instead; see
+[Send a transaction](/guides/transactions#chain-routing).
 
 <Callout type="info">
-  EVM-only manual setups don't bundle `@usebutr/wallets`. Use `EVM_CHAINS_LIST` from `@usebutr/evm`
-  instead; `demo-next` does exactly this.
+  A single-platform app imports only its own list, such as `EVM_CHAINS_LIST` from `@usebutr/core`;
+  `demo-next` does exactly this.
 </Callout>
 
 <Callout type="info">

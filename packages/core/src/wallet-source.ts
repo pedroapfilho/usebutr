@@ -1,21 +1,44 @@
-import type { WalletAdapter } from "./types";
+import { logWarn } from "./logger";
+import type { MaybePromise } from "./storage/persistence";
+import type { WalletAdapter } from "./types/wallet";
 
 /**
- * The discovery seam: implementable by third parties without depending
- * on `@usebutr/wallets`, which itself just composes the per-platform
- * sources into one.
+ * The discovery seam: a function that announces adapters and returns its
+ * unsubscribe. Every `discover*Adapters` export already has this shape, so
+ * it goes into `sources` as-is.
  */
-type WalletSource = {
-  subscribe: (onAdapter: (adapter: WalletAdapter) => void) => () => void;
-};
+type WalletSource = (onAdapter: (adapter: WalletAdapter) => void) => () => void;
+
+const isIterable = (
+  value: WalletAdapter | Iterable<WalletAdapter>,
+): value is Iterable<WalletAdapter> => Symbol.iterator in value;
 
 /**
- * Takes the exact shape of `discoverEvmAdapters` and friends, so a
- * single-platform app keeps `@usebutr/wallets` out of its bundle.
+ * For adapters that are built rather than discovered: WalletConnect, Ledger,
+ * hand-rolled ones. Takes one adapter or several, or a promise of either; a
+ * rejected promise is logged and contributes nothing.
  */
-const createWalletSource = (
-  subscribe: (onAdapter: (adapter: WalletAdapter) => void) => () => void,
-): WalletSource => ({ subscribe });
+const fromAdapters =
+  (adapters: MaybePromise<WalletAdapter | Iterable<WalletAdapter>>): WalletSource =>
+  (onAdapter) => {
+    let active = true;
+    void (async () => {
+      try {
+        const resolved = await adapters;
+        for (const adapter of isIterable(resolved) ? resolved : [resolved]) {
+          if (!active) {
+            return;
+          }
+          onAdapter(adapter);
+        }
+      } catch (error) {
+        logWarn("[butr] fromAdapters: adapters failed to load:", error);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  };
 
 export type { WalletSource };
-export { createWalletSource };
+export { fromAdapters };

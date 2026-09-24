@@ -1,5 +1,3 @@
-import type { WalletSigner } from "@usebutr/core";
-
 import type {
   WalletStandardFeature,
   WalletStandardWallet,
@@ -18,57 +16,30 @@ const slugify = (platformPrefix: string, name: string): string => {
   return `wallet-standard:${platformPrefix}-${slug}`;
 };
 
-/**
- * The spec types `features` as a reverse-DNS-keyed `Record<string,
- * unknown>`, so the caller declares the shape it expects. This accessor is
- * the single boundary where that dynamism is acknowledged.
- */
-type FeatureGuard<Feature> = (
+const hasMethod = <Feature extends object>(
   feature: WalletStandardFeature,
-) => feature is WalletStandardFeature & Feature;
+  method: keyof Feature & string,
+): feature is WalletStandardFeature & Feature => typeof feature[method] === "function";
 
-const getFeature = <Feature>(
+/**
+ * The spec keys `features` by reverse-DNS name with no fixed shape, so the
+ * caller names the feature type and the method that proves it:
+ * `getFeature<SolanaSignMessageFeature>(wallet, "solana:signMessage", "signMessage")`.
+ */
+const getFeature = <Feature extends object>(
   wallet: WalletStandardWallet,
   name: string,
-  isFeature: FeatureGuard<Feature>,
+  method: keyof Feature & string,
 ): (WalletStandardFeature & Feature) | undefined => {
   const feature = wallet.features[name];
-  if (feature === undefined || !isFeature(feature)) {
-    return undefined;
-  }
-  return feature;
+  return feature !== undefined && hasMethod<Feature>(feature, method) ? feature : undefined;
 };
 
-const isWalletStandardWallet = (value: WalletSigner): value is WalletStandardWallet =>
-  "accounts" in value &&
-  Array.isArray(value.accounts) &&
-  "chains" in value &&
-  Array.isArray(value.chains) &&
-  "features" in value &&
-  typeof value.features === "object" &&
-  value.features !== null &&
-  "icon" in value &&
-  typeof value.icon === "string" &&
-  "name" in value &&
-  typeof value.name === "string" &&
-  "version" in value &&
-  typeof value.version === "string";
-
-const pickFirstAddress = (accounts: ReadonlyArray<WalletStandardWalletAccount>): string | null => {
-  const first = accounts[0];
-  return first === undefined ? null : first.address;
-};
-
-/**
- * Per-call routing for `sendTx` / `signMessage`: callers pass an `account`
- * from `ConnectedWallet.accounts` to sign with a non-active address, but
- * the wallet's own `accounts[]` stays the source of truth.
- */
-const pickAccountByAddress = (
+/** Wallet Standard account for a butr address. `undefined` for an address
+ *  the wallet does not expose: never another account in its place. */
+const findAccount = (
   accounts: ReadonlyArray<WalletStandardWalletAccount>,
   address: string,
-): WalletStandardWalletAccount | undefined =>
-  accounts.find((a) => a.address === address) ?? accounts[0];
+): WalletStandardWalletAccount | undefined => accounts.find((a) => a.address === address);
 
-export { buildAccount } from "@usebutr/core";
-export { getFeature, isWalletStandardWallet, pickAccountByAddress, pickFirstAddress, slugify };
+export { findAccount, getFeature, slugify };

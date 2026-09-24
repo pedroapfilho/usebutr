@@ -1,53 +1,85 @@
 ---
 title: "@usebutr/evm"
-description: EIP-1193 / EIP-6963 / injected discovery, the adapter builder, chains, and byte helpers.
+description: EIP-6963 and injected discovery, the EIP-1193 adapter builder, and the EIP-1193 types.
 ---
 
 ## Discovery
 
-### `discoverEvmAdapters(onAdapter): () => void`
+### `discoverEvmAdapters(onAdapter, options?): () => void`
 
-Subscribe to EIP-6963 announcements. Calls `onAdapter(adapter)` for each
-discovered wallet; returns an unsubscribe function.
+Subscribes to [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963)
+announcements and calls `onAdapter(adapter, info)` once per wallet,
+deduplicated by `info.rdns`. The listener stays attached, so wallets that
+boot late still register. `options.target` overrides `window` (tests). It is a
+`WalletSource` as-is:
 
-### `discoverInjectedAdapter(onAdapter, options: InjectedDiscoveryOptions): () => void`
+```ts
+import type { WalletManagerConfig } from "@usebutr/core";
+import { discoverEvmAdapters } from "@usebutr/evm";
 
-Last-resort fallback for legacy EIP-1193-only `window.ethereum` wallets.
+const config: WalletManagerConfig = { sources: [discoverEvmAdapters] };
+```
 
-Constants: `ANNOUNCE_EVENT`, `REQUEST_EVENT` (EIP-6963 event names),
-`GENERIC_INJECTED_ICON` (data-URI fallback icon).
+### `discoverInjectedAdapter(onAdapter, options?): () => void`
+
+The last-resort path for wallets that expose only `window.ethereum` and never
+announce through EIP-6963. It waits `settleMs`, then emits one adapter with
+the id `injected:legacy`, unless `hasAnyEip6963Adapter()` says the standard
+path already found a wallet.
+
+`InjectedDiscoveryOptions`: `hasAnyEip6963Adapter?: () => boolean`,
+`settleMs?: number` (default `150`), `target?` (overrides `window`).
+
+### `evmDiscoverer: PlatformDiscoverer`
+
+EIP-6963 as the primary channel, `discoverInjectedAdapter` as the fallback.
+`autoDiscovery()` from `@usebutr/wallets` composes it.
+
+Constants: `ANNOUNCE_EVENT` and `REQUEST_EVENT` (the EIP-6963 event names),
+`GENERIC_INJECTED_ICON` (the legacy adapter's icon).
 
 ## Adapter builder
 
-### `buildEvmAdapter(provider: Eip1193Provider, meta: ConnectorMeta): WalletAdapter`
+### `buildEvmAdapter(info: Eip6963ProviderInfo, provider: Eip1193Provider): EvmAdapter`
 
-Wrap any EIP-1193 provider into a butr `WalletAdapter`. The basis for custom
-EVM connectors.
+Wraps any EIP-1193 provider. `info.rdns` becomes the adapter id. The adapter
+always defines `disconnect`, `subscribe`, `requestAccounts`, `switchChain`,
+`signMessage`, `sendTx`, `getBalance` and `getTransactionReceipt`, and
+`getSigner()` resolves `{ kind: "eip1193", provider }`. See the
+[injected EVM connector](/connectors/injected-evm) for how each behaves.
+
+### `isEip1193Provider(value: unknown): value is Eip1193Provider`
+
+A structural check for a provider of unknown origin, such as
+`window.ethereum`. A butr signer narrows on `kind === "eip1193"` instead.
 
 ## Helpers
 
-- `bytesToHex(bytes: Uint8Array): string`
-- `hexToBytes(hex: string): Uint8Array`
 - `chainIdHexToDecimal(hex: string): string`
 - `chainIdDecimalToHex(decimal: string): string`
-- `formatEther(wei: bigint, decimals?: number): string`
+- `formatEther(wei: bigint): string`: trims trailing zeros.
 
-## Chains
+Byte helpers (`bytesToHex`, `hexToBytes`, …) and the EVM chain registry
+(`EVM_CHAINS`, `EVM_CHAINS_LIST`) live in [`@usebutr/core`](/api/core).
 
-- `EVM_CHAINS`: record keyed by chain id.
-- `EVM_CHAINS_LIST`: array form (use in EVM-only chain pickers).
+## Signer
 
-## Capabilities
+Importing the package registers the `eip1193` signer kind:
 
-- `resolveEip6963Capabilities`: derive `WalletCapabilities` from EIP-6963
-  provider info.
-- `EIP6963_RDNS_WITH_REQUEST_ACCOUNTS`: RDNS allowlist for
-  `wallet_requestPermissions` support.
+```ts
+type Eip1193Signer = { kind: "eip1193"; provider: Eip1193Provider };
+```
+
+The WalletConnect EVM namespace resolves the same kind.
 
 ## Types
 
-`Eip1193Provider`, `Eip1193Listener`, `Eip1193RequestArgs`,
-`Eip6963AnnounceEvent`, `Eip6963ProviderDetail`, `Eip6963ProviderInfo`,
-`InjectedDiscoveryOptions`, `Eip6963CapabilityInput`.
+`Eip1193Provider` (`request`, `on`, `removeListener`), `Eip1193RequestArgs`,
+`Eip1193Listener`, `Eip1193Value`, `Eip1193Object`, `Eip6963ProviderInfo`,
+`Eip6963ProviderDetail`, `Eip6963AnnounceEvent`, `InjectedDiscoveryOptions`.
+
+`Eip1193Provider.request` returns `Promise<Eip1193Value | undefined>`: loose
+on purpose, so the package takes no dependency on viem. viem's `custom()`
+transport accepts it directly.
 
 **Source:** `packages/evm/src/index.ts`.

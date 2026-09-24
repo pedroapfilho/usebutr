@@ -1,6 +1,7 @@
 import { MultiAddress, paseo } from "@polkadot-api/descriptors";
-import { isPolkadotSignerHandle } from "@usebutr/polkadot";
-import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
+import type { ConnectedWallet } from "@usebutr/core";
+import { bytesToHex } from "@usebutr/core";
+import { useConnect, useSelectedWallet, useWalletManager } from "@usebutr/react";
 import { createClient } from "polkadot-api";
 import { connectInjectedExtension } from "polkadot-api/pjs-signer";
 import { getWsProvider } from "polkadot-api/ws";
@@ -19,14 +20,6 @@ const formatError = (error: Error | string): string => {
     return error.message;
   }
   return error;
-};
-
-const toHex = (bytes: Uint8Array): string => {
-  let hex = "";
-  for (const byte of bytes) {
-    hex += byte.toString(16).padStart(2, "0");
-  }
-  return hex;
 };
 
 const formatPas = (planck: bigint): string => {
@@ -50,7 +43,7 @@ const Connected = ({
   wallet,
 }: {
   onDisconnect: () => void;
-  wallet: ReturnType<typeof useActiveWallet> & object;
+  wallet: ConnectedWallet<"polkadot">;
 }) => {
   const [balance, setBalance] = useState<string>("…");
   const [signature, setSignature] = useState<string | null>(null);
@@ -86,11 +79,17 @@ const Connected = ({
   const handleSign = async () => {
     setErrorMsg(null);
     try {
+      // Defined once the wallet showed it can sign raw bytes (`signRaw` on
+      // injectedWeb3, `polkadot:signMessage` on Wallet Standard).
+      if (!wallet.connector.signMessage) {
+        throw new Error(`${wallet.connector.name} does not support message signing`);
+      }
       const result = await wallet.connector.signMessage(
         new TextEncoder().encode("Hello from butr + Polkadot"),
+        { account: wallet.account },
       );
-      setSignature(toHex(result.signature));
-      setSignedMessage(toHex(result.signedMessage));
+      setSignature(bytesToHex(result.signature));
+      setSignedMessage(bytesToHex(result.signedMessage));
     } catch (error) {
       setErrorMsg(formatError(error instanceof Error ? error : String(error)));
     }
@@ -100,12 +99,12 @@ const Connected = ({
     setErrorMsg(null);
     setTxStatus("Bridging signer…");
     try {
-      const handle = await wallet.connector.getSigner();
-      if (!isPolkadotSignerHandle(handle)) {
-        throw new Error("This demo requires an injected Polkadot signer");
+      const signer = await wallet.connector.getSigner();
+      if (signer.kind !== "polkadot-injected") {
+        throw new Error("This demo signs extrinsics through an injectedWeb3 extension");
       }
-      const extension = await connectInjectedExtension(handle.extensionName);
-      const account = extension.getAccounts().find((a) => a.address === handle.address);
+      const extension = await connectInjectedExtension(signer.extensionName);
+      const account = extension.getAccounts().find((a) => a.address === addr);
       if (account === undefined) {
         setTxStatus(null);
         setErrorMsg("Active account not found in the injected extension");
@@ -114,7 +113,7 @@ const Connected = ({
       setTxStatus("Awaiting signature…");
       const tx = api.tx.Balances.transfer_keep_alive({
         // oxlint-disable-next-line new-cap -- MultiAddress.Id is a polkadot-api enum-variant constructor
-        dest: MultiAddress.Id(handle.address),
+        dest: MultiAddress.Id(addr),
         value: 1_000_000_000n,
       });
       txSubRef.current?.unsubscribe();
@@ -158,7 +157,8 @@ const Connected = ({
       <Row label="Balance">{balance}</Row>
       <div className="flex flex-wrap gap-2">
         <button
-          className="border-border-strong hover:bg-surface-subtle rounded-md border bg-white px-3 py-1.5 text-sm"
+          className="border-border-strong hover:bg-surface-subtle rounded-md border bg-white px-3 py-1.5 text-sm disabled:opacity-50"
+          disabled={!wallet.connector.signMessage}
           onClick={() => {
             void handleSign();
           }}
@@ -200,12 +200,12 @@ const Connected = ({
 };
 
 const Content = () => {
-  const active = useActiveWallet();
-  const connect = useConnectWallet();
-  const disconnect = useDisconnectWallet();
+  const wallet = useSelectedWallet("polkadot");
+  const { connect } = useConnect();
+  const { disconnect } = useWalletManager();
   const discovered = useDiscoveredWallets();
 
-  if (!active) {
+  if (!wallet) {
     return (
       <section className="space-y-3">
         <h2 className="font-semibold">Available wallets</h2>
@@ -216,19 +216,19 @@ const Content = () => {
           </p>
         ) : (
           <ul className="space-y-2">
-            {discovered.map((wallet) => (
-              <li key={wallet.id}>
+            {discovered.map((adapter) => (
+              <li key={adapter.id}>
                 <button
                   className="border-border-default hover:bg-surface-subtle flex w-full items-center gap-3 rounded-lg border bg-white px-4 py-3 text-left"
                   onClick={() => {
-                    void connect(wallet.id);
+                    connect(adapter.id);
                   }}
                   type="button"
                 >
-                  {wallet.icon !== undefined && wallet.icon !== "" ? (
-                    <img alt="" className="size-6 rounded" src={wallet.icon} />
+                  {adapter.icon !== undefined && adapter.icon !== "" ? (
+                    <img alt="" className="size-6 rounded" src={adapter.icon} />
                   ) : null}
-                  <span className="font-medium">{wallet.name}</span>
+                  <span className="font-medium">{adapter.name}</span>
                 </button>
               </li>
             ))}
@@ -241,9 +241,9 @@ const Content = () => {
   return (
     <Connected
       onDisconnect={() => {
-        disconnect(active.connector.id);
+        disconnect(wallet.connector.id);
       }}
-      wallet={active}
+      wallet={wallet}
     />
   );
 };

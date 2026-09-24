@@ -36,9 +36,9 @@ state**. It sits _underneath_ chain libraries and _beside_ wallet SDKs.
 - EVM (EIP-6963 / EIP-1193) and Solana (Wallet Standard) are equal first-class
   platforms in one pool. A user can have MetaMask and Phantom connected in the
   same render pass.
-- `getSigner()` hands back the raw underlying provider. butr never wraps RPC or
-  signing; you keep viem, wagmi, `@solana/web3.js`, or whatever you already
-  know.
+- `getSigner()` hands back the wallet's own provider, tagged by transport. butr
+  never wraps RPC; you keep viem, wagmi, `@solana/web3.js`, or whatever you
+  already know.
 - There is no butr modal. Discovery is data, not UI; you render connection
   however you want.
 
@@ -46,9 +46,10 @@ state**. It sits _underneath_ chain libraries and _beside_ wallet SDKs.
 
 The shape follows from the goal. The core is framework-agnostic and React-free;
 `@usebutr/react` is a binding over it, not its foundation. Every wallet,
-injected or hardware or WalletConnect, is the same `WalletAdapter` plugged into
-one seam. Protocols live in separate packages so an EVM-only app never ships
-Solana code. butr has no opinion about how you read chain state or submit
+injected or hardware or WalletConnect, is the same `WalletAdapter` announced
+through one seam, and an adapter defines a method only when that method works.
+Protocols live in separate packages so an EVM-only app never ships Solana
+code. butr has no opinion about how you read chain state or submit
 transactions, and that absence is the point; see
 [Comparison with other solutions](/why/comparison).
 

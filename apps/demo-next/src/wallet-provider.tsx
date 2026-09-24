@@ -1,59 +1,41 @@
 "use client";
 
-import {
-  WalletStorage,
-  type WalletSnapshot,
-  createBrowserStorageDriver,
-  createCookieStorageDriver,
-  createWalletSource,
-} from "@usebutr/core";
+import type { WalletManagerConfig, WalletSnapshot } from "@usebutr/core";
+import { createCookieStorageDriver, createWalletStorage } from "@usebutr/core";
 import { discoverEvmAdapters } from "@usebutr/evm";
 import { WalletManagerProvider } from "@usebutr/react";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 
-const evmDiscovery = createWalletSource(discoverEvmAdapters);
+import { STORAGE_KEY_PREFIX } from "./storage-key-prefix";
 
-const STORAGE_KEY_PREFIX = "butr-demo";
+/**
+ * Cookies, so the Server Component layout can read the same state with
+ * `readWalletSnapshot`. The manager only touches storage from an effect, so
+ * the driver never needs the request's cookies on the server.
+ */
+const config: WalletManagerConfig = {
+  sources: [discoverEvmAdapters],
+  storage: createWalletStorage({
+    keyPrefix: STORAGE_KEY_PREFIX,
+    persistent: createCookieStorageDriver({ secure: process.env.NODE_ENV === "production" }),
+  }),
+};
 
 type WalletProviderProps = {
   children: ReactNode;
   /**
-   * Read via `cookies()` from `next/headers` in a Server Component, so the SSR
-   * pass sees the same values the client reads from `document.cookie`.
-   */
-  initialCookies?: Readonly<Record<string, string>>;
-  /**
    * Parsed with `readWalletSnapshot` in the Server Component layout. Seeds the
-   * store synchronously, so hooks have values at render zero and consumers
+   * manager synchronously, so hooks have values at render zero and consumers
    * need no `isHydrated` gate.
    */
   initialState?: WalletSnapshot;
 };
 
-const WalletProvider = ({ children, initialCookies, initialState }: WalletProviderProps) => {
-  const [storage] = useState(
-    () =>
-      new WalletStorage({
-        keyPrefix: STORAGE_KEY_PREFIX,
-        persistent: createCookieStorageDriver({
-          initialCookies,
-          secure: process.env.NODE_ENV === "production",
-        }),
-        session: createBrowserStorageDriver().session,
-      }),
-  );
+const WalletProvider = ({ children, initialState }: WalletProviderProps) => (
+  <WalletManagerProvider config={config} initialState={initialState}>
+    {children}
+  </WalletManagerProvider>
+);
 
-  return (
-    <WalletManagerProvider
-      discovery={evmDiscovery}
-      initialState={initialState}
-      storage={storage}
-      storageKeyPrefix={STORAGE_KEY_PREFIX}
-    >
-      {children}
-    </WalletManagerProvider>
-  );
-};
-
-export { STORAGE_KEY_PREFIX, WalletProvider };
+export { WalletProvider };
 export { useDiscoveredWallets } from "@usebutr/react";

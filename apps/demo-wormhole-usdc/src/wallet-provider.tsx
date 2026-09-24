@@ -1,22 +1,16 @@
-import { createWalletSource } from "@usebutr/core";
+import type { WalletManagerConfig } from "@usebutr/core";
 import { discoverEvmAdapters } from "@usebutr/evm";
 import { WalletManagerProvider } from "@usebutr/react";
 import { discoverSvmAdapters } from "@usebutr/svm";
 import type { ReactNode } from "react";
 
-const discovery = createWalletSource((emit) => {
-  const unsubEvm = discoverEvmAdapters(emit);
-  const unsubSvm = discoverSvmAdapters(emit);
-  return () => {
-    unsubEvm();
-    unsubSvm();
-  };
-});
+const config: WalletManagerConfig = {
+  sources: [discoverEvmAdapters, discoverSvmAdapters],
+  storageKeyPrefix: "butr-wormhole-demo",
+};
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <WalletManagerProvider discovery={discovery} storageKeyPrefix="butr-wormhole-demo">
-    {children}
-  </WalletManagerProvider>
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 
 export { WalletProvider };

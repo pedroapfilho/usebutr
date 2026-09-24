@@ -1,17 +1,36 @@
-import type { ChainBase, TransactionInput, WalletAdapter, WalletCapabilities } from "@usebutr/core";
-import { base64ToBytes, bytesToHex, hexToBytes } from "@usebutr/core";
-import { buildAccount } from "@usebutr/wallet-standard-shared";
+import type {
+  Account,
+  BitcoinAdapter,
+  BitcoinTransfer,
+  ChainBase,
+  ConnectorEvent,
+  TransactionOptions,
+} from "@usebutr/core";
+import {
+  BITCOIN_CHAINS,
+  BITCOIN_CHAINS_LIST,
+  base64ToBytes,
+  buildAccount,
+  bytesToHex,
+  hexToBytes,
+  logWarn,
+  resolveChain,
+} from "@usebutr/core";
 
-import { BITCOIN_CHAINS } from "../chains";
-
+import { assertBitcoinChain, chainMismatch } from "./chain";
 import { GENERIC_BITCOIN_ICON } from "./icon";
+
+type UnisatNetwork = "livenet" | "mainnet" | "signet" | "testnet";
+
+/** The only networks UniSat's `switchNetwork` accepts. */
+type SwitchableNetwork = "livenet" | "testnet";
 
 /** UniSat-style provider: a single object on `window.unisat` with the
  *  same four methods every UniSat-derivative wallet exposes (UniSat
  *  itself, OKX Wallet's Bitcoin path at `window.okxwallet.bitcoin`). */
 type UnisatProvider = {
   getAccounts: () => Promise<ReadonlyArray<string>>;
-  getNetwork?: () => Promise<"livenet" | "mainnet" | "testnet" | "signet">;
+  getNetwork?: () => Promise<UnisatNetwork>;
   on?: (
     event: "accountsChanged" | "networkChanged",
     listener: (...args: Array<UnisatEventValue>) => void,
@@ -25,6 +44,8 @@ type UnisatProvider = {
   sendBitcoin?: (recipient: string, amount: number) => Promise<string>;
   signMessage: (message: string, type?: "ecdsa" | "bip322-simple") => Promise<string>;
   signPsbt: (psbtHex: string, options?: UnisatSignPsbtOptions) => Promise<string>;
+  /** UniSat has it; OKX's `window.okxwallet.bitcoin` is pinned to mainnet. */
+  switchNetwork?: (network: SwitchableNetwork) => Promise<void>;
 };
 
 type UnisatEventItem = number | string | null;
@@ -34,190 +55,171 @@ type UnisatSignPsbtOptions = {
   autoFinalized?: boolean;
 };
 
-const CAPS_UNISAT: WalletCapabilities = {
-  getBalance: false,
-  getTransactionReceipt: false,
-  requestAccounts: true,
-  sendTransaction: true,
-  signIn: false,
-  signMessage: true,
-  signTransaction: true,
-  subscribe: true,
-  switchAccount: false,
-  switchChain: false,
-};
+const NETWORK_CHAINS: ReadonlyMap<string, ChainBase> = new Map<UnisatNetwork, ChainBase>([
+  ["livenet", BITCOIN_CHAINS.mainnet],
+  ["mainnet", BITCOIN_CHAINS.mainnet],
+  ["signet", BITCOIN_CHAINS.signet],
+  ["testnet", BITCOIN_CHAINS.testnet],
+]);
+
+const SWITCH_NETWORKS: ReadonlyMap<string, SwitchableNetwork> = new Map([
+  [BITCOIN_CHAINS.mainnet.id, "livenet"],
+  [BITCOIN_CHAINS.testnet.id, "testnet"],
+]);
 
 const toStringArray = (value: UnisatEventValue | undefined): Array<string> =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
 /**
- * The UniSat shape is consistent enough across `window.unisat`,
- * `window.okxwallet.bitcoin` and `window.btc` that one adapter covers all
- * three; the differences (network names, `sendBitcoin`) are probed per call.
+ * One adapter covers `window.unisat`, `window.okxwallet.bitcoin` and `window.btc`.
+ * The network is wallet-wide, so a call targeting another chain switches it
+ * first, or rejects when the provider cannot switch.
  */
-const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider): WalletAdapter => {
+const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider): BitcoinAdapter => {
+  // Bound so they keep `this`: they are methods on the wallet's own object.
+  const getNetwork = provider.getNetwork?.bind(provider);
+  const on = provider.on?.bind(provider);
+  const sendBitcoin = provider.sendBitcoin?.bind(provider);
+  const switchNetwork = provider.switchNetwork?.bind(provider);
+
+  // Providers without `getNetwork` (legacy `window.btc`) are mainnet wallets.
   let chain: ChainBase = BITCOIN_CHAINS.mainnet;
 
-  const sendBitcoinTx = async (tx: TransactionInput): Promise<string> => {
-    if (typeof provider.sendBitcoin !== "function") {
-      throw new TypeError(`Wallet ${name} does not expose sendBitcoin`);
+  const readChain = async (): Promise<ChainBase> => {
+    if (getNetwork === undefined) {
+      return chain;
     }
-    if (
-      typeof tx !== "object" ||
-      tx === null ||
-      !("recipient" in tx) ||
-      typeof tx.recipient !== "string" ||
-      !("amount" in tx) ||
-      typeof tx.amount !== "bigint"
-    ) {
-      throw new TypeError(
-        "Bitcoin sendTx expects { amount: bigint, recipient: string }: amount in satoshis",
-      );
+    const network = await getNetwork();
+    const match = NETWORK_CHAINS.get(network);
+    if (match === undefined) {
+      throw new Error(`Wallet ${name} reported an unknown network "${network}"`);
     }
-    const { amount, recipient } = tx;
-    const txid = await provider.sendBitcoin(recipient, Number(amount));
-    return txid;
+    return match;
   };
 
-  const refreshChain = async () => {
-    if (typeof provider.getNetwork !== "function") {
-      return;
+  const readAccounts = async (): Promise<ReadonlyArray<Account>> => {
+    const addresses = await provider.getAccounts();
+    if (addresses.length === 0) {
+      return [];
     }
     try {
-      const network = await provider.getNetwork();
-      if (network === "testnet") {
-        chain = BITCOIN_CHAINS.testnet;
-      } else if (network === "signet") {
-        chain = BITCOIN_CHAINS.signet;
-      } else {
-        chain = BITCOIN_CHAINS.mainnet;
-      }
+      chain = await readChain();
     } catch {
-      void 0;
+      // Labels only: a locked wallet may refuse `getNetwork` while still
+      // listing its accounts, which keep the last known chain.
     }
+    return addresses.map((address) => buildAccount(address, chain));
+  };
+
+  // UniSat takes no sender: it always signs with its active account.
+  const assertActive = async (account?: Account): Promise<void> => {
+    if (account === undefined) {
+      return;
+    }
+    const [active] = await provider.getAccounts();
+    if (account.walletAddress !== active) {
+      throw new Error(
+        `Wallet ${name} signs only with its active account, and ${account.walletAddress} is not it`,
+      );
+    }
+  };
+
+  const moveTo = async (target: ChainBase): Promise<void> => {
+    assertBitcoinChain(target);
+    chain = await readChain();
+    if (chain.id === target.id) {
+      return;
+    }
+    const network = SWITCH_NETWORKS.get(target.id);
+    if (switchNetwork === undefined || network === undefined) {
+      throw chainMismatch(name, chain, target);
+    }
+    await switchNetwork(network);
+    chain = resolveChain(target.id, BITCOIN_CHAINS_LIST);
+  };
+
+  // A Bitcoin address encodes its network, so the wallet moves first and
+  // the account is matched on the network it will sign on.
+  const prepare = async (options?: TransactionOptions): Promise<void> => {
+    if (options?.chain !== undefined) {
+      await moveTo(options.chain);
+    }
+    await assertActive(options?.account);
   };
 
   return {
-    capabilities: CAPS_UNISAT,
     chainPlatform: "bitcoin",
 
-    async connect(opts) {
-      if (opts?.silent === true) {
-        const accounts = await provider.getAccounts();
-        if (accounts.length === 0) {
-          throw new Error("No authorized accounts for silent reconnect");
-        }
-        await refreshChain();
+    async connect(options) {
+      if (options?.silent !== true) {
+        await provider.requestAccounts();
         return;
       }
-      await provider.requestAccounts();
-      await refreshChain();
-    },
-
-    disconnect: () => Promise.resolve(),
-
-    async getAccount() {
-      const accounts = await provider.getAccounts();
-      const first = accounts[0];
-      if (first === undefined) {
-        return null;
-      }
-      await refreshChain();
-      return buildAccount(first, chain);
-    },
-
-    async getAccounts() {
       const accounts = await provider.getAccounts();
       if (accounts.length === 0) {
-        return [];
+        throw new Error("No authorized accounts for silent reconnect");
       }
-      await refreshChain();
-      return accounts.map((a) => buildAccount(a, chain));
     },
 
-    getBalance: () =>
-      Promise.resolve({
-        decimals: 8,
-        formatted: "0",
-        symbol: "BTC",
-        value: 0n,
-      }),
+    getAccounts: readAccounts,
 
-    getSigner: () => Promise.resolve(provider),
-
-    getTransactionReceipt: () => Promise.resolve({ status: "Pending" as const }),
+    getSigner: () => Promise.resolve({ kind: "unisat", provider }),
 
     icon: GENERIC_BITCOIN_ICON,
     id,
     name,
 
-    async requestAccounts() {
-      await provider.requestAccounts();
-      await refreshChain();
+    async signMessage(message, options) {
+      await assertActive(options?.account);
+      const signature = await provider.signMessage(new TextDecoder().decode(message));
+      return { signature: base64ToBytes(signature), signedMessage: message };
     },
 
-    sendTx: (tx) => sendBitcoinTx(tx),
-
-    sendTxToChain: (tx, _targetChainIdDecimal, _account, cb) => {
-      cb?.();
-      return sendBitcoinTx(tx);
+    async signTransaction(psbt, options) {
+      await prepare(options);
+      return hexToBytes(await provider.signPsbt(bytesToHex(psbt)));
     },
 
-    async signMessage(msg) {
-      const text = new TextDecoder().decode(msg);
-      const signatureB64 = await provider.signMessage(text);
-      return { signature: base64ToBytes(signatureB64), signedMessage: msg };
-    },
+    ...(sendBitcoin !== undefined && {
+      async sendTx({ amount, recipient }: BitcoinTransfer, options?: TransactionOptions) {
+        await prepare(options);
+        return sendBitcoin(recipient, Number(amount));
+      },
+    }),
 
-    async signTransaction(tx) {
-      if (!(tx instanceof Uint8Array)) {
-        throw new TypeError(
-          "Bitcoin signTransaction expects a PSBT as Uint8Array (e.g. psbt.toBuffer())",
-        );
-      }
-      const signedHex = await provider.signPsbt(bytesToHex(tx));
-      return hexToBytes(signedHex);
-    },
+    ...(on !== undefined && {
+      subscribe: (listener: (event: ConnectorEvent) => void) => {
+        const emit = (accounts: ReadonlyArray<Account>) => {
+          listener(
+            accounts.length === 0
+              ? { type: "disconnected" }
+              : { accounts, type: "accountsChanged" },
+          );
+        };
+        const onAccountsChanged = (...args: ReadonlyArray<UnisatEventValue>) => {
+          emit(toStringArray(args[0]).map((address) => buildAccount(address, chain)));
+        };
+        // The network is wallet-wide, so a change moves every account with it.
+        const reemitAccounts = async () => {
+          try {
+            emit(await readAccounts());
+          } catch (error) {
+            logWarn(`[butr] ${name} accounts could not be re-read after a network change:`, error);
+          }
+        };
+        const onNetworkChanged = () => {
+          void reemitAccounts();
+        };
+        on("accountsChanged", onAccountsChanged);
+        on("networkChanged", onNetworkChanged);
+        return () => {
+          provider.removeListener?.("accountsChanged", onAccountsChanged);
+          provider.removeListener?.("networkChanged", onNetworkChanged);
+        };
+      },
+    }),
 
-    subscribe(listener) {
-      const onAccountsChanged = (...args: ReadonlyArray<UnisatEventValue>) => {
-        const accounts = toStringArray(args[0]);
-        if (accounts.length === 0) {
-          listener({ type: "disconnected" });
-          return;
-        }
-        const built = accounts.map((a) => buildAccount(a, chain));
-        const first = built[0];
-        if (first === undefined) {
-          return;
-        }
-        listener({ account: first, accounts: built, type: "accountChanged" });
-      };
-      const onNetworkChanged = () => {
-        void refreshChain();
-      };
-      provider.on?.("accountsChanged", onAccountsChanged);
-      provider.on?.("networkChanged", onNetworkChanged);
-      return () => {
-        provider.removeListener?.("accountsChanged", onAccountsChanged);
-        provider.removeListener?.("networkChanged", onNetworkChanged);
-      };
-    },
-
-    // `capabilities.switchChain` is false: UniSat exposes no way to ask the
-    // wallet to change network, so the wallet's own setting is authoritative
-    // and every account read re-reads it. This validates the request and then
-    // reports what the wallet actually says, rather than assigning the target
-    // locally and having the next read silently contradict it.
-    async switchChain(target) {
-      if (target.namespace !== "bip122") {
-        throw new Error(
-          `Bitcoin adapter received non-Bitcoin chain "${target.id}". Pass a chain with namespace "bip122".`,
-        );
-      }
-      chain = target;
-      await refreshChain();
-    },
+    ...(switchNetwork !== undefined && { switchChain: moveTo }),
   };
 };
 

@@ -1,6 +1,6 @@
-import type { WalletSigner } from "@usebutr/core";
-import { isEip1193Provider } from "@usebutr/evm";
-import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
+import type { ConnectedWallet } from "@usebutr/core";
+import type { Eip1193Provider } from "@usebutr/evm";
+import { useConnect, useSigner, useWallet, useWalletManager } from "@usebutr/react";
 import { injected } from "@wagmi/connectors";
 import {
   type Config,
@@ -18,14 +18,15 @@ import { useDiscoveredWallets } from "./wallet-provider";
 
 const BURN_ADDRESS: Address = "0x000000000000000000000000000000000000dEaD";
 
-const isWagmiProvider = (provider: WalletSigner): provider is EIP1193Provider =>
-  isEip1193Provider(provider) &&
-  "on" in provider &&
-  typeof provider.on === "function" &&
-  "removeListener" in provider &&
-  typeof provider.removeListener === "function";
+/**
+ * butr types `Eip1193Provider` loosely on purpose; wagmi's `injected` connector
+ * wants viem's per-method typing of the same wallet object, which no runtime
+ * check can prove, so this only bridges the types at the one call needing them.
+ */
+const isViemProvider = (provider: Eip1193Provider): provider is Eip1193Provider & EIP1193Provider =>
+  typeof provider.request === "function";
 
-const buildWagmiConfig = (provider: EIP1193Provider, butrName: string, butrId: string): Config =>
+const buildWagmiConfig = (provider: Eip1193Provider, butrName: string, butrId: string): Config =>
   createConfig({
     chains: [sepolia],
     connectors: [
@@ -33,7 +34,8 @@ const buildWagmiConfig = (provider: EIP1193Provider, butrName: string, butrId: s
         target: {
           id: butrId,
           name: butrName,
-          provider: () => provider,
+          // `undefined` surfaces as wagmi's own ProviderNotFoundError on connect.
+          provider: () => (isViemProvider(provider) ? provider : undefined),
         },
       }),
     ],
@@ -63,8 +65,10 @@ const Connected = ({
   wallet,
 }: {
   onDisconnect: () => void;
-  wallet: ReturnType<typeof useActiveWallet> & object;
+  wallet: ConnectedWallet;
 }) => {
+  const signer = useSigner(wallet);
+  const provider = signer.data?.kind === "eip1193" ? signer.data.provider : null;
   const [wagmiConfig, setWagmiConfig] = useState<Config | null>(null);
   const [balance, setBalance] = useState<string>("…");
   const [signature, setSignature] = useState<string | null>(null);
@@ -80,19 +84,12 @@ const Connected = ({
   }, [wallet.account.walletAddress]);
 
   useEffect(() => {
+    if (provider === null) {
+      return undefined;
+    }
     let cancelled = false;
     void (async () => {
       try {
-        if (cancelled) {
-          return;
-        }
-        const provider = await wallet.connector.getSigner();
-        if (!isWagmiProvider(provider)) {
-          throw new Error("EVM signer is not an EIP-1193 provider");
-        }
-        if (cancelled) {
-          return;
-        }
         const cfg = buildWagmiConfig(provider, wallet.connector.name, wallet.connector.id);
         const connector = cfg.connectors[0];
         if (connector !== undefined) {
@@ -110,7 +107,9 @@ const Connected = ({
     return () => {
       cancelled = true;
     };
-  }, [account, wallet.connector]);
+  }, [provider, wallet.connector.id, wallet.connector.name]);
+
+  const shownError = errorMsg ?? (signer.status === "error" ? signer.error.message : null);
 
   useEffect(() => {
     if (wagmiConfig === null) {
@@ -224,9 +223,9 @@ const Connected = ({
           </a>
         </Row>
       ) : null}
-      {errorMsg !== null && errorMsg !== "" ? (
+      {shownError !== null && shownError !== "" ? (
         <p className="border-danger-border bg-danger-surface text-danger-foreground rounded-md border p-3 text-sm">
-          {errorMsg}
+          {shownError}
         </p>
       ) : null}
     </section>
@@ -234,9 +233,10 @@ const Connected = ({
 };
 
 const Content = () => {
-  const active = useActiveWallet();
-  const connectWallet = useConnectWallet();
-  const disconnect = useDisconnectWallet();
+  const active = useWallet();
+  // Renamed: `connect` in this module is wagmi's.
+  const { connect: connectWallet } = useConnect();
+  const { disconnect } = useWalletManager();
   const discovered = useDiscoveredWallets();
 
   if (!active) {
@@ -255,7 +255,7 @@ const Content = () => {
                 <button
                   className="border-border-default hover:bg-surface-subtle flex w-full items-center gap-3 rounded-lg border bg-white px-4 py-3 text-left"
                   onClick={() => {
-                    void connectWallet(wallet.id);
+                    connectWallet(wallet.id);
                   }}
                   type="button"
                 >
@@ -302,7 +302,7 @@ const App = () => (
         <p className="text-foreground-muted mt-1 text-sm">
           butr discovers and manages the wallet connection (EIP-6963 + multi-platform pool). wagmi
           (via <code>@wagmi/core</code>) handles chain reads, signing, and tx submission against the
-          same EIP-1193 provider butr exposes through <code>wallet.connector.getSigner()</code>.
+          same EIP-1193 provider butr exposes through <code>useSigner()</code>.
         </p>
       </header>
       <Content />

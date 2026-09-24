@@ -1,145 +1,112 @@
-import type * as ButrCore from "@usebutr/core";
-import { describe, expect, it, vi } from "vitest";
+import type { ChainPlatform, PlatformDiscoverer, WalletAdapter } from "@usebutr/core";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createDiscoveryBus } from "../discovery-bus";
-import type { DiscoveryPath } from "../discovery-bus";
+import { runDiscoverers } from "../discovery-bus";
 
-import { createMockConnector } from "./helpers";
+import { createAdapter } from "./helpers";
 
-const pathThatEmits = (
-  ...adapterIds: ReadonlyArray<string>
-): { path: DiscoveryPath; unsubscribe: ReturnType<typeof vi.fn> } => {
+type Fallback = NonNullable<PlatformDiscoverer["fallback"]>;
+
+/** A discoverer that announces `ids` synchronously, with a spied fallback. */
+const fakeDiscoverer = (platform: ChainPlatform, ...ids: ReadonlyArray<string>) => {
   const unsubscribe = vi.fn<() => void>();
-  return {
-    path: (emit) => {
-      for (const id of adapterIds) {
-        emit(createMockConnector({ id }));
+  const fallback = vi.fn<Fallback["subscribe"]>(() => () => {});
+  const discoverer: PlatformDiscoverer = {
+    fallback: { subscribe: fallback },
+    subscribe: (emit) => {
+      for (const id of ids) {
+        emit(createAdapter(id, platform));
       }
       return unsubscribe;
     },
-    unsubscribe,
   };
+  return { discoverer, fallback, unsubscribe };
 };
 
-describe("createDiscoveryBus", () => {
-  it("forwards a single adapter from one path", () => {
-    const onAdapter = vi.fn<(adapter: ButrCore.WalletAdapter) => void>();
-    const bus = createDiscoveryBus(onAdapter);
-    bus.register(pathThatEmits("wallet-a").path);
+const announced = (onAdapter: ReturnType<typeof vi.fn<(adapter: WalletAdapter) => void>>) =>
+  onAdapter.mock.calls.map(([adapter]) => adapter.id);
 
-    expect(onAdapter).toHaveBeenCalledTimes(1);
-    expect(onAdapter.mock.calls[0]?.[0].id).toBe("wallet-a");
+describe("runDiscoverers", () => {
+  let warn: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
-  it("dedupes adapters by id across the same path", () => {
-    const onAdapter = vi.fn<(adapter: ButrCore.WalletAdapter) => void>();
-    const bus = createDiscoveryBus(onAdapter);
-    bus.register(pathThatEmits("wallet-a", "wallet-a", "wallet-b").path);
-
-    expect(onAdapter).toHaveBeenCalledTimes(2);
-    expect(onAdapter.mock.calls.map((c) => c[0].id)).toEqual(["wallet-a", "wallet-b"]);
+  afterEach(() => {
+    warn.mockRestore();
   });
 
-  it("dedupes adapters by id across multiple paths", () => {
-    const onAdapter = vi.fn<(adapter: ButrCore.WalletAdapter) => void>();
-    const bus = createDiscoveryBus(onAdapter);
-    bus.register(pathThatEmits("wallet-a", "wallet-b").path);
-    bus.register(pathThatEmits("wallet-b", "wallet-c").path);
+  it("dedupes adapters by id within and across discoverers", () => {
+    const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
+    const evm = fakeDiscoverer("evm", "a", "a", "b");
+    const other = fakeDiscoverer("evm", "b", "c");
 
-    expect(onAdapter.mock.calls.map((c) => c[0].id)).toEqual(["wallet-a", "wallet-b", "wallet-c"]);
+    runDiscoverers(
+      [
+        ["evm", evm.discoverer],
+        ["evm", other.discoverer],
+      ],
+      onAdapter,
+    );
+
+    expect(announced(onAdapter)).toEqual(["a", "b", "c"]);
   });
 
-  it("hasAny returns false before any emit", () => {
-    const bus = createDiscoveryBus(vi.fn<(adapter: ButrCore.WalletAdapter) => void>());
-    expect(bus.hasAny()).toBe(false);
+  it("runs fallbacks unless disabled", () => {
+    const evm = fakeDiscoverer("evm");
+    runDiscoverers([["evm", evm.discoverer]], () => {});
+    expect(evm.fallback).toHaveBeenCalledOnce();
+
+    const quiet = fakeDiscoverer("evm");
+    runDiscoverers([["evm", quiet.discoverer]], () => {}, { fallbacks: false });
+    expect(quiet.fallback).not.toHaveBeenCalled();
   });
 
-  it("hasAny returns true after the first emit", () => {
-    const bus = createDiscoveryBus(vi.fn<(adapter: ButrCore.WalletAdapter) => void>());
-    bus.register(pathThatEmits("wallet-a").path);
-    expect(bus.hasAny()).toBe(true);
+  it("tells a fallback whether its own platform has spoken, not any platform", () => {
+    const svm = fakeDiscoverer("svm", "phantom-svm");
+    const evm = fakeDiscoverer("evm");
+
+    runDiscoverers(
+      [
+        ["svm", svm.discoverer],
+        ["evm", evm.discoverer],
+      ],
+      () => {},
+    );
+
+    const [[, options] = []] = evm.fallback.mock.calls;
+    expect(options?.hasAnyPrimaryAdapter()).toBe(false);
   });
 
-  it("register(null) is a no-op", () => {
-    const onAdapter = vi.fn<(adapter: ButrCore.WalletAdapter) => void>();
-    const bus = createDiscoveryBus(onAdapter);
-    expect(() => {
-      bus.register(null);
-    }).not.toThrow();
-    expect(onAdapter).not.toHaveBeenCalled();
-    expect(bus.hasAny()).toBe(false);
+  it("tells a fallback when its own platform has spoken", () => {
+    const evm = fakeDiscoverer("evm", "io.metamask");
+
+    runDiscoverers([["evm", evm.discoverer]], () => {});
+
+    const [[, options] = []] = evm.fallback.mock.calls;
+    expect(options?.hasAnyPrimaryAdapter()).toBe(true);
   });
 
-  it("supports the injected-fallback pattern: skip emit when an earlier path has emitted", () => {
-    const onAdapter = vi.fn<(adapter: ButrCore.WalletAdapter) => void>();
-    const bus = createDiscoveryBus(onAdapter);
-    bus.register(pathThatEmits("eip6963-wallet").path);
-
-    const injectedEmits = vi.fn();
-    bus.register((emit) => {
-      if (!bus.hasAny()) {
-        emit(createMockConnector({ id: "injected-wallet" }));
-        injectedEmits();
-      }
-      return () => {};
+  it("unsubscribes every channel once, even when one throws", () => {
+    const throwing = fakeDiscoverer("svm");
+    throwing.unsubscribe.mockImplementation(() => {
+      throw new Error("boom");
     });
+    const healthy = fakeDiscoverer("sui");
+    const stop = runDiscoverers(
+      [
+        ["svm", throwing.discoverer],
+        ["sui", healthy.discoverer],
+      ],
+      () => {},
+    );
 
-    expect(injectedEmits).not.toHaveBeenCalled();
-    expect(onAdapter.mock.calls.map((c) => c[0].id)).toEqual(["eip6963-wallet"]);
-  });
+    stop();
+    stop();
 
-  it("injected fallback DOES emit when no prior path emitted", () => {
-    const onAdapter = vi.fn<(adapter: ButrCore.WalletAdapter) => void>();
-    const bus = createDiscoveryBus(onAdapter);
-    bus.register((emit) => {
-      if (!bus.hasAny()) {
-        emit(createMockConnector({ id: "injected-wallet" }));
-      }
-      return () => {};
-    });
-    expect(onAdapter.mock.calls.map((c) => c[0].id)).toEqual(["injected-wallet"]);
-  });
-
-  it("unsubscribeAll tears down every registered path", () => {
-    const a = pathThatEmits();
-    const b = pathThatEmits();
-    const bus = createDiscoveryBus(vi.fn<(adapter: ButrCore.WalletAdapter) => void>());
-    bus.register(a.path);
-    bus.register(b.path);
-
-    bus.unsubscribeAll();
-
-    expect(a.unsubscribe).toHaveBeenCalledTimes(1);
-    expect(b.unsubscribe).toHaveBeenCalledTimes(1);
-  });
-
-  it("unsubscribeAll drops references so a second call is a no-op", () => {
-    const a = pathThatEmits();
-    const bus = createDiscoveryBus(vi.fn<(adapter: ButrCore.WalletAdapter) => void>());
-    bus.register(a.path);
-
-    bus.unsubscribeAll();
-    bus.unsubscribeAll();
-
-    expect(a.unsubscribe).toHaveBeenCalledTimes(1);
-  });
-
-  it("survives an unsubscribe that throws while other paths tear down", () => {
-    const a = {
-      path: (() => () => {
-        throw new Error("unsub blew up");
-      }) as DiscoveryPath,
-    };
-    const b = pathThatEmits();
-    const warn = vi.fn<(...args: ReadonlyArray<unknown>) => void>();
-    const bus = createDiscoveryBus(vi.fn<(adapter: ButrCore.WalletAdapter) => void>(), warn);
-    bus.register(a.path);
-    bus.register(b.path);
-
-    expect(() => {
-      bus.unsubscribeAll();
-    }).not.toThrow();
-    expect(b.unsubscribe).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith("[butr] discovery unsubscribe threw:", expect.any(Error));
+    expect(throwing.unsubscribe).toHaveBeenCalledOnce();
+    expect(healthy.unsubscribe).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledOnce();
   });
 });

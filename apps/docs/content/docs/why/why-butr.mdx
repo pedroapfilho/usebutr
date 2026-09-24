@@ -16,7 +16,8 @@ same render. No second stack, no second hydration path.
 
 ## No chain-library lock-in
 
-`getSigner()` returns the underlying provider. You bridge it into viem, wagmi,
+`getSigner()` returns the wallet's own provider, tagged by transport, so you
+narrow it with `signer.kind` instead of casting. You bridge it into viem, wagmi,
 `@solana/web3.js`, or `@solana/kit` in a few lines and keep that library's API
 for reads and signing. butr owns discovery and connection state; your library
 owns RPC.
@@ -33,9 +34,10 @@ batteries-included package. You bundle the seams you use, nothing else.
 
 ## A core that is not React
 
-`@usebutr/core` is the store, persistence, and discovery seam, usable from any
-TypeScript runtime. `@usebutr/react` is the binding, so the same connection
-model works across Vite, Next.js, TanStack Start, and Expo without rewrites.
+`@usebutr/core` is the wallet manager: discovery, hydration, and persistence
+behind `createWalletManager`, usable from any TypeScript runtime.
+`@usebutr/react` is the binding, so the same connection model works across
+Vite, Next.js, TanStack Start, and Expo without rewrites.
 
 → [Frameworks](/getting-started/frameworks/vite)
 

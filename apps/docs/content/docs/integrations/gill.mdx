@@ -5,21 +5,22 @@ description: The ergonomic SDK on top of @solana/kit, the path the Solana Founda
 
 `gill` wraps `@solana/kit` with friendlier client and transaction builders. It
 is the path the Solana Foundation recommends for most app developers writing
-RPC and transaction code. butr owns the wallet; gill owns the RPC and
+RPC and transaction code. butr owns the wallet; gill owns the RPC and the
 transaction builder; the wallet's Wallet Standard features own signing.
 
-## Get the signer and read state
+## Get the wallet and read state
 
-`createSolanaClient` resolves the moniker to an RPC endpoint and returns a
-typed kit RPC client:
+The wallet and its Wallet Standard handle, `walletStd`, come from butr exactly
+as in the [`@solana/kit` integration](/integrations/solana-kit#get-the-wallet);
+the snippets below run once both are set. `createSolanaClient` resolves a
+moniker to an RPC endpoint:
 
 ```ts
-import { address, createSolanaClient, type Address } from "gill";
+import { address, createSolanaClient } from "gill";
 
 const { rpc } = createSolanaClient({ urlOrMoniker: "devnet" });
-const walletStd = (await wallet.connector.getSigner()) as WalletStandardWallet;
 
-const addr: Address = address(wallet.account.walletAddress);
+const addr = address(wallet.account.walletAddress);
 const { value } = await rpc.getBalance(addr).send();
 const sol = `${Number(value) / 1_000_000_000} SOL`;
 ```
@@ -27,10 +28,13 @@ const sol = `${Number(value) / 1_000_000_000} SOL`;
 ## Build and send a transaction
 
 The wallet signs, not gill, so the fee payer is a no-op signer over butr's
-connected address. gill's program helpers stay fully typed; compile to a wire
-transaction and hand the bytes to `solana:signAndSendTransaction`:
+connected address. gill's program helpers stay fully typed; compile to wire
+bytes and hand them to `solana:signAndSendTransaction`:
 
 ```ts
+import { base64ToBytes, bytesToBase58 } from "@usebutr/core";
+import type { SolanaSignAndSendTransactionFeature } from "@usebutr/svm";
+import { findAccount, getFeature } from "@usebutr/wallet-standard-shared";
 import {
   compileTransaction,
   createNoopSigner,
@@ -41,7 +45,6 @@ import { getTransferSolInstruction } from "gill/programs";
 
 const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 const feePayer = createNoopSigner(addr);
-
 const tx = createTransaction({
   feePayer,
   instructions: [
@@ -50,28 +53,34 @@ const tx = createTransaction({
   latestBlockhash,
   version: 0,
 });
+const transaction = base64ToBytes(getBase64EncodedWireTransaction(compileTransaction(tx)));
 
-const compiled = compileTransaction(tx);
-const wire = getBase64EncodedWireTransaction(compiled);
-const bytes = base64ToBytes(wire);
-
-const feature = walletStd.features["solana:signAndSendTransaction"];
-if (!feature) throw new Error("Wallet does not advertise solana:signAndSendTransaction");
-const account = walletStd.accounts[0];
+const feature = getFeature<SolanaSignAndSendTransactionFeature>(
+  walletStd,
+  "solana:signAndSendTransaction",
+  "signAndSendTransaction",
+);
+const account = findAccount(walletStd.accounts, wallet.account.walletAddress);
+if (feature === undefined || account === undefined) {
+  throw new Error("This wallet cannot send transactions for the active account");
+}
 const [output] = await feature.signAndSendTransaction({
   account,
   chain: "solana:devnet",
-  transaction: bytes,
+  transaction,
 });
+const signature = output === undefined ? null : bytesToBase58(output.signature);
 ```
 
 Message signing uses `solana:signMessage` exactly as in the
-[`@solana/kit` integration](/integrations/solana-kit).
+[`@solana/kit` integration](/integrations/solana-kit#sign-a-message). For a
+shorter path through butr's adapter, `wallet.connector.sendTx(transaction, { chain: SVM_CHAINS.devnet })`
+does the same when the wallet defines it.
 
 <Callout type="info">
   gill re-exports `@solana/kit`, so kit primitives (`createNoopSigner`, `compileTransaction`,
-  `getBase64EncodedWireTransaction`) are available from the same `gill` entry point; you do not need
-  a separate `@solana/kit` dependency.
+  `getBase64EncodedWireTransaction`) come from the same `gill` entry point; you do not need a
+  separate `@solana/kit` dependency.
 </Callout>
 
 <Callout type="info">

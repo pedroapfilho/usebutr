@@ -11,20 +11,12 @@ export type {
   WalletStandardWalletAccount,
 } from "./types";
 
-export {
-  buildAccount,
-  getFeature,
-  isWalletStandardWallet,
-  pickAccountByAddress,
-  pickFirstAddress,
-  slugify,
-} from "./primitives";
+export { findAccount, getFeature, slugify } from "./primitives";
 
-export type { WalletStandardCore } from "./adapter-core";
+export type { WalletStandardCore, WalletStandardCoreInput } from "./adapter-core";
 export { createWalletStandardCore } from "./adapter-core";
-
-export type { WalletCapabilityProfile } from "./capabilities";
-export { buildWalletCapabilities } from "./capabilities";
 
 export type { WalletStandardAdapterBuilder } from "./discovery";
 export { discoverWalletStandard } from "./discovery";
+
+import "./signer-augmentation";

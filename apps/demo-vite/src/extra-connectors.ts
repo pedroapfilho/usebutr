@@ -1,4 +1,5 @@
-import type { WalletAdapter } from "@usebutr/core";
+import type { WalletSource } from "@usebutr/core";
+import { fromAdapters } from "@usebutr/core";
 import { createLedgerAdapter } from "@usebutr/ledger";
 import { createWalletConnectAdapters } from "@usebutr/walletconnect";
 
@@ -8,59 +9,28 @@ const LEDGER_PLATFORMS = ["evm", "svm", "sui", "bitcoin"] as const;
 
 const WC_PROJECT_ID = import.meta.env.VITE_WC_PROJECT_ID;
 
-type OnAdapter = (adapter: WalletAdapter) => void;
-
-const createLedgerSafe = async (
-  platform: (typeof LEDGER_PLATFORMS)[number],
-): Promise<Array<WalletAdapter>> => {
-  try {
-    return [await createLedgerAdapter({ id: `ledger-${platform}`, platform })];
-  } catch (error) {
-    console.error(`[demo] failed to create Ledger ${platform} adapter:`, error);
-    return [];
-  }
-};
-
-const createWalletConnectSafe = async (): Promise<Array<WalletAdapter>> => {
-  if (WC_PROJECT_ID === undefined || WC_PROJECT_ID === "") {
-    return [];
-  }
-  try {
-    return await createWalletConnectAdapters({
-      metadata: { name: "butr · Vite demo", url: window.location.origin },
-      namespaces: { bitcoin: [], evm: [], sui: [], svm: [] },
-      onPairingUri: setPairingUri,
-      projectId: WC_PROJECT_ID,
-    });
-  } catch (error) {
-    console.error("[demo] failed to create WalletConnect adapters:", error);
-    return [];
-  }
-};
-
-const emitWhenReady = async (
-  source: Promise<Array<WalletAdapter>>,
-  onAdapter: OnAdapter,
-): Promise<void> => {
-  for (const adapter of await source) {
-    onAdapter(adapter);
-  }
-};
-
-let extraSources: Array<Promise<Array<WalletAdapter>>> | null = null;
-
 /**
- * Fire-and-forget: a connector that fails to initialize is logged and simply
- * never appears in the picker.
+ * One source per factory: `fromAdapters` logs a rejected promise and
+ * contributes nothing, so a Ledger app that fails to load, or a WalletConnect
+ * relay that is down, never hides the other connectors.
  */
-const registerExtraAdapters = (onAdapter: OnAdapter): void => {
-  extraSources ??= [
-    ...LEDGER_PLATFORMS.map((platform) => createLedgerSafe(platform)),
-    createWalletConnectSafe(),
-  ];
-  for (const source of extraSources) {
-    void emitWhenReady(source, onAdapter);
-  }
-};
+const extraSources: ReadonlyArray<WalletSource> = [
+  ...LEDGER_PLATFORMS.map((platform) =>
+    fromAdapters(createLedgerAdapter({ id: `ledger-${platform}`, platform })),
+  ),
+  ...(WC_PROJECT_ID === undefined || WC_PROJECT_ID === ""
+    ? []
+    : [
+        fromAdapters(
+          createWalletConnectAdapters({
+            // oxlint-disable-next-line react-doctor/no-unguarded-browser-global-at-module-scope -- a Vite SPA: this module never runs on a server
+            metadata: { name: "butr · Vite demo", url: window.location.origin },
+            namespaces: { bitcoin: [], evm: [], sui: [], svm: [] },
+            onPairingUri: setPairingUri,
+            projectId: WC_PROJECT_ID,
+          }),
+        ),
+      ]),
+];
 
-export { registerExtraAdapters };
+export { extraSources };

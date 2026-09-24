@@ -1,246 +1,325 @@
-import type { ConnectorEvent } from "@usebutr/core";
+import type { ConnectorEvent, PolkadotAdapter } from "@usebutr/core";
+import { buildAccount, POLKADOT_CHAINS } from "@usebutr/core";
 import { describe, expect, it, vi } from "vitest";
 
-import { POLKADOT_CHAINS } from "../chains";
 import { buildInjectedPolkadotAdapter } from "../injected/adapter";
-import type { InjectedAccount, InjectedWindowProvider } from "../injected/injected-web3";
+import type {
+  Injected,
+  InjectedAccount,
+  InjectedSigner,
+  InjectedWindowProvider,
+} from "../injected/injected-web3";
 
 const ADDRESS = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 const OTHER_ADDRESS = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+const KUSAMA_GENESIS = "0xb0a8d493285c2df73290dfb7e61f870f17b41801197a149ca93654499ea3dafe";
 
-const makeProvider = (): InjectedWindowProvider => ({
-  enable: vi.fn().mockResolvedValue({
-    accounts: {
-      get: vi.fn().mockResolvedValue([{ address: ADDRESS, name: "Alice" }]),
-      subscribe: vi.fn().mockReturnValue(() => undefined),
-    },
-    signer: {
-      signRaw: vi.fn().mockResolvedValue({ id: 1, signature: "0xdead" }),
-    },
-  }),
-});
+const ALICE: InjectedAccount = { address: ADDRESS, name: "Alice" };
+const BOB: InjectedAccount = { address: OTHER_ADDRESS, name: "Bob" };
 
-const accountChanges = (
-  events: ReadonlyArray<ConnectorEvent>,
-): ReadonlyArray<Extract<ConnectorEvent, { type: "accountChanged" }>> =>
-  events.filter((e) => e.type === "accountChanged");
-
-/** A provider whose `accounts.subscribe` hands the test the wallet-side
- *  callback, so a test can drive account changes the way an extension does. */
-const makeDrivableProvider = (): {
+type Extension = {
+  injected: Injected;
   provider: InjectedWindowProvider;
+  /** Drives the wallet-side `accounts.subscribe` callbacks. */
   push: (accounts: ReadonlyArray<InjectedAccount>) => void;
+  signRaw: ReturnType<typeof vi.fn<NonNullable<InjectedSigner["signRaw"]>>>;
   unsubscribeCalls: () => number;
-} => {
+};
+
+const makeExtension = ({
+  accounts = [ALICE],
+  withSignRaw = true,
+  withSubscribe = true,
+}: {
+  accounts?: ReadonlyArray<InjectedAccount>;
+  withSignRaw?: boolean;
+  withSubscribe?: boolean;
+} = {}): Extension => {
   const callbacks = new Set<(accounts: ReadonlyArray<InjectedAccount>) => void>();
   let unsubscribeCalls = 0;
-  const provider: InjectedWindowProvider = {
-    enable: vi.fn().mockResolvedValue({
-      accounts: {
-        get: vi.fn().mockResolvedValue([{ address: ADDRESS, name: "Alice" }]),
-        subscribe: (cb: (accounts: ReadonlyArray<InjectedAccount>) => void) => {
-          callbacks.add(cb);
+  const signRaw = vi
+    .fn<NonNullable<InjectedSigner["signRaw"]>>()
+    .mockResolvedValue({ id: 1, signature: "0xdead" });
+  const injected: Injected = {
+    accounts: {
+      get: () => Promise.resolve(accounts),
+      ...(withSubscribe && {
+        subscribe: (callback: (next: ReadonlyArray<InjectedAccount>) => void) => {
+          callbacks.add(callback);
           return () => {
-            callbacks.delete(cb);
+            callbacks.delete(callback);
             unsubscribeCalls += 1;
           };
         },
-      },
-      signer: { signRaw: vi.fn() },
-    }),
+      }),
+    },
+    signer: withSignRaw ? { signRaw } : {},
   };
   return {
-    provider,
-    push: (accounts) => {
+    injected,
+    provider: { enable: vi.fn<InjectedWindowProvider["enable"]>().mockResolvedValue(injected) },
+    push: (next) => {
       for (const callback of callbacks) {
-        callback(accounts);
+        callback(next);
       }
     },
+    signRaw,
     unsubscribeCalls: () => unsubscribeCalls,
   };
 };
 
+const build = (extension: Extension): PolkadotAdapter =>
+  buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", extension.provider);
+
+const connected = async (extension: Extension): Promise<PolkadotAdapter> => {
+  const adapter = build(extension);
+  await adapter.connect();
+  return adapter;
+};
+
+const requireSignMessage = (adapter: PolkadotAdapter) => {
+  if (adapter.signMessage === undefined) {
+    throw new Error("expected signMessage once connected");
+  }
+  return adapter.signMessage;
+};
+
+/** Subscribes the way the manager does: once, after `connect()`. */
+const listen = (adapter: PolkadotAdapter): Array<ConnectorEvent> => {
+  const events: Array<ConnectorEvent> = [];
+  adapter.subscribe?.((event) => {
+    events.push(event);
+  });
+  return events;
+};
+
+const message = new TextEncoder().encode("hi");
+
 describe("buildInjectedPolkadotAdapter", () => {
-  it("reports the injected capability profile and a stable id", () => {
-    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
+  it("derives a stable id from the injectedWeb3 key", () => {
+    const adapter = build(makeExtension());
     expect(adapter.id).toBe("injected:polkadot:polkadot-js");
+    expect(adapter.name).toBe("Polkadot{.js}");
     expect(adapter.chainPlatform).toBe("polkadot");
-    expect(adapter.capabilities.signMessage).toBe(true);
-    expect(adapter.capabilities.sendTransaction).toBe(false);
   });
 
-  it("returns null account before connect, real account after", async () => {
-    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
-    expect(await adapter.getAccount()).toBeNull();
+  it("defines no method it cannot back", () => {
+    const adapter = build(makeExtension());
+    expect(adapter.switchChain).toBeUndefined();
+    expect(adapter.getBalance).toBeUndefined();
+    expect(adapter.getTransactionReceipt).toBeUndefined();
+    expect(adapter.requestAccounts).toBeUndefined();
+    expect("sendTx" in adapter).toBe(false);
+  });
+
+  it("defers enable() until connect", async () => {
+    const extension = makeExtension();
+    const adapter = build(extension);
+    expect(extension.provider.enable).not.toHaveBeenCalled();
     await adapter.connect();
-    const account = await adapter.getAccount();
-    expect(account?.walletAddress).toBe(ADDRESS);
-    expect(account?.chain.namespace).toBe("polkadot");
+    expect(extension.provider.enable).toHaveBeenCalledWith("butr");
   });
 
-  it("signs a message via signRaw and returns the <Bytes>-wrapped payload", async () => {
-    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
-    await adapter.connect();
-    const { signature, signedMessage } = await adapter.signMessage(new TextEncoder().encode("hi"));
-    expect([...signature]).toEqual([0xde, 0xad]);
-    expect(new TextDecoder().decode(signedMessage)).toBe("<Bytes>hi</Bytes>");
+  it("rejects connect when the extension exposes no account", async () => {
+    const adapter = build(makeExtension({ accounts: [] }));
+    await expect(adapter.connect()).rejects.toThrow(/exposed no accounts/v);
+    await expect(adapter.getAccounts()).resolves.toEqual([]);
   });
 
-  it("exposes a signer handle (extensionName + address + extension) via getSigner", async () => {
-    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
-    await adapter.connect();
-    const signer = (await adapter.getSigner()) as {
-      address: string;
-      extensionName: string;
-    };
-    expect(signer.extensionName).toBe("polkadot-js");
-    expect(signer.address).toBe(ADDRESS);
+  describe("getAccounts", () => {
+    it("is empty before connect", async () => {
+      await expect(build(makeExtension()).getAccounts()).resolves.toEqual([]);
+    });
+
+    it("resolves every exposed account in the extension's order", async () => {
+      const adapter = await connected(makeExtension({ accounts: [ALICE, BOB] }));
+      await expect(adapter.getAccounts()).resolves.toEqual([
+        buildAccount(ADDRESS, POLKADOT_CHAINS.polkadot),
+        buildAccount(OTHER_ADDRESS, POLKADOT_CHAINS.polkadot),
+      ]);
+    });
+
+    it("labels an account pinned through genesisHash with its own chain", async () => {
+      const adapter = await connected(
+        makeExtension({
+          accounts: [
+            { address: ADDRESS, genesisHash: KUSAMA_GENESIS },
+            { address: OTHER_ADDRESS, genesisHash: `0x${"ab".repeat(32)}` },
+            { address: ADDRESS, genesisHash: null },
+          ],
+        }),
+      );
+      const [kusama, unknown, unpinned] = await adapter.getAccounts();
+      expect(kusama?.chain).toBe(POLKADOT_CHAINS.kusama);
+      expect(unknown?.chain).toEqual({
+        id: `polkadot:${"ab".repeat(16)}`,
+        name: `polkadot:${"ab".repeat(16)}`,
+        namespace: "polkadot",
+        reference: "ab".repeat(16),
+      });
+      expect(unpinned?.chain).toBe(POLKADOT_CHAINS.polkadot);
+    });
+
+    it("is empty again after disconnect", async () => {
+      const extension = makeExtension();
+      const adapter = await connected(extension);
+      await adapter.disconnect?.();
+      await expect(adapter.getAccounts()).resolves.toEqual([]);
+      expect(extension.unsubscribeCalls()).toBe(1);
+    });
   });
 
-  it("getSigner throws when the connected wallet exposes no account", async () => {
-    const provider: InjectedWindowProvider = {
-      enable: vi.fn().mockResolvedValue({
-        accounts: {
-          get: vi
-            .fn()
-            .mockResolvedValueOnce([{ address: ADDRESS, name: "Alice" }])
-            .mockResolvedValue([]),
-          subscribe: vi.fn().mockReturnValue(() => undefined),
+  describe("signMessage", () => {
+    it("appears only once the connected extension exposes signRaw", async () => {
+      const adapter = build(makeExtension());
+      expect(adapter.signMessage).toBeUndefined();
+      await adapter.connect();
+      expect(adapter.signMessage).toBeTypeOf("function");
+
+      const withoutSignRaw = await connected(makeExtension({ withSignRaw: false }));
+      expect(withoutSignRaw.signMessage).toBeUndefined();
+    });
+
+    it("signs the <Bytes>-wrapped payload as the active account", async () => {
+      const extension = makeExtension({ accounts: [ALICE, BOB] });
+      const adapter = await connected(extension);
+      const { signature, signedMessage } = await requireSignMessage(adapter)(message);
+      expect([...signature]).toEqual([0xde, 0xad]);
+      expect(new TextDecoder().decode(signedMessage)).toBe("<Bytes>hi</Bytes>");
+      expect(extension.signRaw).toHaveBeenCalledWith({
+        address: ADDRESS,
+        data: "0x3c42797465733e68693c2f42797465733e",
+        type: "bytes",
+      });
+    });
+
+    it("signs as the requested account", async () => {
+      const extension = makeExtension({ accounts: [ALICE, BOB] });
+      const adapter = await connected(extension);
+      await requireSignMessage(adapter)(message, {
+        account: buildAccount(OTHER_ADDRESS, POLKADOT_CHAINS.polkadot),
+      });
+      expect(extension.signRaw).toHaveBeenCalledWith(
+        expect.objectContaining({ address: OTHER_ADDRESS }),
+      );
+    });
+
+    it("rejects an account the extension does not expose instead of signing as another", async () => {
+      const extension = makeExtension({ accounts: [ALICE] });
+      const adapter = await connected(extension);
+      await expect(
+        requireSignMessage(adapter)(message, {
+          account: buildAccount(OTHER_ADDRESS, POLKADOT_CHAINS.polkadot),
+        }),
+      ).rejects.toThrow(/does not expose account/v);
+      expect(extension.signRaw).not.toHaveBeenCalled();
+    });
+
+    it("rejects once the session has ended", async () => {
+      const extension = makeExtension();
+      const adapter = await connected(extension);
+      const signMessage = requireSignMessage(adapter);
+      await adapter.disconnect?.();
+      await expect(signMessage(message)).rejects.toThrow(/is not connected/v);
+    });
+  });
+
+  describe("getSigner", () => {
+    it("hands back the enabled extension and its injectedWeb3 key", async () => {
+      const extension = makeExtension();
+      const adapter = await connected(extension);
+      await expect(adapter.getSigner()).resolves.toEqual({
+        extension: extension.injected,
+        extensionName: "polkadot-js",
+        kind: "polkadot-injected",
+      });
+    });
+
+    it("rejects asynchronously before connect", async () => {
+      const adapter = build(makeExtension());
+      const pending = adapter.getSigner();
+      await expect(pending).rejects.toThrow(/is not connected/v);
+    });
+  });
+
+  describe("subscribe", () => {
+    it("appears only while an account subscription is open", async () => {
+      const adapter = build(makeExtension());
+      expect(adapter.subscribe).toBeUndefined();
+      await adapter.connect();
+      expect(adapter.subscribe).toBeTypeOf("function");
+      await adapter.disconnect?.();
+      expect(adapter.subscribe).toBeUndefined();
+
+      const withoutSubscribe = await connected(makeExtension({ withSubscribe: false }));
+      expect(withoutSubscribe.subscribe).toBeUndefined();
+    });
+
+    it("emits accountsChanged with every account, active first", async () => {
+      const extension = makeExtension();
+      const adapter = await connected(extension);
+      const events = listen(adapter);
+
+      extension.push([BOB, ALICE]);
+
+      expect(events).toEqual([
+        {
+          accounts: [
+            buildAccount(OTHER_ADDRESS, POLKADOT_CHAINS.polkadot),
+            buildAccount(ADDRESS, POLKADOT_CHAINS.polkadot),
+          ],
+          type: "accountsChanged",
         },
-        signer: { signRaw: vi.fn() },
-      }),
-    };
-    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", provider);
-    await adapter.connect();
-    await expect(adapter.getSigner()).rejects.toThrow(/No connected account/v);
-  });
-
-  it("getBalance returns the neutral no-RPC placeholder", async () => {
-    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
-    await adapter.connect();
-    expect(await adapter.getBalance()).toEqual({
-      decimals: 0,
-      formatted: "0",
-      symbol: "",
-      value: 0n,
-    });
-  });
-
-  it("switchChain accepts polkadot chains and rejects others", async () => {
-    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
-    await adapter.connect();
-    await expect(
-      adapter.switchChain({
-        id: "eip155:1",
-        name: "Ethereum",
-        namespace: "eip155",
-        reference: "1",
-      }),
-    ).rejects.toThrow(/non-Polkadot/v);
-  });
-
-  it("delivers accountChanged to a listener registered before connect", async () => {
-    const driver = makeDrivableProvider();
-    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", driver.provider);
-    const events: Array<ConnectorEvent> = [];
-    adapter.subscribe?.((event) => {
-      events.push(event);
+      ]);
     });
 
-    await adapter.connect();
-    driver.push([{ address: OTHER_ADDRESS, name: "Bob" }]);
+    it("turns an empty push into disconnected and tears the session down", async () => {
+      const extension = makeExtension();
+      const adapter = await connected(extension);
+      const events = listen(adapter);
 
-    expect(events.map((e) => e.type)).toEqual(["accountChanged"]);
-    expect(accountChanges(events)[0]?.account.walletAddress).toBe(OTHER_ADDRESS);
-  });
+      extension.push([]);
 
-  it("an empty account push emits disconnected and tears the session down", async () => {
-    const driver = makeDrivableProvider();
-    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", driver.provider);
-    const events: Array<ConnectorEvent> = [];
-    adapter.subscribe?.((event) => {
-      events.push(event);
+      expect(events).toEqual([{ type: "disconnected" }]);
+      expect(extension.unsubscribeCalls()).toBe(1);
+      await expect(adapter.getAccounts()).resolves.toEqual([]);
+      await expect(adapter.getSigner()).rejects.toThrow(/is not connected/v);
     });
 
-    await adapter.connect();
-    driver.push([]);
+    it("fans one wallet event out to every subscriber", async () => {
+      const extension = makeExtension();
+      const adapter = await connected(extension);
+      const first = listen(adapter);
+      const second = listen(adapter);
 
-    expect(events.map((e) => e.type)).toEqual(["disconnected"]);
-    expect(driver.unsubscribeCalls()).toBe(1);
-    expect(await adapter.getAccount()).toBeNull();
-    await expect(adapter.getSigner()).rejects.toThrow(/is not connected/v);
-  });
+      extension.push([BOB]);
 
-  it("fans one wallet event out to every subscriber", async () => {
-    const driver = makeDrivableProvider();
-    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", driver.provider);
-    const first = vi.fn<(event: ConnectorEvent) => void>();
-    const second = vi.fn<(event: ConnectorEvent) => void>();
-    adapter.subscribe?.(first);
-    adapter.subscribe?.(second);
-
-    await adapter.connect();
-    driver.push([{ address: OTHER_ADDRESS, name: "Bob" }]);
-
-    expect(first).toHaveBeenCalledTimes(1);
-    expect(second).toHaveBeenCalledTimes(1);
-    expect(driver.provider.enable).toHaveBeenCalledTimes(1);
-  });
-
-  it("replaces the wallet subscription when connect runs again", async () => {
-    const driver = makeDrivableProvider();
-    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", driver.provider);
-    const listener = vi.fn<(event: ConnectorEvent) => void>();
-    adapter.subscribe?.(listener);
-
-    await adapter.connect();
-    await adapter.connect();
-    driver.push([{ address: OTHER_ADDRESS, name: "Bob" }]);
-
-    expect(driver.unsubscribeCalls()).toBe(1);
-    expect(listener).toHaveBeenCalledTimes(1);
-  });
-
-  it("stops delivering after unsubscribe", async () => {
-    const driver = makeDrivableProvider();
-    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", driver.provider);
-    const listener = vi.fn<(event: ConnectorEvent) => void>();
-    const unsubscribe = adapter.subscribe?.(listener);
-
-    await adapter.connect();
-    unsubscribe?.();
-    driver.push([{ address: OTHER_ADDRESS, name: "Bob" }]);
-
-    expect(listener).not.toHaveBeenCalled();
-  });
-
-  it("switchChain emits accountChanged carrying the new chain", async () => {
-    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
-    const events: Array<ConnectorEvent> = [];
-    adapter.subscribe?.((event) => {
-      events.push(event);
+      expect(first).toHaveLength(1);
+      expect(second).toHaveLength(1);
     });
 
-    await adapter.connect();
-    await adapter.switchChain(POLKADOT_CHAINS.kusama);
+    it("replaces the wallet subscription when connect runs again", async () => {
+      const extension = makeExtension();
+      const adapter = await connected(extension);
+      const events = listen(adapter);
 
-    expect(events.map((e) => e.type)).toEqual(["accountChanged"]);
-    expect(accountChanges(events)[0]?.account.chain.id).toBe(POLKADOT_CHAINS.kusama.id);
-    const account = await adapter.getAccount();
-    expect(account?.chain.name).toBe("Kusama");
-  });
+      await adapter.connect();
+      extension.push([BOB]);
 
-  it("switchChain resolves a known chain id to the registry entry", async () => {
-    const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", makeProvider());
-    await adapter.connect();
-    await adapter.switchChain({
-      id: POLKADOT_CHAINS.westend.id,
-      name: "some wallet label",
-      namespace: "polkadot",
-      reference: POLKADOT_CHAINS.westend.reference,
+      expect(extension.unsubscribeCalls()).toBe(1);
+      expect(events).toHaveLength(1);
     });
 
-    const account = await adapter.getAccount();
-    expect(account?.chain.name).toBe("Westend");
+    it("stops delivering after unsubscribe", async () => {
+      const extension = makeExtension();
+      const adapter = await connected(extension);
+      const listener = vi.fn<(event: ConnectorEvent) => void>();
+      const unsubscribe = adapter.subscribe?.(listener);
+
+      unsubscribe?.();
+      extension.push([BOB]);
+
+      expect(listener).not.toHaveBeenCalled();
+    });
   });
 });

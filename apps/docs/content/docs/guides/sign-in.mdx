@@ -33,13 +33,14 @@ caller; `signIn()` resolves only after `verify()` succeeds.
 
 ## What runs, and when
 
-1. Check `wallet.connector.capabilities.signMessage`. If false, throw
+1. If the wallet is an SVM wallet with `connector.signIn` (it advertises
+   `solana:signIn`) and `preferSignMessage` is not `true`, fetch a nonce and
+   take the wallet's SIWS path.
+2. Otherwise, if `connector.signMessage` is absent, throw
    `SignInUnsupportedError` before fetching a nonce or touching the wallet.
-2. Fetch a nonce for the explicit account argument, or `wallet.account`.
-3. For an SVM wallet advertising `signIn` and providing `connector.signIn`, use
-   the wallet's SIWS path unless `preferSignMessage: true` was passed.
-4. Otherwise build the message and call `signMessage` with its UTF-8 bytes and
-   the selected account.
+3. Fetch a nonce for the explicit account argument, or `wallet.account`.
+4. Build the message and call `signMessage` with its UTF-8 bytes and
+   `{ account }`.
 5. Add base64 mirrors of the signature and signed bytes, then call `verify`.
 
 The SIWS path passes `{ nonce }` to the wallet. The wallet composes the statement,
@@ -70,7 +71,13 @@ its chosen authentication format before establishing a session.
 
 Catch `SignInUnsupportedError` separately from user rejection. Its `connectorId`
 identifies the wallet that cannot sign in; no signing prompt or nonce request
-has occurred. Offer a signing-capable wallet in that case.
+has occurred. Offer a signing-capable wallet in that case, or hide the sign-in
+button up front: a wallet can sign in when it has `connector.signMessage`, or
+is an SVM wallet with `connector.signIn`.
+
+A wallet that rejects the prompt rejects `signIn()` with its own error; pass
+it through `toConnectionError` to branch on `kind` (see
+[errors](/concepts/errors)).
 
 <Callout type="info">
   **Source:** `packages/core/src/sign-in/sign-in-flow.ts` and

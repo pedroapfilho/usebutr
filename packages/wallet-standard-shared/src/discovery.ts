@@ -11,16 +11,19 @@ import type {
 
 type ImportedWallet = ReturnType<ImportedWallets["get"]>[number];
 
+// Any object satisfies the open-ended feature shape; `getFeature` checks the
+// member it needs before a caller relies on it.
+const isFeatureObject = (value: unknown): value is WalletStandardFeature =>
+  typeof value === "object" && value !== null;
+
 const toFeatureRecord = (features: ImportedWallet["features"]) => {
   const record: Record<string, WalletStandardFeature> = {};
   for (const [name, value] of Object.entries(features)) {
-    if (typeof value !== "object" || value === null) {
-      continue;
+    // Stored as-is rather than spread: a spread would detach its methods from
+    // the wallet's own object, breaking any implementation that reads `this`.
+    if (isFeatureObject(value)) {
+      record[name] = value;
     }
-    // The feature object is stored as-is rather than spread: a spread would
-    // detach its methods from the wallet's own object, breaking any
-    // implementation whose `connect` / `signMessage` reads `this`.
-    record[name] = value;
   }
   return record;
 };
@@ -29,7 +32,7 @@ const wrappers = new WeakMap<ImportedWallet, WalletStandardWallet>();
 
 /**
  * Reads through to the wallet: it re-points `accounts` on connect, so a copy
- * pins the pre-connect empty list and every `getAccount()` then resolves null.
+ * pins the pre-connect empty list and every `getAccounts()` then resolves [].
  * Memoised because `unregister` is matched to `register` by object identity.
  */
 const mapWallet = (wallet: ImportedWallet): WalletStandardWallet => {

@@ -1,25 +1,14 @@
-import type { WalletAdapter } from "@usebutr/core";
+import type { AccountOptions, PolkadotAdapter, WalletAdapter } from "@usebutr/core";
+import { POLKADOT_CHAINS, POLKADOT_CHAINS_LIST } from "@usebutr/core";
 import {
   createWalletStandardCore,
   discoverWalletStandard,
   getFeature,
-  slugify as kitSlugify,
+  slugify,
 } from "@usebutr/wallet-standard-shared";
-import type { WalletStandardFeature, WalletStandardWallet } from "@usebutr/wallet-standard-shared";
+import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
-import { resolveWalletStandardPolkadotCapabilities } from "./capabilities";
-import { POLKADOT_MAINNET_IDS } from "./chains";
-import { noRpcBalance, noRpcSendTx, noRpcSendTxToChain, noRpcTransactionReceipt } from "./no-rpc";
 import type { PolkadotSignMessageFeature } from "./wallet-standard-types";
-
-const POLKADOT_PREFIX = "polkadot:";
-
-const isPolkadotSignMessageFeature = (
-  feature: WalletStandardFeature,
-): feature is WalletStandardFeature & PolkadotSignMessageFeature =>
-  "signMessage" in feature && typeof feature.signMessage === "function";
-
-const slugify = (name: string): string => kitSlugify("polkadot", name);
 
 const buildPolkadotWalletStandardAdapter = (
   wallet: WalletStandardWallet,
@@ -27,14 +16,15 @@ const buildPolkadotWalletStandardAdapter = (
    *  `disconnected` event to all current subscribers. The discovery
    *  layer invokes it on Wallet Standard `unregister`. */
   registerDisconnector?: (emit: () => void) => void,
-): WalletAdapter | null => {
+): PolkadotAdapter | null => {
   const core = createWalletStandardCore({
-    chainPrefix: POLKADOT_PREFIX,
-    id: slugify(wallet.name),
+    chains: POLKADOT_CHAINS_LIST,
+    id: slugify("polkadot", wallet.name),
     label: "Polkadot",
     namespace: "polkadot",
-    platform: "Polkadot",
-    preferredChainIds: POLKADOT_MAINNET_IDS,
+    // Kusama sits alongside Polkadot because it carries real value; Westend
+    // and Paseo are faucet testnets and must never win the default.
+    preferredChainIds: [POLKADOT_CHAINS.polkadot.id, POLKADOT_CHAINS.kusama.id],
     registerDisconnector,
     trackChainChanges: false,
     wallet,
@@ -43,34 +33,24 @@ const buildPolkadotWalletStandardAdapter = (
     return null;
   }
 
-  const signMessage = getFeature(wallet, "polkadot:signMessage", isPolkadotSignMessageFeature);
+  const signer = getFeature<PolkadotSignMessageFeature>(
+    wallet,
+    "polkadot:signMessage",
+    "signMessage",
+  );
 
   return {
-    ...core,
-    capabilities: resolveWalletStandardPolkadotCapabilities({
-      chainCount: core.chainCount,
-      features: { events: core.hasEvents, signMessage: Boolean(signMessage) },
-    }),
+    ...core.base,
     chainPlatform: "polkadot",
-
-    getBalance: noRpcBalance,
-
-    getTransactionReceipt: noRpcTransactionReceipt,
-
-    sendTx: noRpcSendTx,
-
-    sendTxToChain: noRpcSendTxToChain,
-
-    async signMessage(msg, account) {
-      if (signMessage === undefined) {
-        throw new Error(`Wallet ${wallet.name} does not advertise polkadot:signMessage`);
-      }
-      const output = await signMessage.signMessage({
-        account: core.resolveAccount(account),
-        message: msg,
-      });
-      return { signature: output.signature, signedMessage: output.signedMessage ?? msg };
-    },
+    ...(signer !== undefined && {
+      signMessage: async (message: Uint8Array, options?: AccountOptions) => {
+        const output = await signer.signMessage({
+          account: core.resolveAccount(options?.account),
+          message,
+        });
+        return { signature: output.signature, signedMessage: output.signedMessage ?? message };
+      },
+    }),
   };
 };
 
@@ -80,9 +60,6 @@ const buildPolkadotWalletStandardAdapter = (
  */
 const discoverPolkadotWalletStandardAdapters = (
   onAdapter: (adapter: WalletAdapter) => void,
-): (() => void) =>
-  discoverWalletStandard(onAdapter, (wallet, registerDisconnector) =>
-    buildPolkadotWalletStandardAdapter(wallet, registerDisconnector),
-  );
+): (() => void) => discoverWalletStandard(onAdapter, buildPolkadotWalletStandardAdapter);
 
 export { buildPolkadotWalletStandardAdapter, discoverPolkadotWalletStandardAdapters };

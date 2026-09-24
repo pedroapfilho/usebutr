@@ -1,75 +1,68 @@
 import { describe, expect, it } from "vitest";
 
-import { mapConnectionError } from "../errors";
+import { ConnectionError, toConnectionError } from "../errors";
 
-describe("mapConnectionError", () => {
-  it("maps butr's Connection timeout error to Timeout", () => {
-    expect(mapConnectionError(new Error("Connection timeout"))).toMatchObject({
+const withCode = (message: string, code: number | string) =>
+  Object.assign(new Error(message), { code });
+
+describe("ConnectionError", () => {
+  it("is an Error carrying its kind and cause", () => {
+    const cause = new Error("raw");
+    const error = new ConnectionError("Timeout", "too slow", { cause });
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toMatchObject({
+      cause,
       kind: "Timeout",
-      message: "Connection timeout",
+      message: "too slow",
+      name: "ConnectionError",
     });
   });
+});
 
-  it("maps butr's Failed to get account to NotConnected", () => {
-    expect(mapConnectionError(new Error("Failed to get account"))).toMatchObject({
-      kind: "NotConnected",
-    });
+describe("toConnectionError", () => {
+  it("returns a ConnectionError unchanged", () => {
+    const error = new ConnectionError("WalletNotFound", "nope");
+    expect(toConnectionError(error)).toBe(error);
   });
 
-  it("maps EIP-1193 code 4001 to UserRejected", () => {
-    const err = Object.assign(new Error("user denied"), { code: 4001 });
-    expect(mapConnectionError(err)).toMatchObject({ kind: "UserRejected" });
+  it.each([
+    [4001, "UserRejected"],
+    [-32_002, "RequestPending"],
+    [4100, "NotConnected"],
+    [4900, "NotConnected"],
+    [4901, "NotConnected"],
+    ["4001", "Unknown"],
+  ] as const)("classifies EIP-1193 code %j as %s", (code, kind) => {
+    expect(toConnectionError(withCode("something", code)).kind).toBe(kind);
   });
 
-  it("maps EIP-1193 code -32002 to RequestPending", () => {
-    const err = Object.assign(new Error("already pending"), { code: -32_002 });
-    expect(mapConnectionError(err)).toMatchObject({ kind: "RequestPending" });
+  it.each([
+    ["User Rejected the request", "UserRejected"],
+    ["user denied transaction signature", "UserRejected"],
+    ["Wallet not connected", "NotConnected"],
+    ["wallet is locked", "WalletLocked"],
+    ["chain mismatch detected", "ChainMismatch"],
+    ["unsupported chain id", "ChainMismatch"],
+    ["something exploded", "Unknown"],
+  ] as const)("classifies the message %j as %s", (message, kind) => {
+    expect(toConnectionError(new Error(message)).kind).toBe(kind);
   });
 
-  it("maps user-rejected message text to UserRejected", () => {
-    expect(mapConnectionError(new Error("User Rejected the request"))).toMatchObject({
-      kind: "UserRejected",
-    });
-    expect(mapConnectionError(new Error("user denied transaction"))).toMatchObject({
-      kind: "UserRejected",
-    });
-  });
-
-  it("maps locked-wallet message to WalletLocked", () => {
-    expect(mapConnectionError(new Error("wallet is locked"))).toMatchObject({
-      kind: "WalletLocked",
-    });
-  });
-
-  it("maps chain-mismatch heuristic to ChainMismatch", () => {
-    expect(mapConnectionError(new Error("chain mismatch detected"))).toMatchObject({
-      kind: "ChainMismatch",
-    });
-    expect(mapConnectionError(new Error("unsupported chain id"))).toMatchObject({
-      kind: "ChainMismatch",
-    });
-  });
-
-  it("falls back to Unknown for arbitrary Error", () => {
+  it("keeps the original error as the cause and its message", () => {
     const raw = new Error("something exploded");
-    const result = mapConnectionError(raw);
-    expect(result.kind).toBe("Unknown");
-    expect(result.message).toBe("something exploded");
-    if (result.kind === "Unknown") {
-      expect(result.cause).toBe(raw);
-    }
+    expect(toConnectionError(raw)).toMatchObject({ cause: raw, message: "something exploded" });
   });
 
-  it("falls back to Unknown for raw strings", () => {
-    expect(mapConnectionError("just a string")).toMatchObject({
+  it("wraps a thrown non-Error as Unknown", () => {
+    expect(toConnectionError("just a string")).toMatchObject({
+      cause: "just a string",
       kind: "Unknown",
       message: "just a string",
     });
-  });
-
-  it("falls back to Unknown for an unclassified string", () => {
-    const result = mapConnectionError("[object Object]");
-    expect(result.kind).toBe("Unknown");
-    expect(result.message).toBe("[object Object]");
+    expect(toConnectionError({ code: 4001 })).toMatchObject({
+      kind: "Unknown",
+      message: "Connection failed",
+    });
+    expect(toConnectionError("").message).toBe("Connection failed");
   });
 });

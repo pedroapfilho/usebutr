@@ -1,99 +1,144 @@
 ---
-title: Bitcoin Wallet Standard
-description: Wallet Standard discovery for Bitcoin wallets plus injected fallbacks (Unisat, sats-connect), via @usebutr/bitcoin.
+title: Bitcoin
+description: Wallet Standard discovery for Bitcoin wallets plus injected fallbacks (Unisat, OKX, Xverse), via @usebutr/bitcoin.
 ---
 
 `@usebutr/bitcoin` discovers Bitcoin wallets two ways:
 
-- **Wallet Standard**: Phantom, Magic Eden, Leather, OKX (modern), …
-- **Injected fallback**: `window.unisat` (Unisat, OKX legacy, generic
-  `window.btc`) and `sats-connect` (Xverse).
+- **Wallet Standard**: Phantom, Magic Eden, Leather, …
+- **Injected fallback**: `window.unisat`, `window.okxwallet.bitcoin`,
+  Xverse's sats-connect provider, and `window.btc`.
 
-The fallback is opt-in via `discoverInjectedBitcoinAdapter` and runs when no
-Wallet Standard wallet announces.
+## Register it
 
-## Discovery
+`autoDiscovery()` from `@usebutr/wallets` includes both channels and runs the
+injected one only when Wallet Standard found no Bitcoin wallet, so a wallet
+on both channels lists once. For a Bitcoin-only app, keep that pairing:
 
-`autoDiscovery()` from `@usebutr/wallets` handles Bitcoin discovery (both
-routes) automatically. For a Bitcoin-only setup, compose the two sources:
-
-```ts
-import { createWalletSource } from "@usebutr/core";
-import {
-  discoverBitcoinAdapters,
-  discoverInjectedBitcoinAdapter,
-} from "@usebutr/bitcoin";
+```tsx
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 
-const discovery = createWalletSource((onAdapter) => {
-  const offStandard = discoverBitcoinAdapters(onAdapter);
-  const offInjected = discoverInjectedBitcoinAdapter(onAdapter, {});
-  return () => {
-    offStandard();
-    offInjected();
-  };
-});
+const config: WalletManagerConfig = {
+  sources: [autoDiscovery(["bitcoin"])],
+  storageKeyPrefix: "my-app",
+};
 
-<WalletManagerProvider discovery={discovery}>
-  {children}
-</WalletManagerProvider>
+export const Providers = ({ children }: { children: React.ReactNode }) => (
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
+);
 ```
 
+`discoverBitcoinAdapters` alone is Wallet Standard only; add
+`discoverInjectedBitcoinAdapter` yourself only if you accept that a wallet on
+both channels can list twice.
+
 <Callout type="info">
-  `@usebutr/bitcoin` lazily imports `@wallet-standard/app` (an optional peer dependency). Restored
-  Bitcoin wallets can land in `pendingIds` for a moment during that warmup; see
+  Wallet Standard discovery lazily imports `@wallet-standard/app`, an optional peer dependency. A
+  restored Bitcoin wallet can sit in `pendingIds` for a moment during that warmup; see
   [hydration](/concepts/hydration).
 </Callout>
 
-## Capabilities
+## What each adapter defines
 
-Resolved from the wallet's advertised features via `resolveBitcoinCapabilities`:
+| Member            | Wallet Standard                               | Unisat, OKX, `window.btc` (`unisat`)  | Xverse (`sats-connect`)             |
+| ----------------- | --------------------------------------------- | ------------------------------------- | ----------------------------------- |
+| `sendTx`          | with `bitcoin:sendTransfer`                   | when the provider has `sendBitcoin`   | ✓ (`sendTransfer`)                  |
+| `signMessage`     | with `bitcoin:signMessage`                    | ✓                                     | ✓, payment or ordinals address      |
+| `signTransaction` | with `bitcoin:signPsbt`                       | ✓ (`signPsbt`)                        | ✓ (`signPsbt`)                      |
+| `switchChain`     | 2+ advertised networks; re-points butr's view | when the provider has `switchNetwork` | ✓ (`wallet_changeNetwork`)          |
+| `subscribe`       | ✓                                             | when the provider has `on`            | ✓, reports butr's own network moves |
+| `disconnect`      | with `standard:disconnect`                    | none                                  | ✓                                   |
 
-- `signMessage`: true only if `bitcoin:signMessage` is advertised. Note this
-  is a Bitcoin Signed Message (BIP-322-ish), not interchangeable with EVM
-  signatures.
-- `signTransaction`: true via `bitcoin:signPsbt`. PSBT in, signed PSBT out;
-  the consumer finalises and broadcasts.
-- `sendTransaction`: true via `bitcoin:sendTransfer` (one-shot send) or
-  `bitcoin:signPsbt` with `broadcast: true` (depending on what the wallet
-  advertises).
-- `subscribe`: true via the Standard `change` event.
-- `switchChain`: limited; switching mainnet ↔ testnet typically means
-  re-connecting in the wallet UI.
-
-Always branch on [capabilities](/concepts/capabilities).
-
-## Working with the signer
-
-`getSigner()` on a Bitcoin adapter returns the `WalletStandardWallet`. You
-call features directly (or bridge into `bitcoinjs-lib`):
+- `sendTx` takes a `BitcoinTransfer`, `{ amount, recipient }` with `amount` in
+  satoshis. The wallet builds, signs and broadcasts; it resolves the txid.
+- `signTransaction` takes PSBT bytes (`psbt.toBuffer()`) and resolves the
+  signed PSBT, for you to finalise and broadcast through your own Esplora or
+  Electrum client.
+- There is no `getBalance` or `getTransactionReceipt`: butr ships no Bitcoin
+  RPC.
 
 ```ts
-const walletStd = (await wallet.connector.getSigner()) as WalletStandardWallet;
-const feature = walletStd.features["bitcoin:signPsbt"];
-const account = walletStd.accounts[0];
-const [{ psbt: signedPsbt }] = await feature.signPsbt({
-  account,
-  psbt: unsignedPsbt, // base64
-});
+import { BITCOIN_CHAINS } from "@usebutr/core";
+
+const wallet = useSelectedWallet("bitcoin");
+
+const pay = async (recipient: string) => {
+  if (!wallet?.connector.sendTx) {
+    throw new Error("This wallet cannot send Bitcoin");
+  }
+  return wallet.connector.sendTx(
+    { amount: 10_000n, recipient },
+    { account: wallet.account, chain: BITCOIN_CHAINS.testnet },
+  );
+};
 ```
 
-See the [demo-with-bitcoin](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-with-bitcoin)
-app for the full build-and-broadcast flow with `bitcoinjs-lib`.
+## Chains and accounts
 
-## Chains
+- **Wallet Standard** routes `options.chain` per call; the wallet must
+  advertise it. The initial chain is Bitcoin mainnet when advertised.
+- **Unisat-style** wallets have one network for the whole wallet. A call
+  targeting another chain switches it first through `switchNetwork`, which
+  reaches mainnet and testnet only. A provider without `switchNetwork` (OKX,
+  usually `window.btc`) cannot switch at all, and signet is never a switch
+  target, so those calls reject with a `ChainMismatch` `ConnectionError`. These wallets sign with their active
+  account only: any other `account` rejects.
+- **Xverse** switches its network through `wallet_changeNetwork` (mainnet,
+  testnet, `BITCOIN_CHAINS.testnet4`, signet, regtest), then re-reads its
+  addresses, since a Bitcoin address encodes its network. It sends from its
+  payment address only.
 
-`BITCOIN_CHAINS_LIST` / `BITCOIN_CHAINS` ship mainnet, testnet, and regtest
-(keyed by CAIP-2, `bip122:<genesis block hash>`). `resolveBitcoinCapabilities`
-and `GENERIC_BITCOIN_ICON` are exported for adapter authors.
+```ts
+import type { ConnectedWallet } from "@usebutr/core";
+import { BITCOIN_CHAINS, ConnectionError } from "@usebutr/core";
+
+const signOnSignet = async (wallet: ConnectedWallet<"bitcoin">, psbt: Uint8Array) => {
+  try {
+    return await wallet.connector.signTransaction?.(psbt, { chain: BITCOIN_CHAINS.signet });
+  } catch (error) {
+    if (error instanceof ConnectionError && error.kind === "ChainMismatch") {
+      // The wallet cannot move there itself: ask the user to switch networks.
+    }
+    throw error;
+  }
+};
+```
 
 <Callout type="warn">
-  **Address formats vary by wallet.** Phantom advertises native SegWit (bech32) only; Xverse and
-  Unisat expose multiple address formats (payment vs ordinal). Read `account.walletAddress` and
+  **Address formats vary by wallet.** Phantom exposes native SegWit only; Xverse exposes a payment
+  address as the account and signs with its ordinals address too. Read `account.walletAddress` and
   detect the format from its prefix.
 </Callout>
 
+## Signers
+
+`getSigner()` resolves the object the adapter drives, tagged by transport:
+
+```ts
+const signer = await wallet.connector.getSigner();
+switch (signer.kind) {
+  case "wallet-standard": {
+    // signer.wallet: read features with `getFeature`
+    break;
+  }
+  case "unisat": {
+    // signer.provider: the UniSat-style provider
+    break;
+  }
+  case "sats-connect": {
+    // signer.provider: Xverse's `request(method, params)` provider
+    break;
+  }
+}
+```
+
+Wallet Standard features butr does not wrap are reachable with `getFeature`
+from `@usebutr/wallet-standard-shared` and the feature types
+`@usebutr/bitcoin` exports. See the [bitcoinjs-lib integration](/integrations/bitcoin).
+
 <Callout type="info">
-  **Source:** `packages/bitcoin/src` (`wallet-standard.ts`, `injected/`, `capabilities.ts`). Used by
-  `apps/demo-with-bitcoin` and (via `@usebutr/wallets`) `apps/demo-vite`.
+  **Source:** `packages/bitcoin/src` (`wallet-standard-adapter.ts`, `injected/`). See the [API
+  reference](/api/bitcoin).
 </Callout>

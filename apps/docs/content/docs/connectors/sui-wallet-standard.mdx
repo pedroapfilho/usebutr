@@ -3,72 +3,81 @@ title: Sui Wallet Standard
 description: Wallet Standard discovery for Sui wallets, via @usebutr/sui.
 ---
 
-`@usebutr/sui` discovers Sui wallets (Slush, Phantom Sui, Suiet, Surf, …)
-through the [Wallet Standard](https://github.com/wallet-standard/wallet-standard).
+`@usebutr/sui` discovers Sui wallets (Slush, Phantom, Suiet, Surf, …) through
+the [Wallet Standard](https://github.com/wallet-standard/wallet-standard).
 
-## Discovery
+## Register it
 
-`autoDiscovery()` from `@usebutr/wallets` handles Sui discovery automatically.
-For a Sui-only setup, wire it directly with `createWalletSource`:
+`autoDiscovery()` from `@usebutr/wallets` includes Sui. For a Sui-only app,
+`discoverSuiAdapters` is a source as-is:
 
-```ts
-import { createWalletSource } from "@usebutr/core";
-import { discoverSuiAdapters } from "@usebutr/sui";
+```tsx
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
+import { discoverSuiAdapters } from "@usebutr/sui";
 
-const discovery = createWalletSource(discoverSuiAdapters);
+const config: WalletManagerConfig = {
+  sources: [discoverSuiAdapters],
+  storageKeyPrefix: "my-app",
+};
 
-<WalletManagerProvider discovery={discovery}>
-  {children}
-</WalletManagerProvider>
+export const Providers = ({ children }: { children: React.ReactNode }) => (
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
+);
 ```
 
+The adapter id is `wallet-standard:sui-<wallet name>`.
+
 <Callout type="info">
-  `@usebutr/sui` lazily imports `@wallet-standard/app` (an optional peer dependency). Restored Sui
-  wallets can land in `pendingIds` for a moment during that warmup; see
+  `@usebutr/sui` lazily imports `@wallet-standard/app`, an optional peer dependency. A restored Sui
+  wallet can sit in `pendingIds` for a moment during that warmup; see
   [hydration](/concepts/hydration).
 </Callout>
 
-## Capabilities
+## What the adapter defines
 
-Resolved from the wallet's advertised Wallet Standard features via
-`resolveSuiCapabilities`:
+Each method exists only when the wallet advertises the matching feature:
 
-- `signMessage`: true only if the wallet advertises `sui:signPersonalMessage`.
-- `signTransaction`: true via `sui:signTransaction` (BCS-encoded transaction
-  block bytes).
-- `sendTransaction`: true via `sui:signAndExecuteTransaction`.
-- `subscribe`: true via the Standard `change` event.
-- `switchChain`: local state + per-call `chain` input when more than one
-  chain is advertised.
+| Member            | Wallet Standard feature         | Behaviour                                                                               |
+| ----------------- | ------------------------------- | --------------------------------------------------------------------------------------- |
+| `sendTx`          | `sui:signAndExecuteTransaction` | Signs and executes; resolves the transaction digest.                                    |
+| `signMessage`     | `sui:signPersonalMessage`       | Resolves the signature and the signed bytes.                                            |
+| `signTransaction` | `sui:signTransaction`           | Signs without executing; resolves `{ bytes, signature }` for `executeTransactionBlock`. |
+| `disconnect`      | `standard:disconnect`           |                                                                                         |
+| `switchChain`     | 2+ advertised Sui networks      | Re-points butr's view; the wallet is not asked to move.                                 |
+| `subscribe`       | always, when discovered         | Account and chain changes, and the wallet unregistering.                                |
 
-Always branch on [capabilities](/concepts/capabilities).
-
-## Working with the signer
-
-`getSigner()` on a Sui adapter returns the `WalletStandardWallet`. You call its
-features directly (or bridge into `@mysten/sui`):
+A transaction is a `@mysten/sui` `Transaction` (anything with `toJSON()`), its
+JSON string, or BCS bytes. There is no `getBalance` or
+`getTransactionReceipt`: read state with your own `SuiClient`.
 
 ```ts
-const walletStd = (await wallet.connector.getSigner()) as WalletStandardWallet;
-const feature = walletStd.features["sui:signTransaction"];
-const account = walletStd.accounts[0];
-const { signature, bytes } = await feature.signTransaction({
-  account,
-  transaction: txBytes, // BCS-serialised
-  chain: "sui:mainnet",
-});
+import { SUI_CHAINS } from "@usebutr/core";
+import { Transaction } from "@mysten/sui/transactions";
+
+const wallet = useSelectedWallet("sui");
+
+const send = async (tx: Transaction) => {
+  if (!wallet?.connector.sendTx) {
+    throw new Error("This wallet cannot execute Sui transactions");
+  }
+  return wallet.connector.sendTx(tx, { chain: SUI_CHAINS.testnet });
+};
 ```
 
-See the [demo-with-sui](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-with-sui)
-app for the full build-and-execute flow with `@mysten/sui`.
+## Chains and accounts
 
-## Chains
+Wallet Standard carries the chain in every call, so `options.chain` routes one
+transaction without moving the wallet. The chain must be one the wallet
+advertises, or the call rejects. The initial chain is `sui:mainnet` when
+advertised, else the wallet's first Sui chain. `account` must be one the
+wallet exposes; an unknown one rejects.
 
-`SUI_CHAINS_LIST` / `SUI_CHAINS` ship Sui mainnet, testnet, and devnet.
-`resolveSuiCapabilities` is exported for adapter authors.
+## Signer
 
-<Callout type="info">
-  **Source:** `packages/sui/src`. Used by `apps/demo-with-sui` and (via `@usebutr/wallets`)
-  `apps/demo-vite`.
-</Callout>
+`getSigner()` resolves `{ kind: "wallet-standard", wallet }`. Reach a feature
+butr does not wrap with `getFeature` from `@usebutr/wallet-standard-shared`,
+typed by the feature shapes `@usebutr/sui` exports (`SuiSignTransactionFeature`
+and so on). See the [`@mysten/sui` integration](/integrations/sui).
+
+<Callout type="info">**Source:** `packages/sui/src`. See the [API reference](/api/sui).</Callout>

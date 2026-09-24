@@ -1,68 +1,132 @@
 ---
 title: Capabilities
-description: Capability flags say what a wallet can do right now. Gate UI on them, not on whether a method exists.
+description: An adapter method exists only when it works for that wallet, so checking for the method is the capability check.
 ---
 
-Every connector exposes `capabilities`. Each flag means **"can this work right
-now,"** not "is this method defined." `signMessage: false` means calling
-`signMessage()` would reject; `switchChain: false` means switching is a no-op
-regardless of the chain you pass.
+There are no capability flags. An adapter defines an optional method only when
+calling it can succeed for that wallet, so the method's presence is the
+capability, and TypeScript enforces the check:
 
 ```ts
-type WalletCapabilities = {
-  getBalance: boolean; // getBalance returns a real on-chain value
-  getTransactionReceipt: boolean; // returns a real RPC response
-  requestAccounts: boolean; // requestAccounts will actually do something
-  sendTransaction: boolean; // sendTx / sendTxToChain will work
-  signIn?: boolean; // wallet supports a native sign-in flow (e.g. SIWS)
-  signMessage: boolean; // signMessage will work
-  subscribe: boolean; // wallet emits events butr can bridge
-  switchAccount: boolean; // switchAccount is real (rare for auto adapters)
-  switchChain: boolean; // switchChain routes subsequent calls
+if (wallet.connector.signMessage) {
+  await wallet.connector.signMessage(bytes, { account: wallet.account });
+}
+```
+
+No adapter ships a placeholder: no zero balance from a wallet that cannot read
+one, no receipt that stays pending forever, no `subscribe` that never fires, no
+`switchChain` that does nothing.
+
+## What is always there
+
+Every adapter has `chainPlatform`, `id`, `name`, `icon?`, `connect`,
+`getAccounts`, and `getSigner`. Everything else is optional:
+
+| Method                  | Platforms              | Present when                                                       |
+| ----------------------- | ---------------------- | ------------------------------------------------------------------ |
+| `disconnect`            | all                    | the wallet has a teardown call                                     |
+| `subscribe`             | all                    | the wallet emits account or chain events                           |
+| `requestAccounts`       | all                    | the wallet has an account picker (EVM `wallet_requestPermissions`) |
+| `switchChain`           | all                    | the wallet can move to another chain, or advertises more than one  |
+| `signMessage`           | all                    | the wallet can sign bytes                                          |
+| `sendTx`                | EVM, SVM, Sui, Bitcoin | the wallet can sign and broadcast                                  |
+| `signTransaction`       | SVM, Sui, Bitcoin      | the wallet can sign without broadcasting                           |
+| `signIn`                | SVM                    | the wallet advertises `solana:signIn` (Sign In With Solana)        |
+| `getBalance`            | EVM                    | the adapter can read through the wallet's provider                 |
+| `getTransactionReceipt` | EVM                    | the adapter can read through the wallet's provider                 |
+
+`getBalance` and `getTransactionReceipt` need an RPC. EVM wallets expose one
+through their provider; butr ships none for Wallet Standard chains, so those
+adapters leave both out. Read balances there with your own chain client.
+
+## Gate UI on presence
+
+Render an affordance only when its method is there:
+
+```tsx
+import type { ConnectedWallet } from "@usebutr/core";
+import { useWalletManager } from "@usebutr/react";
+
+const WalletActions = ({ wallet }: { wallet: ConnectedWallet }) => {
+  const { requestAccounts } = useWalletManager();
+
+  return (
+    <>
+      {wallet.connector.requestAccounts ? (
+        <button type="button" onClick={() => void requestAccounts(wallet.connector.id)}>
+          Request more accounts
+        </button>
+      ) : null}
+      {wallet.connector.switchChain ? <ChainPicker wallet={wallet} /> : null}
+      {wallet.connector.signMessage ? (
+        <SignButton account={wallet.account} wallet={wallet} />
+      ) : null}
+    </>
+  );
 };
 ```
 
-## Gate UI on flags
+The hooks follow the same rule. `useBalance(wallet)` stays `"idle"` for an adapter
+without `getBalance`, and `requestAccounts(id)` on the manager does nothing for
+an adapter without `requestAccounts`.
 
-The reference apps do exactly this: the "Request more accounts" button only
-renders when the capability is real:
+## Narrow on `chainPlatform` for platform methods
 
-```tsx
-{
-  wallet.connector.capabilities.requestAccounts ? (
-    <button onClick={() => requestAccounts(wallet.connector.id)}>Request more accounts</button>
-  ) : null;
-}
+`signIn` and `signTransaction` exist only on some platforms, and `sendTx` takes a
+different transaction type on each. `ConnectedWallet` is a union, so narrow it
+to a platform before you reach for those:
 
-{
-  wallet.connector.capabilities.switchChain ? <ChainPicker wallet={wallet} /> : null;
-}
+```ts
+import type { ConnectedWallet } from "@usebutr/core";
+
+const signSolanaTx = async (wallet: ConnectedWallet, tx: Uint8Array) => {
+  const { connector } = wallet;
+  if (connector.chainPlatform !== "svm" || !connector.signTransaction) {
+    throw new Error(`${connector.name} cannot sign Solana transactions`);
+  }
+  return connector.signTransaction(tx, { account: wallet.account });
+};
 ```
 
-## Where flags come from
+Three ways to get a narrowed wallet:
 
-- **Auto-discovered EVM / SVM adapters** derive flags from the underlying
-  protocol's feature advertisements (EIP-6963 provider info; Wallet Standard
-  features).
-- **Hand-rolled adapters** declare them explicitly. The shipped optional
-  connectors are fixed:
+- `wallet.connector.chainPlatform === "svm"`, as above.
+- `isPlatformWallet(wallet, "svm")` from `@usebutr/core`, which narrows the
+  whole `ConnectedWallet`.
+- `useSelectedWallet("svm")` from `@usebutr/react`, which returns
+  `ConnectedWallet<"svm"> | undefined`.
 
-| Capability              | WalletConnect          | Ledger             |
-| ----------------------- | ---------------------- | ------------------ |
-| `getBalance`            | ✅                     | ❌ (no RPC)        |
-| `getTransactionReceipt` | ✅                     | ❌                 |
-| `requestAccounts`       | ❌ (re-pair to change) | ❌                 |
-| `sendTransaction`       | ✅                     | ❌ (signing only)  |
-| `signMessage`           | ✅                     | ✅                 |
-| `subscribe`             | ✅                     | ❌ (no events)     |
-| `switchAccount`         | ❌                     | ❌                 |
-| `switchChain`           | ✅                     | ✅ (local chainId) |
+See [Send a transaction](/guides/transactions) for each platform's transaction
+type.
+
+## What decides presence
+
+- **Wallet Standard adapters** (Solana, Sui, Bitcoin, Polkadot) check the
+  wallet's advertised features when discovery builds the adapter:
+  `signMessage` needs `solana:signMessage` (or its Sui, Bitcoin, Polkadot
+  equivalent), `sendTx` needs `solana:signAndSendTransaction`, and
+  `switchChain` needs more than one advertised chain in the namespace. A
+  wallet that adds features later keeps the adapter it was built with.
+- **EVM adapters** define every optional method: EIP-1193 has a call for each.
+  The wallet can still reject one it doesn't implement.
+- **WalletConnect and Ledger** have fixed sets per namespace or device app. A
+  Ledger signs and never sends; WalletConnect has no `requestAccounts`. See
+  [WalletConnect](/connectors/walletconnect) and [Ledger](/connectors/ledger).
+- **Injected Bitcoin adapters** define `switchChain` only when the provider
+  can switch networks (Unisat, Xverse).
+- **Injected Polkadot adapters** gain `signMessage` and `subscribe` once
+  `connect()` has enabled the extension, because `injectedWeb3` only reveals
+  them then.
+
+Read presence where you call the method, on the connected wallet, rather than
+caching it from the discovered adapter.
 
 <Callout type="warn">
-  SVM wallets that don't advertise `solana:signAndSendTransaction` report `sendTransaction: false`;
-  those without `solana:signMessage` report `signMessage: false`. Always branch on the flag before
-  showing the affordance.
+  A wallet that is still [reconnecting](/concepts/hydration#synchronous-seeding-ssr) from a
+  server-rendered snapshot is backed by a placeholder with none of the optional methods. They appear
+  once the live adapter lands. To keep layout stable, render those controls disabled while
+  `useIsReconnecting(id)` is true instead of hiding them.
 </Callout>
 
-**Source:** `packages/core/src/types/wallet.ts`,
-`packages/{walletconnect,ledger}/src/capabilities.ts`.
+**Source:** `packages/core/src/types/wallet.ts`, `packages/core/src/types/connector.ts`,
+[ADR 0004](https://github.com/pedroapfilho/usebutr/blob/main/docs/adr/0004-capability-by-presence-and-wallet-manager.md).

@@ -1,162 +1,76 @@
-import type { ConnectedWallet } from "@usebutr/core";
+import type { StoredPoolEntry } from "@usebutr/core";
+import { createWalletManager, fromAdapters } from "@usebutr/core";
 import { describe, expect, it } from "vitest";
 
 import { createFakeAdapter } from "../fake-adapter";
+import { createFakeConnectedWallet } from "../fake-connected-wallet";
 import { createFakePersistence } from "../fake-persistence";
 
-const buildAccount = (address: string) => ({
-  chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155" as const, reference: "1" },
-  id: `eip155:1:${address}`,
-  walletAddress: address,
+const flush = () =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
+
+const storedEntryOf = (wallet: ReturnType<typeof createFakeConnectedWallet>): StoredPoolEntry => ({
+  account: wallet.account,
+  accounts: wallet.accounts,
+  chainPlatform: wallet.connector.chainPlatform,
+  connectorId: wallet.connector.id,
+  name: wallet.connector.name,
 });
 
-const buildWallet = (id: string, overrides: { name?: string } = {}): ConnectedWallet => {
-  const account = buildAccount("0xfeed");
-  return {
-    account,
-    accounts: [account],
-    connector: { ...createFakeAdapter({ id }), ...overrides },
-  };
-};
-
 describe("createFakePersistence", () => {
-  it("starts empty when no seed is provided", async () => {
-    const p = createFakePersistence();
-    await expect(p.getPool()).resolves.toEqual({});
-    await expect(p.getSelection()).resolves.toEqual({});
-    await expect(p.getActiveConnectorId()).resolves.toBeNull();
-    await expect(p.isUserDisconnected()).resolves.toBe(false);
-  });
-
-  it("honours the seed for pool, selection, activeConnectorId, and userDisconnected", async () => {
-    const seedAccount = buildAccount("0x123");
-    const p = createFakePersistence({
-      activeConnectorId: "fake",
-      pool: {
-        fake: {
-          account: seedAccount,
-          accounts: [seedAccount],
-          chainPlatform: "evm",
-          connectorId: "fake",
-          name: "Fake",
-        },
-      },
-      selection: { evm: "fake" },
-      userDisconnected: true,
+  it("loads an empty state by default", async () => {
+    expect(await createFakePersistence().load()).toEqual({
+      activeConnectorId: null,
+      isUserDisconnected: false,
+      pool: {},
+      selection: {},
     });
-    await expect(p.getPool()).resolves.toHaveProperty("fake");
-    await expect(p.getSelection()).resolves.toEqual({ evm: "fake" });
-    await expect(p.getActiveConnectorId()).resolves.toBe("fake");
-    await expect(p.isUserDisconnected()).resolves.toBe(true);
   });
 
-  it("setPool serialises a Map<connectorId, ConnectedWallet> into the storage shape", async () => {
-    const p = createFakePersistence();
-    const pool = new Map<string, ConnectedWallet>([
-      ["a", buildWallet("a")],
-      ["b", buildWallet("b")],
-    ]);
-    await p.setPool(pool);
-    const stored = await p.getPool();
-    expect(Object.keys(stored).toSorted()).toEqual(["a", "b"]);
-    expect(stored.a?.connectorId).toBe("a");
-    expect(stored.b?.chainPlatform).toBe("evm");
-  });
-
-  it("setSelection serialises a Map<platform, connectorId> into the storage shape", async () => {
-    const p = createFakePersistence();
-    await p.setSelection(new Map([["evm", "fake"]]));
-    await expect(p.getSelection()).resolves.toEqual({ evm: "fake" });
-  });
-
-  it("setActiveConnectorId round-trips through getActiveConnectorId", async () => {
-    const p = createFakePersistence();
-    await p.setActiveConnectorId("hello");
-    await expect(p.getActiveConnectorId()).resolves.toBe("hello");
-    await p.setActiveConnectorId(null);
-    await expect(p.getActiveConnectorId()).resolves.toBeNull();
-  });
-
-  it("markUserDisconnected flips the bit observable via isUserDisconnected", async () => {
-    const p = createFakePersistence();
-    await p.markUserDisconnected(true);
-    await expect(p.isUserDisconnected()).resolves.toBe(true);
-    await p.markUserDisconnected(false);
-    await expect(p.isUserDisconnected()).resolves.toBe(false);
-  });
-
-  it("removePoolEntry removes the named entry while leaving others intact", async () => {
-    const p = createFakePersistence();
-    await p.setPool(
-      new Map<string, ConnectedWallet>([
-        ["a", buildWallet("a")],
-        ["b", buildWallet("b")],
-      ]),
-    );
-    await p.removePoolEntry("a");
-    const stored = await p.getPool();
-    expect(stored.a).toBeUndefined();
-    expect(stored.b).toBeDefined();
-  });
-
-  it("clearPool removes all entries from the pool", async () => {
-    const p = createFakePersistence();
-    await p.setPool(new Map([["a", buildWallet("a")]]));
-    await p.clearPool();
-    await expect(p.getPool()).resolves.toEqual({});
-  });
-
-  // `clearAll` deliberately leaves the disconnect flag alone: it lives in the
-  // session driver so a reset keeps auto-connect suppressed for the rest of
-  // the session. `reset()` writes the flag and calls `clearAll` as two
-  // unawaited operations, so a fake that cleared it here made the outcome
-  // order-dependent and let a remount silently auto-reconnect.
-  it("clearAll resets pool, selection and activeConnectorId but keeps userDisconnected", async () => {
-    const p = createFakePersistence({
-      activeConnectorId: "a",
-      pool: {
-        a: {
-          account: buildAccount("0xaa"),
-          accounts: [buildAccount("0xaa")],
-          chainPlatform: "evm",
-          connectorId: "a",
-          name: "Wallet A",
-        },
-      },
-      selection: { evm: "a" },
-      userDisconnected: true,
-    });
-    await p.clearAll();
-    await expect(p.getPool()).resolves.toEqual({});
-    await expect(p.getSelection()).resolves.toEqual({});
-    await expect(p.getActiveConnectorId()).resolves.toBeNull();
-    await expect(p.isUserDisconnected()).resolves.toBe(true);
-  });
-
-  it("setPool upserts rather than replacing, matching WalletStorage", async () => {
-    const p = createFakePersistence({
-      pool: {
-        a: {
-          account: buildAccount("0xaa"),
-          accounts: [buildAccount("0xaa")],
-          chainPlatform: "evm",
-          connectorId: "a",
-          name: "Wallet A",
-        },
-      },
+  it("loads the seed, validated as browser storage would", async () => {
+    const entry = storedEntryOf(createFakeConnectedWallet({ id: "metamask" }));
+    const persistence = createFakePersistence({
+      activeConnectorId: "metamask",
+      pool: { metamask: entry, rogue: { ...entry, connectorId: "not-rogue" } },
     });
 
-    await p.setPool(new Map([["b", buildWallet("b")]]));
-
-    const ids = Object.keys(await p.getPool());
-    expect(ids.toSorted()).toEqual(["a", "b"]);
+    const loaded = await persistence.load();
+    expect(loaded.pool).toEqual({ metamask: entry });
+    expect(loaded.activeConnectorId).toBe("metamask");
   });
 
-  it("drops an entry that fails validation instead of round-tripping it", async () => {
-    const p = createFakePersistence();
+  it("records every save and loads the latest one", async () => {
+    const persistence = createFakePersistence();
+    const state = {
+      activeConnectorId: null,
+      isUserDisconnected: true,
+      pool: {},
+      selection: {},
+    };
 
-    await p.setPool(new Map([["c", buildWallet("c", { name: "" })]]));
+    await persistence.save(state);
 
-    expect(await p.getPool()).toEqual({});
+    expect(persistence.saves).toEqual([state]);
+    expect(await persistence.load()).toEqual(state);
+  });
+
+  it("restores a seeded connection through a manager and records what it saves", async () => {
+    const wallet = createFakeConnectedWallet({ id: "metamask" });
+    const persistence = createFakePersistence({ pool: { metamask: storedEntryOf(wallet) } });
+    const manager = createWalletManager({
+      sources: [fromAdapters([wallet.connector, createFakeAdapter({ id: "rabby" })])],
+      storage: persistence,
+    });
+
+    manager.start();
+    await flush();
+    await manager.connect("rabby");
+    await flush();
+
+    expect(manager.getState().pool.get("metamask")?.connector).toBe(wallet.connector);
+    expect(Object.keys(persistence.saves.at(-1)?.pool ?? {})).toEqual(["metamask", "rabby"]);
+    expect(persistence.saves.at(-1)?.activeConnectorId).toBe("rabby");
   });
 });

@@ -1,180 +1,170 @@
 import type { Account, Balance } from "./account";
 import type { ChainBase } from "./chain";
 import type { Connector } from "./connector";
+import type { ChainPlatform } from "./platform";
+import type { WalletSigner } from "./signer";
 
 type SignInInput = { readonly [key: string]: SignInValue };
 type SignInValue = boolean | number | string | null | ReadonlyArray<SignInValue> | SignInInput;
-type TransactionObject = {
-  readonly [key: string]: TransactionValue | undefined;
+
+type SignedMessage = { signature: Uint8Array; signedMessage: Uint8Array };
+
+type TransactionReceipt = { status: "Error" | "Pending" | "Success" };
+
+/** Acts as `account`, which must be one the wallet exposes; an unknown one
+ *  rejects rather than signing with another. Omitted, the wallet uses its own
+ *  active account, so pass `wallet.account` to honour `setAccount`. */
+type AccountOptions = { account?: Account };
+
+/**
+ * `chain` targets this one transaction. Wallet Standard routes it per call;
+ * an EVM wallet has one global network, so it switches first; a transport
+ * that can do neither rejects when `chain` is not its current chain.
+ */
+type TransactionOptions = AccountOptions & { chain?: ChainBase };
+
+/** `token` is chain-specific: an ERC-20 contract address on EVM. Omit it for
+ *  the native asset. */
+type BalanceOptions = AccountOptions & { token?: string };
+
+/**
+ * Presence is the capability check: an adapter defines an optional method
+ * only when calling it can succeed for this wallet, and never ships a
+ * placeholder (a zero balance, a receipt that stays pending).
+ */
+type WalletBase<Tx> = {
+  getBalance?: (options?: BalanceOptions) => Promise<Balance>;
+  /** Narrow with `switch (signer.kind)`; see `WalletSignerRegistry`. */
+  getSigner: () => Promise<WalletSigner>;
+  getTransactionReceipt?: (hash: string) => Promise<TransactionReceipt>;
+  /** Signs and broadcasts; resolves the transaction hash or signature. */
+  sendTx?: (tx: Tx, options?: TransactionOptions) => Promise<string>;
+  /**
+   * Verify against `signedMessage`, not the input: Solana Wallet Standard
+   * wallets may prefix or re-encode it.
+   */
+  signMessage?: (message: Uint8Array, options?: AccountOptions) => Promise<SignedMessage>;
+  /** Moves the wallet (or butr's view of it) to `chain`. Rejects for a
+   *  chain outside this adapter's namespace or not advertised by the wallet. */
+  switchChain?: (chain: ChainBase) => Promise<void>;
 };
-type TransactionMethod = (...args: ReadonlyArray<never>) => Promise<string>;
-type TransactionValue =
+
+type EvmTransactionValue =
   | bigint
   | boolean
   | number
   | string
   | null
-  | Uint8Array
-  | ReadonlyArray<TransactionValue>
-  | TransactionObject
-  | TransactionMethod;
-type TransactionInput = TransactionObject | string | Uint8Array;
-type WalletSigner = object;
+  | ReadonlyArray<EvmTransactionValue>
+  | { readonly [key: string]: EvmTransactionValue | undefined };
 
-/**
- * Methods every connected wallet supports regardless of chain. The
- * per-platform `Wallet` types extend this with their platform-specific
- * methods (`signIn` for SVM, `signTransaction` for sign-only paths).
- */
-type WalletBase = {
-  /** Read a token balance. `mint` is optional; the connector decides
-   *  what "no mint" means for its chain (native ETH on EVM, native SOL
-   *  on Solana, etc.). */
-  getBalance: (mint?: string) => Promise<Balance>;
-  /** Returns a chain-specific signer. Consumers cast to the concrete
-   *  type via the `SignerForPlatform` registry (or directly to the
-   *  library shape they wrap: `WalletClient` on viem, etc.). */
-  getSigner: () => Promise<WalletSigner>;
-  /** Look up the status of a previously-submitted transaction. */
-  getTransactionReceipt: (tx: string) => Promise<{
-    status: "Success" | "Error" | "Pending";
-  }>;
-  /** `account` routes through a specific exposed address (EVM via
-   *  `tx.from`, Wallet Standard via the feature's `account` input);
-   *  omitting it lets the wallet pick. */
-  sendTx: (tx: TransactionInput, account?: Account) => Promise<string>;
-  /** Submit a transaction targeting a specific chain. The optional
-   *  callback fires after the connector has switched chain (consumers
-   *  use this to re-enable UI). Pass an `account` to route through a
-   *  specific exposed address (see `sendTx`). */
-  sendTxToChain: (
-    tx: TransactionInput,
-    targetChainId: string,
-    account?: Account,
-    cb?: () => void,
-  ) => Promise<string>;
-  /**
-   * Verify against `signedMessage`, not the input: Solana Wallet
-   * Standard wallets may prefix or re-encode it. `account` signs with a
-   * specific address without changing the wallet's active one.
-   */
-  signMessage: (
-    msg: Uint8Array,
-    account?: Account,
-  ) => Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
-  /** Switch to a different account on the same wallet (some wallets
-   *  expose multiple accounts simultaneously). */
-  switchAccount?: (address: string) => Promise<void>;
-  /** Switch the wallet's active chain. */
-  switchChain: (chain: ChainBase) => Promise<void>;
+/** An `eth_sendTransaction` request. `bigint` quantities are encoded as hex. */
+type EvmTransactionRequest = Readonly<Record<string, EvmTransactionValue | undefined>>;
+
+/** A `@mysten/sui` `Transaction` (anything with `toJSON()`), its JSON string,
+ *  or BCS bytes. */
+type SuiTransactionInput = string | Uint8Array | { toJSON: () => Promise<string> };
+
+/** `amount` in satoshis. */
+type BitcoinTransfer = { amount: bigint; recipient: string };
+
+type SignInOutput = { account: Account; signature: Uint8Array; signedMessage: Uint8Array };
+
+/** No `signIn` (SIWE is app-level) and no `signTransaction`: EVM wallets sign
+ *  and send in one step through `eth_sendTransaction`. */
+type EvmWallet = WalletBase<EvmTransactionRequest>;
+
+type SvmWallet = WalletBase<Uint8Array> & {
+  /** Sign In With Solana (`solana:signIn`). `input` holds the SIWS message
+   *  fields (domain, statement, nonce, …). */
+  signIn?: (input?: SignInInput) => Promise<SignInOutput>;
+  /** Signs a serialized transaction without broadcasting it and resolves the
+   *  full signed transaction, ready for your own RPC client. */
+  signTransaction?: (tx: Uint8Array, options?: TransactionOptions) => Promise<Uint8Array>;
 };
 
-/**
- * No `signIn` (SIWE is app-level here, not a protocol method) and no
- * `signTransaction`: EVM wallets sign and send in one step through
- * `eth_sendTransaction`.
- */
-type EvmWallet = WalletBase;
-
-/**
- * Both additions are optional at runtime; gate them on
- * `capabilities.signIn` / `capabilities.signTransaction`, which mirror
- * what the wallet actually advertises.
- */
-type SvmWallet = WalletBase & {
-  /** Sign In With Solana (SIWS, `solana:signIn`). Authenticates the user
-   *  and returns the connected account plus the signed statement so the
-   *  consumer can verify server-side. `input` is the SIWS message fields
-   *  (domain, statement, nonce, …); pass `{}` or omit for wallet
-   *  defaults. */
-  signIn?: (input?: SignInInput) => Promise<{
-    account: Account;
-    signature: Uint8Array;
-    signedMessage: Uint8Array;
-  }>;
-  /** Sign a Solana transaction WITHOUT broadcasting it. butr ships no
-   *  RPC, so the consumer broadcasts the returned bytes via
-   *  `@solana/kit` / `@solana/web3.js` / etc. */
-  signTransaction?: (tx: TransactionInput, account?: Account) => Promise<Uint8Array>;
-};
-
-/**
- * Sui wallet surface. Adds optional `signTransaction` for the
- * `sui:signTransaction` (sign-only) feature; broadcast is on the
- * consumer via `@mysten/sui`'s SuiClient.
- */
-type SuiWallet = WalletBase & {
-  /** Sign a Sui transaction WITHOUT executing it. Returns BOTH halves the
-   *  chain requires: `SuiClient.executeTransactionBlock` needs
-   *  `{ transactionBlock, signature }`, so a bare `Uint8Array` cannot express
-   *  the result and a consumer holding one cannot tell which half they have. */
+type SuiWallet = WalletBase<SuiTransactionInput> & {
+  /** Signs without executing. `SuiClient.executeTransactionBlock` needs both
+   *  halves, so the result carries the transaction bytes and the signature. */
   signTransaction?: (
-    tx: TransactionInput,
-    account?: Account,
+    tx: SuiTransactionInput,
+    options?: TransactionOptions,
   ) => Promise<{ bytes: Uint8Array; signature: Uint8Array }>;
 };
 
-/**
- * `signTransaction` is `bitcoin:signPsbt`: pass `psbt.toBuffer()` bytes
- * and get signed PSBT bytes back, to finalise and broadcast through
- * your own Esplora or Electrum client.
- */
-type BitcoinWallet = WalletBase & {
-  signTransaction?: (tx: TransactionInput, account?: Account) => Promise<Uint8Array>;
+type BitcoinWallet = WalletBase<BitcoinTransfer> & {
+  /** `bitcoin:signPsbt`: PSBT bytes in (`psbt.toBuffer()`), signed PSBT bytes
+   *  out, to finalise and broadcast through your own Esplora or Electrum
+   *  client. */
+  signTransaction?: (psbt: Uint8Array, options?: TransactionOptions) => Promise<Uint8Array>;
 };
 
-/**
- * No standalone `signTransaction`: building an extrinsic needs chain
- * metadata over RPC, which butr does not ship, so transaction signing
- * goes through the `getSigner()` handoff.
- */
-type PolkadotWallet = WalletBase;
+/** Building an extrinsic needs chain metadata over RPC, which butr does not
+ *  ship, so transactions go through the `getSigner()` handoff. */
+type PolkadotWallet = Omit<WalletBase<never>, "sendTx">;
 
-/** Per-platform full adapter shapes: `Connector` + the platform's
- *  `Wallet` surface. These are the discriminated-union variants of
- *  `WalletAdapter`. */
 type EvmAdapter = Connector<"evm"> & EvmWallet;
 type SvmAdapter = Connector<"svm"> & SvmWallet;
 type SuiAdapter = Connector<"sui"> & SuiWallet;
 type BitcoinAdapter = Connector<"bitcoin"> & BitcoinWallet;
 type PolkadotAdapter = Connector<"polkadot"> & PolkadotWallet;
 
-/**
- * The union narrows "this platform has the concept at all"; the
- * `capabilities` flags narrow "this wallet supports it right now".
- * Both gates are needed, and neither substitutes for the other.
- */
+/** Narrow on `chainPlatform` to reach a platform's own methods and
+ *  transaction type. */
 type WalletAdapter = EvmAdapter | SvmAdapter | SuiAdapter | BitcoinAdapter | PolkadotAdapter;
 
-type ConnectedWallet = {
-  /** Currently-active account on this wallet. */
-  account: Account;
-  /** All accounts known on this wallet at the time of connect/refresh.
-   *  Always contains at least `account`. Populated from `getAccounts()`
-   *  if the connector implements it; otherwise `[account]`. */
-  accounts: Array<Account>;
-  connector: WalletAdapter;
+type AdapterByPlatform = {
+  bitcoin: BitcoinAdapter;
+  evm: EvmAdapter;
+  polkadot: PolkadotAdapter;
+  sui: SuiAdapter;
+  svm: SvmAdapter;
 };
 
+type WalletAdapterFor<P extends ChainPlatform> = Extract<WalletAdapter, { chainPlatform: P }>;
+
+type ConnectedWallet<P extends ChainPlatform = ChainPlatform> = {
+  /** The active account; always one of `accounts`. */
+  account: Account;
+  /** Every account the wallet exposed at the last connect or refresh. */
+  accounts: ReadonlyArray<Account>;
+  /** An indexed access rather than `WalletAdapterFor`, so TypeScript measures
+   *  `P` covariant and `ConnectedWallet<"evm">` stays a `ConnectedWallet`. */
+  connector: AdapterByPlatform[P];
+};
+
+/** Narrows a pool entry to one platform, e.g. before calling its `sendTx`. */
+const isPlatformWallet = <P extends ChainPlatform>(
+  wallet: ConnectedWallet,
+  platform: P,
+): wallet is ConnectedWallet<P> => wallet.connector.chainPlatform === platform;
+
 export type {
+  AccountOptions,
+  BalanceOptions,
   BitcoinAdapter,
+  BitcoinTransfer,
   BitcoinWallet,
   ConnectedWallet,
   EvmAdapter,
+  EvmTransactionRequest,
+  EvmTransactionValue,
   EvmWallet,
   PolkadotAdapter,
   PolkadotWallet,
+  SignedMessage,
   SignInInput,
+  SignInOutput,
   SignInValue,
   SuiAdapter,
+  SuiTransactionInput,
   SuiWallet,
   SvmAdapter,
   SvmWallet,
-  TransactionInput,
-  TransactionMethod,
-  TransactionObject,
-  TransactionValue,
+  TransactionOptions,
+  TransactionReceipt,
   WalletAdapter,
+  WalletAdapterFor,
   WalletBase,
-  WalletSigner,
 };
+export { isPlatformWallet };

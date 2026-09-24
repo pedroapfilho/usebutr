@@ -8,22 +8,11 @@ export type {
   SolanaSignMessageFeature,
   SolanaSignMessageInput,
   SolanaSignMessageOutput,
+  SolanaSignTransactionFeature,
+  SolanaSignTransactionInput,
+  SolanaSignTransactionOutput,
 } from "./wallet-standard-types";
 
-export {
-  buildSvmAdapter,
-  discoverSvmAdapters,
-  isSolanaSignAndSendTransactionFeature,
-  isSolanaSignInFeature,
-  isSolanaSignMessageFeature,
-  isSolanaSignTransactionFeature,
-} from "./wallet-standard-adapter";
-
-export { SVM_CHAINS, SVM_CHAINS_LIST } from "./chains";
-
-export type { WalletStandardCapabilityInput } from "./capabilities";
-export { resolveWalletStandardCapabilities } from "./capabilities";
+export { buildSvmAdapter, discoverSvmAdapters } from "./wallet-standard-adapter";
 
 export { svmDiscoverer } from "./discoverer";
-
-import "./signer-augmentation";

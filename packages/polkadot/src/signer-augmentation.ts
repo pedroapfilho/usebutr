@@ -1,15 +1,13 @@
-import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
-
-import type { PolkadotSignerHandle } from "./injected/adapter";
+import type { Injected } from "./injected/injected-web3";
 
 /**
- * The `getSigner()` shape depends on the discovery channel: injectedWeb3
- * yields a `PolkadotSignerHandle` to bridge into polkadot-api's
- * `connectInjectedExtension`, Wallet Standard yields the raw wallet.
+ * `extensionName` is the `window.injectedWeb3` key polkadot-api's
+ * `connectInjectedExtension` takes. No address: sign as the connected
+ * wallet's `account`, which follows `setAccount`.
  */
 declare module "@usebutr/core" {
   // oxlint-disable-next-line typescript/consistent-type-definitions -- module augmentation requires interface
-  interface SignerForPlatform {
-    polkadot: PolkadotSignerHandle | WalletStandardWallet;
+  interface WalletSignerRegistry {
+    "polkadot-injected": { extension: Injected; extensionName: string };
   }
 }

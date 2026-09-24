@@ -10,11 +10,8 @@ import {
   Transaction,
   type VersionedTransaction,
 } from "@solana/web3.js";
-import type { WalletAdapter as ButrWalletAdapter } from "@usebutr/core";
-import { bytesToBase58 } from "@usebutr/core";
-import { isSolanaSignAndSendTransactionFeature, isSolanaSignMessageFeature } from "@usebutr/svm";
-import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
-import { getFeature } from "@usebutr/wallet-standard-shared";
+import type { Account, SvmAdapter } from "@usebutr/core";
+import { SVM_CHAINS } from "@usebutr/core";
 
 // @solana/wallet-adapter's interface declares Promise-returning methods whose
 // bodies are synchronous here; async would only trip require-await.
@@ -30,18 +27,17 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
   readonly supportedTransactionVersions = new Set<0>([0]);
   readonly url = "https://github.com/pedroapfilho/usebutr";
 
+  private readonly _account: Account;
   private _connecting = false;
   private _publicKey: PublicKey | null;
-  private readonly _wallet: WalletStandardWallet;
 
   constructor(
-    public readonly butr: ButrWalletAdapter,
-    walletStd: WalletStandardWallet,
-    address: string,
+    public readonly butr: SvmAdapter,
+    account: Account,
   ) {
     super();
-    this._wallet = walletStd;
-    this._publicKey = new PublicKey(address);
+    this._account = account;
+    this._publicKey = new PublicKey(account.walletAddress);
   }
 
   get name(): WalletName {
@@ -93,19 +89,11 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
   }
 
   async signMessage(message: Uint8Array): Promise<Uint8Array> {
-    const feature = getFeature(this._wallet, "solana:signMessage", isSolanaSignMessageFeature);
-    if (feature === undefined) {
-      throw new Error("Wallet does not advertise solana:signMessage");
+    if (!this.butr.signMessage) {
+      throw new Error(`${this.butr.name} cannot sign messages`);
     }
-    const account = this._wallet.accounts[0];
-    if (account === undefined) {
-      throw new Error("No exposed account");
-    }
-    const [output] = await feature.signMessage({ account, message });
-    if (output === undefined) {
-      throw new Error("signMessage returned no outputs");
-    }
-    return output.signature;
+    const { signature } = await this.butr.signMessage(message, { account: this._account });
+    return signature;
   }
 
   signTransaction<T extends Transaction | VersionedTransaction>(_transaction: T): Promise<T> {
@@ -121,31 +109,20 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     _connection: Connection,
     _options?: SendTransactionOptions,
   ): Promise<string> {
-    const feature = getFeature(
-      this._wallet,
-      "solana:signAndSendTransaction",
-      isSolanaSignAndSendTransactionFeature,
-    );
-    if (feature === undefined) {
-      throw new Error("Wallet does not advertise solana:signAndSendTransaction");
-    }
-    const account = this._wallet.accounts[0];
-    if (account === undefined) {
-      throw new Error("No exposed account");
+    if (!this.butr.sendTx) {
+      throw new Error(`${this.butr.name} cannot send Solana transactions`);
     }
     const serialised =
       transaction instanceof Transaction
         ? transaction.serialize({ requireAllSignatures: false })
         : transaction.serialize();
-    const [output] = await feature.signAndSendTransaction({
-      account,
-      chain: "solana:devnet",
-      transaction: new Uint8Array(serialised),
+    // Wallet Standard routes the chain per call: devnet here never moves the
+    // wallet off whatever cluster it is showing.
+    const signature = await this.butr.sendTx(new Uint8Array(serialised), {
+      account: this._account,
+      chain: SVM_CHAINS.devnet,
     });
-    if (output === undefined) {
-      throw new Error("signAndSendTransaction returned no outputs");
-    }
-    return bytesToBase58(output.signature);
+    return signature;
   }
 }
 

@@ -1,15 +1,10 @@
 import type { Account, ChainPlatform, ConnectedWallet, WalletAdapter } from "@usebutr/core";
 import {
-  useConnectWallet,
+  useConnect,
   useConnectedWallets,
-  useConnectionError,
-  useConnectingConnectorId,
-  useDisconnectWallet,
   useDiscoveredWallets,
-  useRequestAccounts,
   useSelectedWallet,
-  useSetSelection,
-  useUpdateWalletAccount,
+  useWalletManager,
 } from "@usebutr/react";
 
 const truncate = (a: string): string => (a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a);
@@ -36,7 +31,7 @@ const WalletRow = ({
 }) => {
   const { accounts, connector } = wallet;
   const showSwitcher = accounts.length > 1;
-  const canAddAccounts = connector.capabilities.requestAccounts;
+  const canAddAccounts = connector.requestAccounts !== undefined;
   return (
     <div className="border-border-default rounded-md border bg-white px-2.5 py-2 sm:py-1.5">
       <div className="flex items-center justify-between gap-2">
@@ -134,8 +129,8 @@ const WalletGroup = ({
   platform,
   requestAccounts,
   selectedId,
+  setAccount,
   setSelection,
-  updateWalletAccount,
 }: {
   connect: (id: string) => void;
   connected: ReadonlyArray<ConnectedWallet>;
@@ -146,8 +141,8 @@ const WalletGroup = ({
   platform: ChainPlatform;
   requestAccounts: (id: string) => void;
   selectedId: string | undefined;
+  setAccount: (id: string, account: Account) => void;
   setSelection: (platform: ChainPlatform, id: string) => void;
-  updateWalletAccount: (id: string, account: Account) => void;
 }) => {
   const connectable = discovered.filter((d) => !connected.some((w) => w.connector.id === d.id));
   return (
@@ -165,7 +160,7 @@ const WalletGroup = ({
               key={w.connector.id}
               onDisconnect={disconnect}
               onRequestAccounts={requestAccounts}
-              onSelectAccount={updateWalletAccount}
+              onSelectAccount={setAccount}
               onUse={(id) => {
                 setSelection(platform, id);
               }}
@@ -202,13 +197,8 @@ const WalletGroup = ({
 const WalletList = () => {
   const pool = useConnectedWallets();
   const discovered = useDiscoveredWallets();
-  const connect = useConnectWallet();
-  const connectionError = useConnectionError();
-  const connectingId = useConnectingConnectorId();
-  const disconnect = useDisconnectWallet();
-  const setSelection = useSetSelection();
-  const updateWalletAccount = useUpdateWalletAccount();
-  const requestAccounts = useRequestAccounts();
+  const { connect, connectingId, error } = useConnect();
+  const { disconnect, requestAccounts, setAccount, setSelection } = useWalletManager();
   const selectedEvm = useSelectedWallet("evm");
   const selectedSvm = useSelectedWallet("svm");
 
@@ -221,9 +211,7 @@ const WalletList = () => {
       <div className="grid gap-3 sm:grid-cols-2">
         {PLATFORMS.map(({ label, platform }) => (
           <WalletGroup
-            connect={(id) => {
-              void connect(id);
-            }}
+            connect={connect}
             connected={pool.filter((w) => w.connector.chainPlatform === platform)}
             connectingId={connectingId}
             disconnect={disconnect}
@@ -235,18 +223,18 @@ const WalletList = () => {
               void requestAccounts(id);
             }}
             selectedId={selectedIdFor(platform)}
+            setAccount={setAccount}
             setSelection={setSelection}
-            updateWalletAccount={updateWalletAccount}
           />
         ))}
       </div>
-      {connectionError === null ? null : (
+      {error === null ? null : (
         <p
           aria-live="assertive"
           className="border-danger-border bg-danger-surface text-danger-foreground rounded-md border p-3 text-sm"
           role="alert"
         >
-          {connectionError.kind}: {connectionError.message}
+          {error.kind}: {error.message}
         </p>
       )}
     </section>

@@ -1,18 +1,15 @@
 import type { Account, ChainBase, ConnectedWallet, WalletAdapter } from "@usebutr/core";
+import { CHAINS_BY_PLATFORM } from "@usebutr/core";
 import {
-  useActiveWallet,
   useBalance,
-  useConnectWallet,
+  useConnect,
   useConnectedWallets,
-  useConnectionError,
   useConnectionStatus,
   useDiscoveredWallets,
-  useDisconnectWallet,
-  useRequestAccounts,
-  useSetActiveConnector,
+  useWallet,
+  useWalletManager,
 } from "@usebutr/react";
 import type { UseBalanceResult } from "@usebutr/react";
-import { CHAINS_BY_PLATFORM } from "@usebutr/wallets";
 import { Image as ExpoImage } from "expo-image";
 import { useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
@@ -68,14 +65,14 @@ const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand>
 
 const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWallet }) => {
   const isCurrent = account.walletAddress === wallet.account.walletAddress;
-  const canSign = wallet.connector.capabilities.signMessage;
+  const { signMessage } = wallet.connector;
   const [state, setState] = useState<SignState>({ kind: "idle" });
 
-  const handleSign = async () => {
+  const handleSign = async (sign: NonNullable<typeof signMessage>) => {
     setState({ kind: "signing" });
     try {
       const bytes = new TextEncoder().encode(SIGN_MESSAGE_TEXT);
-      await wallet.connector.signMessage(bytes, account);
+      await sign(bytes, { account });
       setState({ kind: "ok" });
     } catch (error) {
       setState({
@@ -99,14 +96,14 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
       <Text className={isCurrent ? "native-account-address-active" : "native-account-address"}>
         {account.walletAddress}
       </Text>
-      {canSign ? (
+      {signMessage ? (
         <View className="native-account-row-actions">
           {signStatusNode}
           <Pressable
             className="native-sign-button"
             disabled={state.kind === "signing"}
             onPress={() => {
-              void handleSign();
+              void handleSign(signMessage);
             }}
           >
             <Text className="native-sign-button-text">
@@ -130,7 +127,13 @@ const AccountPicker = ({ wallet }: { wallet: ConnectedWallet }) => (
   </View>
 );
 
-const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
+const ChainPicker = ({
+  switchChain,
+  wallet,
+}: {
+  switchChain: (chain: ChainBase) => Promise<void>;
+  wallet: ConnectedWallet;
+}) => {
   const chains = CHAINS_BY_PLATFORM[wallet.connector.chainPlatform];
   const [switchError, setSwitchError] = useState<string | null>(null);
 
@@ -140,7 +143,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
   const handleSwitch = async (chain: ChainBase) => {
     setSwitchError(null);
     try {
-      await wallet.connector.switchChain(chain);
+      await switchChain(chain);
     } catch (error) {
       setSwitchError(error instanceof Error ? error.message : "Failed to switch chain");
     }
@@ -183,13 +186,11 @@ const StatusBar = ({ status }: { status: string }) => (
 );
 
 const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
-  const active = useActiveWallet();
-  const setActive = useSetActiveConnector();
-  const disconnect = useDisconnectWallet();
-  const requestAccounts = useRequestAccounts();
-  const balance = useBalance(wallet.connector.id);
+  const active = useWallet();
+  const { disconnect, requestAccounts, setActive } = useWalletManager();
+  const balance = useBalance(wallet);
   const isActive = active?.connector.id === wallet.connector.id;
-  const { capabilities } = wallet.connector;
+  const { switchChain } = wallet.connector;
   const balanceText = getBalanceText(balance);
 
   return (
@@ -240,15 +241,15 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
         <Text className="native-dt">Balance</Text>
         <Text className="native-dd">{balanceText}</Text>
       </View>
-      {capabilities.switchChain ? (
+      {switchChain ? (
         <View className="native-dl-row">
           <Text className="native-dt">Chain</Text>
           <View className="native-dd">
-            <ChainPicker wallet={wallet} />
+            <ChainPicker switchChain={switchChain} wallet={wallet} />
           </View>
         </View>
       ) : null}
-      {capabilities.requestAccounts ? (
+      {wallet.connector.requestAccounts ? (
         <Pressable
           className="native-outline-button"
           onPress={() => {
@@ -315,7 +316,7 @@ const WalletPicker = ({
   available: ReadonlyArray<WalletAdapter>;
   hasConnected: boolean;
 }) => {
-  const connect = useConnectWallet();
+  const { connect } = useConnect();
 
   if (available.length === 0 && !hasConnected) {
     return (
@@ -347,13 +348,7 @@ const WalletPicker = ({
       <Text className="native-h2">{hasConnected ? "Connect another" : "Available wallets"}</Text>
       <View className="native-stack-small mt-3">
         {brands.map((brand) => (
-          <WalletBrandRow
-            brand={brand}
-            connect={(id) => {
-              void connect(id);
-            }}
-            key={brand.name}
-          />
+          <WalletBrandRow brand={brand} connect={connect} key={brand.name} />
         ))}
       </View>
     </View>
@@ -362,7 +357,7 @@ const WalletPicker = ({
 
 const Content = () => {
   const status = useConnectionStatus();
-  const connectionError = useConnectionError();
+  const { error: connectionError } = useConnect();
   const connected = useConnectedWallets();
   const discovered = useDiscoveredWallets();
 

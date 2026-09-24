@@ -1,13 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
+import type { BitcoinAdapter } from "@usebutr/core";
+import { BITCOIN_CHAINS, buildAccount } from "@usebutr/core";
+import { describe, expect, it } from "vitest";
 
+import { createLedgerAdapter } from "../adapter";
 import type {
   BitcoinAddressFormat,
+  BitcoinLedgerOptions,
   BtcAppConstructor,
   BtcAppLike,
-  TransportFactory,
-  TransportLike,
-} from "../adapter";
-import { createBitcoinLedgerAdapter, createLedgerAdapter } from "../adapter";
+} from "../apps/bitcoin";
+import { createBitcoinLedgerAdapter } from "../apps/bitcoin";
+
+import { buildFakeTransport, indexOfPath } from "./helpers";
 
 const PREFIX_BY_FORMAT: Record<BitcoinAddressFormat, string> = {
   bech32: "bc1q",
@@ -16,396 +20,172 @@ const PREFIX_BY_FORMAT: Record<BitcoinAddressFormat, string> = {
   p2sh: "3",
 };
 
-const buildFakeAddress = (index: number, format: BitcoinAddressFormat): string => {
-  return `${PREFIX_BY_FORMAT[format]}fakeaddr${index}`;
-};
-
-type BtcCtorHooks = {
-  onGetWalletPublicKey?: (path: string, format: BitcoinAddressFormat) => void;
+type BtcHooks = {
+  onGetWalletPublicKey?: (path: string, format: BitcoinAddressFormat | undefined) => void;
   onSignMessage?: (path: string, messageHex: string) => void;
+  onSignPsbt?: (accountPath: string) => void;
 };
 
-const buildFakeBtcCtor = (hooks: BtcCtorHooks = {}): BtcAppConstructor => {
-  return class FakeBtc implements BtcAppLike {
-    constructor(args: { currency?: string; transport: unknown }) {
-      void args;
-    }
+const buildFakeBtcCtor = (hooks: BtcHooks = {}): BtcAppConstructor =>
+  class FakeBtc implements BtcAppLike {
     getWalletPublicKey(
       path: string,
-      opts?: { format?: BitcoinAddressFormat; verify?: boolean },
+      opts?: { format?: BitcoinAddressFormat },
     ): Promise<{ bitcoinAddress: string; chainCode: string; publicKey: string }> {
-      const format = opts?.format ?? "bech32";
-      hooks.onGetWalletPublicKey?.(path, format);
-      const tail = path.split("/").pop() ?? "0";
-      const idx = Math.trunc(Number(tail.replace(/'$/v, "")));
+      hooks.onGetWalletPublicKey?.(path, opts?.format);
+      const prefix = PREFIX_BY_FORMAT[opts?.format ?? "legacy"];
       return Promise.resolve({
-        bitcoinAddress: buildFakeAddress(idx, format),
+        bitcoinAddress: `${prefix}fakeaddr${indexOfPath(path)}`,
         chainCode: "aa".repeat(32),
         publicKey: "02".padEnd(66, "b"),
       });
     }
     signMessage(path: string, messageHex: string): Promise<{ r: string; s: string; v: number }> {
       hooks.onSignMessage?.(path, messageHex);
-      return Promise.resolve({ r: "ab".repeat(32), s: "cd".repeat(32), v: 1 });
+      return Promise.resolve({ r: "ab".repeat(32), s: "cd".repeat(31), v: 1 });
     }
     signPsbtBuffer(
       psbtBuffer: Uint8Array,
-      options: { accountPath: string; addressFormat: BitcoinAddressFormat; finalizePsbt: boolean },
+      options: { accountPath: string },
     ): Promise<{ psbt: Uint8Array; tx?: string }> {
-      void options;
-      const out = new Uint8Array(psbtBuffer.length + 1);
-      out.set(psbtBuffer);
-      out[psbtBuffer.length] = 0xef;
-      return Promise.resolve({ psbt: out });
+      hooks.onSignPsbt?.(options.accountPath);
+      return Promise.resolve({ psbt: Uint8Array.of(...psbtBuffer, 0xef) });
     }
   };
-};
 
-const buildFakeTransport = (): {
-  factory: TransportFactory;
-  lastTransport: TransportLike | null;
-} => {
-  let lastTransport: TransportLike | null = null;
-  const factory: TransportFactory = {
-    create(): Promise<TransportLike> {
-      const t: TransportLike = {
-        close: vi.fn().mockResolvedValue(undefined),
-      };
-      lastTransport = t;
-      return Promise.resolve(t);
-    },
-  };
-  return {
-    factory,
-    get lastTransport() {
-      return lastTransport;
-    },
-  };
+const connectedBitcoin = async (
+  hooks: BtcHooks = {},
+  options: Partial<BitcoinLedgerOptions> = {},
+): Promise<BitcoinAdapter> => {
+  const adapter = await createBitcoinLedgerAdapter({
+    accountCount: 3,
+    btc: buildFakeBtcCtor(hooks),
+    transport: buildFakeTransport().factory,
+    ...options,
+    platform: "bitcoin",
+  });
+  await adapter.connect();
+  return adapter;
 };
 
 describe("createBitcoinLedgerAdapter", () => {
-  it("builds a Bitcoin adapter with conservative defaults", async () => {
-    const { factory } = buildFakeTransport();
+  it("defines signing only: no RPC, events or chain switch", async () => {
     const adapter = await createBitcoinLedgerAdapter({
       btc: buildFakeBtcCtor(),
       platform: "bitcoin",
-      transport: factory,
-    });
-
-    expect(adapter.id).toBe("ledger");
-    expect(adapter.name).toBe("Ledger");
-    expect(adapter.chainPlatform).toBe("bitcoin");
-    expect(adapter.capabilities.signMessage).toBe(true);
-    expect(adapter.capabilities.sendTransaction).toBe(false);
-    expect(adapter.capabilities.signTransaction).toBe(true);
-    expect(adapter.capabilities.getBalance).toBe(false);
-    expect(adapter.capabilities.subscribe).toBe(false);
-    expect(adapter.capabilities.switchChain).toBe(true);
-  });
-
-  it("connect() opens transport and fetches a bech32 address by default", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createBitcoinLedgerAdapter({
-      btc: buildFakeBtcCtor(),
-      platform: "bitcoin",
-      transport: factory,
-    });
-
-    await adapter.connect();
-    const account = await adapter.getAccount();
-    expect(account).not.toBeNull();
-    expect(account?.chain.id).toBe("bip122:000000000019d6689c085ae165831e93");
-    expect(account?.chain.namespace).toBe("bip122");
-    expect(account?.walletAddress.startsWith("bc1q")).toBe(true);
-  });
-
-  it("respects an overridden addressFormat (legacy)", async () => {
-    const formats: Array<BitcoinAddressFormat> = [];
-    const { factory } = buildFakeTransport();
-    const adapter = await createBitcoinLedgerAdapter({
-      addressFormat: "legacy",
-      btc: buildFakeBtcCtor({
-        onGetWalletPublicKey: (_path, format) => {
-          formats.push(format);
-        },
-      }),
-      platform: "bitcoin",
-      transport: factory,
-    });
-
-    await adapter.connect();
-    const account = await adapter.getAccount();
-    expect(account?.walletAddress.startsWith("1")).toBe(true);
-    expect(formats[0]).toBe("legacy");
-  });
-
-  it("disconnect() closes the transport and clears state", async () => {
-    const fake = buildFakeTransport();
-    const adapter = await createBitcoinLedgerAdapter({
-      btc: buildFakeBtcCtor(),
-      platform: "bitcoin",
-      transport: fake.factory,
-    });
-
-    await adapter.connect();
-    const transport = fake.lastTransport;
-    expect(transport).not.toBeNull();
-
-    await adapter.disconnect?.();
-    expect(transport?.close).toHaveBeenCalled();
-
-    const account = await adapter.getAccount();
-    expect(account).toBeNull();
-  });
-
-  it("getAccounts() walks the derivation path up to accountCount", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createBitcoinLedgerAdapter({
-      accountCount: 3,
-      btc: buildFakeBtcCtor(),
-      platform: "bitcoin",
-      transport: factory,
-    });
-
-    await adapter.connect();
-    const accounts = await adapter.getAccounts!();
-    expect(accounts).toHaveLength(3);
-    const addresses = accounts.map((a) => a.walletAddress);
-    expect(new Set(addresses).size).toBe(3);
-    for (const account of accounts) {
-      expect(account.chain.id).toBe("bip122:000000000019d6689c085ae165831e93");
-    }
-  });
-
-  it("defaults accountCount to 1 when omitted", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createBitcoinLedgerAdapter({
-      btc: buildFakeBtcCtor(),
-      platform: "bitcoin",
-      transport: factory,
-    });
-
-    await adapter.connect();
-    const accounts = await adapter.getAccounts!();
-    expect(accounts).toHaveLength(1);
-  });
-
-  it("signMessage() routes through Bitcoin signMessage with hex-encoded payload", async () => {
-    const messages: Array<string> = [];
-    const { factory } = buildFakeTransport();
-    const adapter = await createBitcoinLedgerAdapter({
-      btc: buildFakeBtcCtor({
-        onSignMessage: (_path, messageHex) => {
-          messages.push(messageHex);
-        },
-      }),
-      platform: "bitcoin",
-      transport: factory,
-    });
-
-    await adapter.connect();
-    const message = new TextEncoder().encode("hi");
-    const result = await adapter.signMessage(message);
-    expect(messages[0]).toBe("6869");
-    expect(result.signature).toBeInstanceOf(Uint8Array);
-    expect(result.signature.length).toBe(65);
-    expect(result.signature[64]).toBe(1);
-  });
-
-  it("signTransaction() round-trips PSBT bytes through signPsbtBuffer", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createBitcoinLedgerAdapter({
-      btc: buildFakeBtcCtor(),
-      platform: "bitcoin",
-      transport: factory,
-    });
-
-    if (adapter.chainPlatform !== "bitcoin") {
-      throw new Error("expected Bitcoin adapter");
-    }
-
-    await adapter.connect();
-    const psbt = new Uint8Array([1, 2, 3, 4]);
-    const signed = await adapter.signTransaction!(psbt);
-    expect(signed).toBeInstanceOf(Uint8Array);
-    expect(signed.length).toBe(5);
-    expect(signed[4]).toBe(0xef);
-  });
-
-  it("signTransaction() rejects non-Uint8Array input", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createBitcoinLedgerAdapter({
-      btc: buildFakeBtcCtor(),
-      platform: "bitcoin",
-      transport: factory,
-    });
-
-    if (adapter.chainPlatform !== "bitcoin") {
-      throw new Error("expected Bitcoin adapter");
-    }
-
-    await adapter.connect();
-    await expect(adapter.signTransaction!({ not: "bytes" })).rejects.toThrow(
-      /expects a Uint8Array/v,
-    );
-  });
-
-  it("signTransaction() with a non-active account walks paths to find it", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createBitcoinLedgerAdapter({
-      accountCount: 3,
-      btc: buildFakeBtcCtor(),
-      platform: "bitcoin",
-      transport: factory,
-    });
-
-    if (adapter.chainPlatform !== "bitcoin") {
-      throw new Error("expected Bitcoin adapter");
-    }
-
-    await adapter.connect();
-    const accounts = await adapter.getAccounts!();
-    const targetAccount = accounts[2];
-    if (targetAccount === undefined) {
-      throw new Error("expected third account");
-    }
-    const psbt = new Uint8Array([9, 9, 9]);
-    const signed = await adapter.signTransaction!(psbt, targetAccount);
-    expect(signed.length).toBe(4);
-  });
-
-  it("signTransaction() throws when the address isn't on any known path", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createBitcoinLedgerAdapter({
-      accountCount: 2,
-      btc: buildFakeBtcCtor(),
-      platform: "bitcoin",
-      transport: factory,
-    });
-
-    if (adapter.chainPlatform !== "bitcoin") {
-      throw new Error("expected Bitcoin adapter");
-    }
-
-    await adapter.connect();
-    await expect(
-      adapter.signTransaction!(new Uint8Array([1, 2, 3]), {
-        chain: {
-          id: "bip122:000000000019d6689c085ae165831e93",
-          name: "Bitcoin",
-          namespace: "bip122",
-          reference: "000000000019d6689c085ae165831e93",
-        },
-        id: "bip122:000000000019d6689c085ae165831e93:bc1qnotreal",
-        walletAddress: "bc1qnotreal",
-      }),
-    ).rejects.toThrow(/not found on this device/v);
-  });
-
-  it("switchChain() updates the chain on subsequent getAccount() calls", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createBitcoinLedgerAdapter({
-      btc: buildFakeBtcCtor(),
-      platform: "bitcoin",
-      transport: factory,
-    });
-
-    await adapter.connect();
-    await adapter.switchChain({
-      id: "bip122:000000000933ea01ad0ee984209779ba",
-      name: "Bitcoin Testnet",
-      namespace: "bip122",
-      reference: "000000000933ea01ad0ee984209779ba",
-    });
-    const account = await adapter.getAccount();
-    expect(account?.chain.id).toBe("bip122:000000000933ea01ad0ee984209779ba");
-    expect(account?.chain.reference).toBe("000000000933ea01ad0ee984209779ba");
-  });
-
-  it("switchChain() rejects non-Bitcoin chains", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createBitcoinLedgerAdapter({
-      btc: buildFakeBtcCtor(),
-      platform: "bitcoin",
-      transport: factory,
-    });
-
-    await expect(
-      adapter.switchChain({
-        id: "eip155:1",
-        name: "Ethereum",
-        namespace: "eip155",
-        reference: "1",
-      }),
-    ).rejects.toThrow(/non-Bitcoin chain/v);
-  });
-
-  it("sendTx() / sendTxToChain() / getBalance() / getTransactionReceipt() reject", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createBitcoinLedgerAdapter({
-      btc: buildFakeBtcCtor(),
-      platform: "bitcoin",
-      transport: factory,
-    });
-
-    await expect(adapter.sendTx({})).rejects.toThrow(/sendTx not supported/v);
-    await expect(adapter.sendTxToChain({}, "testnet")).rejects.toThrow(
-      /sendTxToChain not supported/v,
-    );
-    await expect(adapter.getBalance()).rejects.toThrow(/getBalance not supported/v);
-    await expect(adapter.getTransactionReceipt("sig")).rejects.toThrow(
-      /getTransactionReceipt not supported/v,
-    );
-  });
-});
-
-describe("createLedgerAdapter dispatch (bitcoin)", () => {
-  it("routes platform: 'bitcoin' to the Bitcoin factory", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
-      btc: buildFakeBtcCtor(),
-      platform: "bitcoin",
-      transport: factory,
+      transport: buildFakeTransport().factory,
     });
 
     expect(adapter.chainPlatform).toBe("bitcoin");
+    expect(adapter.signMessage).toBeTypeOf("function");
+    expect(adapter.signTransaction).toBeTypeOf("function");
+    for (const method of ["getBalance", "sendTx", "subscribe", "switchChain"]) {
+      expect(adapter).not.toHaveProperty(method);
+    }
   });
 
-  it("uses BIP-84 (coin 0) path with /N non-hardened address-index suffix", async () => {
+  it("derives bech32 accounts on BIP-84 paths with a non-hardened index", async () => {
     const seen: Array<string> = [];
-    const { factory } = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
-      accountCount: 2,
-      btc: buildFakeBtcCtor({
+    const adapter = await connectedBitcoin({
+      onGetWalletPublicKey: (path, format) => {
+        seen.push(`${path} ${format}`);
+      },
+    });
+
+    const accounts = await adapter.getAccounts();
+
+    expect(seen).toEqual(["84'/0'/0'/0/0 bech32", "84'/0'/0'/0/1 bech32", "84'/0'/0'/0/2 bech32"]);
+    expect(accounts[0]).toEqual(buildAccount("bc1qfakeaddr0", BITCOIN_CHAINS.mainnet));
+  });
+
+  it("honours a custom addressFormat, path prefix and chain", async () => {
+    const seen: Array<string> = [];
+    const adapter = await connectedBitcoin(
+      {
         onGetWalletPublicKey: (path) => {
           seen.push(path);
         },
-      }),
-      platform: "bitcoin",
-      transport: factory,
-    });
+      },
+      {
+        accountCount: 1,
+        addressFormat: "legacy",
+        chainId: BITCOIN_CHAINS.testnet.id,
+        derivationPathPrefix: "44'/1'/0'/0",
+      },
+    );
 
-    await adapter.connect();
-    await adapter.getAccounts!();
-    expect(seen).toEqual(["84'/0'/0'/0/0", "84'/0'/0'/0/0", "84'/0'/0'/0/1"]);
+    const accounts = await adapter.getAccounts();
+
+    expect(seen).toEqual(["44'/1'/0'/0/0"]);
+    expect(accounts).toEqual([buildAccount("1fakeaddr0", BITCOIN_CHAINS.testnet)]);
   });
 
-  it("respects a custom derivationPathPrefix (legacy BIP-44)", async () => {
-    const seen: Array<string> = [];
-    const { factory } = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
-      addressFormat: "legacy",
-      btc: buildFakeBtcCtor({
-        onGetWalletPublicKey: (path) => {
-          seen.push(path);
-        },
-      }),
-      derivationPathPrefix: "44'/0'/0'/0",
-      platform: "bitcoin",
-      transport: factory,
+  it("signMessage() returns a BIP-137 compact signature: header, then padded r and s", async () => {
+    const signed: Array<string> = [];
+    const adapter = await connectedBitcoin({
+      onSignMessage: (path, hex) => {
+        signed.push(`${path} ${hex}`);
+      },
     });
 
-    await adapter.connect();
-    expect(seen[0]).toBe("44'/0'/0'/0/0");
+    const result = await adapter.signMessage?.(new TextEncoder().encode("hi"));
+
+    expect(signed).toEqual(["84'/0'/0'/0/0 6869"]);
+    expect(result?.signature).toHaveLength(65);
+    expect(result?.signature[0]).toBe(32);
+    expect(result?.signature[1]).toBe(0xab);
+    expect(result?.signature.slice(33, 35)).toEqual(Uint8Array.of(0, 0xcd));
+  });
+
+  it("signTransaction() hands the PSBT to the device under the account's path", async () => {
+    const accountPaths: Array<string> = [];
+    const adapter = await connectedBitcoin({
+      onSignPsbt: (path) => {
+        accountPaths.push(path);
+      },
+    });
+    const accounts = await adapter.getAccounts();
+    const third = accounts.at(2);
+
+    const signed = await adapter.signTransaction?.(Uint8Array.of(1, 2, 3), { account: third });
+
+    expect(signed).toEqual(Uint8Array.of(1, 2, 3, 0xef));
+    expect(accountPaths).toEqual(["84'/0'/0'"]);
+  });
+
+  it("signTransaction() rejects an account or chain the adapter does not cover", async () => {
+    const accountPaths: Array<string> = [];
+    const adapter = await connectedBitcoin({
+      onSignPsbt: (path) => {
+        accountPaths.push(path);
+      },
+    });
+    const psbt = Uint8Array.of(1, 2, 3);
+
+    await expect(
+      adapter.signTransaction?.(psbt, {
+        account: buildAccount("bc1qnotreal", BITCOIN_CHAINS.mainnet),
+      }),
+    ).rejects.toThrow(/does not expose/v);
+    await expect(
+      adapter.signTransaction?.(psbt, { chain: BITCOIN_CHAINS.testnet }),
+    ).rejects.toMatchObject({ kind: "ChainMismatch" });
+    expect(accountPaths).toEqual([]);
+  });
+
+  it("getSigner() resolves the device app tagged ledger-bitcoin", async () => {
+    const adapter = await connectedBitcoin();
+
+    await expect(adapter.getSigner()).resolves.toMatchObject({ kind: "ledger-bitcoin" });
+  });
+
+  it("createLedgerAdapter() dispatches platform bitcoin", async () => {
+    const adapter = await createLedgerAdapter({
+      btc: buildFakeBtcCtor(),
+      platform: "bitcoin",
+      transport: buildFakeTransport().factory,
+    });
+
+    expect(adapter.chainPlatform).toBe("bitcoin");
   });
 });

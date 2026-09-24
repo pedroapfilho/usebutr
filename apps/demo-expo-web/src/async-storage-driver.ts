@@ -4,7 +4,7 @@ import type { StorageDriver } from "@usebutr/core";
 /**
  * AsyncStorage has no session-scoped equivalent, so backing butr's session
  * store with it leaks entries across launches. Harmless here: butr only keeps
- * the active-connector id in session storage, overwritten on next connect.
+ * the user's disconnect intent in session storage, cleared on next connect.
  */
 const asyncStorageDriver: StorageDriver = {
   getItem: (key) => AsyncStorage.getItem(key),

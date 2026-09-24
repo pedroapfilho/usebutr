@@ -1,63 +1,63 @@
 ---
 title: "@usebutr/sui"
-description: Wallet Standard discovery, the adapter builder, capabilities, and Sui chains.
+description: Wallet Standard discovery, the adapter builder, and the Sui feature types.
 ---
 
 ## Discovery
 
-### `discoverSuiAdapters(onAdapter): () => void`
+### `discoverSuiAdapters(onAdapter, loadModule?): () => void`
 
-Subscribe to Wallet Standard registrations for Sui wallets (Slush, Phantom
-Sui, Suiet, Surf, …). Returns an unsubscribe function. Lazily imports
-`@wallet-standard/app` (optional peer dependency).
+Subscribes to Wallet Standard registrations for Sui wallets (Slush, Phantom,
+Suiet, Surf, …). Lazily imports `@wallet-standard/app`, an optional peer
+dependency; `loadModule` injects a registry for tests. It is a `WalletSource`
+as-is:
+
+```ts
+import type { WalletManagerConfig } from "@usebutr/core";
+import { discoverSuiAdapters } from "@usebutr/sui";
+
+const config: WalletManagerConfig = { sources: [discoverSuiAdapters] };
+```
 
 ### `suiDiscoverer: PlatformDiscoverer`
 
-Descriptor used by `@usebutr/wallets`'s `autoDiscovery()` to compose Sui
-discovery into a multi-platform source. Wallet Standard only; no fallback.
+Wallet Standard only; Sui standardised on it from launch.
 
 ## Adapter builder
 
-### `buildSuiAdapter(wallet: WalletStandardWallet): WalletAdapter`
+### `buildSuiAdapter(wallet, registerDisconnector?): SuiAdapter | null`
 
-Wrap a Wallet Standard wallet into a butr `WalletAdapter` with
-`chainPlatform: "sui"`.
+Wraps a `WalletStandardWallet`, or returns `null` when it speaks no Sui. The
+id is `slugify("sui", wallet.name)`. Each optional method exists only when the
+wallet advertises its feature:
 
-Adapter ids come from `slugify("sui", wallet.name)` in
-`@usebutr/wallet-standard-shared`; import it from there when authoring an
-adapter.
+| Method            | Feature                         | Resolves                                              |
+| ----------------- | ------------------------------- | ----------------------------------------------------- |
+| `sendTx`          | `sui:signAndExecuteTransaction` | The transaction digest.                               |
+| `signMessage`     | `sui:signPersonalMessage`       | `{ signature, signedMessage }`.                       |
+| `signTransaction` | `sui:signTransaction`           | `{ bytes, signature }` for `executeTransactionBlock`. |
 
-## Capabilities
+Transactions are a `@mysten/sui` `Transaction`, its JSON string, or BCS bytes
+(`SuiTransactionInput`). `switchChain` needs more than one advertised Sui
+network. There is no `getBalance` or `getTransactionReceipt`. See the
+[Sui connector](/connectors/sui-wallet-standard).
 
-### `resolveSuiCapabilities(wallet): WalletCapabilities`
+## Signer
 
-Derive `WalletCapabilities` from advertised Sui Wallet Standard features
-(`sui:signPersonalMessage`, `sui:signTransaction`,
-`sui:signAndExecuteTransaction`, events, …).
-
-Type: `WalletStandardCapabilityInput`.
-
-## Chains
-
-- `SUI_CHAINS`: record keyed by chain id.
-- `SUI_CHAINS_LIST`: array (mainnet / testnet / devnet).
+`getSigner()` resolves `{ kind: "wallet-standard", wallet }`. Reach a feature
+with `getFeature` from
+[`@usebutr/wallet-standard-shared`](/api/wallet-standard-shared) and the
+feature types below.
 
 ## Types
 
-Sui-specific feature shapes: `SuiSignPersonalMessageFeature`,
-`SuiSignPersonalMessageInput`, `SuiSignPersonalMessageOutput`,
-`SuiSignTransactionFeature`, `SuiSignTransactionInput`, `SuiSignTransactionOutput`,
-`SuiSignAndExecuteTransactionFeature`, `SuiSignAndExecuteTransactionInput`,
-`SuiSignAndExecuteTransactionOutput`.
+- `SuiSignPersonalMessageFeature`, `SuiSignPersonalMessageInput`,
+  `SuiSignPersonalMessageOutput`
+- `SuiSignTransactionFeature`, `SuiSignTransactionInput`, `SuiSignTransactionOutput`
+- `SuiSignAndExecuteTransactionFeature`, `SuiSignAndExecuteTransactionInput`,
+  `SuiSignAndExecuteTransactionOutput`
 
-The shared Wallet Standard protocol types (`WalletStandardWallet`,
-`WalletStandardWalletAccount`, `WalletStandardAppModule`, `WalletsApp`,
-`StandardConnectFeature`, `StandardDisconnectFeature`,
-`StandardEventsFeature`, `StandardEventsListener`) live in
-[`@usebutr/wallet-standard-shared`](/api/wallet-standard-shared); import them from
-there directly when casting `getSigner()`.
-
-These feature types are what you cast `getSigner()` to when signing/sending;
-see the [Sui Wallet Standard connector](/connectors/sui-wallet-standard).
+The Sui chain registry (`SUI_CHAINS`, `SUI_CHAINS_LIST`) lives in
+`@usebutr/core`.
 
 **Source:** `packages/sui/src/index.ts`.

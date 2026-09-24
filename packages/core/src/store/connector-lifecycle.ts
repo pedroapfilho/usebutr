@@ -1,97 +1,83 @@
 import { logWarn } from "../logger";
-import type { Account, ChainPlatform, Connector } from "../types";
+import type { Account, ConnectedWallet, Connector } from "../types";
 
-/**
- * The bridge owns event-to-handler mapping and the unsubscribe handle;
- * the runtime owns the effects (dispatch, persist, consumer callbacks).
- */
 type LifecycleHandlers = {
-  /** Wallet exposed a new accounts list (or active account swap). The
-   *  bridge forwards the full array; single-account wallets included.
-   *  `active` is the address the wallet picked as current. */
-  onAccountChanged: (
-    connectorId: string,
-    accounts: ReadonlyArray<Account>,
-    active: Account,
-  ) => void;
-  /** Wallet disconnected externally (user locked, extension removed,
-   *  WC session ended on the relay). The bridge has already cleared
-   *  the subscription for `connectorId` by the time this fires. */
-  onDisconnected: (connectorId: string, chainPlatform: ChainPlatform) => void;
+  /** The wallet exposed a new account list, active first. Never empty. */
+  onAccountsChanged: (connectorId: string, accounts: ReadonlyArray<Account>) => void;
+  /** The wallet ended the session itself. The bridge has already dropped its
+   *  subscription by the time this fires. */
+  onDisconnected: (connectorId: string) => void;
 };
 
 /**
- * Owns the "exactly one subscription per connector" invariant for the
- * whole runtime; nothing else may call `connector.subscribe`.
+ * Owns the "at most one subscription per live connector" invariant. The
+ * manager never attaches or detaches by hand: it calls `sync` with the pool
+ * whenever the pool changes, and the bridge diffs.
  */
 type ConnectorLifecycle = {
-  /**
-   * Idempotent: a second `attach` for the same id detaches the previous
-   * subscription first. No-op for connectors without `subscribe`.
-   */
-  attach: (connectorId: string, connector: Connector) => void;
-  /** Detach a single connector. Safe to call when no subscription is
-   *  registered. */
-  detach: (connectorId: string) => void;
-  /** Detach every active subscription. Used during `reset`. */
   detachAll: () => void;
+  sync: (pool: ReadonlyMap<string, ConnectedWallet>) => void;
 };
 
 const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecycle => {
-  const unsubscribers = new Map<string, () => void>();
+  const live = new Map<string, { connector: Connector; unsubscribe: () => void }>();
 
   const detach = (connectorId: string) => {
-    const unsub = unsubscribers.get(connectorId);
-    if (!unsub) {
+    const subscription = live.get(connectorId);
+    if (subscription === undefined) {
       return;
     }
+    live.delete(connectorId);
     try {
-      unsub();
-    } catch (error: unknown) {
+      subscription.unsubscribe();
+    } catch (error) {
       logWarn("[butr] unsubscribe threw:", error);
     }
-    unsubscribers.delete(connectorId);
+  };
+
+  const attach = (connectorId: string, connector: Connector) => {
+    if (connector.subscribe === undefined) {
+      return;
+    }
+    const disconnected = () => {
+      detach(connectorId);
+      handlers.onDisconnected(connectorId);
+    };
+    try {
+      const unsubscribe = connector.subscribe((event) => {
+        // Ignore events from a connector that has since been replaced.
+        if (live.get(connectorId)?.connector !== connector) {
+          return;
+        }
+        if (event.type === "disconnected" || event.accounts.length === 0) {
+          disconnected();
+          return;
+        }
+        handlers.onAccountsChanged(connectorId, event.accounts);
+      });
+      live.set(connectorId, { connector, unsubscribe });
+    } catch (error) {
+      logWarn(`[butr] subscribe failed for ${connectorId}:`, error);
+    }
   };
 
   return {
-    attach: (connectorId, connector) => {
-      if (!connector.subscribe) {
-        return;
-      }
-      detach(connectorId);
-      try {
-        const unsub = connector.subscribe((event) => {
-          switch (event.type) {
-            case "accountChanged": {
-              handlers.onAccountChanged(connectorId, event.accounts, event.account);
-              break;
-            }
-            case "disconnected": {
-              detach(connectorId);
-              handlers.onDisconnected(connectorId, connector.chainPlatform);
-              break;
-            }
-            default: {
-              const exhaustiveCheck: never = event;
-              void exhaustiveCheck;
-            }
-          }
-        });
-        unsubscribers.set(connectorId, unsub);
-      } catch (error: unknown) {
-        logWarn(`[butr] subscribe failed for ${connectorId}:`, error);
+    detachAll: () => {
+      for (const connectorId of live.keys()) {
+        detach(connectorId);
       }
     },
 
-    detach,
-
-    detachAll: () => {
-      const ids: Array<string> = [];
-      for (const id of unsubscribers.keys()) {
-        ids.push(id);
+    sync: (pool) => {
+      for (const [connectorId, subscription] of live) {
+        if (pool.get(connectorId)?.connector !== subscription.connector) {
+          detach(connectorId);
+        }
       }
-      for (const id of ids) {
-        detach(id);
+      for (const [connectorId, wallet] of pool) {
+        if (!live.has(connectorId)) {
+          attach(connectorId, wallet.connector);
+        }
       }
     },
   };

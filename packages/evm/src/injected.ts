@@ -1,4 +1,4 @@
-import type { WalletAdapter, WalletSigner } from "@usebutr/core";
+import type { EvmAdapter } from "@usebutr/core";
 
 import type { Eip1193Provider, Eip6963ProviderInfo } from "./eip1193";
 import { buildEvmAdapter } from "./eip6963-adapter";
@@ -36,8 +36,12 @@ declare global {
   }
 }
 
-const isEip1193Provider = (value: WalletSigner | undefined): value is Eip1193Provider =>
-  value !== undefined &&
+/** Structural check for code that holds a provider of unknown origin, such
+ *  as `window.ethereum`. A butr signer narrows on `kind === "eip1193"`
+ *  instead. */
+const isEip1193Provider = (value: unknown): value is Eip1193Provider =>
+  typeof value === "object" &&
+  value !== null &&
   "on" in value &&
   typeof value.on === "function" &&
   "removeListener" in value &&
@@ -56,7 +60,7 @@ const readEthereum = (target: InjectedDiscoveryOptions["target"]): Eip1193Provid
  * carries `rdns: "injected:legacy"` so consumers can tell it apart.
  */
 const discoverInjectedAdapter = (
-  onAdapter: (adapter: WalletAdapter) => void,
+  onAdapter: (adapter: EvmAdapter) => void,
   options: InjectedDiscoveryOptions = {},
 ): (() => void) => {
   const settleMs = options.settleMs ?? DEFAULT_SETTLE_MS;

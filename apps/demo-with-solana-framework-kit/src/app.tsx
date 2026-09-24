@@ -13,12 +13,12 @@ import {
   getBase64EncodedWireTransaction,
 } from "@solana/kit";
 import { useBalance } from "@solana/react-hooks";
+import type { ConnectedWallet } from "@usebutr/core";
 import { bytesToBase58 } from "@usebutr/core";
-import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
-import { isSolanaSignAndSendTransactionFeature, isSolanaSignMessageFeature } from "@usebutr/svm";
-import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
-import { getFeature, isWalletStandardWallet } from "@usebutr/wallet-standard-shared";
-import { useEffect, useMemo, useState } from "react";
+import { useConnect, useSelectedWallet, useSigner, useWalletManager } from "@usebutr/react";
+import type { SolanaSignAndSendTransactionFeature, SolanaSignMessageFeature } from "@usebutr/svm";
+import { findAccount, getFeature } from "@usebutr/wallet-standard-shared";
+import { useMemo, useState } from "react";
 
 import { useDiscoveredWallets } from "./wallet-provider";
 
@@ -73,12 +73,21 @@ const Connected = ({
   wallet,
 }: {
   onDisconnect: () => void;
-  wallet: ReturnType<typeof useActiveWallet> & object;
+  wallet: ConnectedWallet<"svm">;
 }) => {
-  const [walletStd, setWalletStd] = useState<WalletStandardWallet | null>(null);
+  const signer = useSigner(wallet);
   const [signature, setSignature] = useState<string | null>(null);
   const [txSignature, setTxSignature] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Signing goes through the wallet's own Wallet Standard features, which
+  // butr hands over as the raw wallet; framework-kit only builds and reads.
+  const walletStd = signer.data?.kind === "wallet-standard" ? signer.data.wallet : null;
+  const signerError =
+    signer.status === "error"
+      ? formatError(signer.error instanceof Error ? signer.error : String(signer.error))
+      : null;
+  const shownError = errorMsg ?? signerError;
 
   const addr: Address = useMemo(
     () => address(wallet.account.walletAddress),
@@ -96,41 +105,23 @@ const Connected = ({
     return fetching ? "…" : "—";
   }, [lamports, fetching, balanceError]);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const signer = await wallet.connector.getSigner();
-        if (!isWalletStandardWallet(signer)) {
-          throw new Error("SVM signer is not a Wallet Standard wallet");
-        }
-        if (!cancelled) {
-          setWalletStd(signer);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setErrorMsg(formatError(error instanceof Error ? error : String(error)));
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [wallet.connector]);
-
   const handleSign = async () => {
     if (!walletStd) {
       return;
     }
     setErrorMsg(null);
     try {
-      const feature = getFeature(walletStd, "solana:signMessage", isSolanaSignMessageFeature);
+      const feature = getFeature<SolanaSignMessageFeature>(
+        walletStd,
+        "solana:signMessage",
+        "signMessage",
+      );
       if (feature === undefined) {
         throw new Error("Wallet does not advertise solana:signMessage");
       }
-      const account = walletStd.accounts[0];
+      const account = findAccount(walletStd.accounts, wallet.account.walletAddress);
       if (account === undefined) {
-        throw new Error("No exposed account");
+        throw new Error("Wallet does not expose the active account");
       }
       const message = new TextEncoder().encode("Hello from butr + framework-kit");
       const [output] = await feature.signMessage({ account, message });
@@ -161,17 +152,17 @@ const Connected = ({
       const wire = getBase64EncodedWireTransaction(compiled);
       const bytes = base64ToBytes(wire);
 
-      const feature = getFeature(
+      const feature = getFeature<SolanaSignAndSendTransactionFeature>(
         walletStd,
         "solana:signAndSendTransaction",
-        isSolanaSignAndSendTransactionFeature,
+        "signAndSendTransaction",
       );
       if (feature === undefined) {
         throw new Error("Wallet does not advertise solana:signAndSendTransaction");
       }
-      const account = walletStd.accounts[0];
+      const account = findAccount(walletStd.accounts, wallet.account.walletAddress);
       if (account === undefined) {
-        throw new Error("No exposed account");
+        throw new Error("Wallet does not expose the active account");
       }
       const [output] = await feature.signAndSendTransaction({
         account,
@@ -246,9 +237,9 @@ const Connected = ({
           </a>
         </Row>
       ) : null}
-      {errorMsg !== null && errorMsg !== "" ? (
+      {shownError !== null && shownError !== "" ? (
         <p className="border-danger-border bg-danger-surface text-danger-foreground rounded-md border p-3 text-sm">
-          {errorMsg}
+          {shownError}
         </p>
       ) : null}
     </section>
@@ -256,9 +247,9 @@ const Connected = ({
 };
 
 const Content = () => {
-  const active = useActiveWallet();
-  const connect = useConnectWallet();
-  const disconnect = useDisconnectWallet();
+  const active = useSelectedWallet("svm");
+  const { connect } = useConnect();
+  const { disconnect } = useWalletManager();
   const discovered = useDiscoveredWallets();
 
   if (!active) {
@@ -276,7 +267,7 @@ const Content = () => {
                 <button
                   className="border-border-default hover:bg-surface-subtle flex w-full items-center gap-3 rounded-lg border bg-white px-4 py-3 text-left"
                   onClick={() => {
-                    void connect(wallet.id);
+                    connect(wallet.id);
                   }}
                   type="button"
                 >

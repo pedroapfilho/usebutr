@@ -1,280 +1,404 @@
-import type { Account } from "@usebutr/core";
-import { buildAccount } from "@usebutr/core";
+import type { ChainBase, ConnectorEvent } from "@usebutr/core";
+import { BITCOIN_CHAINS, ConnectionError, buildAccount } from "@usebutr/core";
+import type { Mock } from "vitest";
 import { describe, expect, it, vi } from "vitest";
 
-import { BITCOIN_CHAINS } from "../chains";
 import type { RpcValue, SatsConnectProvider } from "../injected/sats-connect";
 import { buildSatsConnectAdapter } from "../injected/sats-connect";
 
 const PAYMENT = { address: "bc1qpayment", purpose: "payment" };
 const ORDINALS = { address: "bc1pordinals", purpose: "ordinals" };
+const TESTNET_PAYMENT = { address: "tb1qpayment", purpose: "payment" };
+const TESTNET_ORDINALS = { address: "tb1pordinals", purpose: "ordinals" };
 
-type MockProvider = SatsConnectProvider & { request: ReturnType<typeof vi.fn> };
+type Params = Parameters<SatsConnectProvider["request"]>[1];
+type Handler = RpcValue | ((params: Params) => RpcValue);
+type MockProvider = { request: Mock<SatsConnectProvider["request"]> };
 
-const buildProvider = (responses: Record<string, RpcValue>): MockProvider => ({
-  request: vi.fn((method: string) =>
-    method in responses
-      ? Promise.resolve({ result: responses[method] })
-      : Promise.resolve({ error: { message: `unsupported method: ${method}` } }),
-  ),
+/** Unknown methods answer with the JSON-RPC error a wallet returns. */
+const buildProvider = (handlers: Record<string, Handler>): MockProvider => ({
+  request: vi.fn<SatsConnectProvider["request"]>((method, params) => {
+    const handler = handlers[method];
+    if (handler === undefined) {
+      return Promise.resolve({ error: { message: `unsupported method: ${method}` } });
+    }
+    return Promise.resolve({ result: typeof handler === "function" ? handler(params) : handler });
+  }),
 });
+
+/**
+ * An Xverse wallet with one global network: `wallet_changeNetwork` moves it
+ * and re-addresses both accounts, the way a real wallet derives `tb1…` on
+ * testnet.
+ */
+const buildXverse = (handlers: Record<string, Handler> = {}): MockProvider => {
+  let network = "Mainnet";
+  const addresses = () =>
+    network === "Mainnet" ? [PAYMENT, ORDINALS] : [TESTNET_PAYMENT, TESTNET_ORDINALS];
+  return buildProvider({
+    getAccounts: () => addresses(),
+    sendTransfer: { txid: "abcd" },
+    signMessage: { signature: "AQID" },
+    signPsbt: { psbt: "CgsM" },
+    wallet_changeNetwork: (params) => {
+      if (typeof params?.name === "string") {
+        network = params.name;
+      }
+      return null;
+    },
+    wallet_getAccount: () => ({ addresses: addresses() }),
+    wallet_getNetwork: () => ({ bitcoin: { name: network } }),
+    ...handlers,
+  });
+};
 
 const buildAdapter = (provider: MockProvider) =>
   buildSatsConnectAdapter("injected:bitcoin:xverse", "Xverse", provider);
 
-const accountFor = (address: string): Account => buildAccount(address, BITCOIN_CHAINS.mainnet);
+const connected = async (provider: MockProvider = buildXverse()) => {
+  const adapter = buildAdapter(provider);
+  await adapter.connect();
+  provider.request.mockClear();
+  return adapter;
+};
 
 const methodsCalled = (provider: MockProvider): Array<string> =>
   provider.request.mock.calls.map((call) => call[0]);
 
+const onMainnet = (address: string) => buildAccount(address, BITCOIN_CHAINS.mainnet);
+
+const TRANSFER = { amount: 1000n, recipient: "bc1qto" };
+const SUI_MAINNET = { id: "sui:mainnet", name: "Sui", namespace: "sui", reference: "mainnet" };
+
 describe("buildSatsConnectAdapter", () => {
-  it("connect({ silent: true }) reads wallet_getAccount and never prompts via getAccounts", async () => {
-    const provider = buildProvider({ wallet_getAccount: { addresses: [PAYMENT, ORDINALS] } });
-    const adapter = buildAdapter(provider);
+  it("defines no placeholder the wallet cannot back", () => {
+    const adapter = buildAdapter(buildXverse());
 
-    await adapter.connect({ silent: true });
-
-    expect(methodsCalled(provider)).toEqual(["wallet_getAccount"]);
-    const account = await adapter.getAccount();
-    expect(account?.walletAddress).toBe(PAYMENT.address);
+    expect(adapter.getBalance).toBeUndefined();
+    expect(adapter.getTransactionReceipt).toBeUndefined();
+    expect(adapter.requestAccounts).toBeUndefined();
   });
 
-  it("connect({ silent: true }) rejects when wallet_getAccount is unavailable", async () => {
-    const provider = buildProvider({ getAccounts: { addresses: [PAYMENT] } });
-    const adapter = buildAdapter(provider);
+  it("getSigner hands back the raw provider, tagged sats-connect", async () => {
+    const provider = buildXverse();
 
-    await expect(adapter.connect({ silent: true })).rejects.toThrow(/wallet_getAccount/v);
-    expect(methodsCalled(provider)).not.toContain("getAccounts");
-    expect(await adapter.getAccount()).toBeNull();
+    expect(await buildAdapter(provider).getSigner()).toEqual({ kind: "sats-connect", provider });
   });
 
-  it("getAccount() after disconnect() returns null without hitting the provider", async () => {
-    const provider = buildProvider({ getAccounts: { addresses: [PAYMENT, ORDINALS] } });
-    const adapter = buildAdapter(provider);
+  describe("connect", () => {
+    it("silent connect reads wallet_getAccount and never prompts via getAccounts", async () => {
+      const provider = buildXverse();
+      const adapter = buildAdapter(provider);
 
-    await adapter.connect();
+      await adapter.connect({ silent: true });
+
+      expect(methodsCalled(provider)).toEqual(["wallet_getAccount", "wallet_getNetwork"]);
+      expect(await adapter.getAccounts()).toEqual([onMainnet(PAYMENT.address)]);
+    });
+
+    it("silent connect rejects when wallet_getAccount is unavailable", async () => {
+      const provider = buildProvider({ getAccounts: [PAYMENT] });
+      const adapter = buildAdapter(provider);
+
+      await expect(adapter.connect({ silent: true })).rejects.toThrow(/wallet_getAccount/v);
+      expect(methodsCalled(provider)).not.toContain("getAccounts");
+      expect(await adapter.getAccounts()).toEqual([]);
+    });
+
+    it("interactive connect prompts through getAccounts and exposes one account", async () => {
+      const provider = buildXverse();
+      const adapter = buildAdapter(provider);
+
+      await adapter.connect();
+
+      expect(provider.request).toHaveBeenCalledWith("getAccounts", {
+        message: "Connect to butr",
+        purposes: ["payment", "ordinals"],
+      });
+      expect(await adapter.getAccounts()).toEqual([onMainnet(PAYMENT.address)]);
+    });
+
+    it("accepts an address list wrapped in { addresses }", async () => {
+      const adapter = buildAdapter(buildProvider({ getAccounts: { addresses: [PAYMENT] } }));
+
+      await adapter.connect();
+
+      expect(await adapter.getAccounts()).toEqual([onMainnet(PAYMENT.address)]);
+    });
+
+    it("exposes the payment address even when the wallet lists ordinals first", async () => {
+      const adapter = buildAdapter(buildProvider({ getAccounts: [ORDINALS, PAYMENT] }));
+
+      await adapter.connect();
+
+      await expect(adapter.getAccounts()).resolves.toEqual([onMainnet(PAYMENT.address)]);
+    });
+
+    it("labels accounts with the wallet's network", async () => {
+      const adapter = buildAdapter(
+        buildXverse({ wallet_getNetwork: { bitcoin: { name: "Testnet4" } } }),
+      );
+
+      await adapter.connect();
+
+      await expect(adapter.getAccounts()).resolves.toMatchObject([
+        { chain: BITCOIN_CHAINS.testnet4 },
+      ]);
+    });
+
+    it("keeps the mainnet label on builds without wallet_getNetwork", async () => {
+      const adapter = buildAdapter(buildProvider({ getAccounts: [PAYMENT] }));
+
+      await adapter.connect();
+
+      await expect(adapter.getAccounts()).resolves.toEqual([onMainnet(PAYMENT.address)]);
+    });
+
+    it("rejects when the wallet returns no addresses", async () => {
+      const adapter = buildAdapter(buildProvider({ getAccounts: [] }));
+
+      await expect(adapter.connect()).rejects.toThrow(/returned no addresses/v);
+    });
+
+    it("surfaces the provider's error message", async () => {
+      await expect(buildAdapter(buildProvider({})).connect()).rejects.toThrow(
+        /sats-connect getAccounts failed/v,
+      );
+    });
+  });
+
+  it("getAccounts() after disconnect() is empty without hitting the provider", async () => {
+    const provider = buildXverse();
+    const adapter = await connected(provider);
+
     await adapter.disconnect?.();
-    provider.request.mockClear();
 
-    expect(await adapter.getAccount()).toBeNull();
-    expect(await adapter.getAccounts?.()).toEqual([]);
+    expect(await adapter.getAccounts()).toEqual([]);
     expect(provider.request).not.toHaveBeenCalled();
   });
 
-  it("connect() then getAccounts() issues one request and exposes one account", async () => {
-    const provider = buildProvider({ getAccounts: { addresses: [PAYMENT, ORDINALS] } });
-    const adapter = buildAdapter(provider);
+  describe("signMessage", () => {
+    it("forwards the requested account's address", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
+      const message = new TextEncoder().encode("hello");
 
-    await adapter.connect();
-    const accounts = await adapter.getAccounts?.();
+      const result = await adapter.signMessage?.(message, {
+        account: onMainnet(ORDINALS.address),
+      });
 
-    expect(provider.request).toHaveBeenCalledTimes(1);
-    expect(provider.request).toHaveBeenCalledWith("getAccounts", {
-      message: "Connect to butr",
-      purposes: ["payment", "ordinals"],
+      expect(provider.request).toHaveBeenLastCalledWith("signMessage", {
+        address: ORDINALS.address,
+        message: "hello",
+      });
+      expect(result?.signature).toEqual(new Uint8Array([1, 2, 3]));
+      expect(result?.signedMessage).toBe(message);
     });
-    expect(accounts).toHaveLength(1);
-    expect(accounts?.[0]?.walletAddress).toBe(PAYMENT.address);
-  });
 
-  it("exposes the payment address even when the wallet lists ordinals first", async () => {
-    const provider = buildProvider({ getAccounts: { addresses: [ORDINALS, PAYMENT] } });
-    const adapter = buildAdapter(provider);
+    it("defaults to the payment address", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
 
-    await adapter.connect();
+      await adapter.signMessage?.(new TextEncoder().encode("hello"));
 
-    const account = await adapter.getAccount();
-    expect(account?.walletAddress).toBe(PAYMENT.address);
-  });
-
-  it("signMessage() forwards the requested account's address", async () => {
-    const provider = buildProvider({
-      getAccounts: { addresses: [PAYMENT, ORDINALS] },
-      signMessage: { signature: "AQID" },
+      expect(provider.request).toHaveBeenLastCalledWith("signMessage", {
+        address: PAYMENT.address,
+        message: "hello",
+      });
     });
-    const adapter = buildAdapter(provider);
-    await adapter.connect();
 
-    const msg = new TextEncoder().encode("hello");
-    const result = await adapter.signMessage(msg, accountFor(ORDINALS.address));
+    it("rejects an account the wallet never exposed", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
 
-    expect(provider.request).toHaveBeenLastCalledWith("signMessage", {
-      address: ORDINALS.address,
-      message: "hello",
+      await expect(
+        adapter.signMessage?.(new Uint8Array([1]), { account: onMainnet("bc1qsomeoneelse") }),
+      ).rejects.toThrow(/not exposed/v);
+      expect(provider.request).not.toHaveBeenCalled();
     });
-    expect(result.signature).toEqual(new Uint8Array([1, 2, 3]));
-    expect(result.signedMessage).toBe(msg);
-  });
 
-  it("signMessage() defaults to the payment address when no account is passed", async () => {
-    const provider = buildProvider({
-      getAccounts: { addresses: [ORDINALS, PAYMENT] },
-      signMessage: { signature: "AQID" },
-    });
-    const adapter = buildAdapter(provider);
-    await adapter.connect();
-
-    await adapter.signMessage(new TextEncoder().encode("hello"));
-
-    expect(provider.request).toHaveBeenLastCalledWith("signMessage", {
-      address: PAYMENT.address,
-      message: "hello",
+    it("rejects while disconnected", async () => {
+      await expect(buildAdapter(buildXverse()).signMessage?.(new Uint8Array([1]))).rejects.toThrow(
+        /No connected account/v,
+      );
     });
   });
 
-  it("signMessage() rejects an account the wallet never exposed", async () => {
-    const provider = buildProvider({
-      getAccounts: { addresses: [PAYMENT, ORDINALS] },
-      signMessage: { signature: "AQID" },
+  describe("sendTx", () => {
+    it("sends a satoshi amount from the payment address", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
+
+      const txid = await adapter.sendTx?.(TRANSFER);
+
+      expect(provider.request).toHaveBeenLastCalledWith("sendTransfer", {
+        recipients: [{ address: "bc1qto", amount: 1000 }],
+      });
+      expect(txid).toBe("abcd");
     });
-    const adapter = buildAdapter(provider);
-    await adapter.connect();
-    provider.request.mockClear();
 
-    await expect(
-      adapter.signMessage(new TextEncoder().encode("hello"), accountFor("bc1qsomeoneelse")),
-    ).rejects.toThrow(/not exposed/v);
-    expect(provider.request).not.toHaveBeenCalled();
-  });
+    it("rejects an account that isn't the payment address", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
 
-  it("signMessage() rejects while disconnected", async () => {
-    const provider = buildProvider({ signMessage: { signature: "AQID" } });
-    const adapter = buildAdapter(provider);
-
-    await expect(adapter.signMessage(new TextEncoder().encode("hello"))).rejects.toThrow(
-      /No connected account/v,
-    );
-  });
-
-  it("sendTx() rejects an account that isn't the payment address", async () => {
-    const provider = buildProvider({
-      getAccounts: { addresses: [PAYMENT, ORDINALS] },
-      sendTransfer: { txid: "abcd" },
+      await expect(
+        adapter.sendTx?.(TRANSFER, { account: onMainnet(ORDINALS.address) }),
+      ).rejects.toThrow(/payment address/v);
+      expect(methodsCalled(provider)).not.toContain("sendTransfer");
     });
-    const adapter = buildAdapter(provider);
-    await adapter.connect();
 
-    await expect(
-      adapter.sendTx({ amount: 1000n, recipient: "bc1qto" }, accountFor(ORDINALS.address)),
-    ).rejects.toThrow(/payment address/v);
+    it("does not move the wallet when it is already on the target chain", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
 
-    const txid = await adapter.sendTx({ amount: 1000n, recipient: "bc1qto" });
-    expect(txid).toBe("abcd");
-  });
+      await adapter.sendTx?.(TRANSFER, { chain: BITCOIN_CHAINS.mainnet });
 
-  it("sendTx() rejects a payload that isn't { amount: bigint, recipient: string }", async () => {
-    const provider = buildProvider({
-      getAccounts: { addresses: [PAYMENT] },
-      sendTransfer: { txid: "abcd" },
+      expect(methodsCalled(provider)).toEqual(["wallet_getNetwork", "sendTransfer"]);
     });
-    const adapter = buildAdapter(provider);
-    await adapter.connect();
 
-    await expect(adapter.sendTx({ amount: 1000, recipient: "bc1qto" })).rejects.toThrow(TypeError);
-  });
+    it("moves the wallet first, then matches the account on the new network", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
 
-  it("sendTxToChain() fires the switched callback and forwards the transfer", async () => {
-    const provider = buildProvider({
-      getAccounts: { addresses: [PAYMENT] },
-      sendTransfer: { txid: "abcd" },
+      const txid = await adapter.sendTx?.(TRANSFER, {
+        account: buildAccount(TESTNET_PAYMENT.address, BITCOIN_CHAINS.testnet),
+        chain: BITCOIN_CHAINS.testnet,
+      });
+
+      expect(methodsCalled(provider)).toEqual([
+        "wallet_getNetwork",
+        "wallet_changeNetwork",
+        "wallet_getAccount",
+        "sendTransfer",
+      ]);
+      expect(provider.request).toHaveBeenCalledWith("wallet_changeNetwork", { name: "Testnet" });
+      expect(txid).toBe("abcd");
     });
-    const adapter = buildAdapter(provider);
-    await adapter.connect();
-    const cb = vi.fn<() => void>();
 
-    const txid = await adapter.sendTxToChain(
-      { amount: 1000n, recipient: "bc1qto" },
-      BITCOIN_CHAINS.testnet.id,
-      undefined,
-      cb,
-    );
+    it("rejects a chain sats-connect has no network for, without sending", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
+      const unknown: ChainBase = {
+        id: "bip122:ffffffffffffffffffffffffffffffff",
+        name: "Elsewhere",
+        namespace: "bip122",
+        reference: "ffffffffffffffffffffffffffffffff",
+      };
 
-    expect(cb).toHaveBeenCalledTimes(1);
-    expect(provider.request).toHaveBeenLastCalledWith("sendTransfer", {
-      recipients: [{ address: "bc1qto", amount: "1000" }],
+      const sending = adapter.sendTx?.(TRANSFER, { chain: unknown });
+
+      await expect(sending).rejects.toBeInstanceOf(ConnectionError);
+      await expect(sending).rejects.toMatchObject({ kind: "ChainMismatch" });
+      expect(methodsCalled(provider)).not.toContain("sendTransfer");
     });
-    expect(txid).toBe("abcd");
-  });
 
-  it("connect() rejects when the wallet returns no addresses", async () => {
-    const provider = buildProvider({ getAccounts: { addresses: [] } });
-    const adapter = buildAdapter(provider);
+    it("rejects a chain from another namespace", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
 
-    await expect(adapter.connect()).rejects.toThrow(/returned no addresses/v);
-  });
-
-  it("requestAccounts() re-runs the approval prompt", async () => {
-    const provider = buildProvider({ getAccounts: { addresses: [PAYMENT] } });
-    const adapter = buildAdapter(provider);
-
-    await adapter.requestAccounts?.();
-
-    expect(methodsCalled(provider)).toEqual(["getAccounts"]);
-    const account = await adapter.getAccount();
-    expect(account?.walletAddress).toBe(PAYMENT.address);
-  });
-
-  it("signTransaction() base64-bridges the PSBT through signPsbt", async () => {
-    const provider = buildProvider({ signPsbt: { psbt: "CgsM" } });
-    const adapter = buildSatsConnectAdapter("injected:bitcoin:xverse", "Xverse", provider);
-    if (adapter.chainPlatform !== "bitcoin") {
-      throw new Error("expected a bitcoin adapter");
-    }
-
-    const signed = await adapter.signTransaction?.(new Uint8Array([1, 2, 3]));
-
-    expect(provider.request).toHaveBeenCalledWith("signPsbt", { psbt: "AQID" });
-    expect(signed).toEqual(new Uint8Array([10, 11, 12]));
-  });
-
-  it("signTransaction() rejects anything that isn't PSBT bytes", async () => {
-    const provider = buildProvider({ signPsbt: { psbt: "CgsM" } });
-    const adapter = buildSatsConnectAdapter("injected:bitcoin:xverse", "Xverse", provider);
-    if (adapter.chainPlatform !== "bitcoin") {
-      throw new Error("expected a bitcoin adapter");
-    }
-
-    await expect(adapter.signTransaction?.("not-a-psbt")).rejects.toThrow(TypeError);
-    expect(provider.request).not.toHaveBeenCalled();
-  });
-
-  it("surfaces the provider's error message", async () => {
-    const provider = buildProvider({});
-    const adapter = buildAdapter(provider);
-
-    await expect(adapter.connect()).rejects.toThrow(/sats-connect getAccounts failed/v);
-  });
-
-  it("switchChain() adopts a bip122 target and rejects other namespaces", async () => {
-    const provider = buildProvider({ getAccounts: { addresses: [PAYMENT] } });
-    const adapter = buildAdapter(provider);
-    await adapter.connect();
-
-    await adapter.switchChain(BITCOIN_CHAINS.testnet);
-
-    const account = await adapter.getAccount();
-    expect(account?.chain.id).toBe(BITCOIN_CHAINS.testnet.id);
-    expect(() =>
-      adapter.switchChain({
-        id: "sui:mainnet",
-        name: "Sui",
-        namespace: "sui",
-        reference: "mainnet",
-      }),
-    ).toThrow(/non-Bitcoin/v);
-  });
-
-  it("reads without an RPC client return placeholders", async () => {
-    const provider = buildProvider({});
-    const adapter = buildAdapter(provider);
-
-    expect(await adapter.getBalance()).toEqual({
-      decimals: 8,
-      formatted: "0",
-      symbol: "BTC",
-      value: 0n,
+      await expect(adapter.sendTx?.(TRANSFER, { chain: SUI_MAINNET })).rejects.toThrow(
+        /non-Bitcoin/v,
+      );
+      expect(provider.request).not.toHaveBeenCalled();
     });
-    expect(await adapter.getSigner()).toBe(provider);
-    expect(await adapter.getTransactionReceipt("abcd")).toEqual({ status: "Pending" });
+  });
+
+  describe("signTransaction", () => {
+    it("base64-bridges the PSBT through signPsbt", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
+
+      const signed = await adapter.signTransaction?.(new Uint8Array([1, 2, 3]));
+
+      expect(provider.request).toHaveBeenCalledWith("signPsbt", { psbt: "AQID" });
+      expect(signed).toEqual(new Uint8Array([10, 11, 12]));
+    });
+
+    it("moves the wallet before signing for another chain", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
+
+      await adapter.signTransaction?.(new Uint8Array([1]), { chain: BITCOIN_CHAINS.signet });
+
+      expect(methodsCalled(provider)).toEqual([
+        "wallet_getNetwork",
+        "wallet_changeNetwork",
+        "wallet_getAccount",
+        "signPsbt",
+      ]);
+    });
+
+    it("rejects an account the wallet never exposed", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
+
+      await expect(
+        adapter.signTransaction?.(new Uint8Array([1]), { account: onMainnet("bc1qsomeoneelse") }),
+      ).rejects.toThrow(/not exposed/v);
+      expect(provider.request).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("switchChain", () => {
+    it("moves the wallet and re-reads its addresses on the new network", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
+
+      await adapter.switchChain?.(BITCOIN_CHAINS.testnet);
+
+      expect(provider.request).toHaveBeenCalledWith("wallet_changeNetwork", { name: "Testnet" });
+      expect(await adapter.getAccounts()).toEqual([
+        buildAccount(TESTNET_PAYMENT.address, BITCOIN_CHAINS.testnet),
+      ]);
+    });
+
+    it("tells subscribers about the moved account", async () => {
+      const adapter = await connected();
+      const listener = vi.fn<(event: ConnectorEvent) => void>();
+      const unsubscribe = adapter.subscribe?.(listener);
+
+      await adapter.switchChain?.(BITCOIN_CHAINS.testnet);
+      unsubscribe?.();
+      await adapter.switchChain?.(BITCOIN_CHAINS.mainnet);
+
+      expect(listener.mock.calls).toEqual([
+        [
+          {
+            accounts: [buildAccount(TESTNET_PAYMENT.address, BITCOIN_CHAINS.testnet)],
+            type: "accountsChanged",
+          },
+        ],
+      ]);
+    });
+
+    it("skips the wallet prompt when it is already there", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
+
+      await adapter.switchChain?.(BITCOIN_CHAINS.mainnet);
+
+      expect(methodsCalled(provider)).toEqual(["wallet_getNetwork"]);
+    });
+
+    it("rejects a non-Bitcoin namespace asynchronously", async () => {
+      const adapter = await connected();
+
+      const switching = adapter.switchChain?.(SUI_MAINNET);
+
+      await expect(switching).rejects.toThrow(/non-Bitcoin/v);
+    });
+
+    it("surfaces a wallet that refuses the switch", async () => {
+      const provider = buildXverse();
+      const adapter = await connected(provider);
+      provider.request
+        .mockResolvedValueOnce({ result: { bitcoin: { name: "Mainnet" } } })
+        .mockResolvedValueOnce({ error: { message: "User rejected the request" } });
+
+      await expect(adapter.switchChain?.(BITCOIN_CHAINS.testnet)).rejects.toThrow(
+        /wallet_changeNetwork failed: User rejected/v,
+      );
+      await expect(adapter.getAccounts()).resolves.toEqual([onMainnet(PAYMENT.address)]);
+    });
   });
 });

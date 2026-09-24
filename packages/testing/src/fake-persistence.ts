@@ -1,39 +1,44 @@
-import type { StoredPoolRecord, StoredSelectionRecord, WalletPersistence } from "@usebutr/core";
-import { createMemoryStorageDriver, WalletStorage } from "@usebutr/core";
+import type { PersistedWalletState, WalletPersistence } from "@usebutr/core";
+import { createMemoryStorageDriver, createWalletStorage } from "@usebutr/core";
 
-type FakePersistenceSeed = {
-  activeConnectorId?: string | null;
-  pool?: StoredPoolRecord;
-  selection?: StoredSelectionRecord;
-  userDisconnected?: boolean;
+type FakePersistence = WalletPersistence & {
+  /** Every state the manager handed to `save`, oldest first. */
+  readonly saves: ReadonlyArray<PersistedWalletState>;
 };
 
-const KEY_PREFIX = "butr-test";
+const EMPTY: PersistedWalletState = {
+  activeConnectorId: null,
+  isUserDisconnected: false,
+  pool: {},
+  selection: {},
+};
 
 /**
- * The real `WalletStorage` over memory drivers, not a second implementation of
- * the interface. A hand-rolled fake previously drifted on pool upsert and
- * `clearAll` semantics, so tests passed while production did the opposite.
+ * The production `createWalletStorage` over in-memory drivers, so `load`
+ * decodes and validates exactly as it does in the browser. `seed` is what
+ * the first `load` finds, as if a previous session had saved it.
  */
-const createFakePersistence = (seed: FakePersistenceSeed = {}): WalletPersistence => {
-  const persistent = createMemoryStorageDriver();
-  const session = createMemoryStorageDriver();
+const createFakePersistence = (seed: Partial<PersistedWalletState> = {}): FakePersistence => {
+  const storage = createWalletStorage({
+    persistent: createMemoryStorageDriver(),
+    session: createMemoryStorageDriver(),
+  });
+  const seeded = storage.save({ ...EMPTY, ...seed });
+  const saves: Array<PersistedWalletState> = [];
 
-  if (seed.pool) {
-    void persistent.setItem(`${KEY_PREFIX}-pool`, JSON.stringify(seed.pool));
-  }
-  if (seed.selection) {
-    void persistent.setItem(`${KEY_PREFIX}-selection`, JSON.stringify(seed.selection));
-  }
-  if (seed.activeConnectorId !== undefined && seed.activeConnectorId !== null) {
-    void persistent.setItem(`${KEY_PREFIX}-active`, seed.activeConnectorId);
-  }
-  if (seed.userDisconnected === true) {
-    void session.setItem(`${KEY_PREFIX}-user-disconnected`, "true");
-  }
-
-  return new WalletStorage({ keyPrefix: KEY_PREFIX, persistent, session });
+  return {
+    load: async () => {
+      await seeded;
+      return storage.load();
+    },
+    save: async (state) => {
+      saves.push(state);
+      await seeded;
+      await storage.save(state);
+    },
+    saves,
+  };
 };
 
-export type { FakePersistenceSeed };
+export type { FakePersistence };
 export { createFakePersistence };

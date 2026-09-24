@@ -1,4 +1,4 @@
-export type { ConnectionStatus } from "./reducer";
-export { isShadowAdapter, ShadowConnectorError } from "./shadow-adapter";
-export type { WalletStore, WalletStoreState } from "./wallet-store";
-export { createWalletStore } from "./wallet-store";
+export type { ConnectStatus, WalletState } from "./reducer";
+export { ShadowConnectorError } from "./shadow-adapter";
+export type { WalletManager } from "./wallet-manager";
+export { createWalletManager } from "./wallet-manager";

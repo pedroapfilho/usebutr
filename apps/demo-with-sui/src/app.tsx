@@ -1,6 +1,8 @@
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Transaction } from "@mysten/sui/transactions";
-import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
+import type { ConnectedWallet } from "@usebutr/core";
+import { bytesToHex, SUI_CHAINS } from "@usebutr/core";
+import { useConnect, useSelectedWallet, useWalletManager } from "@usebutr/react";
 import { useEffect, useMemo, useState } from "react";
 
 import { useDiscoveredWallets } from "./wallet-provider";
@@ -30,34 +32,14 @@ const Connected = ({
   wallet,
 }: {
   onDisconnect: () => void;
-  wallet: ReturnType<typeof useActiveWallet> & object;
+  wallet: ConnectedWallet<"sui">;
 }) => {
-  const [signerReady, setSignerReady] = useState(false);
   const [balance, setBalance] = useState<string>("…");
   const [signature, setSignature] = useState<string | null>(null);
   const [txDigest, setTxDigest] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const addr = useMemo(() => wallet.account.walletAddress, [wallet.account.walletAddress]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        await wallet.connector.getSigner();
-        if (!cancelled) {
-          setSignerReady(true);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setErrorMsg(formatError(error instanceof Error ? error : String(error)));
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [wallet.connector]);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,13 +65,12 @@ const Connected = ({
   const handleSign = async () => {
     setErrorMsg(null);
     try {
-      const message = new TextEncoder().encode("Hello from butr + @mysten/sui");
-      const result = await wallet.connector.signMessage(message);
-      let hex = "";
-      for (const byte of result.signature) {
-        hex += byte.toString(16).padStart(2, "0");
+      if (!wallet.connector.signMessage) {
+        throw new Error(`${wallet.connector.name} does not support sui:signPersonalMessage`);
       }
-      setSignature(hex);
+      const message = new TextEncoder().encode("Hello from butr + @mysten/sui");
+      const result = await wallet.connector.signMessage(message, { account: wallet.account });
+      setSignature(bytesToHex(result.signature));
     } catch (error) {
       setErrorMsg(formatError(error instanceof Error ? error : String(error)));
     }
@@ -98,12 +79,20 @@ const Connected = ({
   const handleSendTx = async () => {
     setErrorMsg(null);
     try {
+      if (!wallet.connector.sendTx) {
+        throw new Error(`${wallet.connector.name} does not support sui:signAndExecuteTransaction`);
+      }
       const tx = new Transaction();
       tx.setSender(addr);
       const [coin] = tx.splitCoins(tx.gas, [0]);
       tx.transferObjects([coin], addr);
 
-      const digest = await wallet.connector.sendTx(await tx.toJSON());
+      // The Transaction goes in as-is; the wallet serialises it. Pin testnet:
+      // without `chain` the adapter uses its current chain, mainnet by default.
+      const digest = await wallet.connector.sendTx(tx, {
+        account: wallet.account,
+        chain: SUI_CHAINS.testnet,
+      });
       setTxDigest(digest);
     } catch (error) {
       setErrorMsg(formatError(error instanceof Error ? error : String(error)));
@@ -133,7 +122,7 @@ const Connected = ({
       <div className="flex flex-wrap gap-2">
         <button
           className="border-border-strong hover:bg-surface-subtle rounded-md border bg-white px-3 py-1.5 text-sm disabled:opacity-50"
-          disabled={!signerReady}
+          disabled={!wallet.connector.signMessage}
           onClick={() => {
             void handleSign();
           }}
@@ -143,7 +132,7 @@ const Connected = ({
         </button>
         <button
           className="border-border-strong hover:bg-surface-subtle rounded-md border bg-white px-3 py-1.5 text-sm disabled:opacity-50"
-          disabled={!signerReady}
+          disabled={!wallet.connector.sendTx}
           onClick={() => {
             void handleSendTx();
           }}
@@ -179,12 +168,12 @@ const Connected = ({
 };
 
 const Content = () => {
-  const active = useActiveWallet();
-  const connect = useConnectWallet();
-  const disconnect = useDisconnectWallet();
+  const wallet = useSelectedWallet("sui");
+  const { connect } = useConnect();
+  const { disconnect } = useWalletManager();
   const discovered = useDiscoveredWallets();
 
-  if (!active) {
+  if (!wallet) {
     return (
       <section className="space-y-3">
         <h2 className="font-semibold">Available wallets</h2>
@@ -195,19 +184,19 @@ const Content = () => {
           </p>
         ) : (
           <ul className="space-y-2">
-            {discovered.map((wallet) => (
-              <li key={wallet.id}>
+            {discovered.map((adapter) => (
+              <li key={adapter.id}>
                 <button
                   className="border-border-default hover:bg-surface-subtle flex w-full items-center gap-3 rounded-lg border bg-white px-4 py-3 text-left"
                   onClick={() => {
-                    void connect(wallet.id);
+                    connect(adapter.id);
                   }}
                   type="button"
                 >
-                  {wallet.icon !== undefined && wallet.icon !== "" ? (
-                    <img alt="" className="size-6 rounded" src={wallet.icon} />
+                  {adapter.icon !== undefined && adapter.icon !== "" ? (
+                    <img alt="" className="size-6 rounded" src={adapter.icon} />
                   ) : null}
-                  <span className="font-medium">{wallet.name}</span>
+                  <span className="font-medium">{adapter.name}</span>
                 </button>
               </li>
             ))}
@@ -220,9 +209,9 @@ const Content = () => {
   return (
     <Connected
       onDisconnect={() => {
-        disconnect(active.connector.id);
+        disconnect(wallet.connector.id);
       }}
-      wallet={active}
+      wallet={wallet}
     />
   );
 };

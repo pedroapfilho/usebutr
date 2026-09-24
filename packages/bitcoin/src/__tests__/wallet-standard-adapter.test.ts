@@ -1,6 +1,8 @@
 import type { WalletAdapter } from "@usebutr/core";
+import { BITCOIN_CHAINS, buildAccount } from "@usebutr/core";
 import type {
   StandardConnectFeature,
+  WalletStandardFeature,
   WalletStandardWallet,
   WalletStandardWalletAccount,
 } from "@usebutr/wallet-standard-shared";
@@ -13,334 +15,266 @@ import type {
   BitcoinSignPsbtFeature,
 } from "../wallet-standard-types";
 
-const MAINNET = "bip122:000000000019d6689c085ae165831e93";
-const TESTNET = "bip122:000000000933ea01ad0ee984209779ba";
+const MAINNET = BITCOIN_CHAINS.mainnet.id;
+const TESTNET = BITCOIN_CHAINS.testnet.id;
 
-const buildAccount = (
-  address: string,
-  features: ReadonlyArray<string> = [],
-): WalletStandardWalletAccount => ({
+const wsAccount = (address: string): WalletStandardWalletAccount => ({
   address,
   chains: [MAINNET],
-  features,
+  features: [],
 });
 
-type FeatureMap = Record<
-  string,
-  | BitcoinSendTransferFeature
-  | BitcoinSignMessageFeature
-  | BitcoinSignPsbtFeature
-  | StandardConnectFeature
->;
+const FIRST = wsAccount("bc1qfirst");
+const SECOND = wsAccount("bc1qsecond");
 
-const buildWallet = (overrides: Partial<WalletStandardWallet> = {}): WalletStandardWallet => ({
-  accounts: [buildAccount("bc1qexample")],
+const connectFeature = (): StandardConnectFeature => ({
+  connect: vi.fn<StandardConnectFeature["connect"]>().mockResolvedValue({ accounts: [] }),
+});
+
+const buildWallet = (
+  overrides: Partial<WalletStandardWallet> = {},
+  features: Record<string, WalletStandardFeature> = {},
+): WalletStandardWallet => ({
+  accounts: [FIRST, SECOND],
   chains: [MAINNET],
-  features: {},
+  features: { "standard:connect": connectFeature(), ...features },
   icon: "data:image/svg+xml;base64,...",
   name: "Mock Bitcoin Wallet",
   version: "1.0.0",
   ...overrides,
 });
 
-const withFeatures = (
-  wallet: WalletStandardWallet,
-  features: FeatureMap,
-): WalletStandardWallet => ({
-  ...wallet,
-  features: { ...wallet.features, ...features },
-});
+const buildAdapter = (wallet: WalletStandardWallet) => {
+  const adapter = buildBitcoinAdapter(wallet);
+  if (adapter === null) {
+    throw new Error("expected a bitcoin adapter");
+  }
+  return adapter;
+};
+
+const sendTransferFeature = () => {
+  const sendTransfer = vi
+    .fn<BitcoinSendTransferFeature["sendTransfer"]>()
+    .mockResolvedValue({ txid: "abcd1234" });
+  const feature: BitcoinSendTransferFeature = { sendTransfer };
+  return { feature, sendTransfer };
+};
+
+const signPsbtFeature = () => {
+  const signPsbt = vi
+    .fn<BitcoinSignPsbtFeature["signPsbt"]>()
+    .mockResolvedValue({ signedPsbt: new Uint8Array([10, 11, 12]) });
+  const feature: BitcoinSignPsbtFeature = { signPsbt };
+  return { feature, signPsbt };
+};
+
+const TRANSFER = { amount: 12_345n, recipient: "bc1qto" };
+const STRANGER = buildAccount("bc1qstranger", BITCOIN_CHAINS.mainnet);
+const SUI_MAINNET = { id: "sui:mainnet", name: "Sui", namespace: "sui", reference: "mainnet" };
 
 describe("buildBitcoinAdapter", () => {
   it("returns null when the wallet advertises no bip122 chain", () => {
-    const wallet = buildWallet({ chains: ["eip155:1"] });
-    expect(buildBitcoinAdapter(wallet)).toBeNull();
+    expect(buildBitcoinAdapter(buildWallet({ chains: ["eip155:1"] }))).toBeNull();
   });
 
   it("returns null when standard:connect is missing", () => {
-    const wallet = buildWallet({ features: {} });
-    expect(buildBitcoinAdapter(wallet)).toBeNull();
+    expect(buildBitcoinAdapter(buildWallet({ features: {} }))).toBeNull();
   });
 
-  it("uses wallet name and slug for the adapter id/name", () => {
-    const connectFeature: StandardConnectFeature = {
-      connect: vi.fn().mockResolvedValue({ accounts: [] }),
-    };
-    const wallet = withFeatures(buildWallet({ name: "Phantom" }), {
-      "standard:connect": connectFeature,
-    });
-    const adapter = buildBitcoinAdapter(wallet);
-    expect(adapter?.id).toBe("wallet-standard:btc-phantom");
-    expect(adapter?.name).toBe("Phantom");
-    expect(adapter?.chainPlatform).toBe("bitcoin");
+  it("uses the wallet name for the adapter name and its slug for the id", () => {
+    const adapter = buildAdapter(buildWallet({ name: "Phantom" }));
+
+    expect(adapter.id).toBe("wallet-standard:btc-phantom");
+    expect(adapter.name).toBe("Phantom");
+    expect(adapter.chainPlatform).toBe("bitcoin");
   });
 
-  it("returns the first account from getAccount() with a CAIP-2 bip122 chain", async () => {
-    const connectFeature: StandardConnectFeature = {
-      connect: vi.fn().mockResolvedValue({ accounts: [] }),
-    };
-    const wallet = withFeatures(
-      buildWallet({
-        accounts: [buildAccount("bc1qaddr1"), buildAccount("bc1qaddr2")],
-      }),
-      { "standard:connect": connectFeature },
-    );
-    const adapter = buildBitcoinAdapter(wallet);
-    const account = await adapter?.getAccount();
-    expect(account?.walletAddress).toBe("bc1qaddr1");
-    expect(account?.chain.id).toBe(MAINNET);
-    expect(account?.chain.namespace).toBe("bip122");
+  it("getAccounts() lists every account, active first, on the registry's chain", async () => {
+    const accounts = await buildAdapter(buildWallet()).getAccounts();
+
+    expect(accounts.map((a) => a.walletAddress)).toEqual([FIRST.address, SECOND.address]);
+    expect(accounts[0]?.chain).toEqual(BITCOIN_CHAINS.mainnet);
   });
 
-  it("getBalance() returns a 0-balance default (no RPC in Wallet Standard)", async () => {
-    const connectFeature: StandardConnectFeature = {
-      connect: vi.fn().mockResolvedValue({ accounts: [] }),
-    };
-    const wallet = withFeatures(buildWallet(), { "standard:connect": connectFeature });
-    const adapter = buildBitcoinAdapter(wallet);
-    const balance = await adapter?.getBalance();
-    expect(balance?.value).toBe(0n);
-    expect(balance?.symbol).toBe("BTC");
-    expect(balance?.decimals).toBe(8);
+  it("getSigner() hands back the Wallet Standard wallet", async () => {
+    const wallet = buildWallet();
+
+    expect(await buildAdapter(wallet).getSigner()).toEqual({ kind: "wallet-standard", wallet });
   });
 
-  it("signMessage() bridges through bitcoin:signMessage", async () => {
-    const account = buildAccount("bc1qaddr");
-    const expectedSignature = new Uint8Array([7, 8, 9]);
-    const expectedSigned = new Uint8Array([1, 2]);
-    const signFeature: BitcoinSignMessageFeature = {
-      signMessage: vi
-        .fn()
-        .mockResolvedValue({ signature: expectedSignature, signedMessage: expectedSigned }),
-    };
-    const connectFeature: StandardConnectFeature = {
-      connect: vi.fn().mockResolvedValue({ accounts: [] }),
-    };
-    const wallet = withFeatures(buildWallet({ accounts: [account] }), {
-      "bitcoin:signMessage": signFeature,
-      "standard:connect": connectFeature,
-    });
-    const adapter = buildBitcoinAdapter(wallet);
+  it("defines no method the wallet cannot back", () => {
+    const adapter = buildAdapter(buildWallet());
 
-    const msg = new Uint8Array([99]);
-    const result = await adapter?.signMessage(msg);
-
-    expect(signFeature.signMessage).toHaveBeenCalledWith({ account, message: msg });
-    expect(result?.signature).toEqual(expectedSignature);
-    expect(result?.signedMessage).toEqual(expectedSigned);
+    expect(adapter.sendTx).toBeUndefined();
+    expect(adapter.signMessage).toBeUndefined();
+    expect(adapter.signTransaction).toBeUndefined();
+    expect(adapter.getBalance).toBeUndefined();
+    expect(adapter.getTransactionReceipt).toBeUndefined();
+    expect(adapter.requestAccounts).toBeUndefined();
+    expect(adapter.switchChain).toBeUndefined();
   });
 
-  it("sendTx() bridges through bitcoin:sendTransfer, returns txid", async () => {
-    const account = buildAccount("bc1qaddr");
-    const sendFeature: BitcoinSendTransferFeature = {
-      sendTransfer: vi.fn().mockResolvedValue({ txid: "abcd1234" }),
-    };
-    const connectFeature: StandardConnectFeature = {
-      connect: vi.fn().mockResolvedValue({ accounts: [] }),
-    };
-    const wallet = withFeatures(buildWallet({ accounts: [account] }), {
-      "bitcoin:sendTransfer": sendFeature,
-      "standard:connect": connectFeature,
-    });
-    const adapter = buildBitcoinAdapter(wallet);
-
-    const txid = await adapter?.sendTx({ amount: 12_345n, recipient: "bc1qto" });
-
-    expect(sendFeature.sendTransfer).toHaveBeenCalledWith({
-      account,
-      amount: 12_345n,
-      chain: MAINNET,
-      recipient: "bc1qto",
-    });
-    expect(txid).toBe("abcd1234");
-  });
-
-  describe("sendTxToChain", () => {
-    const buildSendable = (chains: ReadonlyArray<string>) => {
-      const sendFeature: BitcoinSendTransferFeature = {
-        sendTransfer: vi.fn().mockResolvedValue({ txid: "abcd1234" }),
-      };
-      const wallet = withFeatures(buildWallet({ chains }), {
-        "bitcoin:sendTransfer": sendFeature,
-        "standard:connect": {
-          connect: vi.fn().mockResolvedValue({ accounts: [] }),
-          version: "1.0.0",
-        },
+  describe("signMessage", () => {
+    const buildSigner = () => {
+      const signMessage = vi.fn<BitcoinSignMessageFeature["signMessage"]>().mockResolvedValue({
+        signature: new Uint8Array([7, 8, 9]),
+        signedMessage: new Uint8Array([1, 2]),
       });
-      return { adapter: buildBitcoinAdapter(wallet), sendFeature };
+      const adapter = buildAdapter(buildWallet({}, { "bitcoin:signMessage": { signMessage } }));
+      return { adapter, signMessage };
     };
-    const payload = { amount: 1n, recipient: "bc1qto" };
 
-    it("submits to the requested chain, not the adapter's current one", async () => {
-      const { adapter, sendFeature } = buildSendable([MAINNET, TESTNET]);
-      const cb = vi.fn<() => void>();
+    it("bridges through bitcoin:signMessage with the active account", async () => {
+      const { adapter, signMessage } = buildSigner();
+      const message = new Uint8Array([99]);
 
-      await adapter?.sendTxToChain(payload, TESTNET, undefined, cb);
+      const result = await adapter.signMessage?.(message);
 
-      expect(sendFeature.sendTransfer).toHaveBeenCalledWith(
-        expect.objectContaining({ chain: TESTNET }),
-      );
-      expect(cb).toHaveBeenCalledTimes(1);
+      expect(signMessage).toHaveBeenCalledWith({ account: FIRST, message });
+      expect(result).toEqual({
+        signature: new Uint8Array([7, 8, 9]),
+        signedMessage: new Uint8Array([1, 2]),
+      });
     });
 
-    it("does not fire the switched callback when already on the target chain", async () => {
-      const { adapter } = buildSendable([MAINNET, TESTNET]);
-      const cb = vi.fn<() => void>();
+    it("signs as the requested account", async () => {
+      const { adapter, signMessage } = buildSigner();
 
-      await adapter?.sendTxToChain(payload, MAINNET, undefined, cb);
+      await adapter.signMessage?.(new Uint8Array([99]), {
+        account: buildAccount(SECOND.address, BITCOIN_CHAINS.mainnet),
+      });
 
-      expect(cb).not.toHaveBeenCalled();
+      expect(signMessage).toHaveBeenCalledWith(expect.objectContaining({ account: SECOND }));
+    });
+
+    it("rejects an account the wallet does not expose", async () => {
+      const { adapter, signMessage } = buildSigner();
+
+      await expect(
+        adapter.signMessage?.(new Uint8Array([99]), { account: STRANGER }),
+      ).rejects.toThrow(/does not expose account bc1qstranger/v);
+      expect(signMessage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("sendTx", () => {
+    const buildSender = (chains: ReadonlyArray<string> = [MAINNET, TESTNET]) => {
+      const { feature, sendTransfer } = sendTransferFeature();
+      const adapter = buildAdapter(buildWallet({ chains }, { "bitcoin:sendTransfer": feature }));
+      return { adapter, sendTransfer };
+    };
+
+    it("bridges through bitcoin:sendTransfer on the current chain and returns the txid", async () => {
+      const { adapter, sendTransfer } = buildSender();
+
+      const txid = await adapter.sendTx?.(TRANSFER);
+
+      expect(sendTransfer).toHaveBeenCalledWith({
+        account: FIRST,
+        amount: 12_345n,
+        chain: MAINNET,
+        recipient: "bc1qto",
+      });
+      expect(txid).toBe("abcd1234");
+    });
+
+    it("routes options.chain to this one call without moving the adapter", async () => {
+      const { adapter, sendTransfer } = buildSender();
+
+      await adapter.sendTx?.(TRANSFER, { chain: BITCOIN_CHAINS.testnet });
+      await adapter.sendTx?.(TRANSFER);
+
+      expect(sendTransfer.mock.calls.map((call) => call[0].chain)).toEqual([TESTNET, MAINNET]);
+    });
+
+    it("sends from the requested account", async () => {
+      const { adapter, sendTransfer } = buildSender();
+
+      await adapter.sendTx?.(TRANSFER, {
+        account: buildAccount(SECOND.address, BITCOIN_CHAINS.mainnet),
+      });
+
+      expect(sendTransfer).toHaveBeenCalledWith(expect.objectContaining({ account: SECOND }));
+    });
+
+    it("rejects an account the wallet does not expose", async () => {
+      const { adapter, sendTransfer } = buildSender();
+
+      await expect(adapter.sendTx?.(TRANSFER, { account: STRANGER })).rejects.toThrow(
+        /does not expose account/v,
+      );
+      expect(sendTransfer).not.toHaveBeenCalled();
     });
 
     it("rejects a chain the wallet does not advertise", async () => {
-      const { adapter } = buildSendable([MAINNET]);
+      const { adapter, sendTransfer } = buildSender([MAINNET]);
 
-      await expect(adapter?.sendTxToChain(payload, TESTNET)).rejects.toThrow(
+      await expect(adapter.sendTx?.(TRANSFER, { chain: BITCOIN_CHAINS.testnet })).rejects.toThrow(
         /does not advertise chain/v,
+      );
+      expect(sendTransfer).not.toHaveBeenCalled();
+    });
+
+    it("rejects a chain from another namespace", async () => {
+      const { adapter } = buildSender();
+
+      await expect(adapter.sendTx?.(TRANSFER, { chain: SUI_MAINNET })).rejects.toThrow(
+        /non-Bitcoin/v,
       );
     });
   });
 
-  it("sendTx() rejects when payload isn't { amount, recipient }", async () => {
-    const connectFeature: StandardConnectFeature = {
-      connect: vi.fn().mockResolvedValue({ accounts: [] }),
-    };
-    const sendFeature: BitcoinSendTransferFeature = {
-      sendTransfer: vi.fn().mockResolvedValue({ txid: "" }),
-    };
-    const wallet = withFeatures(buildWallet(), {
-      "bitcoin:sendTransfer": sendFeature,
-      "standard:connect": connectFeature,
+  describe("signTransaction", () => {
+    it("bridges PSBT bytes through bitcoin:signPsbt on the current chain", async () => {
+      const { feature, signPsbt } = signPsbtFeature();
+      const adapter = buildAdapter(buildWallet({}, { "bitcoin:signPsbt": feature }));
+      const psbt = new Uint8Array([1, 2, 3]);
+
+      const signed = await adapter.signTransaction?.(psbt);
+
+      expect(signPsbt).toHaveBeenCalledWith({ account: FIRST, chain: MAINNET, psbt });
+      expect(signed).toEqual(new Uint8Array([10, 11, 12]));
     });
-    const adapter = buildBitcoinAdapter(wallet);
-    // @ts-expect-error Runtime validation protects JavaScript consumers from invalid payloads.
-    await expect(adapter?.sendTx(42)).rejects.toThrow(TypeError);
-  });
 
-  it("signTransaction() bridges through bitcoin:signPsbt", async () => {
-    const account = buildAccount("bc1qaddr");
-    const signedPsbt = new Uint8Array([10, 11, 12]);
-    const signFeature: BitcoinSignPsbtFeature = {
-      signPsbt: vi.fn().mockResolvedValue({ signedPsbt }),
-    };
-    const connectFeature: StandardConnectFeature = {
-      connect: vi.fn().mockResolvedValue({ accounts: [] }),
-    };
-    const wallet = withFeatures(buildWallet({ accounts: [account] }), {
-      "bitcoin:signPsbt": signFeature,
-      "standard:connect": connectFeature,
+    it("routes options.chain and options.account", async () => {
+      const { feature, signPsbt } = signPsbtFeature();
+      const adapter = buildAdapter(
+        buildWallet({ chains: [MAINNET, TESTNET] }, { "bitcoin:signPsbt": feature }),
+      );
+
+      await adapter.signTransaction?.(new Uint8Array([1]), {
+        account: buildAccount(SECOND.address, BITCOIN_CHAINS.mainnet),
+        chain: BITCOIN_CHAINS.testnet,
+      });
+
+      expect(signPsbt).toHaveBeenCalledWith(
+        expect.objectContaining({ account: SECOND, chain: TESTNET }),
+      );
     });
-    const adapter = buildBitcoinAdapter(wallet);
-    if (adapter?.chainPlatform !== "bitcoin") {
-      throw new Error("expected a bitcoin adapter");
-    }
+  });
 
-    const psbt = new Uint8Array([1, 2, 3]);
-    const result = await adapter.signTransaction?.(psbt);
+  describe("switchChain", () => {
+    it("re-points later calls when the wallet advertises several chains", async () => {
+      const { feature, sendTransfer } = sendTransferFeature();
+      const adapter = buildAdapter(
+        buildWallet({ chains: [MAINNET, TESTNET] }, { "bitcoin:sendTransfer": feature }),
+      );
 
-    expect(signFeature.signPsbt).toHaveBeenCalledWith({
-      account,
-      chain: MAINNET,
-      psbt,
+      await adapter.switchChain?.(BITCOIN_CHAINS.testnet);
+      await adapter.sendTx?.(TRANSFER);
+
+      expect(sendTransfer).toHaveBeenCalledWith(expect.objectContaining({ chain: TESTNET }));
+      await expect(adapter.getAccounts()).resolves.toMatchObject([
+        { chain: BITCOIN_CHAINS.testnet },
+        { chain: BITCOIN_CHAINS.testnet },
+      ]);
     });
-    expect(result).toEqual(signedPsbt);
-  });
 
-  it("signMessage() rejects when the wallet doesn't advertise bitcoin:signMessage", async () => {
-    const connectFeature: StandardConnectFeature = {
-      connect: vi.fn().mockResolvedValue({ accounts: [] }),
-    };
-    const wallet = withFeatures(buildWallet(), { "standard:connect": connectFeature });
-    const adapter = buildBitcoinAdapter(wallet);
+    it("rejects a non-bip122 namespace", async () => {
+      const adapter = buildAdapter(buildWallet({ chains: [MAINNET, TESTNET] }));
 
-    await expect(adapter?.signMessage(new Uint8Array([1]))).rejects.toThrow(
-      /does not advertise bitcoin:signMessage/v,
-    );
-  });
-
-  it("sendTx() rejects when the wallet doesn't advertise bitcoin:sendTransfer", async () => {
-    const connectFeature: StandardConnectFeature = {
-      connect: vi.fn().mockResolvedValue({ accounts: [] }),
-    };
-    const wallet = withFeatures(buildWallet(), { "standard:connect": connectFeature });
-    const adapter = buildBitcoinAdapter(wallet);
-
-    await expect(adapter?.sendTx({ amount: 1n, recipient: "bc1qto" })).rejects.toThrow(
-      /does not advertise bitcoin:sendTransfer/v,
-    );
-  });
-
-  it("signTransaction() is absent when the wallet doesn't advertise bitcoin:signPsbt", () => {
-    const connectFeature: StandardConnectFeature = {
-      connect: vi.fn().mockResolvedValue({ accounts: [] }),
-    };
-    const wallet = withFeatures(buildWallet(), { "standard:connect": connectFeature });
-    const adapter = buildBitcoinAdapter(wallet);
-    if (adapter?.chainPlatform !== "bitcoin") {
-      throw new Error("expected a bitcoin adapter");
-    }
-
-    expect(adapter.signTransaction).toBeUndefined();
-  });
-
-  it("signTransaction() rejects anything that isn't PSBT bytes", async () => {
-    const signFeature: BitcoinSignPsbtFeature = {
-      signPsbt: vi.fn().mockResolvedValue({ signedPsbt: new Uint8Array() }),
-    };
-    const connectFeature: StandardConnectFeature = {
-      connect: vi.fn().mockResolvedValue({ accounts: [] }),
-    };
-    const wallet = withFeatures(buildWallet(), {
-      "bitcoin:signPsbt": signFeature,
-      "standard:connect": connectFeature,
+      await expect(adapter.switchChain?.(SUI_MAINNET)).rejects.toThrow(/non-Bitcoin/v);
     });
-    const adapter = buildBitcoinAdapter(wallet);
-    if (adapter?.chainPlatform !== "bitcoin") {
-      throw new Error("expected a bitcoin adapter");
-    }
-
-    await expect(adapter.signTransaction?.("not-a-psbt")).rejects.toThrow(TypeError);
-    expect(signFeature.signPsbt).not.toHaveBeenCalled();
-  });
-
-  it("requestAccounts() drives standard:connect", async () => {
-    const connectFeature: StandardConnectFeature = {
-      connect: vi.fn().mockResolvedValue({ accounts: [] }),
-    };
-    const wallet = withFeatures(buildWallet(), { "standard:connect": connectFeature });
-    const adapter = buildBitcoinAdapter(wallet);
-
-    await adapter?.requestAccounts?.();
-
-    expect(connectFeature.connect).toHaveBeenCalled();
-  });
-
-  it("getTransactionReceipt() is always Pending (butr ships no Bitcoin RPC)", async () => {
-    const connectFeature: StandardConnectFeature = {
-      connect: vi.fn().mockResolvedValue({ accounts: [] }),
-    };
-    const wallet = withFeatures(buildWallet(), { "standard:connect": connectFeature });
-    const adapter = buildBitcoinAdapter(wallet);
-
-    expect(await adapter?.getTransactionReceipt("abcd")).toEqual({ status: "Pending" });
-  });
-
-  it("switchChain() rejects a non-bip122 namespace", async () => {
-    const connectFeature: StandardConnectFeature = {
-      connect: vi.fn().mockResolvedValue({ accounts: [] }),
-    };
-    const wallet = withFeatures(buildWallet(), {
-      "standard:connect": connectFeature,
-    });
-    const adapter = buildBitcoinAdapter(wallet);
-    await expect(
-      adapter?.switchChain({
-        id: "sui:mainnet",
-        name: "Sui",
-        namespace: "sui",
-        reference: "mainnet",
-      }),
-    ).rejects.toThrow(/non-Bitcoin/v);
   });
 });
 

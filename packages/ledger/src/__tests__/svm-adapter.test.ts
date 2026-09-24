@@ -1,299 +1,201 @@
-import { describe, expect, it, vi } from "vitest";
+import type { SvmAdapter } from "@usebutr/core";
+import { base64ToBytes, buildAccount, bytesToBase58, SVM_CHAINS } from "@usebutr/core";
+import { describe, expect, it } from "vitest";
 
-import type {
-  SolanaAppConstructor,
-  SolanaAppLike,
-  TransportFactory,
-  TransportLike,
-} from "../adapter";
-import { createLedgerAdapter, createSvmLedgerAdapter } from "../adapter";
+import { createLedgerAdapter } from "../adapter";
+import type { SolanaAppConstructor, SolanaAppLike } from "../apps/svm";
+import { createSvmLedgerAdapter } from "../apps/svm";
 
-const buildFakePubkey = (index: number): Uint8Array => {
-  const buf = new Uint8Array(32);
-  buf.fill(index + 1);
-  return buf;
+import { buildFakeTransport, indexOfPath } from "./helpers";
+
+/*
+ * @solana/web3.js 1.98 transfers paid by 0x09…09, so the Ledger signs slot 1:
+ * legacy from account 0 (0x01…01), v0 from account 1 (0x02…02). `_SIGNED` is
+ * web3.js's own `addSignature(key, 0xcd × 64)` output.
+ */
+const LEGACY_UNSIGNED =
+  "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgABBAkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMBAwIBAgwCAAAA6AMAAAAAAAA=";
+const LEGACY_SIGNED =
+  "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3NAgABBAkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMBAwIBAgwCAAAA6AMAAAAAAAA=";
+const V0_UNSIGNED =
+  "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAIAAQQJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAQMCAQIMAgAAAOgDAAAAAAAAAA==";
+const V0_SIGNED =
+  "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3NgAIAAQQJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAQMCAQIMAgAAAOgDAAAAAAAAAA==";
+/** One compact-u16 byte plus two 64-byte signature slots. */
+const MESSAGE_OFFSET = 1 + 2 * 64;
+
+/** Account `index` is the 32-byte key filled with `index + 1`. */
+const keyAt = (index: number): Uint8Array => new Uint8Array(32).fill(index + 1);
+
+type SolanaHooks = {
+  onGetAddress?: (path: string) => void;
+  onSignTransaction?: (path: string, message: Uint8Array) => void;
 };
 
-const buildFakeSig = (fill: number): Uint8Array => {
-  const sig = new Uint8Array(64);
-  sig.fill(fill);
-  return sig;
-};
-
-const buildFakeSolanaCtor = (onGetAddress?: (path: string) => void): SolanaAppConstructor => {
-  return class FakeSolana implements SolanaAppLike {
-    constructor(private readonly _transport: TransportLike) {
-      void _transport;
-    }
+const buildFakeSolanaCtor = (hooks: SolanaHooks = {}): SolanaAppConstructor =>
+  class FakeSolana implements SolanaAppLike {
     getAddress(path: string): Promise<{ address: Uint8Array }> {
-      onGetAddress?.(path);
-      const tail = path.split("/").pop() ?? "0'";
-      const idx = Math.trunc(Number(tail.replace(/'$/v, "")));
-      return Promise.resolve({ address: buildFakePubkey(idx) });
+      hooks.onGetAddress?.(path);
+      return Promise.resolve({ address: keyAt(indexOfPath(path)) });
     }
-    signOffchainMessage(_path: string, message: Uint8Array): Promise<{ signature: Uint8Array }> {
-      void message;
-      return Promise.resolve({ signature: buildFakeSig(0xab) });
+    signOffchainMessage(): Promise<{ signature: Uint8Array }> {
+      return Promise.resolve({ signature: new Uint8Array(64).fill(0xab) });
     }
-    signTransaction(_path: string, tx: Uint8Array): Promise<{ signature: Uint8Array }> {
-      void tx;
-      return Promise.resolve({ signature: buildFakeSig(0xcd) });
+    signTransaction(path: string, message: Uint8Array): Promise<{ signature: Uint8Array }> {
+      hooks.onSignTransaction?.(path, message);
+      return Promise.resolve({ signature: new Uint8Array(64).fill(0xcd) });
     }
   };
-};
 
-const buildFakeTransport = (): {
-  factory: TransportFactory;
-  lastTransport: TransportLike | null;
-} => {
-  let lastTransport: TransportLike | null = null;
-  const factory: TransportFactory = {
-    create(): Promise<TransportLike> {
-      const t: TransportLike = {
-        close: vi.fn().mockResolvedValue(undefined),
-      };
-      lastTransport = t;
-      return Promise.resolve(t);
-    },
-  };
-  return {
-    factory,
-    get lastTransport() {
-      return lastTransport;
-    },
-  };
+const connectedSvm = async (hooks: SolanaHooks = {}): Promise<SvmAdapter> => {
+  const adapter = await createSvmLedgerAdapter({
+    accountCount: 2,
+    platform: "svm",
+    solana: buildFakeSolanaCtor(hooks),
+    transport: buildFakeTransport().factory,
+  });
+  await adapter.connect();
+  return adapter;
 };
 
 describe("createSvmLedgerAdapter", () => {
-  it("builds an SVM adapter with conservative defaults", async () => {
-    const { factory } = buildFakeTransport();
+  it("defines signing only: no RPC, events or chain switch", async () => {
     const adapter = await createSvmLedgerAdapter({
       platform: "svm",
       solana: buildFakeSolanaCtor(),
-      transport: factory,
-    });
-
-    expect(adapter.id).toBe("ledger");
-    expect(adapter.name).toBe("Ledger");
-    expect(adapter.chainPlatform).toBe("svm");
-    expect(adapter.capabilities.signMessage).toBe(true);
-    expect(adapter.capabilities.sendTransaction).toBe(false);
-    expect(adapter.capabilities.signTransaction).toBe(true);
-    expect(adapter.capabilities.getBalance).toBe(false);
-    expect(adapter.capabilities.subscribe).toBe(false);
-    expect(adapter.capabilities.switchChain).toBe(true);
-  });
-
-  it("connect() opens transport and fetches first address (base58-encoded)", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSvmLedgerAdapter({
-      platform: "svm",
-      solana: buildFakeSolanaCtor(),
-      transport: factory,
-    });
-
-    await adapter.connect();
-    const account = await adapter.getAccount();
-    expect(account).not.toBeNull();
-    expect(account?.chain.id).toBe("solana:mainnet");
-    expect(account?.chain.namespace).toBe("solana");
-    expect(account?.walletAddress).toMatch(/^[1-9A-HJ-NP-Za-km-z]+$/v);
-  });
-
-  it("disconnect() closes the transport and clears state", async () => {
-    const fake = buildFakeTransport();
-    const adapter = await createSvmLedgerAdapter({
-      platform: "svm",
-      solana: buildFakeSolanaCtor(),
-      transport: fake.factory,
-    });
-
-    await adapter.connect();
-    const transport = fake.lastTransport;
-    expect(transport).not.toBeNull();
-
-    await adapter.disconnect?.();
-    expect(transport?.close).toHaveBeenCalled();
-
-    const account = await adapter.getAccount();
-    expect(account).toBeNull();
-  });
-
-  it("getAccounts() walks the derivation path up to accountCount", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSvmLedgerAdapter({
-      accountCount: 3,
-      platform: "svm",
-      solana: buildFakeSolanaCtor(),
-      transport: factory,
-    });
-
-    await adapter.connect();
-    const accounts = await adapter.getAccounts!();
-    expect(accounts).toHaveLength(3);
-    const addresses = accounts.map((a) => a.walletAddress);
-    expect(new Set(addresses).size).toBe(3);
-    for (const account of accounts) {
-      expect(account.chain.id).toBe("solana:mainnet");
-    }
-  });
-
-  it("signMessage() routes through signOffchainMessage and returns the right shape", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSvmLedgerAdapter({
-      platform: "svm",
-      solana: buildFakeSolanaCtor(),
-      transport: factory,
-    });
-
-    await adapter.connect();
-    const message = new TextEncoder().encode("hello solana");
-    const result = await adapter.signMessage(message);
-    expect(result.signature).toBeInstanceOf(Uint8Array);
-    expect(result.signature.length).toBe(64);
-    expect(result.signature[0]).toBe(0xab);
-    expect(result.signedMessage).toBe(message);
-  });
-
-  it("signTransaction() routes through signTransaction and returns the signature bytes", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSvmLedgerAdapter({
-      platform: "svm",
-      solana: buildFakeSolanaCtor(),
-      transport: factory,
-    });
-
-    if (adapter.chainPlatform !== "svm") {
-      throw new Error("expected SVM adapter");
-    }
-
-    await adapter.connect();
-    const tx = new Uint8Array([1, 2, 3, 4]);
-    const signed = await adapter.signTransaction!(tx);
-    expect(signed).toBeInstanceOf(Uint8Array);
-    expect(signed.length).toBe(64);
-    expect(signed[0]).toBe(0xcd);
-  });
-
-  it("signTransaction() rejects non-Uint8Array input", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSvmLedgerAdapter({
-      platform: "svm",
-      solana: buildFakeSolanaCtor(),
-      transport: factory,
-    });
-
-    if (adapter.chainPlatform !== "svm") {
-      throw new Error("expected SVM adapter");
-    }
-
-    await adapter.connect();
-    await expect(adapter.signTransaction!({ not: "bytes" })).rejects.toThrow(
-      /expects a Uint8Array/v,
-    );
-  });
-
-  it("switchChain() updates the cluster on subsequent getAccount() calls", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSvmLedgerAdapter({
-      platform: "svm",
-      solana: buildFakeSolanaCtor(),
-      transport: factory,
-    });
-
-    await adapter.connect();
-    await adapter.switchChain({
-      id: "solana:devnet",
-      name: "Solana Devnet",
-      namespace: "solana",
-      reference: "devnet",
-    });
-    const account = await adapter.getAccount();
-    expect(account?.chain.id).toBe("solana:devnet");
-    expect(account?.chain.reference).toBe("devnet");
-  });
-
-  it("switchChain() rejects non-Solana chains", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSvmLedgerAdapter({
-      platform: "svm",
-      solana: buildFakeSolanaCtor(),
-      transport: factory,
-    });
-
-    await expect(
-      adapter.switchChain({
-        id: "eip155:1",
-        name: "Ethereum",
-        namespace: "eip155",
-        reference: "1",
-      }),
-    ).rejects.toThrow(/non-Solana chain/v);
-  });
-
-  it("switchChain() rejects unknown Solana clusters", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSvmLedgerAdapter({
-      platform: "svm",
-      solana: buildFakeSolanaCtor(),
-      transport: factory,
-    });
-
-    await expect(
-      adapter.switchChain({
-        id: "solana:5eyk",
-        name: "Solana",
-        namespace: "solana",
-        reference: "5eyk",
-      }),
-    ).rejects.toThrow(/unsupported Solana cluster/v);
-  });
-
-  it("sendTx() / sendTxToChain() / getBalance() / getTransactionReceipt() reject", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSvmLedgerAdapter({
-      platform: "svm",
-      solana: buildFakeSolanaCtor(),
-      transport: factory,
-    });
-
-    await expect(adapter.sendTx({})).rejects.toThrow(/sendTx not supported/v);
-    await expect(adapter.sendTxToChain({}, "devnet")).rejects.toThrow(
-      /sendTxToChain not supported/v,
-    );
-    await expect(adapter.getBalance()).rejects.toThrow(/getBalance not supported/v);
-    await expect(adapter.getTransactionReceipt("sig")).rejects.toThrow(
-      /getTransactionReceipt not supported/v,
-    );
-  });
-});
-
-describe("createLedgerAdapter dispatch (svm)", () => {
-  it("routes platform: 'svm' to the SVM factory", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
-      platform: "svm",
-      solana: buildFakeSolanaCtor(),
-      transport: factory,
+      transport: buildFakeTransport().factory,
     });
 
     expect(adapter.chainPlatform).toBe("svm");
+    expect(adapter.signMessage).toBeTypeOf("function");
+    expect(adapter.signTransaction).toBeTypeOf("function");
+    for (const method of ["getBalance", "sendTx", "signIn", "subscribe", "switchChain"]) {
+      expect(adapter).not.toHaveProperty(method);
+    }
   });
 
-  it("uses /N' (fully-hardened) account index suffix", async () => {
+  it("derives base58 accounts on hardened paths, read once at connect", async () => {
     const seen: Array<string> = [];
-    const { factory } = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
-      accountCount: 2,
-      platform: "svm",
-      solana: buildFakeSolanaCtor((path) => {
+    const adapter = await connectedSvm({
+      onGetAddress: (path) => {
         seen.push(path);
-      }),
-      transport: factory,
+      },
     });
 
+    const accounts = await adapter.getAccounts();
+
+    expect(seen).toEqual(["44'/501'/0'/0'", "44'/501'/0'/1'"]);
+    const addresses = [keyAt(0), keyAt(1)].map((key) => bytesToBase58(key));
+    expect(accounts).toEqual(addresses.map((address) => buildAccount(address, SVM_CHAINS.mainnet)));
+  });
+
+  it("reports accounts on the configured cluster", async () => {
+    const adapter = await createSvmLedgerAdapter({
+      chainId: SVM_CHAINS.devnet.id,
+      platform: "svm",
+      solana: buildFakeSolanaCtor(),
+      transport: buildFakeTransport().factory,
+    });
     await adapter.connect();
-    await adapter.getAccounts!();
-    expect(seen).toEqual(["44'/501'/0'/0'", "44'/501'/0'/0'", "44'/501'/0'/1'"]);
+
+    const [account] = await adapter.getAccounts();
+
+    expect(account?.chain).toEqual(SVM_CHAINS.devnet);
+  });
+
+  it("signMessage() routes through signOffchainMessage", async () => {
+    const adapter = await connectedSvm();
+    const message = new TextEncoder().encode("hello solana");
+
+    const result = await adapter.signMessage?.(message);
+
+    expect(result?.signature).toEqual(new Uint8Array(64).fill(0xab));
+    expect(result?.signedMessage).toBe(message);
+  });
+
+  it("signTransaction() signs a legacy message and fills the signer's slot", async () => {
+    const received: Array<{ message: Uint8Array; path: string }> = [];
+    const adapter = await connectedSvm({
+      onSignTransaction: (path, message) => {
+        received.push({ message, path });
+      },
+    });
+    const tx = base64ToBytes(LEGACY_UNSIGNED);
+
+    const signed = await adapter.signTransaction?.(tx);
+
+    expect(received).toEqual([{ message: tx.subarray(MESSAGE_OFFSET), path: "44'/501'/0'/0'" }]);
+    expect(signed).toEqual(base64ToBytes(LEGACY_SIGNED));
+    expect(tx).toEqual(base64ToBytes(LEGACY_UNSIGNED));
+  });
+
+  it("signTransaction() signs a v0 message as the account it is given", async () => {
+    const received: Array<{ message: Uint8Array; path: string }> = [];
+    const adapter = await connectedSvm({
+      onSignTransaction: (path, message) => {
+        received.push({ message, path });
+      },
+    });
+    const accounts = await adapter.getAccounts();
+    const second = accounts.at(1);
+    const tx = base64ToBytes(V0_UNSIGNED);
+
+    const signed = await adapter.signTransaction?.(tx, { account: second });
+
+    expect(received).toEqual([{ message: tx.subarray(MESSAGE_OFFSET), path: "44'/501'/0'/1'" }]);
+    expect(signed).toEqual(base64ToBytes(V0_SIGNED));
+  });
+
+  it("signTransaction() rejects when the account is not one of the transaction's signers", async () => {
+    const received: Array<string> = [];
+    const adapter = await connectedSvm({
+      onSignTransaction: (path) => {
+        received.push(path);
+      },
+    });
+
+    await expect(adapter.signTransaction?.(base64ToBytes(V0_UNSIGNED))).rejects.toThrow(
+      /not a required signer/v,
+    );
+    expect(received).toEqual([]);
+  });
+
+  it("signTransaction() rejects bytes that are not a serialized transaction", async () => {
+    const adapter = await connectedSvm();
+
+    await expect(adapter.signTransaction?.(Uint8Array.of(1, 2, 3, 4))).rejects.toThrow(
+      /expected a serialized Solana transaction/v,
+    );
+  });
+
+  it("signTransaction() rejects an account or chain the adapter does not cover", async () => {
+    const adapter = await connectedSvm();
+    const tx = base64ToBytes(LEGACY_UNSIGNED);
+
+    await expect(
+      adapter.signTransaction?.(tx, { account: buildAccount("outsider", SVM_CHAINS.mainnet) }),
+    ).rejects.toThrow(/does not expose/v);
+    await expect(adapter.signTransaction?.(tx, { chain: SVM_CHAINS.devnet })).rejects.toMatchObject(
+      { kind: "ChainMismatch" },
+    );
+    await expect(adapter.signTransaction?.(tx, { chain: SVM_CHAINS.mainnet })).resolves.toEqual(
+      base64ToBytes(LEGACY_SIGNED),
+    );
+  });
+
+  it("getSigner() resolves the device app tagged ledger-svm", async () => {
+    const adapter = await connectedSvm();
+
+    await expect(adapter.getSigner()).resolves.toMatchObject({ kind: "ledger-svm" });
+  });
+
+  it("createLedgerAdapter() dispatches platform svm", async () => {
+    const adapter = await createLedgerAdapter({
+      platform: "svm",
+      solana: buildFakeSolanaCtor(),
+      transport: buildFakeTransport().factory,
+    });
+
+    expect(adapter.chainPlatform).toBe("svm");
   });
 });

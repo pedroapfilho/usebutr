@@ -1,63 +1,101 @@
 ---
 title: Errors
-description: How thrown values from wildly different wallet SDKs become one tagged ConnectionError union.
+description: How thrown values from wildly different wallet SDKs become one ConnectionError class you branch on by kind.
 ---
 
 Wallet SDKs throw inconsistently: MetaMask uses EIP-1193 numeric codes, Phantom
 throws stringly-typed errors, embedded SDKs throw their own classes. butr
-normalises all of it into one tagged union so you branch on `kind` instead of
+normalises all of it into one class so you branch on `kind` instead of
 regexing message strings.
 
 ```ts
-type ConnectionError =
-  | { kind: "UserRejected"; message: string }
-  | { kind: "RequestPending"; message: string }
-  | { kind: "WalletLocked"; message: string }
-  | { kind: "ChainMismatch"; message: string; expectedChain?: string; actualChain?: string }
-  | { kind: "NotConnected"; message: string }
-  | { kind: "Timeout"; message: string }
-  | { kind: "Unknown"; message: string; cause?: unknown };
-```
+type ConnectionErrorKind =
+  | "ChainMismatch"
+  | "NotConnected"
+  | "RequestPending"
+  | "Timeout"
+  | "Unknown"
+  | "UserRejected"
+  | "WalletLocked"
+  | "WalletNotFound";
 
-`message` is always present and human-readable. When `kind` is `Unknown`,
-`cause` preserves the original thrown value so you can inspect the raw error.
-
-## Reading the error
-
-```tsx
-import { useConnectionError } from "@usebutr/react";
-
-const error = useConnectionError();
-if (error?.kind === "UserRejected") {
-  // user clicked "reject"; usually no UI needed
-} else if (error?.kind === "WalletLocked") {
-  // prompt: "Unlock your wallet and try again"
-} else if (error) {
-  show(error.message);
+class ConnectionError extends Error {
+  readonly kind: ConnectionErrorKind;
+  // plus Error's `message`, `name` ("ConnectionError"), and `cause`
 }
 ```
 
-The reference apps render `{error.kind} — {error.message}` directly.
+`message` is always human-readable. `cause` keeps the original thrown value, so
+you can still inspect the wallet's raw error. It is a real `Error`, so
+`instanceof ConnectionError` works and error trackers get a stack.
 
-## What `mapConnectionError` recognises
+## Where you meet it
 
-`mapConnectionError(raw)` (exported from `@usebutr/core`) does the normalisation.
-It recognises:
+- `useConnect().error` holds the latest failed attempt; `status` is `"error"`.
+  `connect(id)` itself never throws.
+- `useConnect().connectAsync(id)` and `useWalletManager().connect(id)` reject
+  with it, for code that needs the connected wallet as a result.
+- `onConnectError(error, connectorId)` receives it for every failed attempt.
+- `onHydrated` reports each failed silent reconnect with a `ConnectionError`
+  as its `reason`.
 
-- butr's own `Error("Connection timeout")` (the 90-second connect timeout) →
-  `Timeout`
-- butr's own `Error("Failed to get account")` / messages containing
-  "not connected" → `NotConnected`
-- EIP-1193 numeric codes: `4001` → `UserRejected`, `-32002` →
-  `RequestPending`
-- message substrings: "user rejected" / "user denied" → `UserRejected`;
-  "locked" → `WalletLocked`; "chain" + "mismatch"/"unsupported" →
-  `ChainMismatch`
-- **anything else** → `Unknown` with `cause` set to the original value
+```tsx
+import { useConnect } from "@usebutr/react";
+
+const ConnectError = () => {
+  const { error, reset } = useConnect();
+  if (error === null || error.kind === "UserRejected") {
+    return null; // the user clicked "reject"; usually no UI needed
+  }
+  return (
+    <p role="alert">
+      {error.kind === "WalletLocked" ? "Unlock your wallet and try again." : error.message}
+      <button type="button" onClick={reset}>
+        Dismiss
+      </button>
+    </p>
+  );
+};
+```
+
+## What each kind means
+
+| Kind             | Raised when                                                                                                                                        |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UserRejected`   | EIP-1193 code `4001`, or a message containing "user rejected" / "user denied"                                                                      |
+| `RequestPending` | EIP-1193 code `-32002`: the wallet already has a prompt open                                                                                       |
+| `WalletLocked`   | a message containing "locked"                                                                                                                      |
+| `ChainMismatch`  | a message about a chain "mismatch" or "unsupported" chain; also thrown by Ledger and injected Bitcoin adapters asked for a chain they cannot reach |
+| `NotConnected`   | EIP-1193 codes `4100` / `4900` / `4901`, a "not connected" message, or a wallet that connected but exposed no accounts                             |
+| `Timeout`        | a connect that did not settle within 90 seconds, or a silent reconnect within 15                                                                   |
+| `WalletNotFound` | `connect(id)` for an id no source announced                                                                                                        |
+| `Unknown`        | anything else                                                                                                                                      |
+
+## Normalising your own calls
+
+The manager normalises what it catches. Adapter methods you call yourself
+(`signMessage`, `sendTx`, `switchChain`) reject with whatever the wallet
+threw. Pass that through `toConnectionError` to get the same classification:
+
+```ts
+import { toConnectionError } from "@usebutr/core";
+
+try {
+  await wallet.connector.sendTx?.(tx, { account: wallet.account });
+} catch (raw) {
+  const error = toConnectionError(raw);
+  if (error.kind !== "UserRejected") {
+    showToast(error.message);
+  }
+}
+```
+
+It returns a `ConnectionError` unchanged, wraps any other `Error` with its
+classified kind, and turns a non-`Error` value into `Unknown`.
 
 <Callout type="warn">
-  Normalisation is best-effort. A custom connector that throws an unrecognised shape lands in
-  `Unknown`. butr does no retrying; you decide whether to retry based on `kind`.
+  Classification is best-effort. A wallet that throws an unrecognised shape lands in `Unknown`. butr
+  does no retrying; you decide whether to retry based on `kind`.
 </Callout>
 
-**Source:** `packages/core/src/types/errors.ts`.
+**Source:** `packages/core/src/types/errors.ts`, `packages/core/src/store/wallet-manager.ts`.

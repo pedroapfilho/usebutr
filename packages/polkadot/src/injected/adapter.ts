@@ -1,41 +1,25 @@
 import type {
   Account,
+  AccountOptions,
   ChainBase,
   ConnectorEvent,
   PolkadotAdapter,
-  WalletCapabilities,
-  WalletSigner,
+  SignedMessage,
 } from "@usebutr/core";
-import { logWarn, sanitizeIcon } from "@usebutr/core";
-
-import { resolveInjectedPolkadotCapabilities } from "../capabilities";
-import { POLKADOT_CHAIN_BY_ID, POLKADOT_CHAINS } from "../chains";
-import { noRpcBalance, noRpcSendTx, noRpcSendTxToChain, noRpcTransactionReceipt } from "../no-rpc";
+import {
+  buildAccount,
+  logWarn,
+  POLKADOT_CHAINS,
+  POLKADOT_CHAINS_LIST,
+  resolveChain,
+  sanitizeIcon,
+} from "@usebutr/core";
 
 import { GENERIC_POLKADOT_ICON } from "./icon";
 import type { Injected, InjectedAccount, InjectedWindowProvider } from "./injected-web3";
 import { bytesToHex, hexToBytes, wrapBytes } from "./injected-web3";
 
 const DAPP_NAME = "butr";
-
-/** Handle returned by `getSigner()`. Carries the `window.injectedWeb3`
- *  key (`extensionName`) so consumers can bridge to polkadot-api's
- *  `connectInjectedExtension`, the active SS58 address, and the raw
- *  `Injected` object for direct `signer` access. */
-type PolkadotSignerHandle = {
-  address: string;
-  extension: Injected;
-  extensionName: string;
-};
-
-const isPolkadotSignerHandle = (value: WalletSigner): value is PolkadotSignerHandle =>
-  "address" in value &&
-  typeof value.address === "string" &&
-  "extension" in value &&
-  typeof value.extension === "object" &&
-  value.extension !== null &&
-  "extensionName" in value &&
-  typeof value.extensionName === "string";
 
 /**
  * Deliberately not wallet-standard-shared's `slugify`: that helper embeds
@@ -49,11 +33,21 @@ const toKebab = (name: string): string =>
     .replaceAll(/[^a-z0-9]+/gv, "-")
     .replaceAll(/^-|-$/gv, "");
 
-const buildPolkadotAccount = (address: string, chain: ChainBase): Account => ({
-  chain,
-  id: `${chain.id}:${address}`,
-  walletAddress: address,
-});
+/**
+ * An account works on any Substrate chain unless the extension pins it to
+ * one through `genesisHash`, whose first 16 bytes are the CAIP-2 reference.
+ * Unpinned accounts are labelled Polkadot, butr's default network.
+ */
+const chainOf = ({ genesisHash }: InjectedAccount): ChainBase =>
+  genesisHash === undefined || genesisHash === null || genesisHash === ""
+    ? POLKADOT_CHAINS.polkadot
+    : resolveChain(
+        `polkadot:${genesisHash.replace(/^0x/v, "").slice(0, 32)}`,
+        POLKADOT_CHAINS_LIST,
+      );
+
+const toAccount = (account: InjectedAccount): Account =>
+  buildAccount(account.address, chainOf(account));
 
 /** Everything that only exists between `connect()` and `disconnect()`: the
  *  enabled provider and the wallet-side account subscription opened against
@@ -64,31 +58,21 @@ type InjectedSession = {
 };
 
 /**
- * The provider is not enabled at construction: `enable()` raises the
- * extension's authorization prompt, so it runs lazily in `connect()`.
+ * `enable()` prompts, so it waits for `connect()`. No `switchChain`: the
+ * extension has no network to switch and nothing here takes a chain; an
+ * extrinsic carries its genesis hash in the payload polkadot-api builds.
  */
 const buildInjectedPolkadotAdapter = (
   extensionName: string,
   displayName: string,
   provider: InjectedWindowProvider,
 ): PolkadotAdapter => {
-  const capabilities: WalletCapabilities = resolveInjectedPolkadotCapabilities();
   let session: InjectedSession | null = null;
-  let chain: ChainBase = POLKADOT_CHAINS.polkadot;
-  const listenersSet = new Set<(event: ConnectorEvent) => void>();
+  const listeners = new Set<(event: ConnectorEvent) => void>();
 
   const emit = (event: ConnectorEvent): void => {
-    const snapshot = [...listenersSet];
-    for (const listener of snapshot) {
+    for (const listener of listeners) {
       listener(event);
-    }
-  };
-
-  const emitAccounts = (accounts: ReadonlyArray<InjectedAccount>): void => {
-    const built = accounts.map((a) => buildPolkadotAccount(a.address, chain));
-    const first = built[0];
-    if (first !== undefined) {
-      emit({ account: first, accounts: built, type: "accountChanged" });
     }
   };
 
@@ -103,7 +87,7 @@ const buildInjectedPolkadotAdapter = (
       emit({ type: "disconnected" });
       return;
     }
-    emitAccounts(accounts);
+    emit({ accounts: accounts.map(toAccount), type: "accountsChanged" });
   };
 
   const openSession = (injected: Injected): void => {
@@ -134,18 +118,49 @@ const buildInjectedPolkadotAdapter = (
     return session.injected;
   };
 
-  const firstAddress = async (): Promise<string | null> => {
-    if (session === null) {
-      return null;
+  const subscribe = (listener: (event: ConnectorEvent) => void) => {
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  };
+
+  const signMessage = async (
+    message: Uint8Array,
+    options?: AccountOptions,
+  ): Promise<SignedMessage> => {
+    const injected = requireInjected();
+    if (injected.signer.signRaw === undefined) {
+      throw new Error(`Wallet ${displayName} does not expose signRaw`);
     }
-    const accounts = await session.injected.accounts.get();
-    return accounts[0]?.address ?? null;
+    const exposed = await injected.accounts.get();
+    const requested = options?.account;
+    const match =
+      requested === undefined
+        ? exposed[0]
+        : exposed.find((a) => a.address === requested.walletAddress);
+    if (match === undefined) {
+      throw new Error(
+        requested === undefined
+          ? `Wallet ${displayName} has no connected account`
+          : `Wallet ${displayName} does not expose account ${requested.walletAddress}`,
+      );
+    }
+    const wrapped = wrapBytes(message);
+    const result = await injected.signer.signRaw({
+      address: match.address,
+      data: bytesToHex(wrapped),
+      type: "bytes",
+    });
+    return { signature: hexToBytes(result.signature), signedMessage: wrapped };
   };
 
   return {
-    capabilities,
     chainPlatform: "polkadot",
 
+    // injectedWeb3 has no silent check, so `silent` still calls `enable()`.
+    // It only prompts an origin the extension has not authorised, and a
+    // session being restored already is.
     async connect() {
       const injected = await provider.enable(DAPP_NAME);
       const accounts = await injected.accounts.get();
@@ -155,14 +170,9 @@ const buildInjectedPolkadotAdapter = (
       openSession(injected);
     },
 
-    disconnect: () => {
+    async disconnect() {
       closeSession();
-      return Promise.resolve();
-    },
-
-    async getAccount() {
-      const address = await firstAddress();
-      return address === null ? null : buildPolkadotAccount(address, chain);
+      await Promise.resolve();
     },
 
     async getAccounts() {
@@ -170,70 +180,30 @@ const buildInjectedPolkadotAdapter = (
         return [];
       }
       const accounts = await session.injected.accounts.get();
-      return accounts.map((a) => buildPolkadotAccount(a.address, chain));
+      return accounts.map(toAccount);
     },
-
-    getBalance: noRpcBalance,
 
     async getSigner() {
-      const ext = requireInjected();
-      const address = await firstAddress();
-      if (address === null) {
-        throw new Error("No connected account");
-      }
-      const handle: PolkadotSignerHandle = { address, extension: ext, extensionName };
-      return handle;
+      const extension = requireInjected();
+      await Promise.resolve();
+      return { extension, extensionName, kind: "polkadot-injected" };
     },
-
-    getTransactionReceipt: noRpcTransactionReceipt,
 
     icon: sanitizeIcon(GENERIC_POLKADOT_ICON),
     id: `injected:polkadot:${toKebab(extensionName)}`,
     name: displayName,
 
-    sendTx: noRpcSendTx,
-
-    sendTxToChain: noRpcSendTxToChain,
-
-    async signMessage(msg, account) {
-      const ext = requireInjected();
-      if (ext.signer.signRaw === undefined) {
-        throw new Error(`Wallet ${displayName} does not expose signRaw`);
-      }
-      const address = account?.walletAddress ?? (await firstAddress());
-      if (address === null || address === "") {
-        throw new Error("No connected account");
-      }
-      const wrapped = wrapBytes(msg);
-      const result = await ext.signer.signRaw({
-        address,
-        data: bytesToHex(wrapped),
-        type: "bytes",
-      });
-      return { signature: hexToBytes(result.signature), signedMessage: wrapped };
+    // `signRaw` and `accounts.subscribe` are optional in injectedWeb3 and
+    // live on the object `enable()` returns, so both members appear once
+    // `connect()` has shown the extension offers them.
+    get signMessage() {
+      return session?.injected.signer.signRaw === undefined ? undefined : signMessage;
     },
 
-    subscribe(listener) {
-      listenersSet.add(listener);
-      return () => {
-        listenersSet.delete(listener);
-      };
-    },
-
-    async switchChain(target) {
-      if (target.namespace !== "polkadot") {
-        throw new Error(
-          `Polkadot adapter received non-Polkadot chain "${target.id}". Pass a chain with namespace "polkadot".`,
-        );
-      }
-      chain = POLKADOT_CHAIN_BY_ID.get(target.id) ?? target;
-      if (session === null) {
-        return;
-      }
-      emitAccounts(await session.injected.accounts.get());
+    get subscribe() {
+      return session === null || session.unsubscribe === null ? undefined : subscribe;
     },
   };
 };
 
-export type { PolkadotSignerHandle };
-export { buildInjectedPolkadotAdapter, isPolkadotSignerHandle };
+export { buildInjectedPolkadotAdapter };

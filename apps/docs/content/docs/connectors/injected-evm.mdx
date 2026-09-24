@@ -3,61 +3,92 @@ title: Injected EVM
 description: EIP-6963 discovery with an EIP-1193 injected fallback, via @usebutr/evm.
 ---
 
-`@usebutr/evm` discovers browser EVM wallets (MetaMask, Rabby, Brave, Coinbase, …)
-through [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963), the standard where
-wallets announce themselves via window events instead of fighting over
+`@usebutr/evm` discovers browser EVM wallets (MetaMask, Rabby, Brave,
+Coinbase, …) through [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963),
+where wallets announce themselves with window events instead of fighting over
 `window.ethereum`.
 
-## Discovery
+## Register it
 
-`autoDiscovery()` from `@usebutr/wallets` handles EVM discovery automatically.
-For an EVM-only setup, wire it directly with `createWalletSource`:
+`autoDiscovery()` from `@usebutr/wallets` includes EVM. For an EVM-only app,
+`discoverEvmAdapters` is a source as-is:
 
-```ts
-import { createWalletSource } from "@usebutr/core";
+```tsx
+import type { WalletManagerConfig } from "@usebutr/core";
 import { discoverEvmAdapters } from "@usebutr/evm";
 import { WalletManagerProvider } from "@usebutr/react";
 
-const discovery = createWalletSource(discoverEvmAdapters);
+const config: WalletManagerConfig = {
+  sources: [discoverEvmAdapters],
+  storageKeyPrefix: "my-app",
+};
 
-<WalletManagerProvider discovery={discovery}>
-  {children}
-</WalletManagerProvider>
+export const Providers = ({ children }: { children: React.ReactNode }) => (
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
+);
 ```
+
+The adapter id is the wallet's reverse-DNS name (`io.metamask`, `io.rabby`).
 
 ## Injected fallback
 
-Some regional / legacy wallets only expose a raw EIP-1193 `window.ethereum` and
-never announce via EIP-6963. `discoverInjectedAdapter` is the last-resort
-fallback for them. When using `autoDiscovery()` the `injected` flag is
-controlled by `DiscoverOptions` and defaults to `true` whenever `evm` is enabled.
+Some wallets expose only `window.ethereum` and never announce through
+EIP-6963. `discoverInjectedAdapter` waits 150 ms, then emits one
+`"Browser wallet"` adapter with the id `injected:legacy`. On its own it would
+list a wallet a second time next to its EIP-6963 adapter, so pair the two
+through `autoDiscovery(["evm"])`, which runs the fallback only when EIP-6963
+announced nothing. `autoDiscovery(["evm"], { fallbacks: false })` skips it.
+
+## What the adapter defines
+
+Every injected EVM adapter defines the same members:
+
+| Member                  | Behaviour                                                                                                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `signMessage`           | `personal_sign`; resolves the signature bytes and your message as `signedMessage`.                                                                                          |
+| `sendTx`                | `eth_sendTransaction`; resolves the hash. `bigint` quantities are encoded as hex; `from` is always the resolved account.                                                    |
+| `switchChain`           | `wallet_switchEthereumChain`. Rejects a chain outside `eip155`.                                                                                                             |
+| `requestAccounts`       | `wallet_requestPermissions`, falling back to `eth_requestAccounts` where unsupported. Call it through `useWalletManager().requestAccounts(id)` so the pool entry refreshes. |
+| `getBalance`            | `eth_getBalance`, or an ERC-20 `balanceOf` when `token` is set. The native balance is labelled `"ETH"` on every chain.                                                      |
+| `getTransactionReceipt` | `eth_getTransactionReceipt`; `"Pending"` until mined.                                                                                                                       |
+| `subscribe`             | Bridges `accountsChanged`, `chainChanged`, `connect` and `disconnect`.                                                                                                      |
+| `disconnect`            | `wallet_revokePermissions`. Many wallets ignore it, so their own auto-reconnect may outlive it.                                                                             |
+
+There is no `signTransaction` and no `signIn` on EVM: wallets sign and send in
+one step, and SIWE is app-level.
+
+## Chains and accounts
+
+An EVM wallet has one global network. `sendTx(tx, { chain })` switches it to
+`chain` first, then sends:
 
 ```ts
-import { discoverInjectedAdapter, GENERIC_INJECTED_ICON } from "@usebutr/evm";
+import { EVM_CHAINS } from "@usebutr/core";
+
+const wallet = useSelectedWallet("evm");
+
+const pay = async (to: string) => {
+  if (!wallet?.connector.sendTx) {
+    return;
+  }
+  return wallet.connector.sendTx(
+    { to, value: 10_000_000_000_000_000n },
+    { account: wallet.account, chain: EVM_CHAINS.base },
+  );
+};
 ```
 
-## Capabilities
+butr does not call `wallet_addEthereumChain`, so a chain the wallet does not
+know rejects with the wallet's own error. Chain registries (`EVM_CHAINS`,
+`EVM_CHAINS_LIST`) come from `@usebutr/core`; see
+[multi-chain](/guides/multi-chain).
 
-Derived from the wallet's EIP-6963 provider info / RPC inspection. Typically
-all of `getBalance`, `sendTransaction`, `signMessage`, `subscribe`,
-`switchChain` are `true`; `requestAccounts` is `true` for wallets that honour
-`wallet_requestPermissions`. Always branch on
-[`wallet.connector.capabilities`](/concepts/capabilities) rather than
-assuming.
+`account` must be one the wallet exposes, compared case-insensitively; an
+unknown one rejects.
 
-## Chain switching
+## Signer
 
-EVM connectors switch chains for real via `wallet_switchEthereumChain`. Use
-`EVM_CHAINS_LIST` (or `CHAINS_BY_PLATFORM.evm` from `@usebutr/wallets`) for the
-chain list; see [multi-chain](/guides/multi-chain).
+`getSigner()` resolves `{ kind: "eip1193", provider }`, the wallet's own
+provider, ready for viem or wagmi. See the [viem integration](/integrations/viem).
 
-## Helpers
-
-`@usebutr/evm` also exports byte/hex utilities used by adapters and handy in app
-code: `bytesToHex`, `hexToBytes`, `chainIdHexToDecimal`,
-`chainIdDecimalToHex`, `formatEther`.
-
-<Callout type="info">
-  **Source:** `packages/evm/src`. Used by `apps/demo-next`, `apps/demo-tanstack-start`, and (via
-  `@usebutr/wallets`) `apps/demo-vite`.
-</Callout>
+<Callout type="info">**Source:** `packages/evm/src`. See the [API reference](/api/evm).</Callout>

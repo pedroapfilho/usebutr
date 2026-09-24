@@ -1,256 +1,208 @@
-import type { Account, ChainBase, ConnectorEvent } from "@usebutr/core";
-import { buildAccount, logWarn, sanitizeIcon } from "@usebutr/core";
+import type { Account, ChainBase, Connector, ConnectorEvent, WalletSigner } from "@usebutr/core";
+import { buildAccount, logWarn, resolveChain, sanitizeIcon } from "@usebutr/core";
 
-import { getFeature, pickAccountByAddress, pickFirstAddress } from "./primitives";
+import { findAccount, getFeature } from "./primitives";
 import type {
   StandardConnectFeature,
   StandardDisconnectFeature,
   StandardEventsFeature,
-  WalletStandardFeature,
   WalletStandardWallet,
   WalletStandardWalletAccount,
 } from "./types";
 
-const isStandardConnectFeature = (
-  feature: WalletStandardFeature,
-): feature is WalletStandardFeature & StandardConnectFeature =>
-  "connect" in feature && typeof feature.connect === "function";
-
-const isStandardDisconnectFeature = (
-  feature: WalletStandardFeature,
-): feature is WalletStandardFeature & StandardDisconnectFeature =>
-  "disconnect" in feature && typeof feature.disconnect === "function";
-
-const isStandardEventsFeature = (
-  feature: WalletStandardFeature,
-): feature is WalletStandardFeature & StandardEventsFeature =>
-  "on" in feature && typeof feature.on === "function";
-
 type WalletStandardCoreInput = {
-  /** CAIP-2 prefix including its colon (`solana:`, `sui:`, `bip122:`). */
-  chainPrefix: string;
+  /** The platform's chain registry, for chain names. A chain outside it is
+   *  named by its CAIP-2 id. */
+  chains: ReadonlyArray<ChainBase>;
   /** Stable adapter id. Each platform package owns its own slug prefix. */
   id: string;
-  /** How this adapter names itself in errors (`Bitcoin`, `SVM`, `Sui`). */
+  /** How the platform reads in errors: `Solana`, `Sui`, `Bitcoin`. */
   label: string;
-  /** CAIP-2 namespace without its colon. */
+  /** CAIP-2 namespace without its colon: `solana`, `sui`, `bip122`. */
   namespace: string;
-  /** How the chain family reads in errors (`Bitcoin`, `Solana`, `Sui`). */
-  platform: string;
-  /** Chain ids worth preferring over a bare prefix match. Matched against
-   *  the wallet's own ordering, so a wallet listing `mainnet-beta` before
+  /** Chain ids worth preferring over the first advertised one. Matched in
+   *  the wallet's own order, so a wallet listing `mainnet-beta` before
    *  `mainnet` keeps the chain it advertised first. */
   preferredChainIds: ReadonlyArray<string>;
-  /** Called with a function that pushes a synthetic `disconnected` event
-   *  to all current subscribers. The discovery layer invokes it on Wallet
-   *  Standard `unregister`. */
+  /** Called with a function that pushes a synthetic `disconnected` event to
+   *  all current subscribers. Discovery invokes it on `unregister`. */
   registerDisconnector?: (emit: () => void) => void;
   /** Re-point the active chain when the wallet reports a `chains` change.
-   *  Polkadot opts out: its wallets advertise a single relay chain, so a
-   *  re-point would only ever move the adapter off the chain it resolved. */
+   *  Polkadot opts out: its wallets advertise a single relay chain. */
   trackChainChanges: boolean;
   wallet: WalletStandardWallet;
 };
 
+/** The members every Wallet Standard adapter shares, ready to spread. */
+type WalletStandardConnector = Pick<
+  Connector,
+  "connect" | "disconnect" | "getAccounts" | "icon" | "id" | "name" | "subscribe"
+> & {
+  getSigner: () => Promise<WalletSigner>;
+  switchChain?: (chain: ChainBase) => Promise<void>;
+};
+
 type WalletStandardCore = {
-  /** Chains the wallet advertises in this namespace; feeds capability gating. */
-  chainCount: number;
-  connect: (opts?: { silent?: boolean }) => Promise<void>;
-  /** Active CAIP-2 chain id, for features that take a per-call `chain`. */
-  currentChainId: () => string;
-  disconnect: () => Promise<void>;
-  getAccount: () => Promise<Account | null>;
-  getAccounts: () => Promise<Array<Account>>;
-  getSigner: () => Promise<WalletStandardWallet>;
-  /** Whether the wallet advertises `standard:events`; feeds capability gating. */
-  hasEvents: boolean;
-  icon: string | undefined;
-  id: string;
-  name: string;
-  /** Wallet Standard account a call should route through: the one matching
-   *  `account`, else the wallet's first exposed account. */
-  resolveAccount: (account?: { walletAddress: string }) => WalletStandardWalletAccount;
-  subscribe: (listener: (event: ConnectorEvent) => void) => () => void;
-  switchChain: (chain: ChainBase) => Promise<void>;
-  /** butr chain for the active chain id, for responses that mint their own
-   *  `Account` (Sign-In-With-Solana) rather than going through `getAccounts`. */
-  toChain: () => ChainBase;
+  /** Spread into the adapter. `disconnect`, `subscribe` and `switchChain` are
+   *  present only when the wallet supports them. */
+  base: WalletStandardConnector;
+  /** The active chain, for results that mint their own `Account`. */
+  currentChain: () => ChainBase;
+  /** The Wallet Standard account a call signs with: the one matching
+   *  `account`, else the active one. Throws for an account the wallet does
+   *  not expose. */
+  resolveAccount: (account?: Account) => WalletStandardWalletAccount;
+  /** The chain id a call targets: `chain` when given, else the current one.
+   *  Throws for a chain outside the namespace or not advertised. */
+  resolveChainId: (chain?: ChainBase) => string;
 };
 
 /**
- * Shared session plumbing for every Wallet Standard platform adapter.
- * `getSigner` hands back the raw Wallet Standard wallet so consumers can
- * wrap it in their own signing library.
+ * `null` when the wallet advertises no chain in `namespace` or lacks
+ * `standard:connect`, so a multi-chain wallet yields one adapter per
+ * platform it actually speaks.
  */
 const createWalletStandardCore = ({
-  chainPrefix,
+  chains,
   id,
   label,
   namespace,
-  platform,
   preferredChainIds,
   registerDisconnector,
   trackChainChanges,
   wallet,
 }: WalletStandardCoreInput): WalletStandardCore | null => {
-  const preferredChains = new Set(preferredChainIds);
-  const pickChain = (chains: ReadonlyArray<string>): string | null =>
-    chains.find((c) => preferredChains.has(c)) ??
-    chains.find((c) => c.startsWith(chainPrefix)) ??
-    null;
+  const prefix = `${namespace}:`;
+  const preferred = new Set(preferredChainIds);
+  const pickChain = (advertised: ReadonlyArray<string>): string | undefined =>
+    advertised.find((c) => preferred.has(c)) ?? advertised.find((c) => c.startsWith(prefix));
 
   const initialChainId = pickChain(wallet.chains);
-  if (initialChainId === null) {
+  const connect = getFeature<StandardConnectFeature>(wallet, "standard:connect", "connect");
+  if (initialChainId === undefined || connect === undefined) {
     return null;
   }
-  const connect = getFeature(wallet, "standard:connect", isStandardConnectFeature);
-  if (connect === undefined) {
-    return null;
-  }
-
-  const disconnect = getFeature(wallet, "standard:disconnect", isStandardDisconnectFeature);
-  const events = getFeature(wallet, "standard:events", isStandardEventsFeature);
+  const disconnect = getFeature<StandardDisconnectFeature>(
+    wallet,
+    "standard:disconnect",
+    "disconnect",
+  );
+  const events = getFeature<StandardEventsFeature>(wallet, "standard:events", "on");
 
   let currentChainId = initialChainId;
-  const toChain = (): ChainBase => ({
-    id: currentChainId,
-    name: wallet.name,
-    namespace,
-    reference: currentChainId.slice(chainPrefix.length),
-  });
-
-  const listeners = new Set<(event: ConnectorEvent) => void>();
-  const notifyAccountChanged = () => {
-    if (wallet.accounts.length === 0) {
-      return;
-    }
-    const chain = toChain();
-    const built = wallet.accounts.map((a) => buildAccount(a.address, chain));
-    const first = built[0];
-    if (first === undefined) {
-      return;
-    }
-    for (const listener of listeners) {
-      listener({ account: first, accounts: built, type: "accountChanged" });
-    }
+  const currentChain = () => resolveChain(currentChainId, chains);
+  const toAccounts = (accounts: ReadonlyArray<WalletStandardWalletAccount>) => {
+    const chain = currentChain();
+    return accounts.map((a) => buildAccount(a.address, chain));
   };
 
-  registerDisconnector?.(() => {
+  const listeners = new Set<(event: ConnectorEvent) => void>();
+  const emit = (event: ConnectorEvent) => {
     for (const listener of listeners) {
-      listener({ type: "disconnected" });
+      listener(event);
     }
+  };
+  const toEvent = (accounts: ReadonlyArray<WalletStandardWalletAccount>): ConnectorEvent =>
+    accounts.length === 0
+      ? { type: "disconnected" }
+      : { accounts: toAccounts(accounts), type: "accountsChanged" };
+  registerDisconnector?.(() => {
+    emit({ type: "disconnected" });
   });
 
-  return {
-    chainCount: wallet.chains.filter((c) => c.startsWith(chainPrefix)).length,
+  const resolveChainId = (chain?: ChainBase): string => {
+    if (chain === undefined) {
+      return currentChainId;
+    }
+    if (chain.namespace !== namespace) {
+      throw new Error(
+        `${label} adapter received non-${label} chain "${chain.id}". Pass a chain with namespace "${namespace}".`,
+      );
+    }
+    if (!wallet.chains.includes(chain.id)) {
+      throw new Error(
+        `Wallet ${wallet.name} does not advertise chain "${chain.id}". Available: ${wallet.chains.join(", ")}`,
+      );
+    }
+    return chain.id;
+  };
 
-    async connect(opts) {
-      await connect.connect(opts?.silent === true ? { silent: true } : undefined);
+  const subscribe = (listener: (event: ConnectorEvent) => void) => {
+    listeners.add(listener);
+    // Each subscriber owns a wallet listener, so it delivers to that
+    // subscriber alone: broadcasting would repeat a change per subscriber.
+    const off = events?.on("change", (changes) => {
+      const next = trackChainChanges && changes.chains ? pickChain(changes.chains) : undefined;
+      if (next !== undefined) {
+        currentChainId = next;
+      }
+      if (changes.accounts !== undefined) {
+        listener(toEvent(changes.accounts));
+      } else if (next !== undefined) {
+        listener(toEvent(wallet.accounts));
+      }
+    });
+    return () => {
+      listeners.delete(listener);
+      off?.();
+    };
+  };
+
+  const advertisedInNamespace = wallet.chains.filter((c) => c.startsWith(prefix));
+
+  const base: WalletStandardConnector = {
+    async connect(options) {
+      await connect.connect(options?.silent === true ? { silent: true } : undefined);
     },
-
-    currentChainId: () => currentChainId,
-
-    async disconnect() {
-      if (disconnect !== undefined) {
+    getAccounts: () => Promise.resolve(toAccounts(wallet.accounts)),
+    getSigner: () => Promise.resolve({ kind: "wallet-standard", wallet }),
+    icon: sanitizeIcon(wallet.icon),
+    id,
+    name: wallet.name,
+    ...(disconnect !== undefined && {
+      async disconnect() {
         try {
           await disconnect.disconnect();
         } catch (error) {
           logWarn(`[butr] ${label} Wallet Standard disconnect threw:`, error);
         }
-      }
-    },
+      },
+    }),
+    // Discovery wires `unregister` through the same listeners, so a wallet
+    // without `standard:events` can still report its removal.
+    ...((events !== undefined || registerDisconnector !== undefined) && { subscribe }),
+    // Wallet Standard has no switch-network call: this re-points butr's view
+    // (and every later call's `chain` input), which only means something
+    // when the wallet advertises more than one chain.
+    ...(advertisedInNamespace.length > 1 && {
+      switchChain: async (chain: ChainBase) => {
+        currentChainId = resolveChainId(chain);
+        emit(toEvent(wallet.accounts));
+        await Promise.resolve();
+      },
+    }),
+  };
 
-    getAccount: () => {
-      const address = pickFirstAddress(wallet.accounts);
-      return Promise.resolve(address === null ? null : buildAccount(address, toChain()));
-    },
-
-    getAccounts: () => {
-      const chain = toChain();
-      return Promise.resolve(wallet.accounts.map((a) => buildAccount(a.address, chain)));
-    },
-
-    getSigner: () => Promise.resolve(wallet),
-
-    hasEvents: Boolean(events),
-
-    icon: sanitizeIcon(wallet.icon),
-    id,
-    name: wallet.name,
-
+  return {
+    base,
+    currentChain,
     resolveAccount: (account) => {
-      const wsAccount = account
-        ? pickAccountByAddress(wallet.accounts, account.walletAddress)
-        : wallet.accounts[0];
-      if (wsAccount === undefined) {
-        throw new Error("No connected account");
-      }
-      return wsAccount;
-    },
-
-    subscribe(listener) {
-      listeners.add(listener);
-      let unsubWallet: (() => void) | null = null;
-      if (events !== undefined) {
-        const unsub = events.on("change", (changes) => {
-          if (trackChainChanges && changes.chains !== undefined) {
-            const next = pickChain(changes.chains);
-            if (next !== null) {
-              currentChainId = next;
-            }
-          }
-
-          if (changes.accounts !== undefined) {
-            if (changes.accounts.length === 0) {
-              listener({ type: "disconnected" });
-              return;
-            }
-            const chain = toChain();
-            const built = changes.accounts.map((a) => buildAccount(a.address, chain));
-            const first = built[0];
-            if (first === undefined) {
-              return;
-            }
-            listener({ account: first, accounts: built, type: "accountChanged" });
-            return;
-          }
-
-          if (trackChainChanges && changes.chains !== undefined) {
-            notifyAccountChanged();
-          }
-        });
-        unsubWallet = () => {
-          unsub();
-        };
-      }
-      return () => {
-        listeners.delete(listener);
-        unsubWallet?.();
-      };
-    },
-
-    // Async so a rejected chain surfaces as a rejection. Declared
-    // `Promise<void>`, this previously threw synchronously, so a caller
-    // attaching `.catch()` instead of awaiting got an uncaught throw.
-    switchChain: async (chain) => {
-      if (chain.namespace !== namespace) {
+      const match =
+        account === undefined
+          ? wallet.accounts[0]
+          : findAccount(wallet.accounts, account.walletAddress);
+      if (match === undefined) {
         throw new Error(
-          `${label} adapter received non-${platform} chain "${chain.id}". Pass a chain with namespace "${namespace}".`,
+          account === undefined
+            ? `Wallet ${wallet.name} has no connected account`
+            : `Wallet ${wallet.name} does not expose account ${account.walletAddress}`,
         );
       }
-      if (!wallet.chains.includes(chain.id)) {
-        throw new Error(
-          `Wallet ${wallet.name} does not advertise chain "${chain.id}". Available: ${wallet.chains.join(", ")}`,
-        );
-      }
-      currentChainId = chain.id;
-      notifyAccountChanged();
-      await Promise.resolve();
+      return match;
     },
-
-    toChain,
+    resolveChainId,
   };
 };
 
-export type { WalletStandardCore };
+export type { WalletStandardConnector, WalletStandardCore, WalletStandardCoreInput };
 export { createWalletStandardCore };

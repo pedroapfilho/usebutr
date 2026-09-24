@@ -1,13 +1,10 @@
 import type { Eip1193Provider } from "./eip1193";
 
-/**
- * `getSigner()` itself still returns `Promise<unknown>` (see
- * `packages/core/src/types/signer.ts` for why); this only changes what
- * `SignerForPlatform["evm"]` evaluates to.
- */
+/** Every EVM adapter built on an EIP-1193 provider (injected, EIP-6963,
+ *  WalletConnect's EVM namespace) hands back that provider. */
 declare module "@usebutr/core" {
   // oxlint-disable-next-line typescript/consistent-type-definitions -- module augmentation requires interface
-  interface SignerForPlatform {
-    evm: Eip1193Provider;
+  interface WalletSignerRegistry {
+    eip1193: { provider: Eip1193Provider };
   }
 }

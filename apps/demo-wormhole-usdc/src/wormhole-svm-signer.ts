@@ -1,5 +1,5 @@
 import { assertIsSignature, createSolanaRpc } from "@solana/kit";
-import type { WalletAdapter } from "@usebutr/core";
+import type { ChainBase, ConnectedWallet } from "@usebutr/core";
 import type {
   Chain,
   Network,
@@ -105,14 +105,14 @@ const isVersioned = (tx: LegacyTx | VersionedTx): tx is VersionedTx =>
  */
 class ButrSvmWormholeSigner<N extends Network, C extends Chain> implements SignAndSendSigner<N, C> {
   private readonly _chain: C;
-  private readonly _address: string;
-  private readonly _connector: WalletAdapter;
+  private readonly _wallet: ConnectedWallet<"svm">;
+  private readonly _walletChain: ChainBase;
   private readonly _rpcUrl: string;
 
-  constructor(chain: C, address: string, connector: WalletAdapter, rpcUrl: string) {
+  constructor(chain: C, wallet: ConnectedWallet<"svm">, walletChain: ChainBase, rpcUrl: string) {
     this._chain = chain;
-    this._address = address;
-    this._connector = connector;
+    this._wallet = wallet;
+    this._walletChain = walletChain;
     this._rpcUrl = rpcUrl;
   }
 
@@ -121,10 +121,14 @@ class ButrSvmWormholeSigner<N extends Network, C extends Chain> implements SignA
   }
 
   address(): string {
-    return this._address;
+    return this._wallet.account.walletAddress;
   }
 
   async signAndSend(txs: Array<UnsignedTransaction<N, C>>): Promise<Array<TxHash>> {
+    const { account, connector } = this._wallet;
+    if (connector.sendTx === undefined) {
+      throw new Error(`${connector.name} cannot send Solana transactions`);
+    }
     const rpc = createSolanaRpc(this._rpcUrl);
     const hashes: Array<TxHash> = [];
     for (const tx of txs) {
@@ -150,7 +154,12 @@ class ButrSvmWormholeSigner<N extends Network, C extends Chain> implements SignA
           verifySignatures: false,
         });
       }
-      const signature = await this._connector.sendTx(serialized);
+      // Pin both: unpinned, a Wallet Standard wallet signs with its first
+      // account on its current cluster, not the selected account on devnet.
+      const signature = await connector.sendTx(serialized, {
+        account,
+        chain: this._walletChain,
+      });
       await confirmSignature(rpc, signature);
       hashes.push(signature);
     }

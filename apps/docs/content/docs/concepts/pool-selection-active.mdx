@@ -1,6 +1,6 @@
 ---
 title: Pool, selection, and active
-description: "Three independent pieces of state: every connected wallet, the chosen wallet per platform, and the one wallet in focus now."
+description: "Three pieces of state: every connected wallet, the chosen wallet per platform, and the one wallet in focus now."
 ---
 
 butr keeps three distinct things. Confusing them is the most common source of
@@ -8,31 +8,32 @@ bugs, so they are kept separate on purpose.
 
 ## Pool
 
-Every connected wallet, keyed by `connectorId`.
+Every connected wallet, keyed by adapter id, in connection order.
 
 ```ts
-// Map<string, ConnectedWallet>
-const pool = usePool();
-const wallets = useConnectedWallets(); // pool projected as an array
+const wallets = useConnectedWallets(); // the pool as an array
+const pool = useWalletState((state) => state.pool); // ReadonlyMap<string, ConnectedWallet>
+const phantom = useWallet("wallet-standard:svm-phantom"); // one entry
 ```
 
 A user can have many wallets in the pool at once (MetaMask + Phantom +
-WalletConnect). Adding or removing one never implicitly changes selection or
-active state.
+WalletConnect).
 
 ## Selection: per platform
 
-A `Map<ChainPlatform, connectorId>`: which wallet is chosen for `evm` and which
-for `svm`. The two are independent: selecting an EVM wallet does nothing to
-SVM.
+A `Map<ChainPlatform, connectorId>`: which wallet serves `evm`, which serves
+`svm`, and so on. The platforms are independent: selecting an EVM wallet does
+nothing to SVM.
 
 ```ts
-const selection = useSelection(); // Map<"evm" | "svm", string>
-const evmWallet = useSelectedWallet("evm");
-const isEvmConnected = useIsPlatformConnected("evm");
-const setSelection = useSetSelection();
-setSelection("evm", "metamask");
+const evmWallet = useSelectedWallet("evm"); // ConnectedWallet<"evm"> | undefined
+const { setSelection } = useWalletManager();
+setSelection("evm", "io.metamask");
 ```
+
+`useSelectedWallet(platform)` is typed to that platform's adapter, so
+`evmWallet.connector.sendTx` takes an EVM transaction with no narrowing. A
+platform with no connected wallet has no selection.
 
 ## Active: the one in focus
 
@@ -40,26 +41,45 @@ A single global `activeConnectorId`: the wallet the user is interacting with
 right now. This is what most single-wallet UIs read.
 
 ```ts
-const active = useActiveWallet(); // ConnectedWallet | undefined
-const setActive = useSetActiveConnector();
-setActive("phantom");
+const active = useWallet(); // ConnectedWallet | undefined
+const { setActive } = useWalletManager();
+setActive("wallet-standard:svm-phantom");
 ```
 
-## How they relate
+`useWallet`, `useAccounts`, and `useIsReconnecting` read the active wallet when
+you omit the id. Passing `null` means no wallet, with no fallback to the active
+one, which suits an id held in state that may be empty.
 
-They are **independent buckets**. Setting selection does not change active;
-setting active does not change selection. A wallet can be selected for EVM and
-not be the active wallet at all.
+## How they change
 
-- Single-wallet apps: read `useActiveWallet()`, ignore selection.
-- Multi-chain apps that act on both platforms at once: read
+`setActive` changes only the active wallet, and `setSelection` changes only
+that platform's selection. Both ignore an id that isn't in the pool, and
+`setSelection` ignores a wallet from another platform.
+
+Connecting and disconnecting move them for you, so neither ever points at a
+wallet that is gone:
+
+- **`connect(id)`** makes the wallet active. When it is new to the pool, it
+  also becomes the selection for its platform; reconnecting a wallet already in
+  the pool leaves the selection alone.
+- **`disconnect(id)`** falls back: the platform's selection moves to another
+  connected wallet of that platform (or goes away), and the active wallet
+  becomes the first one left in the pool (or `null`).
+- **Hydration** restores the stored active wallet and selection, unless the
+  user already connected or picked a wallet during the restore; their choice
+  wins.
+
+A wallet can be selected for EVM and not be the active wallet at all.
+
+- Single-wallet apps: read `useWallet()`, ignore selection.
+- Multi-chain apps that act on several platforms at once: read
   `useSelectedWallet("evm")` and `useSelectedWallet("svm")`.
-- A "make active" button in a multi-wallet list: call `useSetActiveConnector()`
-  (this is exactly what the `demo-vite` reference does).
+- A "make active" button in a multi-wallet list: call `setActive(id)` from
+  `useWalletManager()` (this is exactly what the `demo-vite` reference does).
 
 <Callout type="info">
-  Stable accessors `useGetWallet()` and `useGetSelectedWallet()` return functions instead of
-  subscribing; use them inside callbacks and effect bodies to avoid re-renders.
+  `useWalletManager().getState()` reads the pool, selection, and active id without subscribing. Use
+  it inside callbacks and effects to avoid re-renders.
 </Callout>
 
-**Source:** `packages/react/src/hooks/`, `packages/core/src/store`.
+**Source:** `packages/core/src/store/reducer.ts`, `packages/react/src/hooks/state.ts`.

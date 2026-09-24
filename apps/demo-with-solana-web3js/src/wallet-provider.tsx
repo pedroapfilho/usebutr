@@ -1,14 +1,15 @@
-import { createWalletSource } from "@usebutr/core";
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
 import { discoverSvmAdapters } from "@usebutr/svm";
 import type { ReactNode } from "react";
 
-const svmDiscovery = createWalletSource(discoverSvmAdapters);
+const config: WalletManagerConfig = {
+  sources: [discoverSvmAdapters],
+  storageKeyPrefix: "butr-solana-web3js-demo",
+};
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <WalletManagerProvider discovery={svmDiscovery} storageKeyPrefix="butr-solana-web3js-demo">
-    {children}
-  </WalletManagerProvider>
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 
 export { WalletProvider };

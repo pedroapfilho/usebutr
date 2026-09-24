@@ -1,23 +1,15 @@
 import type { ConnectedWallet } from "@usebutr/core";
-import {
-  useActiveWallet,
-  useBalance,
-  useDisconnectWallet,
-  useRequestAccounts,
-  useSetActiveConnector,
-} from "@usebutr/react";
+import { useBalance, useWallet, useWalletManager } from "@usebutr/react";
 
 import { AccountList } from "./account-list";
 import { ChainPicker } from "./chain-picker";
 
 const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
-  const active = useActiveWallet();
-  const setActive = useSetActiveConnector();
-  const disconnect = useDisconnectWallet();
-  const requestAccounts = useRequestAccounts();
-  const balance = useBalance(wallet.connector.id);
+  const active = useWallet();
+  const { disconnect, requestAccounts, setActive } = useWalletManager();
+  const balance = useBalance(wallet);
   const isActive = active?.connector.id === wallet.connector.id;
-  const { capabilities } = wallet.connector;
+  const { switchChain } = wallet.connector;
 
   let balanceText: string;
   if (balance.status === "success") {
@@ -79,16 +71,16 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
         </dd>
         <dt className="text-foreground-muted">Balance</dt>
         <dd className="font-mono text-xs">{balanceText}</dd>
-        {capabilities.switchChain ? (
+        {switchChain ? (
           <>
             <dt className="text-foreground-muted">Chain</dt>
             <dd>
-              <ChainPicker wallet={wallet} />
+              <ChainPicker switchChain={switchChain} wallet={wallet} />
             </dd>
           </>
         ) : null}
       </dl>
-      {capabilities.requestAccounts ? (
+      {wallet.connector.requestAccounts ? (
         <button
           className="border-border-strong hover:bg-surface-subtle rounded-md border px-3 py-1.5 text-sm"
           onClick={() => {

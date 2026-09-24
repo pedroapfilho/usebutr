@@ -1,143 +1,193 @@
-import { describe, expect, it, vi } from "vitest";
+import type { EvmAdapter } from "@usebutr/core";
+import { buildAccount, ConnectionError, EVM_CHAINS, SVM_CHAINS } from "@usebutr/core";
+import { describe, expect, it } from "vitest";
 
-import type { EthAppConstructor, EthAppLike, TransportFactory, TransportLike } from "../adapter";
 import { createLedgerAdapter } from "../adapter";
+import { isClassWith, loadPeer } from "../adapter-core";
+import type { EthAppConstructor, EthAppLike } from "../apps/evm";
+import { createEvmLedgerAdapter } from "../apps/evm";
+import type { SolanaAppConstructor } from "../apps/svm";
+
+import { buildFakeTransport, indexOfPath } from "./helpers";
 
 const FAKE_ADDRESSES = [
-  "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
   "0xb1c97082d7308c47e2D29Ee5BdB058Fe6c6c0c59",
-  "0xc1a5d63d0eb1c52e0e0006c3a7a3a3d52a3a3a3a",
+  "0xC1a5d63D0Eb1c52E0e0006c3A7a3a3d52a3A3A3a",
 ] as const;
 
-const buildEthCtorWithAddress = (
-  getAddress: (path: string) => Promise<{ address: string; publicKey: string }>,
-): EthAppConstructor => {
-  return class FakeEth implements EthAppLike {
-    constructor(private readonly _transport: TransportLike) {
-      void _transport;
-    }
+type EthHooks = {
+  getAddress?: (path: string) => Promise<{ address: string; publicKey: string }>;
+  onSign?: (path: string, messageHex: string) => void;
+};
+
+const buildFakeEthCtor = (hooks: EthHooks = {}): EthAppConstructor =>
+  class FakeEth implements EthAppLike {
     getAddress(path: string): Promise<{ address: string; publicKey: string }> {
-      return getAddress(path);
+      if (hooks.getAddress !== undefined) {
+        return hooks.getAddress(path);
+      }
+      const address = FAKE_ADDRESSES[indexOfPath(path)] ?? FAKE_ADDRESSES[0];
+      return Promise.resolve({ address, publicKey: "0xpubkey" });
     }
-    signPersonalMessage(_path: string, _hex: string): Promise<{ r: string; s: string; v: number }> {
-      return Promise.resolve({ r: "a".repeat(64), s: "b".repeat(64), v: 27 });
+    signPersonalMessage(
+      path: string,
+      messageHex: string,
+    ): Promise<{ r: string; s: string; v: number }> {
+      hooks.onSign?.(path, messageHex);
+      // Ledger drops leading zero bytes, so `r` arrives short.
+      return Promise.resolve({ r: "aa".repeat(31), s: "bb".repeat(32), v: 27 });
     }
-    signTransaction(_path: string, _hex: string): Promise<{ r: string; s: string; v: string }> {
+    signTransaction(): Promise<{ r: string; s: string; v: string }> {
       return Promise.resolve({ r: "ff", s: "ee", v: "1b" });
     }
   };
+
+const connectedEvm = async (
+  options: { accountCount?: number; hooks?: EthHooks } = {},
+): Promise<EvmAdapter> => {
+  const adapter = await createEvmLedgerAdapter({
+    accountCount: options.accountCount,
+    eth: buildFakeEthCtor(options.hooks),
+    platform: "evm",
+    transport: buildFakeTransport().factory,
+  });
+  await adapter.connect();
+  return adapter;
 };
 
-const buildFakeEthCtor = (addresses: ReadonlyArray<string> = FAKE_ADDRESSES): EthAppConstructor =>
-  buildEthCtorWithAddress((path) => {
-    const idx = Math.trunc(Number(path.split("/").pop() ?? "0"));
-    const address = addresses[idx] ?? addresses[0];
-    return Promise.resolve({ address: address ?? "0x0", publicKey: "0xpubkey" });
-  });
+const hello = new TextEncoder().encode("hello");
 
-const buildFakeTransport = (): {
-  created: ReadonlyArray<TransportLike>;
-  factory: TransportFactory;
-  lastTransport: TransportLike | null;
-} => {
-  const created: Array<TransportLike> = [];
-  const factory: TransportFactory = {
-    create(): Promise<TransportLike> {
-      const t: TransportLike = {
-        close: vi.fn().mockResolvedValue(undefined),
-      };
-      created.push(t);
-      return Promise.resolve(t);
-    },
-  };
-  return {
-    created,
-    factory,
-    get lastTransport() {
-      return created.at(-1) ?? null;
-    },
-  };
-};
-
-describe("createLedgerAdapter", () => {
-  it("builds an adapter with conservative defaults", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
+describe("createEvmLedgerAdapter", () => {
+  it("defines only what a device that signs without RPC can do", async () => {
+    const adapter = await createEvmLedgerAdapter({
       eth: buildFakeEthCtor(),
       platform: "evm",
-      transport: factory,
+      transport: buildFakeTransport().factory,
     });
 
-    expect(adapter.id).toBe("ledger");
-    expect(adapter.name).toBe("Ledger");
-    expect(adapter.chainPlatform).toBe("evm");
-    expect(adapter.capabilities.signMessage).toBe(true);
-    expect(adapter.capabilities.sendTransaction).toBe(false);
-    expect(adapter.capabilities.signTransaction).toBe(false);
-    expect(adapter.capabilities.getBalance).toBe(false);
-    expect(adapter.capabilities.subscribe).toBe(false);
-    expect(adapter.capabilities.switchChain).toBe(true);
+    expect(adapter).toMatchObject({ chainPlatform: "evm", id: "ledger", name: "Ledger" });
+    expect(adapter.signMessage).toBeTypeOf("function");
+    for (const method of [
+      "getBalance",
+      "getTransactionReceipt",
+      "requestAccounts",
+      "sendTx",
+      "subscribe",
+      "switchChain",
+    ]) {
+      expect(adapter).not.toHaveProperty(method);
+    }
   });
 
-  it("connect() opens transport + fetches first address", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
+  it("reads every account once on connect, active first, on the registry's chain", async () => {
+    const seen: Array<string> = [];
+    const adapter = await connectedEvm({
+      accountCount: 3,
+      hooks: {
+        getAddress: (path) => {
+          seen.push(path);
+          const address = FAKE_ADDRESSES[indexOfPath(path)] ?? "";
+          return Promise.resolve({ address, publicKey: "0xpubkey" });
+        },
+      },
+    });
+
+    const accounts = await adapter.getAccounts();
+    await adapter.getAccounts();
+
+    expect(seen).toEqual(["44'/60'/0'/0/0", "44'/60'/0'/0/1", "44'/60'/0'/0/2"]);
+    expect(accounts).toEqual(FAKE_ADDRESSES.map((a) => buildAccount(a, EVM_CHAINS.ethereum)));
+  });
+
+  it("reports accounts on the configured chain", async () => {
+    const onSepolia = await createEvmLedgerAdapter({
+      chainId: EVM_CHAINS.sepolia.id,
       eth: buildFakeEthCtor(),
       platform: "evm",
-      transport: factory,
+      transport: buildFakeTransport().factory,
     });
+    await onSepolia.connect();
+    const [account] = await onSepolia.getAccounts();
+    expect(account?.chain).toEqual(EVM_CHAINS.sepolia);
 
-    await adapter.connect();
-    const account = await adapter.getAccount();
-    expect(account?.walletAddress).toBe(FAKE_ADDRESSES[0]);
-    expect(account?.chain.id).toBe("eip155:1");
+    const onAnvil = await createEvmLedgerAdapter({
+      chainId: "eip155:31337",
+      eth: buildFakeEthCtor(),
+      platform: "evm",
+      transport: buildFakeTransport().factory,
+    });
+    await onAnvil.connect();
+    const [anvilAccount] = await onAnvil.getAccounts();
+    expect(anvilAccount?.chain.name).toBe("eip155:31337");
   });
 
-  it("disconnect() closes the transport and clears state", async () => {
+  it("rejects a chainId from another namespace", async () => {
+    await expect(
+      createEvmLedgerAdapter({
+        chainId: SVM_CHAINS.mainnet.id,
+        eth: buildFakeEthCtor(),
+        platform: "evm",
+      }),
+    ).rejects.toThrow(/outside the "eip155" namespace/v);
+  });
+
+  it("rejects a silent connect instead of prompting", async () => {
     const fake = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
+    const adapter = await createEvmLedgerAdapter({
+      eth: buildFakeEthCtor(),
+      platform: "evm",
+      transport: fake.factory,
+    });
+
+    await expect(adapter.connect({ silent: true })).rejects.toThrow(/interactive connect/v);
+    expect(fake.created).toHaveLength(0);
+  });
+
+  it("disconnect() closes the transport and empties the accounts", async () => {
+    const fake = buildFakeTransport();
+    const adapter = await createEvmLedgerAdapter({
       eth: buildFakeEthCtor(),
       platform: "evm",
       transport: fake.factory,
     });
 
     await adapter.connect();
-    const transport = fake.lastTransport;
-    expect(transport).not.toBeNull();
-
     await adapter.disconnect?.();
-    expect(transport?.close).toHaveBeenCalled();
 
-    const account = await adapter.getAccount();
-    expect(account).toBeNull();
+    expect(fake.lastTransport?.close).toHaveBeenCalled();
+    expect(await adapter.getAccounts()).toEqual([]);
   });
 
-  it("connect() rejects, closes the transport, and stays account-less when the address read fails", async () => {
+  it("a failed connect closes the transport and leaves the adapter disconnected", async () => {
     const fake = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
-      eth: buildEthCtorWithAddress(() => Promise.reject(new Error("Ledger device is locked"))),
+    const adapter = await createEvmLedgerAdapter({
+      eth: buildFakeEthCtor({
+        getAddress: () => Promise.reject(new Error("Ledger device is locked")),
+      }),
       platform: "evm",
       transport: fake.factory,
     });
 
     await expect(adapter.connect()).rejects.toThrow(/locked/v);
     expect(fake.lastTransport?.close).toHaveBeenCalled();
-    expect(await adapter.getAccount()).toBeNull();
-    await expect(adapter.signMessage(new TextEncoder().encode("hello"))).rejects.toThrow(
-      /not connected/v,
-    );
+    expect(await adapter.getAccounts()).toEqual([]);
+    await expect(adapter.signMessage?.(hello)).rejects.toMatchObject({ kind: "NotConnected" });
+    await expect(adapter.getSigner()).rejects.toBeInstanceOf(ConnectionError);
   });
 
-  it("disconnect() during an in-flight connect() wins over the late address", async () => {
+  it("disconnect() during an in-flight connect() wins over the late addresses", async () => {
     const fake = buildFakeTransport();
-    let releaseAddress: (() => void) | undefined;
+    let release: (() => void) | undefined;
     const pending = new Promise<void>((resolve) => {
-      releaseAddress = resolve;
+      release = resolve;
     });
-    const adapter = await createLedgerAdapter({
-      eth: buildEthCtorWithAddress(async () => {
-        await pending;
-        return { address: FAKE_ADDRESSES[0] ?? "0x0", publicKey: "0xpubkey" };
+    const adapter = await createEvmLedgerAdapter({
+      eth: buildFakeEthCtor({
+        getAddress: async () => {
+          await pending;
+          return { address: FAKE_ADDRESSES[0], publicKey: "0xpubkey" };
+        },
       }),
       platform: "evm",
       transport: fake.factory,
@@ -145,16 +195,16 @@ describe("createLedgerAdapter", () => {
 
     const connecting = adapter.connect();
     await adapter.disconnect?.();
-    releaseAddress?.();
+    release?.();
     await connecting;
 
-    expect(await adapter.getAccount()).toBeNull();
+    expect(await adapter.getAccounts()).toEqual([]);
     expect(fake.lastTransport?.close).toHaveBeenCalled();
   });
 
   it("two concurrent connect() calls open exactly one transport", async () => {
     const fake = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
+    const adapter = await createEvmLedgerAdapter({
       eth: buildFakeEthCtor(),
       platform: "evm",
       transport: fake.factory,
@@ -163,129 +213,107 @@ describe("createLedgerAdapter", () => {
     await Promise.all([adapter.connect(), adapter.connect()]);
 
     expect(fake.created).toHaveLength(1);
-    const account = await adapter.getAccount();
-    expect(account?.walletAddress).toBe(FAKE_ADDRESSES[0]);
   });
 
-  it("getAccounts() walks the derivation path up to accountCount", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
+  it("signMessage() returns r || s || v, each half padded to 32 bytes", async () => {
+    const signed: Array<string> = [];
+    const adapter = await connectedEvm({
+      hooks: {
+        onSign: (path) => {
+          signed.push(path);
+        },
+      },
+    });
+
+    const result = await adapter.signMessage?.(hello);
+
+    expect(signed).toEqual(["44'/60'/0'/0/0"]);
+    expect(result?.signature).toHaveLength(65);
+    expect(result?.signature.slice(0, 2)).toEqual(Uint8Array.of(0, 0xaa));
+    expect(result?.signature[32]).toBe(0xbb);
+    expect(result?.signature[64]).toBe(27);
+    expect(result?.signedMessage).toBe(hello);
+  });
+
+  it("signMessage() signs as an exposed non-active account on its own path", async () => {
+    const signed: Array<string> = [];
+    const adapter = await connectedEvm({
       accountCount: 3,
-      eth: buildFakeEthCtor(),
-      platform: "evm",
-      transport: factory,
+      hooks: {
+        onSign: (path) => {
+          signed.push(path);
+        },
+      },
     });
+    const accounts = await adapter.getAccounts();
+    const third = accounts.at(2);
 
-    await adapter.connect();
-    const accounts = await adapter.getAccounts!();
-    expect(accounts.map((a) => a.walletAddress)).toEqual([...FAKE_ADDRESSES]);
+    await adapter.signMessage?.(hello, { account: third });
+
+    expect(signed).toEqual(["44'/60'/0'/0/2"]);
   });
 
-  it("switchChain() updates the chain id on subsequent getAccount() calls", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
-      eth: buildFakeEthCtor(),
-      platform: "evm",
-      transport: factory,
-    });
-
-    await adapter.connect();
-    await adapter.switchChain({
-      id: "eip155:137",
-      name: "Polygon",
-      namespace: "eip155",
-      reference: "137",
-    });
-    const account = await adapter.getAccount();
-    expect(account?.chain.id).toBe("eip155:137");
-    expect(account?.chain.reference).toBe("137");
-  });
-
-  it("switchChain() rejects non-EVM chains", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
-      eth: buildFakeEthCtor(),
-      platform: "evm",
-      transport: factory,
-    });
-
-    await expect(
-      adapter.switchChain({
-        id: "solana:mainnet",
-        name: "Solana",
-        namespace: "solana",
-        reference: "mainnet",
-      }),
-    ).rejects.toThrow(/non-EVM chain/v);
-  });
-
-  it("signMessage() returns a 65-byte (r||s||v) signature", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
-      eth: buildFakeEthCtor(),
-      platform: "evm",
-      transport: factory,
-    });
-
-    await adapter.connect();
-    const result = await adapter.signMessage(new TextEncoder().encode("hello"));
-    expect(result.signature).toBeInstanceOf(Uint8Array);
-    expect(result.signature.length).toBe(65);
-    expect(result.signature[0]).toBe(0xaa);
-    expect(result.signature[32]).toBe(0xbb);
-    expect(result.signature[64]).toBe(0x1b);
-  });
-
-  it("signMessage() with a non-active account walks paths to find it", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
-      accountCount: 3,
-      eth: buildFakeEthCtor(),
-      platform: "evm",
-      transport: factory,
-    });
-
-    await adapter.connect();
-    const result = await adapter.signMessage(new TextEncoder().encode("hello"), {
-      chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" },
-      id: `eip155:1:${(FAKE_ADDRESSES[2] ?? "0x0").toLowerCase()}`,
-      walletAddress: FAKE_ADDRESSES[2] ?? "0x0",
-    });
-    expect(result.signature.length).toBe(65);
-  });
-
-  it("signMessage() throws when the address isn't on any known path", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
+  it("signMessage() rejects an account the session does not expose", async () => {
+    const signed: Array<string> = [];
+    const adapter = await connectedEvm({
       accountCount: 2,
-      eth: buildFakeEthCtor(),
-      platform: "evm",
-      transport: factory,
+      hooks: {
+        onSign: (path) => {
+          signed.push(path);
+        },
+      },
     });
+    const outsider = buildAccount(FAKE_ADDRESSES[2], EVM_CHAINS.ethereum);
 
-    await adapter.connect();
-    await expect(
-      adapter.signMessage(new TextEncoder().encode("hello"), {
-        chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" },
-        id: "eip155:1:0xdeadbeef",
-        walletAddress: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-      }),
-    ).rejects.toThrow(/not found on this device/v);
+    await expect(adapter.signMessage?.(hello, { account: outsider })).rejects.toThrow(
+      /does not expose/v,
+    );
+    expect(signed).toEqual([]);
   });
 
-  it("sendTx() / sendTxToChain() / getBalance() / getTransactionReceipt() reject", async () => {
-    const { factory } = buildFakeTransport();
+  it("getSigner() resolves the device app tagged ledger-evm", async () => {
+    const adapter = await connectedEvm();
+
+    const signer = await adapter.getSigner();
+
+    expect(signer.kind).toBe("ledger-evm");
+    if (signer.kind === "ledger-evm") {
+      await expect(signer.app.signTransaction("44'/60'/0'/0/0", "00")).resolves.toMatchObject({
+        v: "1b",
+      });
+    }
+  });
+});
+
+describe("loadPeer", () => {
+  const isEth = isClassWith<EthAppConstructor>("getAddress", "signPersonalMessage");
+
+  it("takes the default export, one hop deeper through CJS interop", async () => {
+    const Eth = buildFakeEthCtor();
+
+    await expect(loadPeer(Promise.resolve({ default: Eth }), "eth", isEth)).resolves.toBe(Eth);
+    await expect(
+      loadPeer(Promise.resolve({ default: { default: Eth } }), "eth", isEth),
+    ).resolves.toBe(Eth);
+  });
+
+  it("rejects an export without the methods the app declares", async () => {
+    const isSolana = isClassWith<SolanaAppConstructor>("getAddress", "signOffchainMessage");
+    const ethModule = Promise.resolve({ default: buildFakeEthCtor() });
+
+    await expect(loadPeer(ethModule, "solana", isSolana)).rejects.toThrow(/solana did not load/v);
+    await expect(loadPeer(Promise.resolve({}), "eth", isEth)).rejects.toThrow(/did not load/v);
+  });
+});
+
+describe("createLedgerAdapter", () => {
+  it("dispatches on platform", async () => {
     const adapter = await createLedgerAdapter({
       eth: buildFakeEthCtor(),
       platform: "evm",
-      transport: factory,
+      transport: buildFakeTransport().factory,
     });
 
-    await expect(adapter.sendTx({})).rejects.toThrow(/sendTx not supported/v);
-    await expect(adapter.sendTxToChain({}, "137")).rejects.toThrow(/sendTxToChain not supported/v);
-    await expect(adapter.getBalance()).rejects.toThrow(/getBalance not supported/v);
-    await expect(adapter.getTransactionReceipt("0x0")).rejects.toThrow(
-      /getTransactionReceipt not supported/v,
-    );
+    expect(adapter.chainPlatform).toBe("evm");
   });
 });

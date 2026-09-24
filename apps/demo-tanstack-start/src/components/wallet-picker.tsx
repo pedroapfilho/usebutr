@@ -1,5 +1,5 @@
 import type { WalletAdapter } from "@usebutr/core";
-import { useConnectWallet, useConnectingConnectorId } from "@usebutr/react";
+import { useConnect } from "@usebutr/react";
 
 type WalletBrand = {
   adapters: Array<WalletAdapter>;
@@ -22,14 +22,8 @@ const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand>
   return [...byName.values()];
 };
 
-const WalletBrandRow = ({
-  brand,
-  connect,
-}: {
-  brand: WalletBrand;
-  connect: (id: string) => void;
-}) => {
-  const connectingId = useConnectingConnectorId();
+const WalletBrandRow = ({ brand }: { brand: WalletBrand }) => {
+  const { connect, connectingId } = useConnect();
   return (
     <div className="border-border-default rounded-lg border bg-white px-4 py-3">
       <div className="flex items-center justify-between gap-3">
@@ -71,8 +65,6 @@ const WalletPicker = ({
   available: ReadonlyArray<WalletAdapter>;
   hasConnected: boolean;
 }) => {
-  const connect = useConnectWallet();
-
   if (available.length === 0 && !hasConnected) {
     return (
       <section className="border-border-default bg-surface-subtle rounded-lg border p-6">
@@ -115,12 +107,7 @@ const WalletPicker = ({
       <ul className="space-y-2">
         {brands.map((brand) => (
           <li key={brand.name}>
-            <WalletBrandRow
-              brand={brand}
-              connect={(id) => {
-                void connect(id);
-              }}
-            />
+            <WalletBrandRow brand={brand} />
           </li>
         ))}
       </ul>

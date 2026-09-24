@@ -9,25 +9,27 @@ batteries-included `@usebutr/wallets` package.
 
 ## 1. Wrap your app in the provider
 
-`WalletManagerProvider` from `@usebutr/react` is the single provider. Pass it a
-`WalletSource` via the `discovery` prop to enable auto-discovery. `autoDiscovery()`
-from `@usebutr/wallets` composes EVM (EIP-6963), Solana / Sui / Bitcoin (Wallet
-Standard), and Polkadot (`injectedWeb3`) discovery in one call. `storageKeyPrefix` namespaces the storage keys.
+`WalletManagerProvider` from `@usebutr/react` is the single provider. It takes a
+`config` whose `sources` say where adapters come from. `autoDiscovery()` from
+`@usebutr/wallets` discovers EVM (EIP-6963), Solana / Sui / Bitcoin (Wallet
+Standard), and Polkadot (`injectedWeb3`) wallets in one source.
+`storageKeyPrefix` namespaces the storage keys.
 
-Hoist the `discovery` source to module scope so the same instance is reused
-across renders:
+The provider reads `config` once, at mount, so define it at module scope:
 
 ```tsx title="wallet-provider.tsx"
-import type { ReactNode } from "react";
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
+import type { ReactNode } from "react";
 
-const discovery = autoDiscovery();
+const config: WalletManagerConfig = {
+  sources: [autoDiscovery()],
+  storageKeyPrefix: "butr-demo",
+};
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <WalletManagerProvider discovery={discovery} storageKeyPrefix="butr-demo">
-    {children}
-  </WalletManagerProvider>
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 
 export { WalletProvider };
@@ -65,41 +67,51 @@ const Content = () => {
 ## 3. List discovered wallets and connect
 
 `useDiscoveredWallets()` is the live list of adapters that have announced
-themselves. `useConnectWallet()` returns a function you call with an adapter
-`id`.
+themselves. `useConnect()` returns `connect`, which takes an adapter `id`,
+plus the state of the latest attempt. `connect` never throws: a failure lands
+in `error`.
 
 ```tsx
-import { useConnectWallet, useConnectedWallets, useDiscoveredWallets } from "@usebutr/react";
+import { useConnect, useConnectedWallets, useDiscoveredWallets } from "@usebutr/react";
 
 const WalletPicker = () => {
-  const connect = useConnectWallet();
+  const { connect, connectingId, error } = useConnect();
   const discovered = useDiscoveredWallets();
   const connected = useConnectedWallets();
 
   const available = discovered.filter((d) => !connected.some((c) => c.connector.id === d.id));
 
   return (
-    <ul>
-      {available.map((wallet) => (
-        <li key={wallet.id}>
-          <button type="button" onClick={() => connect(wallet.id)}>
-            Connect {wallet.name} ({wallet.chainPlatform})
-          </button>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul>
+        {available.map((wallet) => (
+          <li key={wallet.id}>
+            <button
+              disabled={connectingId !== null}
+              type="button"
+              onClick={() => connect(wallet.id)}
+            >
+              Connect {wallet.name} ({wallet.chainPlatform})
+            </button>
+          </li>
+        ))}
+      </ul>
+      {error ? <p>{error.message}</p> : null}
+    </>
   );
 };
 ```
 
 ## 4. Show connected wallets and disconnect
 
+Actions come from `useWalletManager()`; its methods are stable references.
+
 ```tsx
-import { useConnectedWallets, useDisconnectWallet } from "@usebutr/react";
+import { useConnectedWallets, useWalletManager } from "@usebutr/react";
 
 const Connected = () => {
   const wallets = useConnectedWallets();
-  const disconnect = useDisconnectWallet();
+  const { disconnect } = useWalletManager();
 
   return (
     <ul>
@@ -116,9 +128,10 @@ const Connected = () => {
 };
 ```
 
-That is a complete multi-chain connect flow. The same `wallet.connector`
-exposes `signMessage`, `sendTx`, `switchChain`, and `getSigner`; see the
-[guides](/guides/provider-setup).
+That is a complete multi-chain connect flow. What else `wallet.connector` can
+do depends on the wallet: `signMessage`, `sendTx`, and `switchChain` exist only
+when they work, and `getSigner` always does. See
+[capabilities](/concepts/capabilities) and the [guides](/guides/provider-setup).
 
 <Callout type="info">
   **Source:** `apps/demo-vite` in the [butr

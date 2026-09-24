@@ -1,86 +1,91 @@
 ---
 title: "@usebutr/polkadot"
-description: injectedWeb3 and Wallet Standard discovery, signer handles, capabilities, and Polkadot chains.
+description: injectedWeb3 and Wallet Standard discovery, the adapter builders, and the Polkadot signer.
 ---
 
 ## Discovery
 
-`discoverInjectedPolkadotAdapters(onAdapter, options?)` reads `window.injectedWeb3`
-without prompting. It returns an unsubscribe function that cancels pending polls.
-`InjectedPolkadotDiscoveryOptions` accepts `pollMs` (offsets in milliseconds;
-default `[250, 750]`) and `target` (a host override for tests or iframes).
+### `discoverInjectedPolkadotAdapters(onAdapter, options?): () => void`
 
-```tsx
-import { createWalletSource } from "@usebutr/core";
+Reads `window.injectedWeb3` without prompting: adapters are built without
+calling `enable()`. It scans at once and again on a poll schedule for
+late-injecting extensions; the returned function cancels pending polls. It is
+a `WalletSource` as-is:
+
+```ts
+import type { WalletManagerConfig } from "@usebutr/core";
 import { discoverInjectedPolkadotAdapters } from "@usebutr/polkadot";
 
-export const discovery = createWalletSource(discoverInjectedPolkadotAdapters);
+const config: WalletManagerConfig = { sources: [discoverInjectedPolkadotAdapters] };
 ```
 
-`discoverPolkadotWalletStandardAdapters(onAdapter)` discovers wallets advertising
-`polkadot:*` features. This path requires `@wallet-standard/app`.
-`polkadotDiscoverer` is the `PlatformDiscoverer` used by `autoDiscovery()`:
-injectedWeb3 is primary, and Wallet Standard is a deferred fallback when no
-primary adapter has been found.
+`InjectedPolkadotDiscoveryOptions`: `pollMs?: ReadonlyArray<number>` (offsets
+in milliseconds, default `[250, 750]`; `[]` for a single synchronous scan) and
+`target?` (overrides `window`).
+
+### `discoverPolkadotWalletStandardAdapters(onAdapter): () => void`
+
+Discovers wallets advertising a `polkadot:` chain through Wallet Standard.
+Requires `@wallet-standard/app`.
+
+### `polkadotDiscoverer: PlatformDiscoverer`
+
+injectedWeb3 as the primary channel, Wallet Standard as a fallback that runs
+only when the first injectedWeb3 scan found nothing. A wallet on both
+channels would otherwise list twice under unrelated ids.
 
 ## Adapter builders
 
-- `buildInjectedPolkadotAdapter(extensionName, displayName, provider)` creates a
-  Polkadot adapter. `connect()` enables the extension; construction does not.
-- `buildPolkadotWalletStandardAdapter(wallet, registerDisconnector)` creates an
-  adapter for a compatible Wallet Standard wallet, or returns `null`.
+### `buildInjectedPolkadotAdapter(extensionName, displayName, provider): PolkadotAdapter`
 
-## Signer
+`provider` is the `window.injectedWeb3[extensionName]` entry. The id is
+`injected:polkadot:<extension-name>`. `connect()` calls `enable("butr")`,
+which may prompt; construction does not. `signMessage` appears once
+`connect()` has enabled an extension that exposes `signRaw`, and `subscribe`
+once it exposes `accounts.subscribe`. There is no `switchChain`: an injected
+extension has no network to switch. An account pinned to a network through
+`genesisHash` carries that chain; others are labelled Polkadot.
 
-Injected adapters return `PolkadotSignerHandle` from `getSigner()`:
+### `buildPolkadotWalletStandardAdapter(wallet, registerDisconnector?): PolkadotAdapter | null`
 
-```tsx
-import { isPolkadotSignerHandle } from "@usebutr/polkadot";
-import type { ConnectedWallet } from "@usebutr/core";
+Wraps a Wallet Standard wallet, or returns `null` when it speaks no Polkadot.
+The id is `slugify("polkadot", wallet.name)`. `signMessage` exists when the
+wallet advertises `polkadot:signMessage`, and `switchChain` when it
+advertises more than one Polkadot chain.
 
-export const getInjectedSigner = async (wallet: ConnectedWallet) => {
-  const signer = await wallet.connector.getSigner();
-  if (!isPolkadotSignerHandle(signer)) {
-    throw new Error("This wallet does not expose an injectedWeb3 signer");
-  }
-  return signer.extension.signer;
+Neither adapter has `sendTx`, `getBalance` or `getTransactionReceipt`:
+building an extrinsic needs chain metadata over RPC, which butr does not
+ship.
+
+## Signers
+
+Importing the package registers the `polkadot-injected` kind:
+
+```ts
+type PolkadotInjectedSigner = {
+  extension: Injected; // the object `enable()` resolved: `accounts` and `signer`
+  extensionName: string; // the `window.injectedWeb3` key
+  kind: "polkadot-injected";
 };
 ```
 
-The handle carries `address` (SS58), `extensionName` (the injected registry key),
-and `extension` (the enabled provider). Wallet Standard adapters return the
-Wallet Standard wallet instead. See the [PAPI integration](/integrations/polkadot)
-for transaction construction and submission.
+It carries no address: sign as the connected wallet's `account`.
+`extensionName` is what polkadot-api's `connectInjectedExtension` takes. On an
+injected adapter that is not connected, `getSigner()` rejects. Wallet Standard
+adapters resolve `{ kind: "wallet-standard", wallet }`. See the
+[PAPI integration](/integrations/polkadot).
 
-## Capabilities
-
-`resolveInjectedPolkadotCapabilities()` enables message signing, subscriptions,
-and local chain switching. `resolveWalletStandardPolkadotCapabilities(input)`
-uses advertised message-signing and event features plus the chain count.
-Neither path advertises standalone transaction signing or sending.
-
-Injected message signing wraps bytes in `<Bytes>…</Bytes>` before `signRaw`.
-Verify the returned `signedMessage`, which contains that wrapper.
-
-## Chains
-
-`POLKADOT_CHAINS` has `polkadot`, `kusama`, `paseo`, and `westend` entries;
-`POLKADOT_CHAINS_LIST` is their array form. CAIP-2 identifiers use the
-`polkadot:` namespace and the first 32 hexadecimal characters of the genesis
-hash. Accounts retain their SS58 address.
-
-`switchChain()` changes butr's local chain context; it does not switch an RPC
-connection. Injected wallets default to Polkadot. Use Paseo for the demo.
-
-## No RPC
-
-Balance reads, receipts, extrinsic construction, and submission belong to your
-chain client. Use `getSigner()` with PAPI; the adapter does not fetch chain metadata.
+Injected message signing wraps the bytes in `<Bytes>…</Bytes>` before
+`signRaw`; verify against the returned `signedMessage`, which contains the
+wrapper.
 
 ## Types
 
-`InjectedPolkadotDiscoveryOptions`, `PolkadotSignerHandle`,
-`WalletStandardPolkadotCapabilityInput`, `PolkadotSignMessageFeature`,
-`PolkadotSignMessageInput`, and `PolkadotSignMessageOutput`.
+`InjectedPolkadotDiscoveryOptions`, `PolkadotSignMessageFeature`,
+`PolkadotSignMessageInput`, `PolkadotSignMessageOutput`.
+
+The Polkadot chain registry (`POLKADOT_CHAINS`, `POLKADOT_CHAINS_LIST`) lives
+in `@usebutr/core`. Chain ids are `polkadot:` plus the first 32 hex characters
+of the genesis hash.
 
 **Source:** `packages/polkadot/src/index.ts`.

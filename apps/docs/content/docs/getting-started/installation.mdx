@@ -1,38 +1,42 @@
 ---
 title: Installation
-description: "Which butr packages to install for your setup: batteries-included, EVM-only, or custom."
+description: "Which butr packages to install for your setup: batteries-included, single-platform, or with extra connectors."
 ---
 
-butr targets React 18+ and uses [Zustand](https://github.com/pmndrs/zustand) as
+butr targets React 19 and uses [Zustand](https://github.com/pmndrs/zustand) as
 a peer dependency. Pick the install that matches your app.
 
 ## Batteries-included (recommended)
 
-`@usebutr/wallets` provides `autoDiscovery()`, a `WalletSource` that composes
-EVM, SVM, Sui, Bitcoin, and Polkadot discovery in one call. Use it with
-`WalletManagerProvider` from `@usebutr/react`. It depends on `@usebutr/react`,
-`@usebutr/core`, and the per-platform adapter packages, so this single line
-covers most apps. It also installs `@wallet-standard/app`, which powers Wallet Standard discovery.
+`@usebutr/wallets` provides `autoDiscovery()`, one wallet source that discovers
+EVM, SVM, Sui, Bitcoin, and Polkadot wallets. Put it in the `sources` of the
+config you pass to `WalletManagerProvider` from `@usebutr/react`.
+`@usebutr/wallets` depends on `@usebutr/core`, every per-platform adapter
+package, and `@wallet-standard/app`, so this line covers most apps:
 
 ```npm
 npm install @usebutr/react @usebutr/wallets zustand
 ```
 
-## EVM-only
+## Single platform
 
-Skip the Solana bundle entirely. Use `@usebutr/react` for the provider/hooks and
-`@usebutr/evm` for EIP-6963 discovery, wired with ~30 lines of your own discovery
-code (see [Provider setup](/guides/provider-setup) and the
-[Next.js framework guide](/getting-started/frameworks/nextjs)).
+Skip the other platforms entirely. Install `@usebutr/react`, `@usebutr/core`
+(for the config type and chain registries), and one platform package. Its
+`discover*Adapters` export goes straight into `sources`; see
+[EVM-only setup](/guides/evm-only) and [SVM-only setup](/guides/svm-only).
 
 ```npm
-npm install @usebutr/react @usebutr/evm @usebutr/core zustand
+npm install @usebutr/react @usebutr/core @usebutr/evm zustand
 ```
+
+The Wallet Standard packages (`@usebutr/svm`, `@usebutr/sui`, `@usebutr/bitcoin`,
+`@usebutr/polkadot`) also need `@wallet-standard/app` for discovery.
 
 ## Optional connectors
 
-These are independent adapters you register alongside discovered wallets. Each
-needs its own optional peer dependency.
+These build adapters that no wallet announces. Add them to `sources` with
+`fromAdapters` from `@usebutr/core`, and they appear in `useDiscoveredWallets()`
+next to the discovered ones. Each needs its own peer dependency.
 
 WalletConnect v2 (EVM, Solana, Sui, and Bitcoin mobile wallets):
 
@@ -40,10 +44,11 @@ WalletConnect v2 (EVM, Solana, Sui, and Bitcoin mobile wallets):
 npm install @usebutr/walletconnect @walletconnect/universal-provider
 ```
 
-Ledger hardware wallet (WebUSB, Chromium only):
+Ledger hardware wallet (WebUSB, Chromium only). Install the device app package
+for each platform you use; this is the EVM one:
 
 ```npm
-npm install @usebutr/ledger @ledgerhq/hw-app-eth @ledgerhq/hw-transport-webusb
+npm install @usebutr/ledger @ledgerhq/hw-transport-webusb @ledgerhq/hw-app-eth
 ```
 
 ## Testing helpers
@@ -58,17 +63,19 @@ tests never touch a real wallet or `localStorage`. See the
 
 ## Peer dependencies
 
-| Package                  | Peer dependency                                         | Notes                                    |
-| ------------------------ | ------------------------------------------------------- | ---------------------------------------- |
-| `@usebutr/core`          | `zustand >= 4`                                          | The store is Zustand-backed.             |
-| `@usebutr/react`         | `react >= 18`, `zustand >= 4`                           |                                          |
-| `@usebutr/wallets`       | `react >= 18`, `zustand >= 4`                           |                                          |
-| `@usebutr/svm`           | `@wallet-standard/app ^1.1.0`                           | Required for discovery; lazily imported. |
-| `@usebutr/sui`           | `@wallet-standard/app ^1.1.0`                           | Required for discovery; lazily imported. |
-| `@usebutr/bitcoin`       | `@wallet-standard/app ^1.1.0`                           | Optional, lazily imported.               |
-| `@usebutr/polkadot`      | `@wallet-standard/app ^1.1.0`                           | Optional, lazily imported.               |
-| `@usebutr/walletconnect` | `@walletconnect/universal-provider ^2`                  | Optional, dynamically imported.          |
-| `@usebutr/ledger`        | `@ledgerhq/hw-app-eth`, `@ledgerhq/hw-transport-webusb` | Optional.                                |
+| Package                  | Peer dependency                                                                            | Notes                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| `@usebutr/core`          | `zustand >= 4.5`                                                                           | The manager is a Zustand store.                      |
+| `@usebutr/react`         | `react >= 19`, `zustand >= 4.5`                                                            |                                                      |
+| `@usebutr/svm`           | `@wallet-standard/app ^1.1.0`                                                              | Optional; without it discovery does nothing.         |
+| `@usebutr/sui`           | `@wallet-standard/app ^1.1.0`                                                              | Optional; without it discovery does nothing.         |
+| `@usebutr/bitcoin`       | `@wallet-standard/app ^1.1.0`                                                              | Optional; the injected fallback works without it.    |
+| `@usebutr/polkadot`      | `@wallet-standard/app ^1.1.0`                                                              | Optional; `injectedWeb3` discovery works without it. |
+| `@usebutr/walletconnect` | `@walletconnect/universal-provider ^2`                                                     | Dynamically imported.                                |
+| `@usebutr/ledger`        | `@ledgerhq/hw-transport-webusb`, plus `@ledgerhq/hw-app-{eth,solana,sui,btc}` per platform | Each app is loaded on first connect.                 |
+
+`@usebutr/wallets` has no peers of its own: it ships `@wallet-standard/app` as a
+dependency.
 
 <Callout type="info">
   No environment variables are required to use butr. WalletConnect needs a project ID, but that is

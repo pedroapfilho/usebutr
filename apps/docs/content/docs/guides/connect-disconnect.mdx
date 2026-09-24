@@ -1,17 +1,18 @@
 ---
 title: Connect and disconnect
-description: Discover wallets, connect by id, read status and errors, and disconnect.
+description: Discover wallets, connect by id with useConnect, read the attempt's status and error, and disconnect.
 ---
 
 ## Discover what's available
 
-`useDiscoveredWallets()` is the live list of announced adapters. Filter out the
-ones already in the pool before rendering a picker:
+`useDiscoveredWallets()` is the live list of announced adapters, from every
+source: discovered wallets, WalletConnect, Ledger. Filter out the ones already
+in the pool before rendering a picker:
 
 ```tsx
-import { useConnectWallet, useConnectedWallets, useDiscoveredWallets } from "@usebutr/react";
+import { useConnect, useConnectedWallets, useDiscoveredWallets } from "@usebutr/react";
 
-const connect = useConnectWallet();
+const { connect, connectingId } = useConnect();
 const discovered = useDiscoveredWallets();
 const connected = useConnectedWallets();
 
@@ -20,59 +21,105 @@ const available = discovered.filter((d) => !connected.some((c) => c.connector.id
 
 ## Connect
 
-`useConnectWallet()` returns a function taking the adapter id and optional
-success/error callbacks:
+`connect(id)` from `useConnect()` starts an attempt. It never throws: the
+outcome lands in the hook's `status` and `error`, so it goes straight into
+`onClick`:
 
 ```tsx
 {
   available.map((wallet) => (
-    <button key={wallet.id} type="button" onClick={() => connect(wallet.id)}>
-      Connect {wallet.name} ({wallet.chainPlatform})
+    <button
+      key={wallet.id}
+      disabled={connectingId !== null}
+      type="button"
+      onClick={() => connect(wallet.id)}
+    >
+      {connectingId === wallet.id ? "Connecting…" : `Connect ${wallet.name}`} (
+      {wallet.chainPlatform})
     </button>
   ));
 }
 ```
 
-A single brand can expose more than one adapter (Phantom EVM + Phantom SVM).
-The reference apps group by `name` and render one button per
-`chainPlatform`.
+A successful connect adds the wallet to the pool, makes it the active wallet,
+and selects it for its platform if it is new; see
+[pool, selection, active](/concepts/pool-selection-active).
 
-## Track status and errors
+A single brand can expose more than one adapter (Phantom EVM + Phantom SVM).
+`useDiscoveredWalletsByPlatform()` groups them; the reference apps render one
+button per `chainPlatform`.
+
+When you need the connected wallet as a value, for example to sign right after
+connecting, use `connectAsync`. It resolves the `ConnectedWallet` and rejects
+with a [`ConnectionError`](/concepts/errors):
 
 ```tsx
-import { useConnectionStatus, useConnectionError } from "@usebutr/react";
+const { connectAsync } = useConnect();
 
-const status = useConnectionStatus(); // "idle" | "connecting" | "success" | "error"
-const error = useConnectionError(); // ConnectionError | null
+const connectAndSign = async (id: string) => {
+  const wallet = await connectAsync(id);
+  await wallet.connector.signMessage?.(new TextEncoder().encode("Welcome"), {
+    account: wallet.account,
+  });
+};
+```
+
+## Track the attempt
+
+`useConnect()` also carries the state of the latest attempt:
+
+```tsx
+const { connectingId, error, reset, status } = useConnect();
+// status: "idle" | "connecting" | "success" | "error"
+// connectingId: the wallet the in-flight attempt is for, or null
+// error: ConnectionError | null
 
 {
   error ? (
     <p>
-      {error.kind} — {error.message}
+      {error.kind} — {error.message}{" "}
+      <button type="button" onClick={reset}>
+        Dismiss
+      </button>
     </p>
   ) : null;
 }
 ```
 
-`useIsConnecting()` and `useConnectingConnectorId()` tell you _which_ wallet is
-mid-flight, so you can spin only that button.
+`reset()` clears `error` and returns `status` to `"idle"`. A connect that has
+not settled after 90 seconds fails with `kind: "Timeout"`; one that passes
+`slowConnectThresholdMs` first fires [`onSlowConnect`](/guides/lifecycle-callbacks).
+
+That is the attempt, not the connection. For "is a wallet connected at all",
+read `useConnectionStatus()`:
+
+```ts
+const status = useConnectionStatus(); // "connected" | "connecting" | "disconnected" | "reconnecting"
+```
+
+`"reconnecting"` means the active wallet was seeded from a server-rendered
+snapshot and its live adapter has not landed yet; see
+[hydration](/concepts/hydration#synchronous-seeding-ssr).
 
 ## Disconnect
 
-`useDisconnectWallet()` takes the connector id:
+Actions come from `useWalletManager()`. `disconnect` takes the adapter id:
 
 ```tsx
-import { useDisconnectWallet } from "@usebutr/react";
+import { useWalletManager } from "@usebutr/react";
 
-const disconnect = useDisconnectWallet();
-<button onClick={() => disconnect(wallet.connector.id)}>Disconnect</button>;
+const { disconnect, disconnectAll } = useWalletManager();
+
+<button type="button" onClick={() => disconnect(wallet.connector.id)}>
+  Disconnect
+</button>;
 ```
 
-Disconnecting one wallet leaves the rest of the pool intact. It also sets the
-session-scoped `isUserDisconnected` flag (read via `useIsUserDisconnected()`),
-which suppresses auto-reconnect for the rest of the session; see
-[Troubleshooting](/troubleshooting). To clear everything at once, use
-`useResetWallet()`.
+Disconnecting one wallet leaves the rest of the pool intact and forgets that
+wallet, so it is not restored on the next load. The active wallet and the
+platform's selection fall back to another connected wallet. `disconnectAll()`
+disconnects every wallet and forgets every persisted connection. Run any
+sign-out logic of your own (clearing auth tokens, say) right after calling it.
 
 <Callout type="info">
   **Source:** `apps/demo-vite/src/app.tsx` and `apps/demo-next/src/app/page.tsx` in the [butr

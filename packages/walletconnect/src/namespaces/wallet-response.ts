@@ -13,4 +13,18 @@ const readStringField = (value: Eip1193Value | undefined, key: string): string |
   return field.success ? field.data : undefined;
 };
 
-export { readStringField };
+/** Wallets answer either the bare value or an object carrying it under
+ *  `key`; an empty answer is a failure, not a value. */
+const readResultString = (
+  result: Eip1193Value | undefined,
+  key: string,
+  method: string,
+): string => {
+  const value = typeof result === "string" ? result : readStringField(result, key);
+  if (value === undefined || value === "") {
+    throw new Error(`${method} returned no ${key}`);
+  }
+  return value;
+};
+
+export { readResultString, readStringField };

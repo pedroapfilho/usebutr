@@ -1,32 +1,33 @@
 ---
 title: Overview
-description: "The butr mental model: one store, a pool of connectors, five platforms, asynchronous hydration."
+description: "The butr mental model: one wallet manager, a pool of adapters, five platforms, asynchronous hydration."
 ---
 
-butr is a small state machine around a pool of wallet connectors. Six ideas
+butr is a small state machine around a pool of wallet adapters. Six ideas
 explain the whole library.
 
 1. **[Architecture](/concepts/architecture)**: the end-to-end runtime of
-   discovery → adapter → store → pool → React hooks → integration. Start here
-   if you want the full picture in one page.
+   sources → adapters → wallet manager → pool → React hooks → integration.
+   Start here if you want the full picture in one page.
 2. **[Connectors vs. wallets](/concepts/connectors-and-wallets)**: every
-   wallet is a `WalletAdapter`. butr calls the _connector_ half (connect,
-   getAccount, subscribe); your app calls the _wallet_ half (signMessage,
-   sendTx, getSigner). All adapters plug in through one seam:
-   `WalletManagerConfig.createConnector`.
-3. **[Platforms](/concepts/platforms)**: every connector is `evm`, `svm`,
+   wallet is a `WalletAdapter`. butr calls the _connector_ half (`connect`,
+   `getAccounts`, `subscribe`); your app calls the _wallet_ half
+   (`signMessage`, `sendTx`, `getSigner`). All adapters arrive through one
+   seam: `WalletManagerConfig.sources`.
+3. **[Platforms](/concepts/platforms)**: every adapter is `evm`, `svm`,
    `sui`, `bitcoin`, or `polkadot`. The five platforms are tracked
    independently, so a user can hold all of them at once. Chains use CAIP-2
    ids (`eip155:1`, `solana:…`, `sui:…`, `bip122:…`, `polkadot:…`).
 4. **[Pool, selection, active](/concepts/pool-selection-active)**: the
    pool is every connected wallet; selection is the chosen wallet _per
    platform_; the active wallet is the single one in front of the user now.
-5. **[Capabilities](/concepts/capabilities)**: flags that say what a
-   wallet can do _right now_. Gate UI on these, not on method existence.
+5. **[Capabilities](/concepts/capabilities)**: an adapter method exists only
+   when it works for that wallet. Check for the method before you call it.
 6. **[Hydration](/concepts/hydration)**: restoring the previous session
    is asynchronous because wallet adapters announce themselves asynchronously.
 
 Two supporting topics round it out:
-[persistence](/concepts/persistence) (how state survives reloads, and why
-storage writes are silent) and [errors](/concepts/errors) (how thrown
-values from inconsistent wallet SDKs become one tagged union).
+[persistence](/concepts/persistence) (what survives a reload, and why it is
+derived from state rather than written by hand) and [errors](/concepts/errors)
+(how thrown values from inconsistent wallet SDKs become one `ConnectionError`
+class).

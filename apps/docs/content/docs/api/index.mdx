@@ -9,15 +9,35 @@ speculative.
 
 | Package                           | Reference                                                                                               |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `@usebutr/core`                   | [Types, store, storage, discovery seam](/api/core)                                                      |
+| `@usebutr/core`                   | [The wallet manager, types, chain registries, persistence, sources](/api/core)                          |
 | `@usebutr/react`                  | [Provider and every hook](/api/react)                                                                   |
-| `@usebutr/evm`                    | [EIP-6963 discovery, adapter builder, chains, helpers](/api/evm)                                        |
-| `@usebutr/svm`                    | [Wallet Standard discovery, adapter builder, chains](/api/svm)                                          |
-| `@usebutr/sui`                    | [Wallet Standard discovery, adapter builder, capabilities, chains](/api/sui)                            |
-| `@usebutr/bitcoin`                | [Wallet Standard and injected discovery, adapter builder, capabilities, chains](/api/bitcoin)           |
-| `@usebutr/polkadot`               | [injectedWeb3 and Wallet Standard discovery, signer handles, chains](/api/polkadot)                     |
-| `@usebutr/wallets`                | [Auto provider, composed discovery, chains](/api/wallets)                                               |
-| `@usebutr/walletconnect`          | [`createWalletConnectAdapters`](/api/walletconnect)                                                     |
-| `@usebutr/ledger`                 | [`createLedgerAdapter`](/api/ledger)                                                                    |
-| `@usebutr/wallet-standard-shared` | [Discovery, adapter lifecycle, and capability helpers for adapter authors](/api/wallet-standard-shared) |
+| `@usebutr/evm`                    | [EIP-6963 and injected discovery, the adapter builder, EIP-1193 types](/api/evm)                        |
+| `@usebutr/svm`                    | [Wallet Standard discovery, the adapter builder, Solana feature types](/api/svm)                        |
+| `@usebutr/sui`                    | [Wallet Standard discovery, the adapter builder, Sui feature types](/api/sui)                           |
+| `@usebutr/bitcoin`                | [Wallet Standard and injected discovery, the adapter builder, feature types](/api/bitcoin)              |
+| `@usebutr/polkadot`               | [injectedWeb3 and Wallet Standard discovery, adapter builders](/api/polkadot)                           |
+| `@usebutr/wallets`                | [`autoDiscovery()` and composed discovery](/api/wallets)                                                |
+| `@usebutr/walletconnect`          | [`createWalletConnectAdapters` and namespace builders](/api/walletconnect)                              |
+| `@usebutr/ledger`                 | [`createLedgerAdapter` and the per-platform factories](/api/ledger)                                     |
+| `@usebutr/wallet-standard-shared` | [Discovery, the shared adapter core and `getFeature`, for adapter authors](/api/wallet-standard-shared) |
 | `@usebutr/testing`                | [Fake adapters, wallets, and persistence](/testing)                                                     |
+
+## Signer kinds
+
+`getSigner()` resolves a `WalletSigner`, a union tagged by `kind`. Each
+transport package registers its own variant, so a kind is part of the union
+once its package is part of your program. `@usebutr/wallets` loads every
+platform package, so an app that imports only it can narrow every browser
+wallet's kind; WalletConnect and Ledger kinds come with their packages.
+
+| `kind`                                                     | Fields                                               | Registered by                     |
+| ---------------------------------------------------------- | ---------------------------------------------------- | --------------------------------- |
+| `eip1193`                                                  | `provider: Eip1193Provider`                          | `@usebutr/evm`                    |
+| `wallet-standard`                                          | `wallet: WalletStandardWallet`                       | `@usebutr/wallet-standard-shared` |
+| `unisat`, `sats-connect`                                   | `provider`                                           | `@usebutr/bitcoin`                |
+| `polkadot-injected`                                        | `extension`, `extensionName: string`                 | `@usebutr/polkadot`               |
+| `walletconnect`                                            | `chainId: string`, `provider: UniversalProviderLike` | `@usebutr/walletconnect`          |
+| `ledger-evm`, `ledger-svm`, `ledger-sui`, `ledger-bitcoin` | `app`: the device app                                | `@usebutr/ledger`                 |
+
+Which connector yields which kind is on each
+[connector page](/connectors).

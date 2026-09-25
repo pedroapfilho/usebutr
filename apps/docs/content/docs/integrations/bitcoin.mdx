@@ -5,68 +5,81 @@ description: Derive address formats from network constants, sign messages, and r
 
 `bitcoinjs-lib` is the long-standing Bitcoin transaction toolkit. It is a
 **builder, not an RPC client**: it ships network constants and PSBT
-construction, but no node connection. butr discovers and manages the wallet and
-exposes signing; `bitcoinjs-lib` supplies the network definitions and
-transaction encoding; a separate Esplora/Electrum client (not shown) would
-supply UTXOs and broadcast.
+construction, but no node connection. butr discovers and manages the wallet
+and exposes signing; `bitcoinjs-lib` supplies the network definitions and
+transaction encoding; a separate Esplora or Electrum client (not shown)
+supplies UTXOs and broadcasts.
+
+## Get the wallet
+
+`useSelectedWallet("bitcoin")` types the connector as a `BitcoinAdapter`, so
+`signTransaction` takes PSBT bytes and `sendTx` a `BitcoinTransfer`:
+
+```tsx
+import { useSelectedWallet } from "@usebutr/react";
+
+const wallet = useSelectedWallet("bitcoin");
+```
 
 ## Derive the address format from the chain
 
-`bitcoinjs-lib`'s `networks` export carries the bech32 prefix per network. Map
-the connected chain's CAIP-2 reference to a network to know which address
-format the wallet should produce:
+`bitcoinjs-lib`'s `networks` carry the bech32 prefix per network. Map the
+connected chain to a network to know which address format the wallet uses:
 
 ```ts
+import { BITCOIN_CHAINS } from "@usebutr/core";
+import type { Network } from "bitcoinjs-lib";
 import { networks } from "bitcoinjs-lib";
 
-const NETWORK_BY_CHAIN_REF: Record<string, typeof networks.bitcoin> = {
-  "000000000019d6689c085ae165831e93": networks.bitcoin, // mainnet
-  "000000000933ea01ad0ee984209779ba": networks.testnet,
-  "0f9188f13cb7b2c71f2a335e3a4fc328": networks.regtest,
-};
+const NETWORK_BY_CHAIN = new Map<string, Network>([
+  [BITCOIN_CHAINS.mainnet.id, networks.bitcoin],
+  [BITCOIN_CHAINS.testnet.id, networks.testnet],
+  [BITCOIN_CHAINS.testnet4.id, networks.testnet],
+  [BITCOIN_CHAINS.signet.id, networks.testnet], // both share testnet's prefixes
+]);
 
-const ref = wallet.account.chain.id.split(":")[1] ?? "";
-const bech32Prefix = NETWORK_BY_CHAIN_REF[ref]?.bech32 ?? "unknown"; // "bc" | "tb" | "bcrt"
+const bech32Prefix = NETWORK_BY_CHAIN.get(wallet.account.chain.id)?.bech32 ?? "unknown";
 ```
 
 ## Sign a message
 
-`signMessage` is wired on every Bitcoin adapter; call it on the connector:
+`signMessage` exists when the wallet can sign; check it first:
 
 ```ts
+if (!wallet.connector.signMessage) {
+  throw new Error(`${wallet.connector.name} cannot sign messages`);
+}
 const message = new TextEncoder().encode("Hello from butr + bitcoinjs-lib");
-const { signature } = await wallet.connector.signMessage(message);
-// `signature` is a Uint8Array; render as hex for display.
+const { signature } = await wallet.connector.signMessage(message, { account: wallet.account });
 ```
 
 ## Sign a PSBT
 
-PSBT signing is optional; not every Bitcoin wallet advertises it. Narrow on
-`chainPlatform` so TypeScript exposes `signTransaction`, then feature-detect at
-runtime before calling it:
+Not every Bitcoin wallet signs PSBTs, so `signTransaction` is optional: it
+exists on Wallet Standard wallets that advertise `bitcoin:signPsbt` and on the
+injected Unisat and Xverse adapters.
 
 ```ts
-const connector = wallet.connector;
-if (connector.chainPlatform !== "bitcoin" || !connector.signTransaction) {
-  throw new Error("This wallet does not advertise PSBT signing (bitcoin:signPsbt).");
+if (!wallet.connector.signTransaction) {
+  throw new Error(`${wallet.connector.name} does not sign PSBTs (bitcoin:signPsbt)`);
 }
-
-// PSBT bytes, built with bitcoinjs-lib's Psbt class from real UTXOs in
-// a production app. The wallet returns the signed PSBT.
-const signed = await connector.signTransaction(psbtBytes);
+// Built with bitcoinjs-lib's Psbt class from real UTXOs in a production app.
+const signed = await wallet.connector.signTransaction(psbt.toBuffer(), {
+  account: wallet.account,
+});
 ```
 
 <Callout type="warn">
-  **No broadcast.** `bitcoinjs-lib` doesn't talk to a node. `signTransaction` returns a signed PSBT;
-  you finalize it and POST the raw transaction to an Esplora / Electrum / Bitcoin Core endpoint
-  yourself. The capability flag `signTransaction` is `false` on wallets that don't advertise
-  `bitcoin:signPsbt`; gate the UI on it.
+  **No broadcast.** `signTransaction` resolves the signed PSBT; finalize it with `bitcoinjs-lib`
+  and POST the raw transaction to an Esplora, Electrum or Bitcoin Core endpoint yourself. For a
+  plain payment the wallet can broadcast itself, `sendTx({ amount, recipient })` resolves the
+  txid, with `amount` in satoshis.
 </Callout>
 
 <Callout type="info">
-  `chainPlatform` narrowing matters: `WalletAdapter`'s EVM variant has no `signTransaction` at all.
-  The discriminant teaches TypeScript that the method *can* exist on a Bitcoin connector; the
-  runtime `!connector.signTransaction` check still applies because it's optional even on Bitcoin.
+  `chain` in the options targets one network. Wallet Standard wallets route it per call; Unisat and
+  Xverse switch the whole wallet first, and reject with a `ChainMismatch` `ConnectionError` when
+  they cannot. See the [Bitcoin connector](/connectors/bitcoin-wallet-standard#chains-and-accounts).
 </Callout>
 
 <Callout type="info">

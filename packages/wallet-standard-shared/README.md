@@ -11,16 +11,33 @@ connection-state library. Your application owns the picker UI and chain client.
 npm install @usebutr/wallet-standard-shared @wallet-standard/app zustand
 ```
 
-For adapter authors. The package supplies discovery, lifecycle, feature guards, and capability helpers. The default registry loader requires `@wallet-standard/app`; tests can inject a loader.
+For adapter authors. The package supplies discovery, the session plumbing every Wallet Standard adapter shares, and `getFeature`. The default registry loader requires `@wallet-standard/app`; tests can inject a loader. Importing it registers the `wallet-standard` signer kind, so every adapter built on it resolves `getSigner()` to `{ kind: "wallet-standard", wallet }`.
 
 ## Usage
 
-```tsx
-import { slugify } from "@usebutr/wallet-standard-shared";
+```ts
+import type { SvmAdapter } from "@usebutr/core";
+import { SVM_CHAINS_LIST } from "@usebutr/core";
+import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
+import { createWalletStandardCore, slugify } from "@usebutr/wallet-standard-shared";
 
-// Namespace each adapter so a multi-chain wallet has one ID per platform.
-export const solanaId = slugify("svm", "Phantom");
-export const suiId = slugify("sui", "Phantom");
+export const buildAdapter = (wallet: WalletStandardWallet): SvmAdapter | null => {
+  const core = createWalletStandardCore({
+    chains: SVM_CHAINS_LIST,
+    // Namespace the id so a multi-chain wallet has one adapter per platform.
+    id: slugify("svm", wallet.name),
+    label: "Solana",
+    namespace: "solana",
+    preferredChainIds: ["solana:mainnet"],
+    trackChainChanges: true,
+    wallet,
+  });
+  // `base` defines `disconnect`, `subscribe` and `switchChain` only when the
+  // wallet supports them. Add platform methods the same way: only when the
+  // wallet advertises the feature, routing `options.account` through
+  // `core.resolveAccount` and `options.chain` through `core.resolveChainId`.
+  return core === null ? null : { ...core.base, chainPlatform: "svm" };
+};
 ```
 
 ## Documentation

@@ -1,3 +1,4 @@
+import type { Connector } from "@usebutr/core";
 import { logWarn } from "@usebutr/core";
 import type { Eip1193Listener } from "@usebutr/evm";
 
@@ -5,22 +6,13 @@ import type { UniversalProviderLike, WcNamespaceRequest } from "./loader";
 
 type PairingRequest = Readonly<Record<string, WcNamespaceRequest>>;
 
+type SessionLifecycle = Pick<Connector, "connect"> & Required<Pick<Connector, "disconnect">>;
+
 type WalletConnectSession = {
-  /** Tear the session down for every adapter sharing it. */
-  disconnect: () => Promise<void>;
-  /** Pair once for the whole session; concurrent callers share the
-   *  in-flight pairing instead of racing two QR codes. */
-  ensurePaired: () => Promise<void>;
-  /** Whether the live session actually carries this CAIP namespace. A
-   *  wallet can approve the pairing while declining an optional
-   *  namespace, whose RPC calls would then fail at the relay. */
-  hasNamespace: (caipPrefix: string) => boolean;
-  hasSession: () => boolean;
-  provider: UniversalProviderLike;
-  /** Register one adapter as a holder of the pairing URI channel. The
-   *  `display_uri` listener is dropped only once every holder has
-   *  released, so one adapter's disconnect cannot blind its siblings. */
-  retain: () => () => void;
+  /** `connect` / `disconnect` for one adapter of `namespace`. The first
+   *  `connect` pairs every namespace; the WC session ends only when the
+   *  last connected adapter disconnects. */
+  lifecycle: (namespace: string, label: string) => SessionLifecycle;
 };
 
 type CreateWalletConnectSessionInput = {
@@ -29,6 +21,13 @@ type CreateWalletConnectSessionInput = {
   optionalNamespaces?: PairingRequest;
   provider: UniversalProviderLike;
 };
+
+/** Every request in a namespace the session does not carry fails at the
+ *  relay, so the adapter refuses to report itself connected. */
+const missingNamespaceError = (namespace: string, label: string): Error =>
+  new Error(
+    `[butr/walletconnect] the WalletConnect session carries no "${namespace}" namespace, so ${label} requests cannot be routed. The wallet declined it at pairing time.`,
+  );
 
 /**
  * Owns the provider and the pairing state shared by every adapter of
@@ -41,8 +40,7 @@ const createWalletConnectSession = ({
   optionalNamespaces,
   provider,
 }: CreateWalletConnectSessionInput): WalletConnectSession => {
-  const holders = new Set<symbol>();
-  const live = new Set<symbol>();
+  const connected = new Set<symbol>();
   let pairing: Promise<void> | null = null;
   let displayUriListener: Eip1193Listener | null = null;
 
@@ -75,59 +73,58 @@ const createWalletConnectSession = ({
       ? optionalNamespaces
       : undefined;
 
-  const pair = async (): Promise<void> => {
-    await provider.connect({ namespaces: { ...namespaces }, optionalNamespaces: optional });
-  };
+  const hasNamespace = (namespace: string) =>
+    provider.session?.namespaces?.[namespace] !== undefined;
 
-  return {
-    async disconnect() {
-      if (!provider.session) {
-        return;
-      }
-      try {
-        await provider.disconnect();
-      } catch (error) {
-        logWarn("[butr/walletconnect] disconnect threw:", error);
-      }
-    },
-
-    async ensurePaired() {
-      if (provider.session) {
-        return;
-      }
-      const inFlight = pairing;
-      if (inFlight !== null) {
-        await inFlight;
-        return;
-      }
+  /** Concurrent callers share the in-flight pairing instead of racing two
+   *  QR codes. */
+  const ensurePaired = async (): Promise<void> => {
+    if (provider.session) {
+      return;
+    }
+    pairing ??= (async () => {
       attachPairingListener();
-      for (const holder of holders) {
-        live.add(holder);
-      }
-      const started = pair();
-      pairing = started;
       try {
-        await started;
+        await provider.connect({ namespaces: { ...namespaces }, optionalNamespaces: optional });
       } finally {
         pairing = null;
       }
-    },
+    })();
+    await pairing;
+  };
 
-    hasNamespace: (caipPrefix) => provider.session?.namespaces?.[caipPrefix] !== undefined,
+  return {
+    lifecycle: (namespace, label) => {
+      const member = Symbol(namespace);
+      return {
+        async connect(options) {
+          if (!hasNamespace(namespace)) {
+            if (options?.silent === true && !provider.session) {
+              throw new Error("No WalletConnect session for silent reconnect");
+            }
+            await ensurePaired();
+            if (!hasNamespace(namespace)) {
+              throw missingNamespaceError(namespace, label);
+            }
+          }
+          connected.add(member);
+        },
 
-    hasSession: () => Boolean(provider.session),
-
-    provider,
-
-    retain() {
-      const holder = Symbol("butr-wc-holder");
-      holders.add(holder);
-      live.add(holder);
-      return () => {
-        live.delete(holder);
-        if (live.size === 0) {
+        async disconnect() {
+          connected.delete(member);
+          if (connected.size > 0) {
+            return;
+          }
           detachPairingListener();
-        }
+          if (!provider.session) {
+            return;
+          }
+          try {
+            await provider.disconnect();
+          } catch (error) {
+            logWarn("[butr/walletconnect] disconnect threw:", error);
+          }
+        },
       };
     },
   };
@@ -153,12 +150,5 @@ const createSingleNamespaceSession = (input: {
     provider: input.provider,
   });
 
-/** Every request in a namespace the session does not carry fails at the
- *  relay, so the adapter refuses to report itself connected. */
-const missingNamespaceError = (namespace: string, platform: string): Error =>
-  new Error(
-    `[butr/walletconnect] the WalletConnect session carries no "${namespace}" namespace, so ${platform} requests cannot be routed. The wallet declined it at pairing time.`,
-  );
-
 export type { PairingRequest, WalletConnectSession };
-export { createSingleNamespaceSession, createWalletConnectSession, missingNamespaceError };
+export { createSingleNamespaceSession, createWalletConnectSession };

@@ -1,4 +1,4 @@
-import type { WalletAdapter } from "@usebutr/core";
+import type { EvmAdapter } from "@usebutr/core";
 
 import type { Eip6963AnnounceEvent, Eip6963ProviderInfo } from "./eip1193";
 import { buildEvmAdapter } from "./eip6963-adapter";
@@ -6,7 +6,7 @@ import { buildEvmAdapter } from "./eip6963-adapter";
 const ANNOUNCE_EVENT = "eip6963:announceProvider";
 const REQUEST_EVENT = "eip6963:requestProvider";
 
-type AdapterCallback = (adapter: WalletAdapter, info: Eip6963ProviderInfo) => void;
+type AdapterCallback = (adapter: EvmAdapter, info: Eip6963ProviderInfo) => void;
 
 type DiscoverOptions = {
   /** Event target to listen on. Defaults to `window` in browser/RN/

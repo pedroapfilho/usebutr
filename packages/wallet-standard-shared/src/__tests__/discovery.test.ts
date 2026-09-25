@@ -1,37 +1,17 @@
-import type { WalletAdapter, WalletCapabilities } from "@usebutr/core";
+import type { WalletAdapter } from "@usebutr/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { WalletStandardAdapterBuilder } from "../discovery";
 import { discoverWalletStandard } from "../discovery";
 import type { WalletsApp, WalletStandardModuleLoader, WalletStandardWallet } from "../types";
 
-const capabilities: WalletCapabilities = {
-  getBalance: false,
-  getTransactionReceipt: false,
-  requestAccounts: false,
-  sendTransaction: false,
-  signIn: false,
-  signMessage: false,
-  signTransaction: false,
-  subscribe: false,
-  switchAccount: false,
-  switchChain: false,
-};
-
 const adapter = (id: string): WalletAdapter => ({
-  capabilities,
-  chainPlatform: "evm",
+  chainPlatform: "svm",
   connect: () => Promise.resolve(),
-  getAccount: () => Promise.resolve(null),
-  getBalance: () => Promise.resolve({ decimals: 18, formatted: "0", symbol: "ETH", value: 0n }),
-  getSigner: () => Promise.resolve({}),
-  getTransactionReceipt: () => Promise.resolve({ status: "Success" }),
+  getAccounts: () => Promise.resolve([]),
+  getSigner: () => Promise.resolve({ kind: "wallet-standard", wallet: wallet(id) }),
   id,
   name: id,
-  sendTx: () => Promise.resolve("0x0"),
-  sendTxToChain: () => Promise.resolve("0x0"),
-  signMessage: (message) => Promise.resolve({ signature: message, signedMessage: message }),
-  switchChain: () => Promise.resolve(),
 });
 
 const wallet = (name: string): WalletStandardWallet => ({

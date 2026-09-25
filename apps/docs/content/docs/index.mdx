@@ -16,11 +16,12 @@ using whatever chain library you already know.
   MetaMask (EVM) and Phantom (SVM) at the same time; butr tracks each platform
   independently.
 - **Connector-shaped.** Every wallet (injected, WalletConnect, Ledger, or one
-  you write yourself) is a `WalletAdapter` plugged in through a single seam:
-  `WalletManagerConfig.createConnector`.
-- **No lock-in.** `getSigner()` returns the underlying provider. You bridge it
-  into viem / wagmi / gill / framework-kit / `@solana/kit` (or legacy
-  `@solana/web3.js`) with a few lines.
+  you write yourself) is a `WalletAdapter` announced through a single seam:
+  `WalletManagerConfig.sources`.
+- **No lock-in.** `getSigner()` returns the wallet's own provider, tagged by
+  transport (`{ kind: "eip1193", provider }`, `{ kind: "wallet-standard",
+wallet }`, …). You bridge it into viem / wagmi / gill / framework-kit /
+  `@solana/kit` (or legacy `@solana/web3.js`) with a few lines.
 - **Modular.** Install only the packages you need. The core has no React and no
   protocol code; protocols live in separate packages.
 
@@ -28,41 +29,42 @@ using whatever chain library you already know.
 
 butr is layered. Each package depends only on the ones below it.
 
-| Package                  | What it does                                                                               | Depends on                                                                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| `@usebutr/core`          | Types, the wallet store, persistence, the discovery seam. No React, no protocols.          | —                                                                                                                          |
-| `@usebutr/react`         | Provider + hooks over the store.                                                           | `@usebutr/core`                                                                                                            |
-| `@usebutr/evm`           | EIP-1193 / EIP-6963 / injected discovery and adapters.                                     | `@usebutr/core`                                                                                                            |
-| `@usebutr/svm`           | Wallet Standard discovery and adapters for Solana.                                         | `@usebutr/core`                                                                                                            |
-| `@usebutr/sui`           | Wallet Standard discovery and adapters for Sui.                                            | `@usebutr/core`                                                                                                            |
-| `@usebutr/bitcoin`       | Wallet Standard + injected discovery and adapters for Bitcoin.                             | `@usebutr/core`                                                                                                            |
-| `@usebutr/polkadot`      | `injectedWeb3` discovery and adapters for Polkadot, with a Wallet Standard fallback.       | `@usebutr/core`                                                                                                            |
-| `@usebutr/wallets`       | Batteries-included five-platform discovery source (`autoDiscovery`) + combined registries. | `@usebutr/core`, `@usebutr/react`, `@usebutr/evm`, `@usebutr/svm`, `@usebutr/sui`, `@usebutr/bitcoin`, `@usebutr/polkadot` |
-| `@usebutr/walletconnect` | WalletConnect v2 adapter for EVM, Solana, Sui, and Bitcoin mobile wallets.                 | `@usebutr/core`, `@usebutr/evm`                                                                                            |
-| `@usebutr/ledger`        | Ledger hardware-wallet adapter (WebUSB, signing-only).                                     | `@usebutr/core`                                                                                                            |
-| `@usebutr/testing`       | Fake adapter + fake persistence for unit tests.                                            | `@usebutr/core`                                                                                                            |
+| Package                           | What it does                                                                            | Depends on                                                                                               |
+| --------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `@usebutr/core`                   | Types, the wallet manager, persistence, chain registries, the discovery seam. No React. | —                                                                                                        |
+| `@usebutr/react`                  | Provider + hooks over the manager.                                                      | `@usebutr/core`                                                                                          |
+| `@usebutr/evm`                    | EIP-1193 / EIP-6963 / injected discovery and adapters.                                  | `@usebutr/core`                                                                                          |
+| `@usebutr/wallet-standard-shared` | The Wallet Standard adapter core, `getFeature`, and the `wallet-standard` signer.       | `@usebutr/core`                                                                                          |
+| `@usebutr/svm`                    | Wallet Standard discovery and adapters for Solana.                                      | `@usebutr/core`, `@usebutr/wallet-standard-shared`                                                       |
+| `@usebutr/sui`                    | Wallet Standard discovery and adapters for Sui.                                         | `@usebutr/core`, `@usebutr/wallet-standard-shared`                                                       |
+| `@usebutr/bitcoin`                | Wallet Standard + injected discovery and adapters for Bitcoin.                          | `@usebutr/core`, `@usebutr/wallet-standard-shared`                                                       |
+| `@usebutr/polkadot`               | `injectedWeb3` discovery and adapters for Polkadot, with a Wallet Standard fallback.    | `@usebutr/core`, `@usebutr/wallet-standard-shared`                                                       |
+| `@usebutr/wallets`                | Batteries-included five-platform discovery source: `autoDiscovery()`.                   | `@usebutr/core`, `@usebutr/evm`, `@usebutr/svm`, `@usebutr/sui`, `@usebutr/bitcoin`, `@usebutr/polkadot` |
+| `@usebutr/walletconnect`          | WalletConnect v2 adapters for EVM, Solana, Sui, and Bitcoin mobile wallets.             | `@usebutr/core`, `@usebutr/evm`                                                                          |
+| `@usebutr/ledger`                 | Ledger hardware-wallet adapters (WebUSB, signing-only).                                 | `@usebutr/core`                                                                                          |
+| `@usebutr/testing`                | Fake adapter + fake persistence for unit tests.                                         | `@usebutr/core`                                                                                          |
 
-Most apps want `@usebutr/wallets` (it pulls in `@usebutr/react`, `@usebutr/core`,
-and the per-platform adapter packages). Pass `autoDiscovery()` from
-`@usebutr/wallets` to `WalletManagerProvider` from `@usebutr/react` for
-discovery across all five platforms. Reach for the lower-level packages when
-you want a single-platform bundle or a custom discovery pipeline.
+Most apps want `@usebutr/react` plus `@usebutr/wallets`, which pulls in
+`@usebutr/core` and every per-platform adapter package. Put `autoDiscovery()`
+in the provider's `config.sources` for discovery across all five platforms.
+Reach for a single platform package when you want a single-platform bundle:
+its `discover*Adapters` export goes into `sources` as-is.
 
 ## Where to go next
 
 - [Installation](/getting-started/installation): pick your packages.
 - [Quickstart](/getting-started/quickstart): a working app in five
   minutes with `WalletManagerProvider`.
-- [Core concepts](/concepts): the mental model of connectors, the pool,
-  platforms, hydration.
+- [Core concepts](/concepts): the mental model of adapters, the manager, the
+  pool, platforms, hydration.
 - [Standards compliance](/concepts/standards): how butr follows the
   Wallet Standard, EIP-6963, and EIP-1193, and the deliberate edges.
 - [Guides](/guides/provider-setup): connect, sign, send, switch chains.
 - [API reference](/api/core): every export, per package.
 
 <Callout type="info">
-  All code in these docs is taken from the runnable demo apps and package tests in [the butr
-  repository](https://github.com/pedroapfilho/usebutr), not invented. Each guide cites its source.
+  Code in these docs follows the runnable demo apps and package tests in [the butr
+  repository](https://github.com/pedroapfilho/usebutr). Each guide cites its source.
 </Callout>
 
 ## Demos

@@ -1,74 +1,77 @@
 ---
 title: "@usebutr/bitcoin"
-description: Wallet Standard discovery plus injected fallbacks, the adapter builder, capabilities, and Bitcoin chains.
+description: Wallet Standard discovery plus injected fallbacks, the adapter builder, and the Bitcoin feature types.
 ---
 
 ## Discovery
 
 ### `discoverBitcoinAdapters(onAdapter): () => void`
 
-Subscribe to Wallet Standard registrations for Bitcoin wallets (Phantom,
-Magic Eden, Leather, OKX, …). Returns an unsubscribe function. Lazily
-imports `@wallet-standard/app` (optional peer dependency).
+Subscribes to Wallet Standard registrations for Bitcoin wallets (Phantom,
+Magic Eden, Leather, …). Lazily imports `@wallet-standard/app`, an optional
+peer dependency. It is a `WalletSource` as-is.
 
-### `discoverInjectedBitcoinAdapter(onAdapter, options): () => void`
+### `discoverInjectedBitcoinAdapter(onAdapter, options?): () => void`
 
-Fallback for wallets that inject `window.unisat` (Unisat, OKX legacy, generic
-`window.btc`) or expose `sats-connect` (Xverse). Use when no Wallet Standard
-wallet announces; `autoDiscovery()` composes both routes for you.
+The fallback for wallets that never announce through Wallet Standard. After
+`settleMs` it emits an adapter for each provider it finds, unless
+`hasAnyWalletStandardAdapter()` says Wallet Standard already found one:
+
+| Provider                                 | Adapter id                | Name                     | Signer kind    |
+| ---------------------------------------- | ------------------------- | ------------------------ | -------------- |
+| `window.unisat`                          | `injected:bitcoin:unisat` | `Unisat`                 | `unisat`       |
+| `window.okxwallet.bitcoin`               | `injected:bitcoin:okx`    | `OKX Wallet (Bitcoin)`   | `unisat`       |
+| `window.XverseProviders.BitcoinProvider` | `injected:bitcoin:xverse` | `Xverse`                 | `sats-connect` |
+| `window.btc`                             | `injected:bitcoin:legacy` | `Browser Bitcoin wallet` | `unisat`       |
+
+`InjectedBitcoinDiscoveryOptions`: `hasAnyWalletStandardAdapter?: () => boolean`,
+`settleMs?: number` (default `150`), `target?` (overrides `window`).
 
 ### `bitcoinDiscoverer: PlatformDiscoverer`
 
-Descriptor used by `@usebutr/wallets`'s `autoDiscovery()` to compose Bitcoin
-discovery (Wallet Standard primary, injected fallback) into a multi-platform
-source.
+Wallet Standard as the primary channel, the injected adapters as the
+fallback. `autoDiscovery(["bitcoin"])` from `@usebutr/wallets` wires both.
 
 ## Adapter builder
 
-### `buildBitcoinAdapter(wallet: WalletStandardWallet): WalletAdapter`
+### `buildBitcoinAdapter(wallet, registerDisconnector?): BitcoinAdapter | null`
 
-Wrap a Wallet Standard wallet into a butr `WalletAdapter` with
-`chainPlatform: "bitcoin"`.
+Wraps a `WalletStandardWallet`, or returns `null` when it speaks no Bitcoin.
+The id is `slugify("btc", wallet.name)`. Each optional method exists only when
+the wallet advertises its feature:
 
-Adapter ids come from `slugify("btc", wallet.name)` in
-`@usebutr/wallet-standard-shared`; import it from there when authoring an
-adapter.
+| Method            | Feature                | Resolves                        |
+| ----------------- | ---------------------- | ------------------------------- |
+| `sendTx`          | `bitcoin:sendTransfer` | The txid.                       |
+| `signMessage`     | `bitcoin:signMessage`  | `{ signature, signedMessage }`. |
+| `signTransaction` | `bitcoin:signPsbt`     | The signed PSBT bytes.          |
 
-## Capabilities
+`sendTx` takes a `BitcoinTransfer` (`{ amount, recipient }`, satoshis);
+`signTransaction` takes PSBT bytes. The
+[Bitcoin connector](/connectors/bitcoin-wallet-standard) covers the injected
+adapters, which switch or refuse a network instead of routing it per call.
 
-### `resolveBitcoinCapabilities(wallet): WalletCapabilities`
+## Signers
 
-Derive `WalletCapabilities` from advertised Bitcoin Wallet Standard features
-(`bitcoin:signMessage`, `bitcoin:signPsbt`, `bitcoin:sendTransfer`, events, …).
+Wallet Standard adapters resolve `{ kind: "wallet-standard", wallet }`.
+Importing the package registers the injected kinds:
 
-Type: `BitcoinCapabilityInput`.
-
-## Chains
-
-- `BITCOIN_CHAINS`: record keyed by chain id (CAIP-2 `bip122:<genesis hash>`).
-- `BITCOIN_CHAINS_LIST`: array (mainnet / testnet / regtest).
+- `unisat`: `{ provider }`, the UniSat-style provider the adapter drives.
+- `sats-connect`: `{ provider }`, Xverse's `request(method, params)` provider.
 
 ## Constants
 
-- `GENERIC_BITCOIN_ICON: string`: fallback SVG data URI for injected
-  wallets that don't supply their own icon.
+`GENERIC_BITCOIN_ICON`: the injected adapters' icon.
 
 ## Types
 
-Bitcoin-specific feature shapes: `BitcoinSignMessageFeature`,
-`BitcoinSignMessageInput`, `BitcoinSignMessageOutput`, `BitcoinSignPsbtFeature`,
-`BitcoinSignPsbtInput`, `BitcoinSignPsbtOutput`, `BitcoinSendTransferFeature`,
+`BitcoinSignMessageFeature`, `BitcoinSignMessageInput`,
+`BitcoinSignMessageOutput`, `BitcoinSignPsbtFeature`, `BitcoinSignPsbtInput`,
+`BitcoinSignPsbtOutput`, `BitcoinSendTransferFeature`,
 `BitcoinSendTransferInput`, `BitcoinSendTransferOutput`,
 `InjectedBitcoinDiscoveryOptions`.
 
-The shared Wallet Standard protocol types (`WalletStandardWallet`,
-`WalletStandardWalletAccount`, `WalletStandardAppModule`, `WalletsApp`,
-`StandardConnectFeature`, `StandardDisconnectFeature`,
-`StandardEventsFeature`, `StandardEventsListener`) live in
-[`@usebutr/wallet-standard-shared`](/api/wallet-standard-shared); import them from
-there directly when casting `getSigner()`.
-
-These feature types are what you cast `getSigner()` to when signing/sending;
-see the [Bitcoin Wallet Standard connector](/connectors/bitcoin-wallet-standard).
+The Bitcoin chain registry (`BITCOIN_CHAINS`, `BITCOIN_CHAINS_LIST`) lives in
+`@usebutr/core`.
 
 **Source:** `packages/bitcoin/src/index.ts`.

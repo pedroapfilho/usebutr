@@ -1,25 +1,118 @@
 ---
 title: Send a transaction
-description: butr exposes the signer; you build and submit transactions with your chain library.
+description: One sendTx(tx, { account, chain }) per wallet, typed per platform, with fixed chain-routing rules. Build the transaction with your chain library.
 ---
 
-butr is deliberately not a transaction-building library. It hands you the
-underlying signer via `wallet.connector.getSigner()` and you submit through
-viem / wagmi / gill / framework-kit / `@solana/kit`. The connector also has
-`sendTx` / `sendTxToChain` for the simple path, but real apps usually go
-through their chain library.
+butr is deliberately not a transaction builder. You build the transaction with
+your chain library (viem, `@solana/kit`, `@mysten/sui`, `bitcoinjs-lib`) and
+either hand it to the adapter's `sendTx`, or take the signer from `getSigner()`
+and submit through that library.
 
-## EVM with viem
-
-`getSigner()` on an EVM adapter returns the raw EIP-1193 provider, exactly
-what viem's `custom()` transport wants:
+## `sendTx`
 
 ```ts
-const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
+sendTx?: (tx: Tx, options?: { account?: Account; chain?: ChainBase }) => Promise<string>;
+```
+
+It asks the wallet to sign and broadcast, and resolves the transaction hash,
+signature, digest, or txid. It exists only when the wallet can do that, so
+check for it first:
+
+```ts
+import type { ConnectedWallet } from "@usebutr/core";
+import { EVM_CHAINS } from "@usebutr/core";
+
+const pay = async (wallet: ConnectedWallet<"evm">, to: string) => {
+  if (!wallet.connector.sendTx) {
+    throw new Error(`${wallet.connector.name} cannot send transactions`);
+  }
+  return wallet.connector.sendTx(
+    { to, value: 10_000_000_000_000_000n },
+    { account: wallet.account, chain: EVM_CHAINS.sepolia },
+  );
+};
+```
+
+- `account` must be one the wallet exposes; omit it to send from the active
+  account. An unknown account rejects instead of sending from another one.
+- `chain` targets this one transaction; omit it to use the wallet's current
+  chain. See [chain routing](#chain-routing).
+
+## Transaction types
+
+`Tx` is different on every platform:
+
+| Platform | `Tx`                                                                                                                                             | Resolves           |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
+| EVM      | `EvmTransactionRequest`: an `eth_sendTransaction` object; `bigint` quantities are hex-encoded for you, and `from` is always the resolved account | transaction hash   |
+| SVM      | `Uint8Array`: the serialized transaction                                                                                                         | base58 signature   |
+| Sui      | `SuiTransactionInput`: a `@mysten/sui` `Transaction`, its JSON string, or BCS bytes                                                              | transaction digest |
+| Bitcoin  | `BitcoinTransfer`: `{ amount: bigint; recipient: string }`, `amount` in satoshis                                                                 | txid               |
+| Polkadot | no `sendTx`: build and submit extrinsics with polkadot-api through [`getSigner()`](/integrations/polkadot)                                       | —                  |
+
+A `ConnectedWallet` from `useWallet()` or `useConnectedWallets()` could be any
+platform, so narrow it before calling `sendTx`:
+
+```ts
+import { isPlatformWallet } from "@usebutr/core";
+
+if (isPlatformWallet(wallet, "svm") && wallet.connector.sendTx) {
+  const signature = await wallet.connector.sendTx(serializedTx, { account: wallet.account });
+}
+```
+
+`wallet.connector.chainPlatform === "svm"` narrows the same way, and
+`useSelectedWallet("svm")` hands you a wallet that is already narrowed.
+
+## Chain routing
+
+What `chain` does depends on the transport, and no adapter ignores it:
+
+| Transport                                         | With `chain`                                                                                                                                        |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wallet Standard (Solana, Sui, Bitcoin)            | routes this one call; the wallet stays where it is. Rejects a chain the wallet doesn't advertise.                                                   |
+| EVM (injected, and WalletConnect's EVM namespace) | an EVM wallet has one global network, so it switches first (`wallet_switchEthereumChain`, which may prompt), then sends. The wallet stays switched. |
+| WalletConnect Solana, Sui, Bitcoin                | routes this one call. Rejects a chain the session didn't approve.                                                                                   |
+| Injected Bitcoin                                  | Unisat and Xverse switch the wallet's network first; OKX and `window.btc` reject with `ChainMismatch`.                                              |
+| Ledger                                            | signs for the chain it was built for; any other `chain` rejects with `ChainMismatch`.                                                               |
+
+The same rules apply to `signTransaction`'s `chain`, which is the only one a
+Ledger has. A `chain` from another platform's namespace always rejects.
+
+## Sign without sending
+
+When you broadcast yourself, use `signTransaction`. It takes the same options
+and exists only when the wallet supports it:
+
+| Platform | `signTransaction` input        | Resolves                                             |
+| -------- | ------------------------------ | ---------------------------------------------------- |
+| SVM      | serialized transaction         | the signed transaction, ready for your RPC           |
+| Sui      | `SuiTransactionInput`          | `{ bytes, signature }` for `executeTransactionBlock` |
+| Bitcoin  | PSBT bytes (`psbt.toBuffer()`) | the signed PSBT, to finalise and broadcast           |
+
+EVM adapters have none: EVM wallets sign and send in one
+`eth_sendTransaction`. On EVM, `getTransactionReceipt(hash)` reports
+`"Pending"`, `"Success"`, or `"Error"` through the wallet's provider; other
+platforms read receipts with your own client.
+
+## Through your chain library
+
+`getSigner()` hands back the object the adapter drives, tagged by transport.
+Narrow on `kind` and give it to your library. With viem:
+
+```ts
+import { createWalletClient, custom, getAddress, parseEther } from "viem";
+import { sepolia } from "viem/chains";
+
+const signer = await wallet.connector.getSigner();
+if (signer.kind !== "eip1193") {
+  throw new Error(`${wallet.connector.name} has no EIP-1193 provider`);
+}
+const account = getAddress(wallet.account.walletAddress);
 const walletClient = createWalletClient({
   account,
   chain: sepolia,
-  transport: custom(provider),
+  transport: custom(signer.provider),
 });
 
 const hash = await walletClient.sendTransaction({
@@ -30,62 +123,26 @@ const hash = await walletClient.sendTransaction({
 });
 ```
 
-## EVM with wagmi
+In a component, `useSigner(wallet)` resolves the same signer as
+`{ status, data, error }` and refetches when the wallet changes. Pass it the
+entry from `useWallet()` or `useSelectedWallet("evm")`; with no wallet it stays
+`"idle"`.
 
-Bridge the same provider into wagmi's `injected` connector via
-`target.provider`, run wagmi's connect lifecycle once (it resolves silently;
-butr already authorised the dapp), then use `@wagmi/core` actions:
+The kind follows the transport, not the platform. An EVM wallet behind a
+Ledger hands back `ledger-evm`, so code that only handles `eip1193` should say
+so rather than cast. Solana, Sui, and Bitcoin Wallet Standard wallets hand back
+`{ kind: "wallet-standard", wallet }`; read their features with `getFeature`
+(see [signing](/guides/signing#calling-a-wallet-standard-feature-directly)).
 
-```ts
-const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
-const cfg = createConfig({
-  chains: [sepolia],
-  connectors: [injected({ target: { id, name, provider: () => provider } })],
-  transports: { [sepolia.id]: http() },
-});
-await connect(cfg, { connector: cfg.connectors[0]! });
-
-const hash = await sendTransaction(cfg, {
-  chainId: sepolia.id,
-  to: BURN_ADDRESS,
-  value: parseEther("0"),
-});
-```
-
-## Solana
-
-`getSigner()` on an SVM adapter returns the `WalletStandardWallet`. Build the
-transaction with your Solana library (`gill` or `@solana/kit` for new apps),
-then submit via the `solana:signAndSendTransaction` feature:
-
-```ts
-const walletStd = (await wallet.connector.getSigner()) as WalletStandardWallet;
-const feature = walletStd.features["solana:signAndSendTransaction"];
-const account = walletStd.accounts[0];
-const [output] = await feature.signAndSendTransaction({
-  account,
-  chain: "solana:devnet",
-  transaction: new Uint8Array(serialisedTx),
-});
-// output.signature is the raw signature (base58-encode for display)
-```
-
-The [gill](/integrations/gill) and
-[`@solana/kit`](/integrations/solana-kit) integrations show the same flow
-with their message builders; [framework-kit](/integrations/solana-framework-kit)
-pairs it with reactive reads. The legacy
-[`@solana/web3.js`](/integrations/solana-web3js) path serializes a
-`Transaction` instead.
-
-<Callout type="warn">
-  Solana wallets advertise features unevenly: Phantom exposes `solana:signAndSendTransaction`; some
-  don't expose `solana:signTransaction` at all. Feature-detect (`if (!feature) throw`) and branch on
-  `wallet.connector.capabilities.sendTransaction`.
-</Callout>
+The [viem](/integrations/viem), [wagmi](/integrations/wagmi),
+[gill](/integrations/gill), [`@solana/kit`](/integrations/solana-kit),
+[framework-kit](/integrations/solana-framework-kit), [Sui](/integrations/sui),
+and [Bitcoin](/integrations/bitcoin) integrations show the full build-and-send
+flow for each library.
 
 <Callout type="info">
-  **Source:** `apps/demo-with-viem`, `apps/demo-with-wagmi`, `apps/demo-with-gill`,
-  `apps/demo-with-solana-framework-kit`, `apps/demo-with-solana-kit` in the [butr
-  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps). These target Sepolia / Solana
-  devnet.
+  **Source:** `packages/core/src/types/wallet.ts`; `apps/demo-with-viem`, `apps/demo-with-wagmi`,
+  `apps/demo-with-gill`, `apps/demo-with-solana-kit`, `apps/demo-with-sui`, and
+  `apps/demo-with-bitcoin` in the [butr
+  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps). These target testnets.
 </Callout>

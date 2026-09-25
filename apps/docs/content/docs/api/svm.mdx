@@ -1,54 +1,96 @@
 ---
 title: "@usebutr/svm"
-description: Wallet Standard discovery, the adapter builder, capabilities, and Solana chains.
+description: Wallet Standard discovery, the adapter builder, and the Solana feature types.
 ---
 
 ## Discovery
 
-### `discoverSvmAdapters(onAdapter): () => void`
+### `discoverSvmAdapters(onAdapter, loadModule?): () => void`
 
-Subscribe to Wallet Standard registrations. Returns an unsubscribe function.
-Lazily imports `@wallet-standard/app` (optional peer dependency).
+Subscribes to Wallet Standard registrations and announces one adapter per
+wallet that advertises a `solana:` chain and `standard:connect`. Lazily
+imports `@wallet-standard/app`, an optional peer dependency; without it
+discovery logs one warning and does nothing. `loadModule` injects a registry
+for tests. It is a `WalletSource` as-is:
+
+```ts
+import type { WalletManagerConfig } from "@usebutr/core";
+import { discoverSvmAdapters } from "@usebutr/svm";
+
+const config: WalletManagerConfig = { sources: [discoverSvmAdapters] };
+```
+
+### `svmDiscoverer: PlatformDiscoverer`
+
+Wallet Standard only; Solana has no legacy injected path worth shimming.
 
 ## Adapter builder
 
-### `buildSvmAdapter(wallet: WalletStandardWallet): WalletAdapter`
+### `buildSvmAdapter(wallet, registerDisconnector?): SvmAdapter | null`
 
-Wrap a Wallet Standard wallet into a butr `WalletAdapter`.
+Wraps a `WalletStandardWallet`, or returns `null` when it speaks no Solana.
+The id is `slugify("svm", wallet.name)`, e.g.
+`wallet-standard:svm-phantom`. Each optional method exists only when the
+wallet advertises its feature:
 
-Adapter ids come from `slugify("svm", wallet.name)` in
-`@usebutr/wallet-standard-shared`; import it from there when authoring an
-adapter.
+| Method            | Feature                         | Resolves                        |
+| ----------------- | ------------------------------- | ------------------------------- |
+| `sendTx`          | `solana:signAndSendTransaction` | The base58 signature.           |
+| `signMessage`     | `solana:signMessage`            | `{ signature, signedMessage }`. |
+| `signTransaction` | `solana:signTransaction`        | The signed transaction bytes.   |
+| `signIn`          | `solana:signIn`                 | `SignInOutput`.                 |
 
-## Capabilities
+`disconnect` needs `standard:disconnect`, and `switchChain` more than one
+advertised Solana cluster. There is no `getBalance` or
+`getTransactionReceipt`: they need an RPC client, which butr does not ship.
+See the [Solana connector](/connectors/solana-wallet-standard).
 
-### `resolveWalletStandardCapabilities(wallet): WalletCapabilities`
+## Signer
 
-Derive `WalletCapabilities` from advertised Wallet Standard features
-(`solana:signMessage`, `solana:signAndSendTransaction`, events, …).
+`getSigner()` resolves `{ kind: "wallet-standard", wallet }`. Reach a feature
+with `getFeature` from
+[`@usebutr/wallet-standard-shared`](/api/wallet-standard-shared) and the
+feature types below:
 
-Type: `WalletStandardCapabilityInput`.
+```ts
+import type { SolanaSignInFeature } from "@usebutr/svm";
+import { getFeature } from "@usebutr/wallet-standard-shared";
 
-## Chains
+const signer = await wallet.connector.getSigner();
+if (signer.kind === "wallet-standard") {
+  const signIn = getFeature<SolanaSignInFeature>(signer.wallet, "solana:signIn", "signIn");
+}
+```
 
-- `SVM_CHAINS`: record keyed by chain id.
-- `SVM_CHAINS_LIST`: array (mainnet / testnet / devnet).
+## Transaction signing
+
+### `prepareSolanaTransaction(tx, signer): SolanaSigningPayload`
+
+Import from `@usebutr/svm/transaction` to integrate a transport that returns
+a bare signature. This entry point loads no wallet discovery code.
+
+`tx` is a serialized legacy or v0 transaction and `signer` its signer's
+base58 address. The helper validates the signature/header/key layout and
+rejects an account that is not a required signer. Instructions stay opaque.
+The result exposes `message` for device signing and `withSignature(bytes)`,
+which inserts a 64-byte signature into the matching slot of a copy,
+preserving other signatures and the original input. Ledger and
+WalletConnect share this implementation.
 
 ## Types
 
-Solana-specific feature shapes: `SolanaSignMessageFeature`,
-`SolanaSignMessageInput`, `SolanaSignMessageOutput`,
-`SolanaSignAndSendTransactionFeature`, `SolanaSignAndSendTransactionInput`,
-`SolanaSignAndSendTransactionOutput`.
+Solana feature shapes, narrowed to the fields butr reads:
 
-The shared Wallet Standard protocol types (`WalletStandardWallet`,
-`WalletStandardWalletAccount`, `WalletStandardAppModule`, `WalletsApp`,
-`StandardConnectFeature`, `StandardDisconnectFeature`,
-`StandardEventsFeature`, `StandardEventsListener`) live in
-[`@usebutr/wallet-standard-shared`](/api/wallet-standard-shared); import them from
-there directly when casting `getSigner()`.
+- `SolanaSignMessageFeature`, `SolanaSignMessageInput`, `SolanaSignMessageOutput`
+- `SolanaSignAndSendTransactionFeature`, `SolanaSignAndSendTransactionInput`,
+  `SolanaSignAndSendTransactionOutput`
+- `SolanaSignTransactionFeature`, `SolanaSignTransactionInput`,
+  `SolanaSignTransactionOutput`
+- `SolanaSignInFeature`, `SolanaSignInInput`, `SolanaSignInOutput`
 
-These feature types are what you cast `getSigner()` to when signing/sending;
-see the [Solana integrations](/integrations/solana-web3js).
+The shared Wallet Standard types (`WalletStandardWallet`,
+`WalletStandardWalletAccount`, …) live in `@usebutr/wallet-standard-shared`.
+The Solana chain registry (`SVM_CHAINS`, `SVM_CHAINS_LIST`) lives in
+`@usebutr/core`.
 
 **Source:** `packages/svm/src/index.ts`.

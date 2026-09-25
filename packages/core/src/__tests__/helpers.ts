@@ -1,104 +1,243 @@
 import { vi } from "vitest";
 
-import type { StorageDriver } from "../storage/persistence";
-import type { Account, ChainBase, WalletAdapter, WalletManagerConfig } from "../types";
+import { EVM_CHAINS, SVM_CHAINS } from "../chains";
+import type { PersistedWalletState, StorageDriver } from "../storage/persistence";
+import type {
+  Account,
+  ConnectedWallet,
+  ConnectorEvent,
+  EvmAdapter,
+  SvmAdapter,
+  WalletAdapter,
+  WalletManagerConfig,
+} from "../types";
+import { buildAccount } from "../types";
+import type { WalletSource } from "../wallet-source";
 
-const createMockChain = (overrides?: Partial<ChainBase>): ChainBase => ({
-  id: "eip155:1",
-  name: "Ethereum",
-  namespace: "eip155",
-  reference: "1",
-  ...overrides,
-});
+const ETHEREUM = EVM_CHAINS.ethereum;
+const SOLANA = SVM_CHAINS.mainnet;
 
-const createMockAccount = (overrides?: Partial<Account>): Account => ({
-  chain: createMockChain(),
-  id: "mock-account-id",
-  walletAddress: "0x1234567890abcdef1234567890abcdef12345678",
-  ...overrides,
-});
+/** Typed so `vi.fn<Callbacks["onConnect"]>()` satisfies strict void returns. */
+type Callbacks = Required<WalletManagerConfig>;
 
-const createMockConnector = (overrides?: Partial<WalletAdapter>): WalletAdapter => ({
-  capabilities: {
-    getBalance: true,
-    getTransactionReceipt: true,
-    requestAccounts: true,
-    sendTransaction: true,
-    signIn: false,
-    signMessage: true,
-    signTransaction: false,
-    subscribe: true,
-    switchAccount: false,
-    switchChain: true,
-  },
-  chainPlatform: "evm",
-  connect: vi.fn().mockResolvedValue(undefined),
-  disconnect: vi.fn().mockResolvedValue(undefined),
-  getAccount: vi.fn().mockResolvedValue(createMockAccount()),
-  getBalance: vi.fn().mockResolvedValue({
-    decimals: 18,
-    formatted: "0",
-    symbol: "ETH",
-    value: 0n,
-  }),
-  getSigner: vi.fn().mockResolvedValue({}),
-  getTransactionReceipt: vi.fn().mockResolvedValue({ status: "Success" as const }),
-  id: "mock-connector",
-  name: "Mock Wallet",
-  sendTx: vi.fn().mockResolvedValue("0xtxhash"),
-  sendTxToChain: vi.fn().mockResolvedValue("0xtxhash"),
-  signMessage: vi.fn().mockResolvedValue(new Uint8Array()),
-  switchChain: vi.fn().mockResolvedValue(undefined),
-  ...overrides,
-});
+type TestControls = {
+  /** Delivers `event` to every live `subscribe` listener. */
+  emit: (event: ConnectorEvent) => void;
+  listenerCount: () => number;
+};
 
-const createMockStorageDriver = (): StorageDriver => {
-  const store = new Map<string, string>();
+type TestAdapterOptions = {
+  /** What `getAccounts` resolves; one account derived from the id otherwise. */
+  accounts?: ReadonlyArray<Account>;
+};
+
+const createListeners = () => {
+  const listeners = new Set<(event: ConnectorEvent) => void>();
   return {
-    getItem: vi.fn((key: string) => store.get(key) ?? null),
-    removeItem: vi.fn((key: string) => {
-      store.delete(key);
-    }),
-    setItem: vi.fn((key: string, value: string) => {
-      store.set(key, value);
+    emit: (event: ConnectorEvent) => {
+      for (const listener of listeners) {
+        listener(event);
+      }
+    },
+    listenerCount: () => listeners.size,
+    subscribe: vi.fn((listener: (event: ConnectorEvent) => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
     }),
   };
 };
 
-/** Returns an async driver backed by a Map. Each call defers via
- *  Promise.resolve to simulate AsyncStorage-like behavior. */
-const createAsyncMockStorageDriver = (): StorageDriver => {
-  const store = new Map<string, string>();
+/** A minimal EVM adapter whose members are spies. `overrides` replace
+ *  members; `undefined` removes an optional one. */
+const evmAdapter = (
+  id: string,
+  options: TestAdapterOptions & Partial<EvmAdapter> = {},
+): EvmAdapter & TestControls => {
+  const { accounts, ...overrides } = options;
+  const exposed = accounts ?? [buildAccount(`0x${id}`, ETHEREUM)];
+  const events = createListeners();
+  const adapter: EvmAdapter = {
+    chainPlatform: "evm",
+    connect: vi.fn(() => Promise.resolve()),
+    disconnect: vi.fn(() => Promise.resolve()),
+    getAccounts: vi.fn(() => Promise.resolve(exposed)),
+    getSigner: vi.fn(() => Promise.reject(new Error("core tests register no signer"))),
+    id,
+    name: `${id} wallet`,
+    subscribe: events.subscribe,
+    ...overrides,
+  };
+  return Object.assign(adapter, { emit: events.emit, listenerCount: events.listenerCount });
+};
+
+const svmAdapter = (
+  id: string,
+  options: TestAdapterOptions & Partial<SvmAdapter> = {},
+): SvmAdapter & TestControls => {
+  const { accounts, ...overrides } = options;
+  const exposed = accounts ?? [buildAccount(`So1${id}`, SOLANA)];
+  const events = createListeners();
+  const adapter: SvmAdapter = {
+    chainPlatform: "svm",
+    connect: vi.fn(() => Promise.resolve()),
+    disconnect: vi.fn(() => Promise.resolve()),
+    getAccounts: vi.fn(() => Promise.resolve(exposed)),
+    getSigner: vi.fn(() => Promise.reject(new Error("core tests register no signer"))),
+    id,
+    name: `${id} wallet`,
+    subscribe: events.subscribe,
+    ...overrides,
+  };
+  return Object.assign(adapter, { emit: events.emit, listenerCount: events.listenerCount });
+};
+
+/** A pool entry for `adapter`, active account first. */
+const walletOf = (
+  adapter: WalletAdapter,
+  accounts: ReadonlyArray<Account> = [
+    buildAccount(
+      adapter.chainPlatform === "svm" ? `So1${adapter.id}` : `0x${adapter.id}`,
+      adapter.chainPlatform === "svm" ? SOLANA : ETHEREUM,
+    ),
+  ],
+): ConnectedWallet => {
+  const [account] = accounts;
+  if (account === undefined) {
+    throw new Error("walletOf needs at least one account");
+  }
+  return { account, accounts, connector: adapter };
+};
+
+/** Announces every adapter synchronously on subscribe, so they are
+ *  registered before hydration reads storage. */
+const staticSource =
+  (...adapters: ReadonlyArray<WalletAdapter>): WalletSource =>
+  (onAdapter) => {
+    for (const adapter of adapters) {
+      onAdapter(adapter);
+    }
+    return () => {};
+  };
+
+/** A source the test drives: `announce` registers an adapter whenever the
+ *  test decides, as a late-injected extension would. */
+const createManualSource = () => {
+  let listener: ((adapter: WalletAdapter) => void) | null = null;
+  const unsubscribe = vi.fn(() => {
+    listener = null;
+  });
+  const source = vi.fn<WalletSource>((onAdapter) => {
+    listener = onAdapter;
+    return unsubscribe;
+  });
   return {
-    getItem: vi.fn((key: string) => Promise.resolve(store.get(key) ?? null)),
+    announce: (adapter: WalletAdapter) => {
+      listener?.(adapter);
+    },
+    source,
+    unsubscribe,
+  };
+};
+
+const EMPTY_PERSISTED: PersistedWalletState = {
+  activeConnectorId: null,
+  isUserDisconnected: false,
+  pool: {},
+  selection: {},
+};
+
+/** A plain in-memory `WalletPersistence` that records every save. */
+const createMemoryPersistence = (seed: Partial<PersistedWalletState> = {}) => {
+  let current: PersistedWalletState = { ...EMPTY_PERSISTED, ...seed };
+  const saves: Array<PersistedWalletState> = [];
+  return {
+    load: vi.fn(() => Promise.resolve(current)),
+    save: vi.fn((state: PersistedWalletState) => {
+      saves.push(state);
+      current = state;
+      return Promise.resolve();
+    }),
+    saves,
+  };
+};
+
+const createSyncDriver = (): StorageDriver & { entries: Map<string, string> } => {
+  const entries = new Map<string, string>();
+  return {
+    entries,
+    getItem: vi.fn((key: string) => entries.get(key) ?? null),
     removeItem: vi.fn((key: string) => {
-      store.delete(key);
+      entries.delete(key);
+    }),
+    setItem: vi.fn((key: string, value: string) => {
+      entries.set(key, value);
+    }),
+  };
+};
+
+/** AsyncStorage-shaped: every call settles on a later microtask. */
+const createAsyncDriver = (): StorageDriver & { entries: Map<string, string> } => {
+  const entries = new Map<string, string>();
+  return {
+    entries,
+    getItem: vi.fn((key: string) => Promise.resolve(entries.get(key) ?? null)),
+    removeItem: vi.fn((key: string) => {
+      entries.delete(key);
       return Promise.resolve();
     }),
     setItem: vi.fn((key: string, value: string) => {
-      store.set(key, value);
+      entries.set(key, value);
       return Promise.resolve();
     }),
   };
 };
 
-const createMockStoragePair = () => ({
-  persistent: createMockStorageDriver(),
-  session: createMockStorageDriver(),
-});
+/** Resolves the error `promise` rejects with, so a test can inspect it. */
+const rejectionOf = async (promise: Promise<unknown>): Promise<Error> => {
+  try {
+    await promise;
+  } catch (error) {
+    if (error instanceof Error) {
+      return error;
+    }
+    throw error;
+  }
+  throw new Error("expected a rejection");
+};
 
-const createMockConfig = (overrides?: Partial<WalletManagerConfig>): WalletManagerConfig => ({
-  connectors: [],
-  createConnector: vi.fn((id: string) => createMockConnector({ id })),
-  ...overrides,
-});
+/** A promise the test settles by hand, e.g. a wallet that answers late. */
+const createGate = () => {
+  const { promise, resolve } = Promise.withResolvers<undefined>();
+  return {
+    open: () => {
+      resolve(undefined);
+    },
+    promise,
+  };
+};
 
+/** Lets every queued microtask and zero-delay timer run. */
+const flush = () =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
+
+export type { Callbacks };
 export {
-  createAsyncMockStorageDriver,
-  createMockAccount,
-  createMockChain,
-  createMockConfig,
-  createMockConnector,
-  createMockStorageDriver,
-  createMockStoragePair,
+  createAsyncDriver,
+  createGate,
+  createManualSource,
+  createMemoryPersistence,
+  createSyncDriver,
+  EMPTY_PERSISTED,
+  ETHEREUM,
+  evmAdapter,
+  flush,
+  rejectionOf,
+  SOLANA,
+  staticSource,
+  svmAdapter,
+  walletOf,
 };

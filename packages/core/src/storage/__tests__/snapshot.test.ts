@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createMockStorageDriver } from "../../__tests__/helpers";
-import { readWalletSnapshot } from "../snapshot";
-import { WalletStorage } from "../wallet-storage";
+import { createSyncDriver } from "../../__tests__/helpers";
+import { EMPTY_SNAPSHOT, readWalletSnapshot } from "../snapshot";
+import { createWalletStorage } from "../wallet-storage";
 
 const validPoolEntry = {
   account: {
@@ -130,8 +130,7 @@ describe("readWalletSnapshot", () => {
     const snapshot = readWalletSnapshot({
       "butr-selection": JSON.stringify({ evm: "metamask", martian: "rogue" }),
     });
-    expect(snapshot.selection.evm).toBe("metamask");
-    expect((snapshot.selection as Record<string, string>).martian).toBeUndefined();
+    expect(snapshot.selection).toEqual({ evm: "metamask" });
   });
 
   // ADR 0003 makes the server decode and the client decode load-bearing on
@@ -150,21 +149,25 @@ describe("readWalletSnapshot", () => {
       ],
       ["an empty payload", ""],
     ])("%s", async (_label, poolPayload) => {
-      const persistent = createMockStorageDriver();
-      await persistent.setItem("butr-pool", poolPayload);
-      await persistent.setItem("butr-selection", selectionValue);
-      const storage = new WalletStorage({
-        persistent,
-        session: createMockStorageDriver(),
-      });
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const persistent = createSyncDriver();
+      persistent.entries.set("butr-pool", poolPayload);
+      persistent.entries.set("butr-selection", selectionValue);
+      const loaded = await createWalletStorage({ persistent, session: createSyncDriver() }).load();
 
       const snapshot = readWalletSnapshot({
         "butr-pool": poolPayload,
         "butr-selection": selectionValue,
       });
 
-      expect(snapshot.pool).toEqual(await storage.getPool());
-      expect(snapshot.selection).toEqual(await storage.getSelection());
+      expect(snapshot.pool).toEqual(loaded.pool);
+      expect(snapshot.selection).toEqual(loaded.selection);
+      vi.restoreAllMocks();
     });
+  });
+
+  it("exposes a frozen empty snapshot", () => {
+    expect(EMPTY_SNAPSHOT).toEqual({ activeConnectorId: null, pool: {}, selection: {} });
+    expect(Object.isFrozen(EMPTY_SNAPSHOT)).toBe(true);
   });
 });

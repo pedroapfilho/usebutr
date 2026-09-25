@@ -11,20 +11,36 @@ connection-state library. Your application owns the picker UI and chain client.
 npm install @usebutr/react @usebutr/core @usebutr/evm zustand
 ```
 
-React 18+ is a peer dependency of the provider. Discovery does not render a connect modal; add your picker as the provider child.
+React 19 is a peer dependency of the provider. Discovery does not render a connect modal; add your picker as the provider child. `discoverEvmAdapters` (EIP-6963) and `discoverInjectedAdapter` (the legacy `window.ethereum` fallback) are wallet sources as-is; `autoDiscovery()` from `@usebutr/wallets` combines both with the other platforms.
 
 ## Usage
 
 ```tsx
 import type { ReactNode } from "react";
-import { createWalletSource } from "@usebutr/core";
+import type { WalletManagerConfig } from "@usebutr/core";
 import { discoverEvmAdapters } from "@usebutr/evm";
 import { WalletManagerProvider } from "@usebutr/react";
 
-const discovery = createWalletSource(discoverEvmAdapters);
+const config: WalletManagerConfig = { sources: [discoverEvmAdapters] };
+
 export const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <WalletManagerProvider discovery={discovery}>{children}</WalletManagerProvider>
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
+```
+
+Every EVM adapter defines `requestAccounts`, `switchChain`, `signMessage`, `sendTx`, `getBalance`, `getTransactionReceipt` and `subscribe`. `getSigner()` resolves `{ kind: "eip1193", provider }` for your own viem or ethers client. Chain registries (`EVM_CHAINS`, `EVM_CHAINS_LIST`) live in `@usebutr/core`.
+
+```ts
+import type { ConnectedWallet } from "@usebutr/core";
+import { EVM_CHAINS } from "@usebutr/core";
+
+// `sendTx` switches the wallet to `chain` first when it is elsewhere, and
+// sends from `account`, which must be one the wallet exposes.
+export const pay = (wallet: ConnectedWallet<"evm">, to: string) =>
+  wallet.connector.sendTx?.(
+    { to, value: 10_000_000_000_000_000n },
+    { account: wallet.account, chain: EVM_CHAINS.base },
+  );
 ```
 
 ## Documentation

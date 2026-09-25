@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: "End-to-end runtime: how discovery, adapters, the store, the pool, and React hooks fit together across five platforms."
+description: "End-to-end runtime: how sources, adapters, the wallet manager, the pool, and React hooks fit together across five platforms."
 ---
 
 butr is six layers stacked on a single core type. This page walks the runtime
@@ -12,12 +12,13 @@ behavior in and out.
 <Mermaid
   chart={`
 graph TD
-  subgraph discovery["Discovery layer"]
+  subgraph discovery["Sources"]
     eip6963["EIP-6963 (EVM)"]
     walletstandard["Wallet Standard (SVM / Sui / Bitcoin · Polkadot fallback)"]
     injectedweb3["injectedWeb3 (Polkadot primary)"]
     injected["Injected fallback (window.ethereum / window.unisat / sats-connect)"]
-    source["WalletSource: discovery seam"]
+    built["fromAdapters (WalletConnect / Ledger / your own)"]
+    source["WalletSource: (onAdapter) => unsubscribe"]
   end
 
 subgraph adapters["Adapter contract"]
@@ -25,35 +26,34 @@ adapter["WalletAdapter: discriminated by chainPlatform<br>evm | svm | sui | bitc
 end
 
 subgraph core["@usebutr/core"]
-store["WalletStore (zustand)<br>pool · selection · active · status"]
-storage["WalletStorage<br>persistent + session drivers"]
-hydration["Hydration coordinator"]
+manager["createWalletManager<br>adapters · pool · dormant · selection · active"]
+storage["WalletPersistence<br>load() / save(state)"]
 end
 
 subgraph react["@usebutr/react"]
 provider["WalletManagerProvider"]
-hooks["Selectors / Actions / Async resources"]
+hooks["State hooks / useConnect / useWalletManager / async resources"]
 end
 
 subgraph integration["Integration"]
-signer["getSigner(): escape hatch<br>EIP-1193 / WalletStandardWallet / PolkadotSignerHandle"]
+signer["getSigner(): tagged by transport<br>eip1193 / wallet-standard / walletconnect / ledger-* / …"]
 end
 
 eip6963 --> source
 walletstandard --> source
 injectedweb3 --> source
 injected --> source
+built --> source
 source --> adapter
-adapter --> store
-storage --> hydration
-hydration --> store
-store --> provider
+adapter --> manager
+storage <--> manager
+manager --> provider
 provider --> hooks
 hooks --> signer
 `}
 />
 
-## Layer 1: Discovery
+## Layer 1: Sources
 
 Browser wallets announce themselves through one of three mechanisms:
 
@@ -64,7 +64,7 @@ Browser wallets announce themselves through one of three mechanisms:
   `window.injectedWeb3`; a Wallet Standard `polkadot:*` fallback covers
   wallets the primary channel missed.
 
-Each `@usebutr/<platform>` package exposes one or two discoverers:
+Each `@usebutr/<platform>` package exports one or two discoverers:
 
 - `discoverEvmAdapters` + `discoverInjectedAdapter` (`@usebutr/evm`)
 - `discoverSvmAdapters` (`@usebutr/svm`)
@@ -73,31 +73,30 @@ Each `@usebutr/<platform>` package exposes one or two discoverers:
 - `discoverInjectedPolkadotAdapters` + `discoverPolkadotWalletStandardAdapters`
   (`@usebutr/polkadot`)
 
-A discoverer takes a callback and returns an unsubscribe function. It's a pull
-model: discovery only happens when a `WalletSource` subscribes.
-
 ### The `WalletSource` seam
 
+A source is a function that announces adapters and returns its unsubscribe:
+
 ```ts
-type WalletSource = {
-  subscribe(onAdapter: (adapter: WalletAdapter) => void): () => void;
-};
+type WalletSource = (onAdapter: (adapter: WalletAdapter) => void) => () => void;
 ```
 
-`@usebutr/wallets` ships `autoDiscovery()` which composes all five platforms.
-For single-platform or custom setups, `createWalletSource(discoverEvmAdapters)`
-wraps a bare discoverer into a `WalletSource`; that's the only contract the
-provider cares about.
+Every discoverer above already has that shape, so it goes into
+`config.sources` as-is. `autoDiscovery()` from `@usebutr/wallets` returns one
+source for all five platforms, with the injected fallbacks staying quiet once a
+standard announcement covered the wallet. `fromAdapters(adapters)` from
+`@usebutr/core` turns built adapters (WalletConnect, Ledger, your own) into a
+source, so they show up in `useDiscoveredWallets()` like any discovered wallet.
 
-The seam is what makes butr framework-agnostic. Your test suite can pass a
-synthetic `WalletSource` that emits fake adapters; React Native binds to the
-same shape.
+Sources are pulled, not pushed: nothing is discovered until the manager starts
+and subscribes. The first adapter announced for an id wins. A test passes a
+source that announces fakes; React Native uses the same shape.
 
 ## Layer 2: The `WalletAdapter` contract
 
-Every wallet in butr (discovered, registered, hardware, mobile, faked for a
-test) implements the same `WalletAdapter` type. It's a **discriminated union
-on `chainPlatform`**:
+Every wallet in butr (discovered, built, hardware, mobile, faked for a test)
+implements the same `WalletAdapter` type. It's a **discriminated union on
+`chainPlatform`**:
 
 ```ts
 type WalletAdapter =
@@ -108,148 +107,161 @@ type WalletAdapter =
   | PolkadotAdapter; // chainPlatform: "polkadot"
 ```
 
-The discriminant lets TypeScript narrow correctly: after
-`if (adapter.chainPlatform === "sui") { ... }`, `adapter.signTransaction`
-has Sui-specific types: no `unknown`, no `as any`.
+After `if (adapter.chainPlatform === "sui")`, `adapter.sendTx` takes a Sui
+transaction and `adapter.signTransaction` resolves `{ bytes, signature }`: no
+`unknown`, no casts.
 
 Each adapter has two halves:
 
-- **Connector half** (called by butr's runtime): `connect`, `disconnect`,
-  `getAccounts`, `subscribe`, `getSigner`. Lifecycle methods butr drives.
-- **Wallet half** (called by your app): `signMessage`, `signTransaction`,
-  `sendTransaction`, `getBalance`, `switchChain`. Per-platform features.
+- **Connector half** (driven by butr): `connect`, `disconnect`, `getAccounts`,
+  `requestAccounts`, `subscribe`.
+- **Wallet half** (called by your app): `getSigner`, `signMessage`, `sendTx`,
+  `switchChain`, plus platform methods such as `signTransaction`, `signIn`,
+  `getBalance`.
 
-A `WalletCapabilities` object on each adapter declares which wallet-half
-methods are wired. Gate UI on capabilities, not on method presence; see
+Only `connect`, `getAccounts`, and `getSigner` are required. Every other method
+exists only when it works for that wallet; see
 [capabilities](/concepts/capabilities).
 
-## Layer 3: The store (`@usebutr/core`)
+## Layer 3: The wallet manager (`@usebutr/core`)
 
-The store is a zustand store wrapped in `createWalletStore()`. It tracks four
-slices of state:
+`createWalletManager(config, { initialState })` owns discovery, hydration, and
+persistence. It is a read-only Zustand store (`getState`, `subscribe`,
+`getInitialState`) plus actions: `connect`, `disconnect`, `disconnectAll`,
+`requestAccounts`, `setActive`, `setSelection`, `setAccount`,
+`clearConnectionError`.
 
-| Slice          | Shape                                        | Set by                                   |
-| -------------- | -------------------------------------------- | ---------------------------------------- |
-| **Discovered** | `Map<id, WalletAdapter>`                     | Discovery layer (Layer 1)                |
-| **Pool**       | `Map<connectorId, ConnectedWallet>`          | `connect` / `disconnect` actions         |
-| **Selection**  | `Record<ChainPlatform, connectorId \| null>` | `setSelectedWallet` action               |
-| **Status**     | `Record<connectorId, ConnectionStatus>`      | Lifecycle (`connecting`, `connected`, …) |
-
-`ConnectedWallet` = `{ connector: WalletAdapter; account: Account }`. The
-pool holds every connection across all five platforms simultaneously. The
-**active wallet** is derived: `selection[activePlatform] → pool[id]`.
-
-See [pool, selection, active](/concepts/pool-selection-active) for the
-mental model behind these three layers.
-
-The store is React-free. Anything that consumes wallet state (a Web
-Worker, a Node script, a non-React renderer) can `subscribe` to it
-directly.
-
-## Layer 4: Storage and hydration
-
-Two drivers, two scopes:
+Creating a manager has no side effects, so it is safe during a server render.
+`start()` subscribes the sources, hydrates persisted connections once, and
+bridges wallet events; the function it returns undoes all of it except
+hydration.
 
 ```ts
-class WalletStorage {
-  persistent: StorageDriver; // localStorage by default
-  session: StorageDriver; // sessionStorage by default
-}
+import { createWalletManager } from "@usebutr/core";
+import { autoDiscovery } from "@usebutr/wallets";
+
+const manager = createWalletManager({ sources: [autoDiscovery()] });
+const stop = manager.start();
+
+manager.subscribe((state) => {
+  console.log([...state.pool.keys()]);
+});
 ```
 
-`StorageDriver` is the seam:
+Its state:
 
-```ts
-type StorageDriver = {
-  getItem(key: string): MaybePromise<string | null>;
-  setItem(key: string, value: string): MaybePromise<void>;
-  removeItem(key: string): MaybePromise<void>;
-};
-```
+| Field                                                          | Shape                                  | What it holds                                                                  |
+| -------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------ |
+| `adapters`                                                     | `ReadonlyArray<WalletAdapter>`         | every adapter the sources announced, in order                                  |
+| `pool`                                                         | `ReadonlyMap<string, ConnectedWallet>` | every connected wallet, keyed by adapter id                                    |
+| `dormant`                                                      | `ReadonlyMap<string, StoredPoolEntry>` | persisted connections that are not live                                        |
+| `selection`                                                    | `ReadonlyMap<ChainPlatform, string>`   | the chosen wallet per platform                                                 |
+| `activeConnectorId`                                            | `string \| null`                       | the wallet in front of the user                                                |
+| `reconnectingIds`                                              | `ReadonlySet<string>`                  | pool entries still backed by a placeholder seeded from `initialState`          |
+| `connectionStatus`, `connectingConnectorId`, `connectionError` | attempt state                          | the latest `connect` attempt: `"idle" \| "connecting" \| "success" \| "error"` |
+| `isHydrated`, `isUserDisconnected`                             | `boolean`                              | the start-up pass finished; the user disconnected this session                 |
 
-`createBrowserStorageDriver`, `createCookieStorageDriver`, and
-`createMemoryStorageDriver` ship by default. Bring AsyncStorage, IndexedDB,
-or anything else by implementing the three methods.
+`ConnectedWallet` is `{ account, accounts, connector }`. See
+[pool, selection, active](/concepts/pool-selection-active) for how those three
+relate.
 
-### Hydration
+### One pass owns the invariants
 
-On mount, the provider replays the last persisted pool into the store. But
-adapters announce **asynchronously**: a wallet that was connected last
-session may not have registered with Wallet Standard yet at first render.
-The store tracks each pending connector in `pendingIds`. When a discovered
-adapter matches, hydration completes for that id.
+Events only change what they are about. After every event one reconcile pass
+restores the invariants the rest of the library relies on:
 
-`useIsHydrated()` returns `true` once the first hydration pass settles. UI
-that depends on connection state should gate on this; see
-[hydration](/concepts/hydration).
+- a reconnecting id is always in the pool;
+- a live connection is never also dormant;
+- every platform with a wallet in the pool has a selection pointing at one of
+  that platform's wallets, and no selection points anywhere else;
+- the active wallet is in the pool, or else the first pool entry, or else
+  `null`.
+
+So disconnecting the selected EVM wallet falls back to another connected EVM
+wallet, and disconnecting the active wallet falls back to the first one left.
+The pass keeps references when nothing changed, so subscribers are not
+notified for no-ops.
+
+## Layer 4: Persistence and hydration
+
+What gets persisted is a pure function of state: the live pool plus the dormant
+entries, the selection, the active id, and the disconnect intent. The manager
+hands the whole value to `WalletPersistence.save(state)` after every change,
+once hydration has loaded what was there before. `load()` is read once, by
+`start()`. The default is `createWalletStorage()` over `localStorage` and
+`sessionStorage`; a `StorageDriver` swaps in cookies, AsyncStorage, or anything
+with get / set / remove. See [persistence](/concepts/persistence).
+
+Hydration silently reconnects every persisted entry whose adapter has been
+announced, then each late adapter the moment its source announces it. Adapters
+announce **asynchronously**, so a wallet that was connected last session may
+not exist yet on the first pass. `useIsHydrated()` turns true once that pass
+settles; see [hydration](/concepts/hydration).
 
 ## Layer 5: React bindings (`@usebutr/react`)
 
-`WalletManagerProvider` wires the store into React context. Below it, hooks
-split by return shape:
+`<WalletManagerProvider config={config} initialState={snapshot}>` creates one
+manager per mount and starts it in an effect, so a server render never shares
+wallet state between requests and never runs discovery. Below it, hooks split
+by job:
 
-- **Selectors** (`useActiveWallet`, `useConnectedWallets`,
-  `useDiscoveredWallets`, `useSelectedWallet`, `usePool`, `useAccounts`,
-  `useIsHydrated`): synchronous reads with shallow-equality memoisation.
-- **Actions** (`useConnectWallet`, `useDisconnectWallet`,
-  `useSetActiveConnector`, `useRequestAccounts`): stable callbacks.
-- **Async resources** (`useBalance`, `useSigner`, `useTransactionReceipt`):
-  `{ status, data, error }` shape, cached per connector, invalidated on
-  account/chain change.
-
-Each hook is one file, one responsibility. No barrel re-exports that fan
-out unrelated subscriptions.
+- **State**: `useWallet(id?)`, `useConnectedWallets`, `useDiscoveredWallets`,
+  `useSelectedWallet(platform)`, `useAccounts`, `useConnectionStatus`,
+  `useIsHydrated`, `useIsReconnecting`, the two `…ByPlatform` groupings, and
+  `useWalletState(selector)` for anything else.
+- **Actions**: `useConnect()` for `connect` plus the latest attempt's state;
+  `useWalletManager()` for `disconnect`, `disconnectAll`, `setActive`,
+  `setSelection`, `setAccount`, `requestAccounts`, and a non-subscribing
+  `getState`. Its methods are stable references.
+- **Async resources**: `useBalance(wallet)` and `useSigner(wallet)` take a
+  connected wallet, return `{ status, data, error }`, and refetch when the
+  wallet changes.
 
 ## Layer 6: Integration escape hatch
 
 `getSigner()` is the seam to chain libraries. butr does **not** ship an RPC
-client, a transaction builder, or a connect modal; instead, every adapter
-exposes the raw, platform-native signer:
+client, a transaction builder, or a connect modal. Every adapter hands back the
+object it drives, tagged by transport, so you narrow with `signer.kind`:
 
-| Platform | `getSigner()` returns                                                                             |
-| -------- | ------------------------------------------------------------------------------------------------- |
-| EVM      | `Eip1193Provider`: pass to viem/ethers/wagmi.                                                     |
-| SVM      | `WalletStandardWallet`: pass to `@solana/kit` / web3.js.                                          |
-| Sui      | `WalletStandardWallet`: pass to `@mysten/sui`.                                                    |
-| Bitcoin  | `WalletStandardWallet`: pass to `bitcoinjs-lib`.                                                  |
-| Polkadot | `PolkadotSignerHandle` (`{ extensionName, address }`): bridge to `polkadot-api` via `pjs-signer`. |
+| `kind`                                                     | Fields                       | Pass it to                                 |
+| ---------------------------------------------------------- | ---------------------------- | ------------------------------------------ |
+| `eip1193`                                                  | `provider`                   | viem `custom()`, ethers, wagmi             |
+| `wallet-standard`                                          | `wallet`                     | `@solana/kit`, `@mysten/sui`, `getFeature` |
+| `walletconnect`                                            | `provider`, `chainId`        | `provider.request(args, chainId)`          |
+| `ledger-evm`, `ledger-svm`, `ledger-sui`, `ledger-bitcoin` | `app`                        | the Ledger device app                      |
+| `unisat`, `sats-connect`                                   | `provider`                   | the injected Bitcoin provider              |
+| `polkadot-injected`                                        | `extension`, `extensionName` | polkadot-api's `connectInjectedExtension`  |
 
-The signer type is fully tracked in TypeScript via the `SignerForPlatform`
-type registry; there's no `unknown` or `as any` needed in the bridge code.
-
-See the [integrations](/integrations/viem) section for one example per
-platform.
+The kind follows the transport, not the platform: an EVM wallet reached through
+a Ledger hands back `ledger-evm`, not `eip1193`. See the
+[integrations](/integrations/viem) section for one example per platform.
 
 ## Adding a platform
 
-Adding a sixth `ChainPlatform` is a fixed-shape change touching the same
-four files every time:
+Adding a sixth `ChainPlatform` is a fixed-shape change:
 
-1. **Extend** the `ChainPlatform` union in `@usebutr/core` and add an entry
-   to `WalletAdapter`.
-2. **Implement** `@usebutr/<platform>`, at minimum: a `discoverXxxAdapters`
-   discoverer, a `buildXxxAdapter` builder, a chain registry, and a
-   capabilities resolver.
-3. **Register** it in `@usebutr/wallets` (`KNOWN_DISCOVERERS` + the
-   `autoDiscovery()` composition).
-4. **(Optional)** Wire connectors: add a namespace builder under
-   `@usebutr/walletconnect/src/namespaces/<platform>.ts` and an app factory
-   under `@usebutr/ledger/src/apps/<platform>.ts`.
-
-The five current platforms (EVM, SVM, Sui, Bitcoin, Polkadot) each ship
-the same shape. The Ledger dispatch's `default:` branch is a true `never`
-exhaustiveness check; TypeScript will flag a missing case the moment the
-union extends.
+1. **Extend** `CHAIN_PLATFORMS` in `@usebutr/core` (the `ChainPlatform` type
+   and the storage validators derive from it), add the platform's `*Wallet`
+   type to the `WalletAdapter` union, and add its chain registry to
+   `CHAINS_BY_PLATFORM`.
+2. **Implement** `@usebutr/<platform>`: a `discover*Adapters` source, a
+   `build*Adapter` that defines only the methods the wallet supports, and a
+   `PlatformDiscoverer`.
+3. **Register** it in `@usebutr/wallets`. Its discoverer map is typed
+   `Record<ChainPlatform, PlatformDiscoverer>`, as is `CHAINS_BY_PLATFORM`, so
+   TypeScript flags each missing entry the moment the union grows.
+4. **(Optional)** Add a WalletConnect namespace under
+   `packages/walletconnect/src/namespaces/<platform>.ts` and a Ledger app under
+   `packages/ledger/src/apps/<platform>.ts`.
 
 ## What butr explicitly doesn't do
 
-- **No RPC client.** Reads (`getBalance`, `getTransactionReceipt`) route
-  through the wallet's transport, which is fine for occasional checks but
-  shouldn't be your primary balance feed.
-- **No transaction builder.** Construct your txs with the chain library
-  that fits your domain (viem, `@solana/kit`, `@mysten/sui`,
-  `bitcoinjs-lib`) and pass the bytes to `signTransaction` /
-  `sendTransaction`.
+- **No RPC client.** EVM adapters read balances and receipts through the
+  wallet's own provider, which is fine for occasional checks but shouldn't be
+  your primary balance feed. Other platforms have no `getBalance` at all.
+- **No transaction builder.** Construct transactions with the chain library
+  that fits your domain (viem, `@solana/kit`, `@mysten/sui`, `bitcoinjs-lib`)
+  and pass them to `sendTx` or `signTransaction`.
 - **No connect modal.** `useDiscoveredWallets()` returns the list; you
   render the buttons.
 - **No key custody.** Every signer ultimately lives in the user's wallet.

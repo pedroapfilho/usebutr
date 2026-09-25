@@ -1,4 +1,3 @@
-import type { ConnectedWallet } from "@usebutr/core";
 import { useSelectedWallet } from "@usebutr/react";
 import { type Chain, type Network, Wormhole, amount } from "@wormhole-foundation/sdk-connect";
 import { type ReactNode, useState } from "react";
@@ -7,7 +6,7 @@ import { type ChainSpec, CHAIN_LIST, USDC_DECIMALS, getChainSpec } from "./chain
 import { PendingTransfers } from "./pending-transfers";
 import { type UsdcBalance, useUsdcBalance } from "./token-balance";
 import { WalletList } from "./wallet-list";
-import { getWormhole, makeSigner } from "./wormhole";
+import { type BridgeWallet, getWormhole, makeSigner } from "./wormhole";
 
 const ATTESTATION_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -318,7 +317,7 @@ const App = () => {
 
   const srcSpec = getChainSpec(sourceChain);
   const dstSpec = getChainSpec(destChain);
-  const walletFor = (spec: ChainSpec): ConnectedWallet | undefined =>
+  const walletFor = (spec: ChainSpec): BridgeWallet | undefined =>
     spec.platform === "evm" ? evmWallet : svmWallet;
   const srcWallet = walletFor(srcSpec);
   const dstWallet = walletFor(dstSpec);

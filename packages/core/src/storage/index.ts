@@ -5,14 +5,17 @@ export { createCookieStorageDriver } from "./cookie-storage-driver";
 
 export type {
   MaybePromise,
+  PersistedWalletState,
   StorageDriver,
   StoredPoolEntry,
   StoredPoolRecord,
   StoredSelectionRecord,
   WalletPersistence,
+  WalletSnapshot,
 } from "./persistence";
 
-export type { CookieSource, SnapshotOptions, WalletSnapshot } from "./snapshot";
+export type { CookieSource, SnapshotOptions } from "./snapshot";
 export { EMPTY_SNAPSHOT, readWalletSnapshot } from "./snapshot";
 
-export { WalletStorage } from "./wallet-storage";
+export type { WalletStorageOptions } from "./wallet-storage";
+export { createWalletStorage } from "./wallet-storage";

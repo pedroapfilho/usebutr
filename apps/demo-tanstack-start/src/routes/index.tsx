@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useConnectedWallets, useConnectionError, useConnectionStatus } from "@usebutr/react";
+import { useConnect, useConnectedWallets, useConnectionStatus } from "@usebutr/react";
 
 import { ConnectedList } from "../components/connected-list";
 import { StatusBar } from "../components/status-bar";
@@ -8,7 +8,7 @@ import { useDiscoveredWallets } from "../wallet-provider";
 
 const Content = () => {
   const status = useConnectionStatus();
-  const error = useConnectionError();
+  const { error } = useConnect();
   const connected = useConnectedWallets();
   const discovered = useDiscoveredWallets();
 

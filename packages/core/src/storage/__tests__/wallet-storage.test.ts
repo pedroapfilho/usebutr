@@ -1,505 +1,213 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  createAsyncMockStorageDriver,
-  createMockAccount,
-  createMockConnector,
-  createMockStorageDriver,
-  createMockStoragePair,
+  createAsyncDriver,
+  createGate,
+  createSyncDriver,
+  EMPTY_PERSISTED,
+  evmAdapter,
+  flush,
+  rejectionOf,
+  walletOf,
 } from "../../__tests__/helpers";
-import type { ChainPlatform, ConnectedWallet } from "../../types";
-import type { StorageDriver } from "../persistence";
-import { WalletStorage } from "../wallet-storage";
+import { toStoredEntry } from "../../store/reducer";
+import type { PersistedWalletState, StorageDriver } from "../persistence";
+import { createWalletStorage } from "../wallet-storage";
 
-const buildQueueWallet = (connectorId: string): ConnectedWallet => {
-  const account = createMockAccount();
-  return {
-    account,
-    accounts: [account],
-    connector: createMockConnector({ id: connectorId }),
-  };
+const metamask = toStoredEntry("metamask", walletOf(evmAdapter("metamask")));
+
+const connectedState: PersistedWalletState = {
+  activeConnectorId: "metamask",
+  isUserDisconnected: false,
+  pool: { metamask },
+  selection: { evm: "metamask" },
 };
 
-const createStorage = (overrides?: { persistent?: StorageDriver; session?: StorageDriver }) => {
-  const persistent = overrides?.persistent ?? createMockStorageDriver();
-  const session = overrides?.session ?? createMockStorageDriver();
-  return {
-    persistent,
-    session,
-    storage: new WalletStorage({ keyPrefix: "test", persistent, session }),
-  };
+const setup = (
+  drivers: { persistent?: StorageDriver; session?: StorageDriver } = {},
+  keyPrefix = "test",
+) => {
+  const persistent = createSyncDriver();
+  const session = createSyncDriver();
+  const storage = createWalletStorage({
+    keyPrefix,
+    persistent: drivers.persistent ?? persistent,
+    session: drivers.session ?? session,
+  });
+  return { persistent, session, storage };
 };
 
-describe("WalletStorage", () => {
-  describe("getPool", () => {
-    it("returns empty when nothing stored", async () => {
-      const { storage } = createStorage();
-      expect(await storage.getPool()).toEqual({});
-    });
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
-    it("returns valid pool entries with accounts list", async () => {
-      const persistent = createMockStorageDriver();
-      const account = {
-        chain: {
-          id: "eip155:1",
-          name: "Ethereum",
-          namespace: "eip155",
-          reference: "1",
-        },
-        id: "acc-1",
-        walletAddress: "0x123",
-      };
-      const data = {
-        metamask: {
-          account,
-          accounts: [account],
-          chainPlatform: "evm",
-          connectorId: "metamask",
-          name: "MetaMask",
-        },
-      };
-      await persistent.setItem("test-pool", JSON.stringify(data));
-      const { storage } = createStorage({ persistent });
-
-      expect(await storage.getPool()).toEqual(data);
-    });
-
-    it("drops entries missing the `accounts` field", async () => {
-      const persistent = createMockStorageDriver();
-      const account = {
-        chain: {
-          id: "eip155:1",
-          name: "Ethereum",
-          namespace: "eip155",
-          reference: "1",
-        },
-        id: "acc-1",
-        walletAddress: "0x123",
-      };
-      const invalid = {
-        metamask: {
-          account,
-          chainPlatform: "evm",
-          connectorId: "metamask",
-          name: "MetaMask",
-        },
-      };
-      await persistent.setItem("test-pool", JSON.stringify(invalid));
-      const { storage } = createStorage({ persistent });
-
-      const result = await storage.getPool();
-      expect(result.metamask).toBeUndefined();
-    });
-
-    it("drops entries with incomplete account chain data", async () => {
-      const persistent = createMockStorageDriver();
-      const account = {
-        chain: { id: "eip155:1" },
-        id: "acc-1",
-        walletAddress: "0x123",
-      };
-      await persistent.setItem(
-        "test-pool",
-        JSON.stringify({
-          metamask: {
-            account,
-            accounts: [account],
-            chainPlatform: "evm",
-            connectorId: "metamask",
-            name: "MetaMask",
-          },
-        }),
-      );
-      const { storage } = createStorage({ persistent });
-
-      expect(await storage.getPool()).toEqual({});
-    });
-
-    it("drops entries whose connectorId does not match the key", async () => {
-      const persistent = createMockStorageDriver();
-      const data = {
-        metamask: {
-          account: {
-            chain: {
-              id: "eip155:1",
-              name: "Ethereum",
-              namespace: "eip155",
-              reference: "1",
-            },
-            id: "acc-1",
-            walletAddress: "0x123",
-          },
-          chainPlatform: "evm",
-          connectorId: "different-id",
-          name: "MetaMask",
-        },
-      };
-      await persistent.setItem("test-pool", JSON.stringify(data));
-      const { storage } = createStorage({ persistent });
-
-      expect(await storage.getPool()).toEqual({});
-    });
-
-    it("drops entries with invalid chainPlatform", async () => {
-      const persistent = createMockStorageDriver();
-      const data = {
-        keplr: {
-          account: {
-            chain: {
-              id: "cosmos:1",
-              name: "Cosmos",
-              namespace: "cosmos",
-              reference: "1",
-            },
-            id: "acc-1",
-            walletAddress: "cosmos1abc",
-          },
-          chainPlatform: "cosmos",
-          connectorId: "keplr",
-          name: "Keplr",
-        },
-      };
-      await persistent.setItem("test-pool", JSON.stringify(data));
-      const { storage } = createStorage({ persistent });
-
-      expect(await storage.getPool()).toEqual({});
-    });
-
-    it("returns empty and clears on malformed JSON", async () => {
-      const persistent = createMockStorageDriver();
-      await persistent.setItem("test-pool", "{invalid json");
-      const { storage } = createStorage({ persistent });
-
-      expect(await storage.getPool()).toEqual({});
-      expect(persistent.removeItem).toHaveBeenCalledWith("test-pool");
-    });
+describe("createWalletStorage", () => {
+  it("loads an empty state from empty drivers", async () => {
+    const { storage } = setup();
+    expect(await storage.load()).toEqual(EMPTY_PERSISTED);
   });
 
-  // The mutation queue is not reentrant. A queued mutation that read through
-  // the repairing `getPool` would re-acquire the queue and hang forever,
-  // taking every later pool write with it.
-  describe("mutation queue reentrancy", () => {
-    const poolOf = (connectorId: string) => new Map([[connectorId, buildQueueWallet(connectorId)]]);
+  it("round-trips a saved state, the intent in the session driver", async () => {
+    const { persistent, session, storage } = setup();
+    const state = { ...connectedState, isUserDisconnected: true };
 
-    const corruptStorage = async () => {
-      const persistent = createMockStorageDriver();
-      await persistent.setItem("test-pool", "{invalid json");
-      return createStorage({ persistent });
+    await storage.save(state);
+
+    expect([...persistent.entries.keys()].toSorted()).toEqual([
+      "test-active",
+      "test-pool",
+      "test-selection",
+    ]);
+    expect(session.entries.get("test-user-disconnected")).toBe("true");
+    expect(await storage.load()).toEqual(state);
+  });
+
+  it("reads what another instance under the same prefix wrote", async () => {
+    const { persistent, session, storage } = setup();
+    await storage.save(connectedState);
+
+    const reader = createWalletStorage({ keyPrefix: "test", persistent, session });
+    expect(await reader.load()).toEqual(connectedState);
+    expect(await createWalletStorage({ keyPrefix: "other", persistent, session }).load()).toEqual(
+      EMPTY_PERSISTED,
+    );
+  });
+
+  it("does not rewrite a key whose value is unchanged", async () => {
+    const { persistent, storage } = setup();
+    await storage.save(connectedState);
+    await storage.save({ ...connectedState, activeConnectorId: null });
+
+    expect(persistent.setItem).toHaveBeenCalledTimes(3);
+    expect(persistent.removeItem).toHaveBeenCalledExactlyOnceWith("test-active");
+  });
+
+  it("does not rewrite what it has just loaded", async () => {
+    const { persistent, session, storage } = setup();
+    await storage.save(connectedState);
+    const reader = createWalletStorage({ keyPrefix: "test", persistent, session });
+    vi.mocked(persistent.setItem).mockClear();
+    vi.mocked(persistent.removeItem).mockClear();
+
+    await reader.save(await reader.load());
+
+    expect(persistent.setItem).not.toHaveBeenCalled();
+    expect(persistent.removeItem).not.toHaveBeenCalled();
+  });
+
+  it("removes keys whose value is empty", async () => {
+    const { persistent, session, storage } = setup();
+    await storage.save({ ...connectedState, isUserDisconnected: true });
+
+    await storage.save(EMPTY_PERSISTED);
+
+    expect(persistent.entries.size).toBe(0);
+    expect(session.entries.size).toBe(0);
+  });
+
+  it("decodes a corrupt payload as empty and overwrites it on the next save", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { persistent, storage } = setup();
+    persistent.entries.set("test-pool", "{not json");
+    persistent.entries.set("test-selection", JSON.stringify({ evm: 7, martian: "x" }));
+    persistent.entries.set("test-active", "");
+
+    expect(await storage.load()).toEqual(EMPTY_PERSISTED);
+
+    await storage.save(EMPTY_PERSISTED);
+    expect(persistent.entries.size).toBe(0);
+  });
+
+  it("drops only the invalid pool entries and rewrites the survivors", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { persistent, storage } = setup();
+    persistent.entries.set(
+      "test-pool",
+      JSON.stringify({ metamask, rogue: { connectorId: "rogue" }, wrong: metamask }),
+    );
+
+    const loaded = await storage.load();
+    expect(loaded.pool).toEqual({ metamask });
+
+    await storage.save(loaded);
+    expect(JSON.parse(persistent.entries.get("test-pool") ?? "")).toEqual({ metamask });
+  });
+
+  it("treats a driver that throws on read as empty", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const persistent = createSyncDriver();
+    persistent.getItem = () => {
+      throw new Error("denied");
     };
+    const { storage } = setup({ persistent });
 
-    it("setPool completes over a corrupt pool payload", async () => {
-      const { storage } = await corruptStorage();
-
-      await expect(storage.setPool(poolOf("wallet-a"))).resolves.toBeUndefined();
-      expect(Object.keys(await storage.getPool())).toEqual(["wallet-a"]);
-    });
-
-    it("removePoolEntry completes over a corrupt pool payload", async () => {
-      const { storage } = await corruptStorage();
-
-      await expect(storage.removePoolEntry("wallet-a")).resolves.toBeUndefined();
-    });
-
-    it("a corrupt payload does not jam later writes", async () => {
-      const { storage } = await corruptStorage();
-
-      await storage.setPool(poolOf("wallet-a"));
-      await storage.setPool(poolOf("wallet-b"));
-
-      const ids = Object.keys(await storage.getPool());
-      expect(ids.toSorted()).toEqual(["wallet-a", "wallet-b"]);
-    });
-
-    it("concurrent setPool calls both land", async () => {
-      const persistent = createAsyncMockStorageDriver();
-      const { storage } = createStorage({ persistent });
-
-      await Promise.all([storage.setPool(poolOf("wallet-a")), storage.setPool(poolOf("wallet-b"))]);
-
-      const ids = Object.keys(await storage.getPool());
-      expect(ids.toSorted()).toEqual(["wallet-a", "wallet-b"]);
-    });
+    expect(await storage.load()).toEqual(EMPTY_PERSISTED);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("failed to read"), expect.any(Error));
   });
 
-  describe("setPool", () => {
-    it("serializes a pool keyed by connectorId", async () => {
-      const { persistent, storage } = createStorage();
-      const account = createMockAccount();
-      const connector = createMockConnector({ chainPlatform: "evm", id: "metamask" });
-      const pool = new Map<string, ConnectedWallet>([
-        ["metamask", { account, accounts: [account], connector }],
-      ]);
-
-      await storage.setPool(pool);
-
-      const stored = JSON.parse((await persistent.getItem("test-pool")) as string);
-      expect(stored.metamask.connectorId).toBe("metamask");
-      expect(stored.metamask.chainPlatform).toBe("evm");
-      expect(stored.metamask.account.walletAddress).toBe(account.walletAddress);
+  it("rejects a failed write and retries it on the next save", async () => {
+    const persistent = createSyncDriver();
+    const setItem = vi.mocked(persistent.setItem);
+    setItem.mockImplementationOnce(() => {
+      throw new Error("quota");
     });
+    const { storage } = setup({ persistent });
 
-    it("handles empty pool", async () => {
-      const { persistent, storage } = createStorage();
-      await storage.setPool(new Map());
+    await expect(storage.save(connectedState)).rejects.toThrow("quota");
+    await storage.save(connectedState);
 
-      const stored = JSON.parse((await persistent.getItem("test-pool")) as string);
-      expect(stored).toEqual({});
-    });
-
-    it("persists every supported chain platform, including polkadot", async () => {
-      const { storage } = createStorage();
-      const account = createMockAccount();
-      const pool = new Map<string, ConnectedWallet>(
-        (["evm", "svm", "sui", "bitcoin", "polkadot"] as const).map((platform) => [
-          platform,
-          {
-            account,
-            accounts: [account],
-            connector: createMockConnector({ chainPlatform: platform, id: platform }),
-          },
-        ]),
-      );
-
-      await storage.setPool(pool);
-
-      const restored = await storage.getPool();
-      expect(Object.keys(restored).toSorted()).toEqual([
-        "bitcoin",
-        "evm",
-        "polkadot",
-        "sui",
-        "svm",
-      ]);
-      expect(restored.polkadot?.chainPlatform).toBe("polkadot");
-    });
-
-    it("persists a polkadot + svm pool without dropping either", async () => {
-      const { storage } = createStorage();
-      const account = createMockAccount();
-      const pool = new Map<string, ConnectedWallet>([
-        [
-          "polkadot",
-          {
-            account,
-            accounts: [account],
-            connector: createMockConnector({ chainPlatform: "polkadot", id: "polkadot" }),
-          },
-        ],
-        [
-          "svm",
-          {
-            account,
-            accounts: [account],
-            connector: createMockConnector({ chainPlatform: "svm", id: "svm" }),
-          },
-        ],
-      ]);
-
-      await storage.setPool(pool);
-
-      const restored = await storage.getPool();
-      expect(restored.polkadot?.chainPlatform).toBe("polkadot");
-      expect(restored.svm?.chainPlatform).toBe("svm");
-    });
-
-    it("refuses to persist a structurally invalid entry (write-side validation)", async () => {
-      const { persistent, storage } = createStorage();
-      const account = createMockAccount();
-      const connector = createMockConnector({ chainPlatform: "evm", id: "metamask" });
-      const brokenConnector = {
-        ...connector,
-        chainPlatform: "cosmos" as unknown as "evm",
-      };
-      const pool = new Map<string, ConnectedWallet>([
-        ["metamask", { account, accounts: [account], connector: brokenConnector }],
-      ]);
-
-      await storage.setPool(pool);
-
-      expect(await persistent.getItem("test-pool")).toBeNull();
-    });
+    expect(await storage.load()).toEqual(connectedState);
   });
 
-  describe("removePoolEntry", () => {
-    it("removes a single connectorId from the pool", async () => {
-      const persistent = createMockStorageDriver();
-      const evmAccount = {
-        chain: {
-          id: "eip155:1",
-          name: "Ethereum",
-          namespace: "eip155",
-          reference: "1",
-        },
-        id: "acc-1",
-        walletAddress: "0x123",
-      };
-      const svmAccount = {
-        chain: {
-          id: "solana:mainnet",
-          name: "Solana",
-          namespace: "solana",
-          reference: "mainnet",
-        },
-        id: "acc-2",
-        walletAddress: "So1ana",
-      };
-      const data = {
-        metamask: {
-          account: evmAccount,
-          accounts: [evmAccount],
-          chainPlatform: "evm",
-          connectorId: "metamask",
-          name: "MetaMask",
-        },
-        phantom: {
-          account: svmAccount,
-          accounts: [svmAccount],
-          chainPlatform: "svm",
-          connectorId: "phantom",
-          name: "Phantom",
-        },
-      };
-      await persistent.setItem("test-pool", JSON.stringify(data));
-      const { storage } = createStorage({ persistent });
+  it("works over async drivers", async () => {
+    const persistent = createAsyncDriver();
+    const session = createAsyncDriver();
+    const { storage } = setup({ persistent, session });
 
-      await storage.removePoolEntry("metamask");
-
-      const stored = JSON.parse((await persistent.getItem("test-pool")) as string);
-      expect(stored.metamask).toBeUndefined();
-      expect(stored.phantom).toBeDefined();
-    });
+    await storage.save({ ...connectedState, isUserDisconnected: true });
+    expect(await storage.load()).toEqual({ ...connectedState, isUserDisconnected: true });
   });
 
-  describe("getSelection / setSelection", () => {
-    it("returns empty when nothing stored", async () => {
-      const { storage } = createStorage();
-      expect(await storage.getSelection()).toEqual({});
-    });
+  it("finishes pending writes before rejecting, so a later disconnect stays saved", async () => {
+    const persistent = createSyncDriver();
+    const gate = createGate();
+    const failure = new Error("active write failed");
+    persistent.setItem = async (key, value) => {
+      if (key === "test-active") {
+        throw failure;
+      }
+      if (key === "test-pool") {
+        await gate.promise;
+      }
+      persistent.entries.set(key, value);
+    };
+    const { storage } = setup({ persistent });
+    await storage.load();
+    let settled = false;
+    const save = (async () => {
+      const error = await rejectionOf(storage.save(connectedState));
+      settled = true;
+      return error;
+    })();
+    await flush();
+    expect(settled).toBe(false);
 
-    it("round-trips a selection map", async () => {
-      const { storage } = createStorage();
-      await storage.setSelection(
-        new Map<ChainPlatform, string>([
-          ["evm", "metamask"],
-          ["svm", "phantom"],
-        ]),
-      );
-      const result = await storage.getSelection();
-      expect(result.evm).toBe("metamask");
-      expect(result.svm).toBe("phantom");
-    });
+    gate.open();
+    expect(await save).toBe(failure);
+    await storage.save({ ...EMPTY_PERSISTED, isUserDisconnected: true });
 
-    it("drops invalid platform keys", async () => {
-      const persistent = createMockStorageDriver();
-      await persistent.setItem(
-        "test-selection",
-        JSON.stringify({ cosmos: "keplr", evm: "metamask" }),
-      );
-      const { storage } = createStorage({ persistent });
-
-      const result = await storage.getSelection();
-      expect(result.evm).toBe("metamask");
-      expect((result as Record<string, unknown>).cosmos).toBeUndefined();
-    });
+    expect(persistent.entries.size).toBe(0);
+    expect(await storage.load()).toEqual({ ...EMPTY_PERSISTED, isUserDisconnected: true });
   });
 
-  describe("getActiveConnectorId / setActiveConnectorId", () => {
-    it("returns null when nothing stored", async () => {
-      const { storage } = createStorage();
-      expect(await storage.getActiveConnectorId()).toBeNull();
-    });
+  it("defaults the prefix to butr and the drivers to web storage", async () => {
+    const storage = createWalletStorage();
+    await storage.save({ ...connectedState, isUserDisconnected: true });
 
-    it("round-trips an active connector id", async () => {
-      const { storage } = createStorage();
-      await storage.setActiveConnectorId("metamask");
-      expect(await storage.getActiveConnectorId()).toBe("metamask");
-    });
-
-    it("clears stored value on null", async () => {
-      const { persistent, storage } = createStorage();
-      await storage.setActiveConnectorId("metamask");
-      await storage.setActiveConnectorId(null);
-      expect(await storage.getActiveConnectorId()).toBeNull();
-      expect(persistent.removeItem).toHaveBeenCalledWith("test-active");
-    });
-  });
-
-  describe("clearAll", () => {
-    it("removes pool, selection, and active keys", async () => {
-      const { persistent, storage } = createStorage();
-      await storage.setPool(new Map());
-      await storage.setSelection(new Map([["evm", "metamask"]]));
-      await storage.setActiveConnectorId("metamask");
-
-      await storage.clearAll();
-
-      expect(await persistent.getItem("test-pool")).toBeNull();
-      expect(await persistent.getItem("test-selection")).toBeNull();
-      expect(await persistent.getItem("test-active")).toBeNull();
-    });
-  });
-
-  describe("isUserDisconnected / markUserDisconnected", () => {
-    it("returns false when nothing set", async () => {
-      const { storage } = createStorage();
-      expect(await storage.isUserDisconnected()).toBe(false);
-    });
-
-    it("sets and retrieves disconnect intent via session driver", async () => {
-      const { session, storage } = createStorage();
-      await storage.markUserDisconnected(true);
-
-      expect(await storage.isUserDisconnected()).toBe(true);
-      expect(session.setItem).toHaveBeenCalledWith("test-user-disconnected", "true");
-    });
-
-    it("clears disconnect intent", async () => {
-      const { session, storage } = createStorage();
-      await storage.markUserDisconnected(true);
-      await storage.markUserDisconnected(false);
-
-      expect(await storage.isUserDisconnected()).toBe(false);
-      expect(session.removeItem).toHaveBeenCalledWith("test-user-disconnected");
-    });
-
-    it("writes disconnect intent only to session, never to persistent", async () => {
-      const pair = createMockStoragePair();
-      const storage = new WalletStorage({ keyPrefix: "test", ...pair });
-
-      await storage.markUserDisconnected(true);
-
-      expect(pair.session.setItem).toHaveBeenCalledWith("test-user-disconnected", "true");
-      expect(pair.persistent.setItem).not.toHaveBeenCalledWith("test-user-disconnected", "true");
-    });
-  });
-
-  describe("async driver compatibility", () => {
-    it("works end-to-end with an async-returning driver", async () => {
-      const persistent = createAsyncMockStorageDriver();
-      const session = createAsyncMockStorageDriver();
-      const storage = new WalletStorage({
-        keyPrefix: "async",
-        persistent,
-        session,
-      });
-
-      await storage.markUserDisconnected(true);
-      expect(await storage.isUserDisconnected()).toBe(true);
-
-      const account = createMockAccount();
-      const connector = createMockConnector({ id: "metamask" });
-      const pool = new Map<string, ConnectedWallet>([
-        ["metamask", { account, accounts: [account], connector }],
-      ]);
-      await storage.setPool(pool);
-      await storage.setSelection(new Map([["evm", "metamask"]]));
-      await storage.setActiveConnectorId("metamask");
-
-      const restored = await storage.getPool();
-      expect(restored.metamask?.connectorId).toBe("metamask");
-      const restoredSelection = await storage.getSelection();
-      expect(restoredSelection.evm).toBe("metamask");
-      expect(await storage.getActiveConnectorId()).toBe("metamask");
-    });
+    expect(localStorage.getItem("butr-active")).toBe("metamask");
+    expect(sessionStorage.getItem("butr-user-disconnected")).toBe("true");
+    await storage.save(EMPTY_PERSISTED);
+    expect(localStorage.getItem("butr-active")).toBeNull();
+    expect(sessionStorage.getItem("butr-user-disconnected")).toBeNull();
   });
 });

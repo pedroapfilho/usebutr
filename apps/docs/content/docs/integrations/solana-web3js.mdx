@@ -12,60 +12,92 @@ description: Connection for reads, Transaction/SystemProgram builders, Wallet St
 
 butr discovers Solana Wallet Standard wallets and manages the connection.
 `@solana/web3.js` provides `Connection` for chain reads and the
-`Transaction` / `SystemProgram` builders; signing and sending flow through the
-wallet's native Wallet Standard features.
+`Transaction` / `SystemProgram` builders; signing and sending go through the
+wallet's own Wallet Standard features.
 
-## Get the signer
+## Get the wallet
 
-`getSigner()` on an SVM adapter returns the `WalletStandardWallet`:
+```tsx
+import { useSelectedWallet, useSigner } from "@usebutr/react";
 
-```ts
-import type { SolanaSignAndSendTransactionFeature, SolanaSignMessageFeature } from "@usebutr/svm";
-import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
-
-const walletStd = (await wallet.connector.getSigner()) as WalletStandardWallet;
+const wallet = useSelectedWallet("svm");
+const signer = useSigner(wallet);
+// `null` for a WalletConnect or Ledger wallet, which resolve another kind.
+const walletStd = signer.data?.kind === "wallet-standard" ? signer.data.wallet : null;
 ```
+
+The snippets below run once `wallet` and `walletStd` are set.
 
 ## Read chain state
 
 ```ts
-import { Connection } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 
 const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+const publicKey = new PublicKey(wallet.account.walletAddress);
 const lamports = await connection.getBalance(publicKey);
 ```
 
 ## Sign a message
 
+`getFeature` reads the feature off the wallet, typed by the shape
+`@usebutr/svm` exports; `findAccount` finds the Wallet Standard account for
+butr's address:
+
 ```ts
-const feature = walletStd.features["solana:signMessage"] as SolanaSignMessageFeature | undefined;
-if (!feature) throw new Error("Wallet does not advertise solana:signMessage");
-const account = walletStd.accounts[0];
+import type { SolanaSignMessageFeature } from "@usebutr/svm";
+import { findAccount, getFeature } from "@usebutr/wallet-standard-shared";
+
+const feature = getFeature<SolanaSignMessageFeature>(
+  walletStd,
+  "solana:signMessage",
+  "signMessage",
+);
+const account = findAccount(walletStd.accounts, wallet.account.walletAddress);
+if (feature === undefined || account === undefined) {
+  throw new Error("This wallet cannot sign messages for the active account");
+}
 const [output] = await feature.signMessage({ account, message });
-// output.signature: Uint8Array
+// output.signature: Uint8Array; verify against output.signedMessage
 ```
 
 ## Build and send a transaction
 
-Build with `@solana/web3.js`, submit through
-`solana:signAndSendTransaction`:
+Build with `@solana/web3.js`, then submit through
+`solana:signAndSendTransaction`. The `chain` input routes this one call to
+devnet without moving the wallet:
 
 ```ts
-const feature = walletStd.features["solana:signAndSendTransaction"] as
-  SolanaSignAndSendTransactionFeature | undefined;
-if (!feature) throw new Error("Wallet does not advertise solana:signAndSendTransaction");
-const account = walletStd.accounts[0];
+import { SystemProgram, Transaction } from "@solana/web3.js";
+import type { SolanaSignAndSendTransactionFeature } from "@usebutr/svm";
 
+const { blockhash } = await connection.getLatestBlockhash();
+const tx = new Transaction().add(
+  SystemProgram.transfer({ fromPubkey: publicKey, lamports: 0, toPubkey: BURN_ADDRESS }),
+);
+tx.recentBlockhash = blockhash;
+tx.feePayer = publicKey;
+
+const feature = getFeature<SolanaSignAndSendTransactionFeature>(
+  walletStd,
+  "solana:signAndSendTransaction",
+  "signAndSendTransaction",
+);
+const account = findAccount(walletStd.accounts, wallet.account.walletAddress);
+if (feature === undefined || account === undefined) {
+  throw new Error("This wallet cannot send transactions for the active account");
+}
 const [output] = await feature.signAndSendTransaction({
   account,
   chain: "solana:devnet",
-  transaction: new Uint8Array(serialisedTx),
+  transaction: new Uint8Array(tx.serialize({ requireAllSignatures: false })),
 });
 ```
 
-<Callout type="warn">
-  Feature-detect every time (`if (!feature) throw`). Wallets advertise the Wallet Standard features
-  unevenly; gate UI on `wallet.connector.capabilities.sendTransaction` / `.signMessage`.
+<Callout type="info">
+  Wallets advertise Wallet Standard features unevenly, which is why `getFeature` can return
+  `undefined`. butr's adapter mirrors that: `wallet.connector.sendTx` and `.signMessage` exist only
+  when the wallet has the feature, so gate buttons on them.
 </Callout>
 
 <Callout type="info">

@@ -1,26 +1,19 @@
 "use client";
 
-import type { Account, ConnectedWallet, WalletAdapter } from "@usebutr/core";
-import { buildChainsByPlatform } from "@usebutr/core";
-import { EVM_CHAINS_LIST } from "@usebutr/evm";
+import type { Account, ChainBase, ConnectedWallet, WalletAdapter } from "@usebutr/core";
+import { EVM_CHAINS_LIST } from "@usebutr/core";
 import {
-  useActiveWallet,
   useBalance,
-  useConnectWallet,
+  useConnect,
   useConnectedWallets,
-  useConnectionError,
   useConnectionStatus,
-  useConnectingConnectorId,
-  useDisconnectWallet,
-  useRequestAccounts,
-  useSetActiveConnector,
+  useWallet,
+  useWalletManager,
 } from "@usebutr/react";
 import Image from "next/image";
 import { type ChangeEvent, type ReactNode, useState } from "react";
 
 import { useDiscoveredWallets } from "../wallet-provider";
-
-const CHAINS_BY_PLATFORM = buildChainsByPlatform({ evm: EVM_CHAINS_LIST });
 
 type SignState =
   | { kind: "idle" }
@@ -32,14 +25,14 @@ const SIGN_MESSAGE_TEXT = "Hello from the butr demo";
 
 const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWallet }) => {
   const isCurrent = account.walletAddress === wallet.account.walletAddress;
-  const canSign = wallet.connector.capabilities.signMessage;
+  const { signMessage } = wallet.connector;
   const [state, setState] = useState<SignState>({ kind: "idle" });
 
-  const handleSign = async () => {
+  const handleSign = async (sign: NonNullable<typeof signMessage>) => {
     setState({ kind: "signing" });
     try {
       const bytes = new TextEncoder().encode(SIGN_MESSAGE_TEXT);
-      await wallet.connector.signMessage(bytes, account);
+      await sign(bytes, { account });
       setState({ kind: "ok" });
     } catch (error) {
       setState({
@@ -69,7 +62,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
       }`}
     >
       <span className="font-mono text-xs break-all">{account.walletAddress}</span>
-      {canSign ? (
+      {signMessage ? (
         <span className="flex shrink-0 items-center gap-2">
           {signIndicator}
           <button
@@ -77,7 +70,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
             className="border-border-strong hover:bg-surface-subtle rounded border bg-white px-2 py-0.5 text-xs disabled:opacity-50"
             disabled={state.kind === "signing"}
             onClick={() => {
-              void handleSign();
+              void handleSign(signMessage);
             }}
             type="button"
           >
@@ -102,8 +95,15 @@ const AccountPicker = ({ wallet }: { wallet: ConnectedWallet }) => (
   </div>
 );
 
-const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
-  const chains = CHAINS_BY_PLATFORM[wallet.connector.chainPlatform];
+const ChainPicker = ({
+  switchChain,
+  wallet,
+}: {
+  switchChain: (chain: ChainBase) => Promise<void>;
+  wallet: ConnectedWallet;
+}) => {
+  // EVM-only discovery, so every connected wallet is on an EVM chain.
+  const chains = EVM_CHAINS_LIST;
   const selectId = `chain-picker-${wallet.connector.id}`;
   const [switchError, setSwitchError] = useState<string | null>(null);
 
@@ -117,7 +117,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
     }
     setSwitchError(null);
     try {
-      await wallet.connector.switchChain(target);
+      await switchChain(target);
     } catch (error) {
       setSwitchError(error instanceof Error ? error.message : "Failed to switch chain");
     }
@@ -155,13 +155,11 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
 };
 
 const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
-  const active = useActiveWallet();
-  const setActive = useSetActiveConnector();
-  const disconnect = useDisconnectWallet();
-  const requestAccounts = useRequestAccounts();
-  const balance = useBalance(wallet.connector.id);
+  const active = useWallet();
+  const { disconnect, requestAccounts, setActive } = useWalletManager();
+  const balance = useBalance(wallet);
   const isActive = active?.connector.id === wallet.connector.id;
-  const { capabilities } = wallet.connector;
+  const { switchChain } = wallet.connector;
 
   let balanceText: string;
   if (balance.status === "success") {
@@ -229,16 +227,16 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
         </dd>
         <dt className="text-foreground-muted">Balance</dt>
         <dd className="font-mono text-xs">{balanceText}</dd>
-        {capabilities.switchChain ? (
+        {switchChain ? (
           <>
             <dt className="text-foreground-muted">Chain</dt>
             <dd>
-              <ChainPicker wallet={wallet} />
+              <ChainPicker switchChain={switchChain} wallet={wallet} />
             </dd>
           </>
         ) : null}
       </dl>
-      {capabilities.requestAccounts ? (
+      {wallet.connector.requestAccounts ? (
         <button
           className="border-border-strong hover:bg-surface-subtle rounded-md border px-3 py-1.5 text-sm"
           onClick={() => {
@@ -304,14 +302,8 @@ const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand>
   return [...byName.values()];
 };
 
-const WalletBrandRow = ({
-  brand,
-  connect,
-}: {
-  brand: WalletBrand;
-  connect: (id: string) => void;
-}) => {
-  const connectingId = useConnectingConnectorId();
+const WalletBrandRow = ({ brand }: { brand: WalletBrand }) => {
+  const { connect, connectingId } = useConnect();
   return (
     <div className="border-border-default rounded-lg border bg-white px-4 py-3">
       <div className="flex items-center justify-between gap-3">
@@ -353,8 +345,6 @@ const WalletPicker = ({
   available: ReadonlyArray<WalletAdapter>;
   hasConnected: boolean;
 }) => {
-  const connect = useConnectWallet();
-
   if (available.length === 0 && !hasConnected) {
     return (
       <section className="border-border-default bg-surface-subtle rounded-lg border p-6">
@@ -397,12 +387,7 @@ const WalletPicker = ({
       <ul className="space-y-2">
         {brands.map((brand) => (
           <li key={brand.name}>
-            <WalletBrandRow
-              brand={brand}
-              connect={(id) => {
-                void connect(id);
-              }}
-            />
+            <WalletBrandRow brand={brand} />
           </li>
         ))}
       </ul>
@@ -412,7 +397,7 @@ const WalletPicker = ({
 
 const Content = () => {
   const status = useConnectionStatus();
-  const error = useConnectionError();
+  const { error } = useConnect();
   const connected = useConnectedWallets();
   const discovered = useDiscoveredWallets();
 

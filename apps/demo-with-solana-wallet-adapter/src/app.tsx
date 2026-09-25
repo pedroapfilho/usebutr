@@ -5,9 +5,9 @@ import {
   useWallet,
 } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import type { ConnectedWallet } from "@usebutr/core";
 import { bytesToBase58 } from "@usebutr/core";
-import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
-import { isWalletStandardWallet } from "@usebutr/wallet-standard-shared";
+import { useConnect, useSelectedWallet, useWalletManager } from "@usebutr/react";
 import { useEffect, useMemo, useState } from "react";
 
 import { ButrAdapterBridge } from "./butr-adapter-bridge";
@@ -32,14 +32,10 @@ const Row = ({ children, label }: { children: React.ReactNode; label: string }) 
   </div>
 );
 
-const AdapterConsumer = ({
-  butrWallet,
-}: {
-  butrWallet: ReturnType<typeof useActiveWallet> & object;
-}) => {
+const AdapterConsumer = ({ butrWallet }: { butrWallet: ConnectedWallet<"svm"> }) => {
   const { connection } = useConnection();
   const { publicKey, sendTransaction, signMessage, wallet: adapter } = useWallet();
-  const disconnect = useDisconnectWallet();
+  const { disconnect } = useWalletManager();
   const [balance, setBalance] = useState<string>("…");
   const [signature, setSignature] = useState<string | null>(null);
   const [txSignature, setTxSignature] = useState<string | null>(null);
@@ -176,49 +172,14 @@ const AdapterConsumer = ({
   );
 };
 
-const BridgeAndExplore = ({ wallet }: { wallet: ReturnType<typeof useActiveWallet> & object }) => {
-  const [bridge, setBridge] = useState<ButrAdapterBridge | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        if (cancelled) {
-          return;
-        }
-        const signer = await wallet.connector.getSigner();
-        if (!isWalletStandardWallet(signer)) {
-          throw new Error("SVM signer is not a Wallet Standard wallet");
-        }
-        if (cancelled) {
-          return;
-        }
-        setBridge(new ButrAdapterBridge(wallet.connector, signer, wallet.account.walletAddress));
-      } catch (error) {
-        if (!cancelled) {
-          setErrorMsg(formatError(error instanceof Error ? error : String(error)));
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [wallet.account.walletAddress, wallet.connector]);
-
-  if (errorMsg !== null && errorMsg !== "") {
-    return (
-      <p className="border-danger-border bg-danger-surface text-danger-foreground rounded-md border p-3 text-sm">
-        {errorMsg}
-      </p>
-    );
-  }
-
-  if (!bridge) {
-    return <p className="text-foreground-muted text-sm">Building bridge…</p>;
-  }
-
-  const wallets = [bridge];
+const BridgeAndExplore = ({ wallet }: { wallet: ConnectedWallet<"svm"> }) => {
+  // The bridge signs through butr's adapter, so it needs no signer handoff and
+  // exists as soon as the wallet does. A stable array keeps the adapter
+  // provider from re-running its wallet setup on every render.
+  const wallets = useMemo(
+    () => [new ButrAdapterBridge(wallet.connector, wallet.account)],
+    [wallet.account, wallet.connector],
+  );
 
   return (
     <ConnectionProvider endpoint={DEVNET}>
@@ -230,8 +191,8 @@ const BridgeAndExplore = ({ wallet }: { wallet: ReturnType<typeof useActiveWalle
 };
 
 const Content = () => {
-  const active = useActiveWallet();
-  const connect = useConnectWallet();
+  const active = useSelectedWallet("svm");
+  const { connect } = useConnect();
   const discovered = useDiscoveredWallets();
 
   if (!active) {
@@ -249,7 +210,7 @@ const Content = () => {
                 <button
                   className="border-border-default hover:bg-surface-subtle flex w-full items-center gap-3 rounded-lg border bg-white px-4 py-3 text-left"
                   onClick={() => {
-                    void connect(wallet.id);
+                    connect(wallet.id);
                   }}
                   type="button"
                 >

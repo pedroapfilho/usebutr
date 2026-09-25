@@ -50,38 +50,39 @@ reconnect rather than show UI.
 
 Connector errors are normalized once, centrally: EIP-1193 codes `4001`
 (user rejected), `-32002` (request pending), and `4100` / `4900` / `4901`
-(unauthorized / disconnected) map to a typed `ConnectionError` so consumers
-branch on `kind` instead of regexing messages. See
-[errors](/concepts/errors).
+(unauthorized / disconnected) map to a `ConnectionError` so consumers branch
+on `kind` instead of regexing messages. See [errors](/concepts/errors).
 
-Feature presence drives [capabilities](/concepts/capabilities): a flag is
-`true` only when the wallet actually advertises the underlying feature, so
-`signMessage`, `signTransaction`, `signIn`, `sendTransaction`, and `subscribe`
-never claim more than the wallet supports.
+Feature presence drives [capabilities](/concepts/capabilities): a Wallet
+Standard adapter defines `signMessage`, `signTransaction`, `signIn`, and
+`sendTx` only when the wallet advertises the underlying feature, so an adapter
+never claims more than the wallet supports.
 
 ## Deliberate edges
 
 These are intentional boundaries, not gaps:
 
-- **No RPC.** `getBalance` / `getTransactionReceipt` return placeholders;
-  butr hands you a signer and stays out of the RPC business. Wrap your own
-  client (viem, `@solana/kit`, …).
+- **No RPC.** Wallet Standard adapters have no `getBalance` or
+  `getTransactionReceipt`: butr hands you a signer and stays out of the RPC
+  business. Wrap your own client (`@solana/kit`, `@mysten/sui`, …). EVM
+  adapters read both through the wallet's own EIP-1193 provider.
 - **`solana:signTransaction` is sign-only.** butr returns the signed bytes;
-  you broadcast them, because butr ships no RPC. Gated by
-  `capabilities.signTransaction`.
-- **No silent account switch.** Neither spec has a "use address X" RPC, so
-  `switchAccount` is a no-op on auto adapters; the user picks the active
-  account in the wallet's own UI; butr mirrors it via the change event.
-- **Feature changes don't re-derive capabilities.** A wallet that swaps its
-  advertised feature set at runtime won't change a connected entry's
-  capabilities (same as EVM); reconnect to pick up the new set.
+  you broadcast them, because butr ships no RPC. `signTransaction` exists only
+  when the wallet advertises the feature.
+- **No wallet-side account switch.** Neither spec has a "use address X" RPC,
+  so the user picks the active account in the wallet's own UI and butr mirrors
+  it via the change event. `setAccount(id, account)` changes which exposed
+  account butr treats as active; pass it as `{ account }` to sign with it.
+- **Features are read once.** Discovery builds an adapter from the features
+  the wallet advertises at registration. A wallet that swaps its feature set
+  at runtime keeps the adapter's original methods until the page reloads.
 - **EIP-1193 `message` / `eth_subscribe` is a non-goal.** Subscription push
   streams are a consumer concern; butr surfaces the raw provider via
   `getSigner()` for that.
 
 <Callout type="info">
   **Source:** `packages/svm/src` (Wallet Standard), `packages/evm/src` (EIP-6963 / EIP-1193),
-  `packages/core/src/store/hydration.ts` (silent reconnect), `packages/core/src/types/errors.ts`
-  (error mapping). Behaviour is exercised by the package test suites and the runnable
-  `apps/demo-with-*` demos.
+  `packages/core/src/store/wallet-manager.ts` (silent reconnect),
+  `packages/core/src/types/errors.ts` (error mapping). Behaviour is exercised by the package test
+  suites and the runnable `apps/demo-with-*` demos.
 </Callout>

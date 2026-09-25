@@ -1,5 +1,4 @@
 export type {
-  Account,
   UniversalProviderConstructor,
   UniversalProviderLike,
   WalletConnectMetadata,
@@ -18,7 +17,4 @@ export {
 
 export type { WalletConnectSession } from "./session";
 
-export { WALLETCONNECT_CAPABILITIES } from "./capabilities";
-export { WALLETCONNECT_BITCOIN_CAPABILITIES } from "./namespaces/bitcoin";
-export { WALLETCONNECT_SUI_CAPABILITIES } from "./namespaces/sui";
-export { WALLETCONNECT_SVM_CAPABILITIES } from "./namespaces/svm";
+import "./signer-augmentation";

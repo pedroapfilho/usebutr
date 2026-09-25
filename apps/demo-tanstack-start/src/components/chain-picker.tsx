@@ -1,12 +1,16 @@
-import type { ConnectedWallet } from "@usebutr/core";
-import { buildChainsByPlatform } from "@usebutr/core";
-import { EVM_CHAINS_LIST } from "@usebutr/evm";
+import type { ChainBase, ConnectedWallet } from "@usebutr/core";
+import { EVM_CHAINS_LIST } from "@usebutr/core";
 import { type ChangeEvent, useState } from "react";
 
-const CHAINS_BY_PLATFORM = buildChainsByPlatform({ evm: EVM_CHAINS_LIST });
-
-const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
-  const chains = CHAINS_BY_PLATFORM[wallet.connector.chainPlatform];
+const ChainPicker = ({
+  switchChain,
+  wallet,
+}: {
+  switchChain: (chain: ChainBase) => Promise<void>;
+  wallet: ConnectedWallet;
+}) => {
+  // EVM-only discovery, so every connected wallet is on an EVM chain.
+  const chains = EVM_CHAINS_LIST;
   const selectId = `chain-picker-${wallet.connector.id}`;
   const [switchError, setSwitchError] = useState<string | null>(null);
 
@@ -20,7 +24,7 @@ const ChainPicker = ({ wallet }: { wallet: ConnectedWallet }) => {
     }
     setSwitchError(null);
     try {
-      await wallet.connector.switchChain(target);
+      await switchChain(target);
     } catch (error) {
       setSwitchError(error instanceof Error ? error.message : "Failed to switch chain");
     }

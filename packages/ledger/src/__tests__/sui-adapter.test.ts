@@ -1,359 +1,152 @@
-import { describe, expect, it, vi } from "vitest";
+import type { SuiAdapter } from "@usebutr/core";
+import { buildAccount, bytesToHexPrefixed, SUI_CHAINS } from "@usebutr/core";
+import { describe, expect, it } from "vitest";
 
-import type { SuiAppConstructor, SuiAppLike, TransportFactory, TransportLike } from "../adapter";
-import { createLedgerAdapter, createSuiLedgerAdapter } from "../adapter";
-import { serializeEd25519Signature } from "../apps/sui";
+import { createLedgerAdapter } from "../adapter";
+import type { SuiAppConstructor, SuiAppLike } from "../apps/sui";
+import { createSuiLedgerAdapter, serializeEd25519Signature } from "../apps/sui";
 
-const buildFakePubkey = (index: number): Uint8Array => {
-  const buf = new Uint8Array(32);
-  buf.fill(index + 1);
-  return buf;
+import { buildFakeTransport, indexOfPath } from "./helpers";
+
+const publicKeyAt = (index: number): Uint8Array => new Uint8Array(32).fill(index + 1);
+const addressAt = (index: number): Uint8Array => new Uint8Array(32).fill((index + 1) << 4);
+const SIGNATURE = new Uint8Array(64).fill(0xcd);
+
+type SuiHooks = {
+  onGetPublicKey?: (path: string) => void;
+  onSignTransaction?: (path: string, intentMessage: Uint8Array) => void;
 };
 
-const buildFakeAddress = (index: number): Uint8Array => {
-  const buf = new Uint8Array(32);
-  buf.fill((index + 1) << 4);
-  return buf;
-};
-
-const buildFakeSig = (fill: number): Uint8Array => {
-  const sig = new Uint8Array(64);
-  sig.fill(fill);
-  return sig;
-};
-
-const buildFakeSuiCtor = (onGetPublicKey?: (path: string) => void): SuiAppConstructor => {
-  return class FakeSui implements SuiAppLike {
-    constructor(private readonly _transport: TransportLike) {
-      void _transport;
-    }
+const buildFakeSuiCtor = (hooks: SuiHooks = {}): SuiAppConstructor =>
+  class FakeSui implements SuiAppLike {
     getPublicKey(path: string): Promise<{ address: Uint8Array; publicKey: Uint8Array }> {
-      onGetPublicKey?.(path);
-      const tail = path.split("/").pop() ?? "0'";
-      const idx = Math.trunc(Number(tail.replace(/'$/v, "")));
-      return Promise.resolve({
-        address: buildFakeAddress(idx),
-        publicKey: buildFakePubkey(idx),
-      });
+      hooks.onGetPublicKey?.(path);
+      const index = indexOfPath(path);
+      return Promise.resolve({ address: addressAt(index), publicKey: publicKeyAt(index) });
     }
-    signTransaction(_path: string, txn: Uint8Array): Promise<{ signature: Uint8Array }> {
-      void txn;
-      return Promise.resolve({ signature: buildFakeSig(0xcd) });
+    signTransaction(path: string, intentMessage: Uint8Array): Promise<{ signature: Uint8Array }> {
+      hooks.onSignTransaction?.(path, intentMessage);
+      return Promise.resolve({ signature: SIGNATURE });
     }
   };
-};
 
-const buildFakeTransport = (): {
-  factory: TransportFactory;
-  lastTransport: TransportLike | null;
-} => {
-  let lastTransport: TransportLike | null = null;
-  const factory: TransportFactory = {
-    create(): Promise<TransportLike> {
-      const t: TransportLike = {
-        close: vi.fn().mockResolvedValue(undefined),
-      };
-      lastTransport = t;
-      return Promise.resolve(t);
-    },
-  };
-  return {
-    factory,
-    get lastTransport() {
-      return lastTransport;
-    },
-  };
+const connectedSui = async (hooks: SuiHooks = {}): Promise<SuiAdapter> => {
+  const adapter = await createSuiLedgerAdapter({
+    accountCount: 3,
+    platform: "sui",
+    sui: buildFakeSuiCtor(hooks),
+    transport: buildFakeTransport().factory,
+  });
+  await adapter.connect();
+  return adapter;
 };
 
 describe("createSuiLedgerAdapter", () => {
-  it("builds a Sui adapter with conservative defaults", async () => {
-    const { factory } = buildFakeTransport();
+  it("has no signMessage: the adapter signs transactions only", async () => {
     const adapter = await createSuiLedgerAdapter({
       platform: "sui",
       sui: buildFakeSuiCtor(),
-      transport: factory,
+      transport: buildFakeTransport().factory,
     });
 
-    expect(adapter.id).toBe("ledger");
-    expect(adapter.name).toBe("Ledger");
     expect(adapter.chainPlatform).toBe("sui");
-    expect(adapter.capabilities.signMessage).toBe(false);
-    expect(adapter.capabilities.sendTransaction).toBe(false);
-    expect(adapter.capabilities.signTransaction).toBe(true);
-    expect(adapter.capabilities.getBalance).toBe(false);
-    expect(adapter.capabilities.subscribe).toBe(false);
-    expect(adapter.capabilities.switchChain).toBe(true);
-  });
-
-  it("connect() opens transport and fetches first address (0x-prefixed hex)", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSuiLedgerAdapter({
-      platform: "sui",
-      sui: buildFakeSuiCtor(),
-      transport: factory,
-    });
-
-    await adapter.connect();
-    const account = await adapter.getAccount();
-    expect(account).not.toBeNull();
-    expect(account?.chain.id).toBe("sui:mainnet");
-    expect(account?.chain.namespace).toBe("sui");
-    expect(account?.walletAddress).toMatch(/^0x[0-9a-f]{64}$/v);
-  });
-
-  it("disconnect() closes the transport and clears state", async () => {
-    const fake = buildFakeTransport();
-    const adapter = await createSuiLedgerAdapter({
-      platform: "sui",
-      sui: buildFakeSuiCtor(),
-      transport: fake.factory,
-    });
-
-    await adapter.connect();
-    const transport = fake.lastTransport;
-    expect(transport).not.toBeNull();
-
-    await adapter.disconnect?.();
-    expect(transport?.close).toHaveBeenCalled();
-
-    const account = await adapter.getAccount();
-    expect(account).toBeNull();
-  });
-
-  it("getAccounts() walks the derivation path up to accountCount", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSuiLedgerAdapter({
-      accountCount: 3,
-      platform: "sui",
-      sui: buildFakeSuiCtor(),
-      transport: factory,
-    });
-
-    await adapter.connect();
-    const accounts = await adapter.getAccounts!();
-    expect(accounts).toHaveLength(3);
-    const addresses = accounts.map((a) => a.walletAddress);
-    expect(new Set(addresses).size).toBe(3);
-    for (const account of accounts) {
-      expect(account.chain.id).toBe("sui:mainnet");
+    expect(adapter.signTransaction).toBeTypeOf("function");
+    for (const method of ["getBalance", "sendTx", "signMessage", "subscribe", "switchChain"]) {
+      expect(adapter).not.toHaveProperty(method);
     }
   });
 
-  it("signMessage() rejects — Ledger Sui app has no off-chain signing", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSuiLedgerAdapter({
-      platform: "sui",
-      sui: buildFakeSuiCtor(),
-      transport: factory,
+  it("derives 0x-hex accounts on hardened five-segment paths", async () => {
+    const seen: Array<string> = [];
+    const adapter = await connectedSui({
+      onGetPublicKey: (path) => {
+        seen.push(path);
+      },
     });
 
-    await adapter.connect();
-    const message = new TextEncoder().encode("hello sui");
-    await expect(adapter.signMessage(message)).rejects.toThrow(/signMessage not supported/v);
+    const accounts = await adapter.getAccounts();
+
+    expect(seen).toEqual(["44'/784'/0'/0'/0'", "44'/784'/0'/0'/1'", "44'/784'/0'/0'/2'"]);
+    const address = bytesToHexPrefixed(addressAt(0));
+    expect(accounts[0]).toEqual(buildAccount(address, SUI_CHAINS.mainnet));
   });
 
-  it("signTransaction() returns Sui's serialized Ed25519 signature", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSuiLedgerAdapter({
-      platform: "sui",
-      sui: buildFakeSuiCtor(),
-      transport: factory,
+  it("signTransaction() signs the TransactionData intent and serializes the signature", async () => {
+    const received: Array<{ intentMessage: Uint8Array; path: string }> = [];
+    const adapter = await connectedSui({
+      onSignTransaction: (path, intentMessage) => {
+        received.push({ intentMessage, path });
+      },
     });
+    const tx = Uint8Array.of(1, 2, 3, 4);
 
-    if (adapter.chainPlatform !== "sui") {
-      throw new Error("expected Sui adapter");
-    }
+    const signed = await adapter.signTransaction?.(tx);
 
-    await adapter.connect();
-    const tx = new Uint8Array([1, 2, 3, 4]);
-    const signed = await adapter.signTransaction!(tx);
-    expect(signed.bytes).toBe(tx);
-    expect(signed.signature).toHaveLength(97);
-    expect(signed.signature[0]).toBe(0);
-    expect(signed.signature.slice(1, 65)).toEqual(buildFakeSig(0xcd));
-    expect(signed.signature.slice(65)).toEqual(buildFakePubkey(0));
+    expect(received).toEqual([
+      { intentMessage: Uint8Array.of(0, 0, 0, 1, 2, 3, 4), path: "44'/784'/0'/0'/0'" },
+    ]);
+    expect(signed?.bytes).toBe(tx);
+    const serialized = Uint8Array.of(0, ...SIGNATURE, ...publicKeyAt(0));
+    expect(signed?.signature).toEqual(serialized);
   });
 
-  it("signTransaction() rejects non-Uint8Array input", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSuiLedgerAdapter({
-      platform: "sui",
-      sui: buildFakeSuiCtor(),
-      transport: factory,
+  it("signTransaction() signs as a non-active account with that account's key", async () => {
+    const received: Array<string> = [];
+    const adapter = await connectedSui({
+      onSignTransaction: (path) => {
+        received.push(path);
+      },
     });
+    const accounts = await adapter.getAccounts();
+    const third = accounts.at(2);
 
-    if (adapter.chainPlatform !== "sui") {
-      throw new Error("expected Sui adapter");
-    }
+    const signed = await adapter.signTransaction?.(Uint8Array.of(9), { account: third });
 
-    await adapter.connect();
-    await expect(adapter.signTransaction!({ not: "bytes" })).rejects.toThrow(
-      /expects a Uint8Array/v,
+    expect(received).toEqual(["44'/784'/0'/0'/2'"]);
+    expect(signed?.signature.slice(65)).toEqual(publicKeyAt(2));
+  });
+
+  it("signTransaction() rejects what the device cannot sign or the adapter does not expose", async () => {
+    const adapter = await connectedSui();
+    const tx = Uint8Array.of(1, 2, 3);
+    const outsider = buildAccount(`0x${"de".repeat(32)}`, SUI_CHAINS.mainnet);
+
+    await expect(adapter.signTransaction?.("{}")).rejects.toThrow(/BCS transaction bytes/v);
+    await expect(adapter.signTransaction?.(tx, { account: outsider })).rejects.toThrow(
+      /does not expose/v,
     );
-  });
-
-  it("signTransaction() with a non-active account walks paths to find it", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSuiLedgerAdapter({
-      accountCount: 3,
-      platform: "sui",
-      sui: buildFakeSuiCtor(),
-      transport: factory,
-    });
-
-    if (adapter.chainPlatform !== "sui") {
-      throw new Error("expected Sui adapter");
-    }
-
-    await adapter.connect();
-    const accounts = await adapter.getAccounts!();
-    const targetAccount = accounts[2];
-    if (targetAccount === undefined) {
-      throw new Error("expected third account");
-    }
-    const tx = new Uint8Array([9, 9, 9]);
-    const signed = await adapter.signTransaction!(tx, targetAccount);
-    expect(signed.signature).toHaveLength(97);
+    await expect(
+      adapter.signTransaction?.(tx, { chain: SUI_CHAINS.testnet }),
+    ).rejects.toMatchObject({ kind: "ChainMismatch" });
   });
 
   it("rejects malformed Ledger signature material", () => {
-    expect(() => serializeEd25519Signature(new Uint8Array(63), buildFakePubkey(0))).toThrow(
+    expect(() => serializeEd25519Signature(new Uint8Array(63), publicKeyAt(0))).toThrow(
       /63-byte signature/v,
     );
-    expect(() => serializeEd25519Signature(buildFakeSig(1), new Uint8Array(31))).toThrow(
+    expect(() => serializeEd25519Signature(SIGNATURE, new Uint8Array(31))).toThrow(
       /31-byte public key/v,
     );
   });
 
-  it("signTransaction() throws when the address isn't on any known path", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSuiLedgerAdapter({
-      accountCount: 2,
-      platform: "sui",
-      sui: buildFakeSuiCtor(),
-      transport: factory,
-    });
+  it("getSigner() resolves the device app tagged ledger-sui", async () => {
+    const adapter = await connectedSui();
 
-    if (adapter.chainPlatform !== "sui") {
-      throw new Error("expected Sui adapter");
-    }
-
-    await adapter.connect();
-    await expect(
-      adapter.signTransaction!(new Uint8Array([1, 2, 3]), {
-        chain: {
-          id: "sui:mainnet",
-          name: "Sui Mainnet",
-          namespace: "sui",
-          reference: "mainnet",
-        },
-        id: "sui:mainnet:0xdeadbeef",
-        walletAddress: `0x${"de".repeat(32)}`,
-      }),
-    ).rejects.toThrow(/not found on this device/v);
+    await expect(adapter.getSigner()).resolves.toMatchObject({ kind: "ledger-sui" });
   });
 
-  it("switchChain() updates the cluster on subsequent getAccount() calls", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSuiLedgerAdapter({
-      platform: "sui",
-      sui: buildFakeSuiCtor(),
-      transport: factory,
-    });
-
-    await adapter.connect();
-    await adapter.switchChain({
-      id: "sui:testnet",
-      name: "Sui Testnet",
-      namespace: "sui",
-      reference: "testnet",
-    });
-    const account = await adapter.getAccount();
-    expect(account?.chain.id).toBe("sui:testnet");
-    expect(account?.chain.reference).toBe("testnet");
-  });
-
-  it("switchChain() rejects non-Sui chains", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSuiLedgerAdapter({
-      platform: "sui",
-      sui: buildFakeSuiCtor(),
-      transport: factory,
-    });
-
-    await expect(
-      adapter.switchChain({
-        id: "eip155:1",
-        name: "Ethereum",
-        namespace: "eip155",
-        reference: "1",
-      }),
-    ).rejects.toThrow(/non-Sui chain/v);
-  });
-
-  it("switchChain() rejects unknown Sui clusters", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSuiLedgerAdapter({
-      platform: "sui",
-      sui: buildFakeSuiCtor(),
-      transport: factory,
-    });
-
-    await expect(
-      adapter.switchChain({
-        id: "sui:somenet",
-        name: "Sui",
-        namespace: "sui",
-        reference: "somenet",
-      }),
-    ).rejects.toThrow(/unsupported Sui cluster/v);
-  });
-
-  it("sendTx() / sendTxToChain() / getBalance() / getTransactionReceipt() reject", async () => {
-    const { factory } = buildFakeTransport();
-    const adapter = await createSuiLedgerAdapter({
-      platform: "sui",
-      sui: buildFakeSuiCtor(),
-      transport: factory,
-    });
-
-    await expect(adapter.sendTx({})).rejects.toThrow(/sendTx not supported/v);
-    await expect(adapter.sendTxToChain({}, "testnet")).rejects.toThrow(
-      /sendTxToChain not supported/v,
-    );
-    await expect(adapter.getBalance()).rejects.toThrow(/getBalance not supported/v);
-    await expect(adapter.getTransactionReceipt("sig")).rejects.toThrow(
-      /getTransactionReceipt not supported/v,
-    );
-  });
-});
-
-describe("createLedgerAdapter dispatch (sui)", () => {
-  it("routes platform: 'sui' to the Sui factory", async () => {
-    const { factory } = buildFakeTransport();
+  it("createLedgerAdapter() dispatches platform sui on the configured network", async () => {
     const adapter = await createLedgerAdapter({
+      chainId: SUI_CHAINS.testnet.id,
       platform: "sui",
       sui: buildFakeSuiCtor(),
-      transport: factory,
+      transport: buildFakeTransport().factory,
     });
+    await adapter.connect();
+
+    const [account] = await adapter.getAccounts();
 
     expect(adapter.chainPlatform).toBe("sui");
-  });
-
-  it("uses Sui's BIP-44 (coin 784) path with /N' fully-hardened suffix", async () => {
-    const seen: Array<string> = [];
-    const { factory } = buildFakeTransport();
-    const adapter = await createLedgerAdapter({
-      accountCount: 2,
-      platform: "sui",
-      sui: buildFakeSuiCtor((path) => {
-        seen.push(path);
-      }),
-      transport: factory,
-    });
-
-    await adapter.connect();
-    await adapter.getAccounts!();
-    expect(seen).toEqual(["44'/784'/0'/0'/0'", "44'/784'/0'/0'/0'", "44'/784'/0'/0'/1'"]);
+    expect(account?.chain).toEqual(SUI_CHAINS.testnet);
   });
 });

@@ -1,20 +1,21 @@
 ---
 title: Platforms and chains
-description: Every connector is evm, svm, sui, bitcoin, or polkadot. Platforms are tracked independently. Chains use CAIP-2 identifiers.
+description: Every adapter is evm, svm, sui, bitcoin, or polkadot. Platforms are tracked independently. Chains use CAIP-2 identifiers.
 ---
 
 ## ChainPlatform
 
 ```ts
-type ChainPlatform = "evm" | "svm" | "sui" | "bitcoin" | "polkadot";
+const CHAIN_PLATFORMS = ["evm", "svm", "sui", "bitcoin", "polkadot"] as const;
+type ChainPlatform = (typeof CHAIN_PLATFORMS)[number];
 ```
 
-Every connector carries a `chainPlatform`. butr tracks each platform
+Every adapter carries a `chainPlatform`. butr tracks each platform
 independently: a user can connect MetaMask (`evm`), Phantom Solana (`svm`),
 Slush Sui (`sui`), and Phantom Bitcoin (`bitcoin`) simultaneously, and each
 platform has its own selected wallet. A single multi-chain wallet (Phantom
-EVM + Phantom SVM + Phantom BTC) appears as separate pool entries with
-different `chainPlatform` values.
+EVM + Phantom SVM + Phantom BTC) appears as separate adapters with different
+`chainPlatform` values; `useDiscoveredWalletsByPlatform()` groups them.
 
 ## ChainBase: the CAIP-2 shape
 
@@ -24,45 +25,50 @@ these.
 
 ```ts
 type ChainBase = {
-  id: string; // "eip155:1", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
-  name: string; // "Ethereum", "Solana"
+  id: string; // "eip155:1", "solana:mainnet"
+  name: string; // "Ethereum", "Solana Mainnet"
   namespace: string; // "eip155", "solana"
-  reference: string; // "1", "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+  reference: string; // "1", "mainnet"
 };
 ```
 
-Chain ids are opaque strings to butr; it never parses them. You extend
-`ChainBase` with app-specific fields (logos, explorers, RPC URLs) via
-structural typing; butr passes the whole object through untouched.
+`name` is always the chain's name, never the wallet's. Adapters name a chain
+with `resolveChain(id, knownChains)`, which falls back to the CAIP-2 id as the
+name for a chain outside the registry. You can extend `ChainBase` with
+app-specific fields (logos, explorers, RPC URLs) via structural typing; butr
+passes the whole object through untouched.
 
 ## Chain registries
 
-Static lists ship with the protocol packages. You don't have to use them (any
-`ChainBase`-shaped object works), but they cover the common networks.
+Every registry is plain data in `@usebutr/core`, so any transport names a chain
+the same way, and an app that imports none of them bundles none of them. You
+don't have to use them: any `ChainBase`-shaped object works.
 
-| Export                                    | Package             | Contents                                                                    |
-| ----------------------------------------- | ------------------- | --------------------------------------------------------------------------- |
-| `EVM_CHAINS`, `EVM_CHAINS_LIST`           | `@usebutr/evm`      | Ethereum (+ Sepolia, Holesky), Polygon, Arbitrum, Optimism, Base, and more. |
-| `SVM_CHAINS`, `SVM_CHAINS_LIST`           | `@usebutr/svm`      | Solana mainnet / testnet / devnet.                                          |
-| `SUI_CHAINS`, `SUI_CHAINS_LIST`           | `@usebutr/sui`      | Sui mainnet / testnet / devnet.                                             |
-| `BITCOIN_CHAINS`, `BITCOIN_CHAINS_LIST`   | `@usebutr/bitcoin`  | Bitcoin mainnet / testnet / regtest.                                        |
-| `POLKADOT_CHAINS`, `POLKADOT_CHAINS_LIST` | `@usebutr/polkadot` | Polkadot / Paseo testnet / Kusama.                                          |
-| `CHAINS`, `CHAINS_BY_PLATFORM`            | `@usebutr/wallets`  | All five registries, keyed by platform.                                     |
+| Export                                    | Contents                                                                   |
+| ----------------------------------------- | -------------------------------------------------------------------------- |
+| `EVM_CHAINS`, `EVM_CHAINS_LIST`           | Ethereum, Sepolia, Arbitrum One, Optimism, Base, Polygon, BNB Smart Chain. |
+| `SVM_CHAINS`, `SVM_CHAINS_LIST`           | Solana mainnet / testnet / devnet.                                         |
+| `SUI_CHAINS`, `SUI_CHAINS_LIST`           | Sui mainnet / testnet / devnet / localnet.                                 |
+| `BITCOIN_CHAINS`, `BITCOIN_CHAINS_LIST`   | Bitcoin mainnet / testnet / signet.                                        |
+| `POLKADOT_CHAINS`, `POLKADOT_CHAINS_LIST` | Polkadot, Kusama, Westend, Paseo.                                          |
+| `CHAINS_BY_PLATFORM`                      | Every `*_CHAINS_LIST`, keyed by platform.                                  |
 
 `CHAINS_BY_PLATFORM[wallet.connector.chainPlatform]` is the idiomatic way to
 get the right chain list for a connected wallet; see
-[multi-chain switching](/guides/multi-chain).
+[multi-chain switching](/guides/multi-chain). A single-platform app imports
+only its own list, such as `EVM_CHAINS_LIST`.
 
 ## Platform differences
 
-|                   | EVM                                     | SVM                                          | Sui                                      | Bitcoin                                          | Polkadot                                             |
-| ----------------- | --------------------------------------- | -------------------------------------------- | ---------------------------------------- | ------------------------------------------------ | ---------------------------------------------------- |
-| Discovery         | EIP-6963 (+ injected fallback)          | Wallet Standard                              | Wallet Standard                          | Wallet Standard (+ injected fallback)            | injectedWeb3 (+ Wallet Standard)                     |
-| Accounts exposed  | one or many (MetaMask multi-account)    | all at once                                  | all at once                              | one or many (per address format)                 | all at once (SS58-encoded)                           |
-| `requestAccounts` | prompts via `wallet_requestPermissions` | no picker; resolves as a refresh             | no picker                                | no picker                                        | no picker; wallet lists all accounts                 |
-| Chain switching   | real, via `wallet_switchEthereumChain`  | local state + per-call `chain` input         | local state + per-call `chain` input     | local state; switching network = re-connect      | local state + per-call `genesisHash` input           |
-| Signature format  | EIP-191 / 712, input echoed             | Solana format, may re-encode `signedMessage` | `sui:signPersonalMessage`, returns bytes | Bitcoin Signed Message; not interchangeable      | SCALE-encoded payload; `signRaw` for raw bytes       |
-| Transaction shape | RLP-encoded; broadcast separately       | versioned/legacy tx bytes; signAndSend       | BCS-encoded `Transaction` blocks         | PSBT (BIP-174); consumer finalises and broadcast | SCALE extrinsic bytes (PAPI); broadcast via RPC node |
+|                   | EVM                                    | SVM                                          | Sui                                          | Bitcoin                                                                          | Polkadot                                                               |
+| ----------------- | -------------------------------------- | -------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Discovery         | EIP-6963 (+ injected fallback)         | Wallet Standard                              | Wallet Standard                              | Wallet Standard (+ injected fallback)                                            | injectedWeb3 (+ Wallet Standard)                                       |
+| Accounts exposed  | one or many (MetaMask multi-account)   | all at once                                  | all at once                                  | one or many (per address format)                                                 | all at once (SS58-encoded)                                             |
+| `requestAccounts` | `wallet_requestPermissions` picker     | absent: no picker                            | absent: no picker                            | absent: no picker                                                                | absent: the wallet lists every account                                 |
+| Chain switching   | real, via `wallet_switchEthereumChain` | re-points butr's view; `chain` routes a call | re-points butr's view; `chain` routes a call | Wallet Standard routes per call; injected wallets switch their network or reject | none on injectedWeb3; an account can pin its network via `genesisHash` |
+| Signature format  | EIP-191 `personal_sign`, input echoed  | Solana format, may re-encode `signedMessage` | `sui:signPersonalMessage`                    | Bitcoin Signed Message; not interchangeable                                      | `signRaw` over raw bytes                                               |
+| `sendTx` input    | `EvmTransactionRequest`                | serialized transaction bytes                 | `Transaction`, its JSON, or BCS bytes        | `BitcoinTransfer` (`{ amount, recipient }`, satoshis)                            | no `sendTx`: build extrinsics with polkadot-api                        |
+| Sign without send | —                                      | `signTransaction` → signed bytes             | `signTransaction` → `{ bytes, signature }`   | `signTransaction` on PSBT bytes → signed PSBT                                    | through `getSigner()`                                                  |
 
-**Source:** `packages/core/src/types/chain.ts`,
-`packages/{evm,svm,sui,bitcoin,polkadot,wallets}/src/chains.ts`.
+**Source:** `packages/core/src/types/chain.ts`, `packages/core/src/types/platform.ts`,
+`packages/core/src/chains.ts`.

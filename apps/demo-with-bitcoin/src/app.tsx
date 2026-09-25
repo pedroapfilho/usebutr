@@ -1,4 +1,6 @@
-import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
+import type { ConnectedWallet } from "@usebutr/core";
+import { bytesToHex, hexToBytes } from "@usebutr/core";
+import { useConnect, useSelectedWallet, useWalletManager } from "@usebutr/react";
 import { networks } from "bitcoinjs-lib";
 import { useMemo, useState } from "react";
 
@@ -17,14 +19,6 @@ const formatError = (error: Error | string): string => {
   return error;
 };
 
-const bytesToHex = (bytes: Uint8Array): string => {
-  let hex = "";
-  for (const byte of bytes) {
-    hex += byte.toString(16).padStart(2, "0");
-  }
-  return hex;
-};
-
 const Row = ({ children, label }: { children: React.ReactNode; label: string }) => (
   <div className="border-border-default flex items-baseline gap-3 rounded-lg border bg-white p-4">
     <span className="text-foreground-muted w-28 shrink-0 text-xs font-medium tracking-wide uppercase">
@@ -39,7 +33,7 @@ const Connected = ({
   wallet,
 }: {
   onDisconnect: () => void;
-  wallet: ReturnType<typeof useActiveWallet> & object;
+  wallet: ConnectedWallet<"bitcoin">;
 }) => {
   const [signature, setSignature] = useState<string | null>(null);
   const [signedPsbt, setSignedPsbt] = useState<string | null>(null);
@@ -56,8 +50,11 @@ const Connected = ({
   const handleSign = async () => {
     setErrorMsg(null);
     try {
+      if (!wallet.connector.signMessage) {
+        throw new Error(`${wallet.connector.name} does not support message signing`);
+      }
       const message = new TextEncoder().encode("Hello from butr + bitcoinjs-lib");
-      const result = await wallet.connector.signMessage(message);
+      const result = await wallet.connector.signMessage(message, { account: wallet.account });
       setSignature(bytesToHex(result.signature));
     } catch (error) {
       setErrorMsg(formatError(error instanceof Error ? error : String(error)));
@@ -67,18 +64,13 @@ const Connected = ({
   const handleSignPsbt = async () => {
     setErrorMsg(null);
     try {
-      const connector = wallet.connector;
-      if (connector.chainPlatform !== "bitcoin" || !connector.signTransaction) {
+      if (!wallet.connector.signTransaction) {
         throw new Error(
           "This wallet does not advertise PSBT signing (bitcoin:signPsbt). Try Phantom, Magic Eden, or Leather.",
         );
       }
-      const psbtHex = "70736274FF010A02000000000000000000";
-      const psbt = new Uint8Array(psbtHex.length / 2);
-      for (let i = 0; i < psbt.length; i += 1) {
-        psbt[i] = Number.parseInt(psbtHex.slice(i * 2, i * 2 + 2), 16);
-      }
-      const signed = await connector.signTransaction(psbt);
+      const psbt = hexToBytes("70736274FF010A02000000000000000000");
+      const signed = await wallet.connector.signTransaction(psbt, { account: wallet.account });
       setSignedPsbt(bytesToHex(signed));
     } catch (error) {
       setErrorMsg(formatError(error instanceof Error ? error : String(error)));
@@ -111,15 +103,15 @@ const Connected = ({
       </Row>
       <Row label="Capabilities">
         <span className="font-mono text-xs">
-          send={String(wallet.connector.capabilities.sendTransaction)} signMsg=
-          {String(wallet.connector.capabilities.signMessage)} signPsbt=
-          {String(wallet.connector.capabilities.signTransaction)}
+          send={String(wallet.connector.sendTx !== undefined)} signMsg=
+          {String(wallet.connector.signMessage !== undefined)} signPsbt=
+          {String(wallet.connector.signTransaction !== undefined)}
         </span>
       </Row>
       <div className="flex flex-wrap gap-2">
         <button
           className="border-border-strong hover:bg-surface-subtle rounded-md border bg-white px-3 py-1.5 text-sm disabled:opacity-50"
-          disabled={!wallet.connector.capabilities.signMessage}
+          disabled={!wallet.connector.signMessage}
           onClick={() => {
             void handleSign();
           }}
@@ -129,7 +121,7 @@ const Connected = ({
         </button>
         <button
           className="border-border-strong hover:bg-surface-subtle rounded-md border bg-white px-3 py-1.5 text-sm disabled:opacity-50"
-          disabled={!wallet.connector.capabilities.signTransaction}
+          disabled={!wallet.connector.signTransaction}
           onClick={() => {
             void handleSignPsbt();
           }}
@@ -158,12 +150,12 @@ const Connected = ({
 };
 
 const Content = () => {
-  const active = useActiveWallet();
-  const connect = useConnectWallet();
-  const disconnect = useDisconnectWallet();
+  const wallet = useSelectedWallet("bitcoin");
+  const { connect } = useConnect();
+  const { disconnect } = useWalletManager();
   const discovered = useDiscoveredWallets();
 
-  if (!active) {
+  if (!wallet) {
     return (
       <section className="space-y-3">
         <h2 className="font-semibold">Available wallets</h2>
@@ -174,19 +166,19 @@ const Content = () => {
           </p>
         ) : (
           <ul className="space-y-2">
-            {discovered.map((wallet) => (
-              <li key={wallet.id}>
+            {discovered.map((adapter) => (
+              <li key={adapter.id}>
                 <button
                   className="border-border-default hover:bg-surface-subtle flex w-full items-center gap-3 rounded-lg border bg-white px-4 py-3 text-left"
                   onClick={() => {
-                    void connect(wallet.id);
+                    connect(adapter.id);
                   }}
                   type="button"
                 >
-                  {wallet.icon !== undefined && wallet.icon !== "" ? (
-                    <img alt="" className="size-6 rounded" src={wallet.icon} />
+                  {adapter.icon !== undefined && adapter.icon !== "" ? (
+                    <img alt="" className="size-6 rounded" src={adapter.icon} />
                   ) : null}
-                  <span className="font-medium">{wallet.name}</span>
+                  <span className="font-medium">{adapter.name}</span>
                 </button>
               </li>
             ))}
@@ -199,9 +191,9 @@ const Content = () => {
   return (
     <Connected
       onDisconnect={() => {
-        disconnect(active.connector.id);
+        disconnect(wallet.connector.id);
       }}
-      wallet={active}
+      wallet={wallet}
     />
   );
 };

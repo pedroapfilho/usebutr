@@ -1,63 +1,111 @@
 ---
 title: "@mysten/sui"
-description: Read state with SuiClient, build transactions with the Transaction builder, sign and execute through the wallet.
+description: Read state with a Sui client, build transactions with the Transaction builder, sign and execute through the wallet.
 ---
 
 `@mysten/sui` is Sui's official TypeScript SDK. butr discovers and manages the
-wallet; `@mysten/sui` owns the RPC client (`SuiClient`) and the transaction
-builder (`Transaction`); the wallet's Wallet Standard features supply signing
-and execution.
+wallet; `@mysten/sui` owns the RPC client and the transaction builder
+(`Transaction`); butr's Sui adapter hands them to the wallet's Wallet
+Standard features.
 
-## Read state with `SuiClient`
+## Get the wallet
 
-`SuiClient` talks to a Sui full node directly; point it at a network and read
-balances without routing through the wallet:
+`useSelectedWallet("sui")` types the connector as a `SuiAdapter`, so
+`sendTx` takes a `Transaction` and `signTransaction` resolves
+`{ bytes, signature }`:
+
+```tsx
+import { useSelectedWallet } from "@usebutr/react";
+
+const wallet = useSelectedWallet("sui");
+```
+
+## Read state
+
+The client talks to a Sui full node directly; read balances without routing
+through the wallet:
 
 ```ts
-import { SuiClient } from "@mysten/sui/client";
+import { SuiGrpcClient } from "@mysten/sui/grpc";
 
-const client = new SuiClient({ url: "https://fullnode.testnet.sui.io:443" });
+const client = new SuiGrpcClient({
+  baseUrl: "https://fullnode.testnet.sui.io:443",
+  network: "testnet",
+});
 
-const { totalBalance } = await client.getBalance({ owner: wallet.account.walletAddress });
-const sui = `${Number(totalBalance) / 1_000_000_000} SUI`; // MIST → SUI
+const { balance } = await client.getBalance({ owner: wallet.account.walletAddress });
+const sui = `${Number(balance.balance) / 1_000_000_000} SUI`; // MIST → SUI
 ```
 
 ## Sign a message
 
-The Sui adapter wires `signMessage` directly; call it on the connector and get
-the signature bytes back:
+`signMessage` exists when the wallet advertises `sui:signPersonalMessage`, so
+check it first:
 
 ```ts
+if (!wallet.connector.signMessage) {
+  throw new Error(`${wallet.connector.name} cannot sign messages`);
+}
 const message = new TextEncoder().encode("Hello from butr + @mysten/sui");
-const { signature } = await wallet.connector.signMessage(message);
-// `signature` is a Uint8Array; render as hex for display.
+const { signature, signedMessage } = await wallet.connector.signMessage(message, {
+  account: wallet.account,
+});
 ```
 
 ## Build and send a transaction
 
-Build with `@mysten/sui`'s `Transaction` programmable-transaction builder, then
-hand the object to butr's `sendTx`; the Sui adapter routes it through the
-wallet's `sui:signAndExecuteTransaction` feature, which signs **and** broadcasts:
+Build with the `Transaction` builder and hand the object to `sendTx`. The Sui
+adapter routes it through `sui:signAndExecuteTransaction`, which signs **and**
+executes, and `chain` pins testnet for this one call without moving the
+wallet:
 
 ```ts
 import { Transaction } from "@mysten/sui/transactions";
+import { SUI_CHAINS } from "@usebutr/core";
 
+if (!wallet.connector.sendTx) {
+  throw new Error(`${wallet.connector.name} cannot execute transactions`);
+}
 const tx = new Transaction();
 tx.setSender(wallet.account.walletAddress);
 // A no-op self-transfer: split 0 MIST off the gas coin, send it back.
 const [coin] = tx.splitCoins(tx.gas, [0]);
 tx.transferObjects([coin], wallet.account.walletAddress);
 
-const digest = await wallet.connector.sendTx(tx);
+const digest = await wallet.connector.sendTx(tx, {
+  account: wallet.account,
+  chain: SUI_CHAINS.testnet,
+});
 // digest → look up on https://suiscan.xyz/testnet/tx/<digest>
 ```
 
+Without `chain`, the adapter uses its current chain, which is mainnet when the
+wallet advertises it.
+
 <Callout type="info">
-  Unlike EVM/SVM, you don't broadcast separately: Sui wallets expose
-  `sui:signAndExecuteTransaction`, which signs and submits in one step. `sendTx` resolves to the
-  transaction digest, not raw signed bytes. For sign-only flows (no broadcast), use
-  `signTransaction` instead.
+  `sendTx` resolves the digest, not signed bytes. For a sign-only flow, `signTransaction` (present
+  with `sui:signTransaction`) resolves `{ bytes, signature }`, the two halves
+  `executeTransactionBlock` needs.
 </Callout>
+
+## Other features
+
+For a Wallet Standard feature butr does not wrap, narrow the signer and read
+the feature with `getFeature`, typed by the shapes `@usebutr/sui` exports:
+
+```ts
+import type { SuiSignTransactionFeature } from "@usebutr/sui";
+import { getFeature } from "@usebutr/wallet-standard-shared";
+
+const signer = await wallet.connector.getSigner();
+if (signer.kind === "wallet-standard") {
+  const feature = getFeature<SuiSignTransactionFeature>(
+    signer.wallet,
+    "sui:signTransaction",
+    "signTransaction",
+  );
+}
+```
 
 <Callout type="info">
   **Source:** `apps/demo-with-sui/src/app.tsx` in the [butr

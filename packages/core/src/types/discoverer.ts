@@ -1,3 +1,5 @@
+import type { WalletSource } from "../wallet-source";
+
 import type { WalletAdapter } from "./wallet";
 
 /**
@@ -14,11 +16,11 @@ type PlatformDiscoverer = {
   fallback?: {
     subscribe: (
       onAdapter: (adapter: WalletAdapter) => void,
-      opts: { hasAnyPrimaryAdapter: () => boolean },
+      options: { hasAnyPrimaryAdapter: () => boolean },
     ) => () => void;
   };
   /** Primary discovery subscription. */
-  subscribe: (onAdapter: (adapter: WalletAdapter) => void) => () => void;
+  subscribe: WalletSource;
 };
 
 export type { PlatformDiscoverer };

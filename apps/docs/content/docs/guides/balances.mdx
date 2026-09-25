@@ -1,17 +1,19 @@
 ---
 title: Read balances
-description: useBalance for the built-in path, or query your own RPC for full control.
+description: useBalance for EVM wallets, or query your own RPC for every other platform and for full control.
 ---
 
 ## `useBalance`: the built-in path
 
-`useBalance(connectorId?, mint?)` is an async hook returning a typed lifecycle
-state plus `refetch`:
+`useBalance(wallet, options)` takes a connected wallet, from `useWallet()` or
+`useSelectedWallet(platform)`, and returns a typed lifecycle state plus
+`refetch`:
 
 ```tsx
-import { useBalance } from "@usebutr/react";
+import { useBalance, useSelectedWallet } from "@usebutr/react";
 
-const balance = useBalance(wallet.connector.id);
+const wallet = useSelectedWallet("evm");
+const balance = useBalance(wallet);
 
 const text =
   balance.status === "success"
@@ -19,34 +21,54 @@ const text =
     : balance.status === "loading"
       ? "…"
       : balance.status === "error"
-        ? "error"
+        ? balance.error.message
         : "—";
+```
+
+With no wallet (`undefined`) it stays `"idle"`. Both options are optional:
+
+| Option    | Default                     | Meaning                       |
+| --------- | --------------------------- | ----------------------------- |
+| `account` | the wallet's active account | which exposed account to read |
+| `token`   | the native asset            | an ERC-20 contract address    |
+
+```tsx
+const usdc = useBalance(wallet, { token: USDC_ADDRESS });
 ```
 
 `balance.data` is a `Balance`:
 
 ```ts
 type Balance = {
-  decimals: number; // 9 for SOL, 18 for ETH
+  decimals: number; // 18 for ETH, or the token's decimals
   formatted: string; // human-readable, trailing zeros trimmed
-  symbol: string; // "SOL", "ETH"
+  symbol: string; // "ETH", or the token's symbol
   value: bigint; // raw integer amount
 };
 ```
 
-Omit `connectorId` to read the active wallet. Pass `mint` for an SPL/token
-balance where the connector supports it.
+`refetch()` reads again, for example after a transaction lands. The hook also
+refetches when the wallet, account, or token changes.
 
 <Callout type="warn">
-  `useBalance` only returns a real value when `wallet.connector.capabilities.getBalance` is `true`.
-  Ledger, for example, is signing-only and has no RPC; its `getBalance` is `false`. Query an RPC
-  yourself for those.
+  Only EVM adapters define `getBalance`: they read through the wallet's own provider
+  (`eth_getBalance`, or `balanceOf` for a token). butr ships no RPC for Solana, Sui, Bitcoin, or
+  Polkadot, and a Ledger has none either, so for those wallets `useBalance` stays `"idle"`. Query
+  your own RPC for them. The native balance is labelled `"ETH"` on every EVM chain.
 </Callout>
+
+To call it without the hook, check for the method first:
+
+```ts
+if (wallet.connector.getBalance) {
+  const balance = await wallet.connector.getBalance({ account: wallet.account, token: USDC });
+}
+```
 
 ## Querying RPC yourself
 
-For full control (custom RPC, caching, token lists) read through your chain
-library instead. butr stays out of the way:
+For every other platform, and for full control on EVM (custom RPC, caching,
+token lists), read through your chain library. butr stays out of the way:
 
 ```ts
 // viem: its own public client, not the wallet's RPC

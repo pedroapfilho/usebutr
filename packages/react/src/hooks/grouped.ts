@@ -2,9 +2,7 @@ import type { ChainPlatform, ConnectedWallet, WalletAdapter } from "@usebutr/cor
 import { groupByPlatform } from "@usebutr/core";
 import { useMemo } from "react";
 
-import { useDiscoveredWallets } from "../context";
-
-import { useConnectedWallets } from "./selectors";
+import { useConnectedWallets, useDiscoveredWallets } from "./state";
 
 /**
  * Discovered wallets bucketed by platform, in `CHAIN_PLATFORMS` order with
@@ -19,11 +17,7 @@ const useDiscoveredWalletsByPlatform = (): Map<ChainPlatform, Array<WalletAdapte
   );
 };
 
-/**
- * Connected wallets bucketed by platform, same ordering rules as
- * `useDiscoveredWalletsByPlatform`. Reads the discriminant through
- * `connector`, where pool entries keep it.
- */
+/** Connected wallets bucketed by platform, same ordering rules. */
 const useConnectedWalletsByPlatform = (): Map<ChainPlatform, Array<ConnectedWallet>> => {
   const connected = useConnectedWallets();
   return useMemo(

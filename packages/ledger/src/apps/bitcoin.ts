@@ -1,43 +1,29 @@
-import type { Account, ChainBase, WalletAdapter } from "@usebutr/core";
-import { bytesToHex, hexToBytes } from "@usebutr/core";
+import type { BitcoinAdapter } from "@usebutr/core";
+import { BITCOIN_CHAINS, BITCOIN_CHAINS_LIST, bytesToHex } from "@usebutr/core";
 
-import { createLedgerAdapterCore } from "../adapter-core";
-import { LEDGER_SIGN_TRANSACTION_CAPABILITIES } from "../capabilities";
-import type { TransportFactory, TransportLike } from "../transport";
+import type { LedgerBaseOptions, TransportLike } from "../adapter-core";
+import { createLedgerAdapterCore, isClassWith, loadPeer, rsBytes } from "../adapter-core";
 
 /**
- * Mirrors `@ledgerhq/hw-app-btc`'s `AddressFormat`, re-declared inline so
- * butr's typecheck doesn't depend on the optional peer dep. Each maps to a BIP
- * path convention: legacy 44', p2sh 49', bech32 84', bech32m 86'.
+ * Mirrors `@ledgerhq/hw-app-btc`'s `AddressFormat`. Each maps to a BIP path
+ * convention: legacy 44', p2sh 49', bech32 84', bech32m 86'.
  */
 type BitcoinAddressFormat = "legacy" | "p2sh" | "bech32" | "bech32m";
 
-/**
- * Mirrors `@ledgerhq/hw-app-btc`'s `signPsbtBuffer` so butr's typecheck doesn't
- * depend on the optional peer dep. Its `Buffer`s are typed as `Uint8Array`,
- * which the runtime satisfies in Node and under browser bundler shims.
- */
 type BitcoinSignPsbtOptions = {
-  /** BIP-32 account path, e.g. `"m/84'/0'/0'"` or `"84'/0'/0'"`. */
+  /** BIP-32 account-level path, e.g. `"84'/0'/0'"`. */
   accountPath: string;
-  /** Address format the device should use when deriving signing keys. */
   addressFormat: BitcoinAddressFormat;
-  /**
-   * When `true`, the device returns a fully-signed transaction in `tx`. When
-   * `false`, only the partially-signed PSBT is returned and the consumer
-   * finalises + broadcasts via their own Bitcoin client.
-   */
+  /** `true` returns a finalised transaction in `tx` as well. */
   finalizePsbt: boolean;
-  /** Only consulted when the PSBT lacks BIP-32 derivation data. Well-formed
-   *  PSBTs carry it in `PSBT_IN_BIP32_DERIVATION`, so an empty Map is
-   *  normally fine. */
+  /** Only consulted for inputs that lack `PSBT_IN_BIP32_DERIVATION`. */
   knownAddressDerivations: Map<string, { path: Array<number>; pubkey: Uint8Array }>;
 };
 
 /**
- * Declared inline so butr's typecheck doesn't depend on the optional peer dep.
- * The constructor takes the v10+ `{ transport, currency }` form, `signMessage`
- * wants a HEX string, and `signPsbtBuffer` needs Bitcoin app v2.1+.
+ * The part of `@ledgerhq/hw-app-btc` butr uses, declared here so type-checking
+ * never requires the optional peer. Needs v10+ (`{ transport, currency }`
+ * constructor) and Bitcoin app v2.1+ for `signPsbtBuffer`.
  */
 type BtcAppLike = {
   getWalletPublicKey: (
@@ -53,211 +39,81 @@ type BtcAppLike = {
 
 type BtcAppConstructor = new (args: { currency?: string; transport: TransportLike }) => BtcAppLike;
 
-/**
- * Default Bitcoin chain CAIP-2 reference (mainnet genesis block hash). The
- * `bip122:<32-hex>` shape is what BIP-122 / CAIP-2 standardised for Bitcoin.
- */
-const DEFAULT_CHAIN_ID = "bip122:000000000019d6689c085ae165831e93";
-
-/**
- * Native SegWit (BIP-84) mainnet derivation prefix. The factory appends the
- * account index as the last (non-hardened) segment so `0` → `84'/0'/0'/0/0`.
- * Override via `derivationPathPrefix` for legacy / Taproot / testnet paths.
- */
-const DEFAULT_DERIVATION_PATH_PREFIX = "84'/0'/0'/0";
-const DEFAULT_ADDRESS_FORMAT: BitcoinAddressFormat = "bech32";
-
-const loadBtc = async (): Promise<BtcAppConstructor> => {
-  const imported: unknown = await import("@ledgerhq/hw-app-btc");
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SAFETY: The supported peer range exports the Bitcoin app constructor under default or Btc.
-  const moduleValue = imported as {
-    Btc?: BtcAppConstructor;
-    default?: BtcAppConstructor;
-  };
-  const constructor = moduleValue.default ?? moduleValue.Btc;
-  if (!constructor) {
-    throw new Error(
-      "[butr/ledger] failed to load @ledgerhq/hw-app-btc: install it as an optional peer dep",
-    );
-  }
-  return constructor;
-};
-
-/**
- * Bitcoin-specific Ledger adapter options. Each option is **fully typed for
- * the Bitcoin platform**; no opaque DI bag, no `unknown` chain hints.
- */
-type BitcoinLedgerOptions = {
-  /** Each path walk hits the device (~1-2 s per address), so larger values are
-   *  slow. Default: 1. */
-  accountCount?: number;
-  /** Must agree with `derivationPathPrefix` per BIP convention; the adapter
-   *  doesn't police that, so the device errors when they disagree. Default:
-   *  `"bech32"`. */
+type BitcoinLedgerOptions = LedgerBaseOptions & {
+  /** Must agree with `derivationPathPrefix` per BIP convention; the device
+   *  errors when they disagree. Default: `"bech32"`. */
   addressFormat?: BitcoinAddressFormat;
-  /**
-   * DI override for the `Btc` app constructor (tests). When omitted, the
-   * factory dynamic-imports `@ledgerhq/hw-app-btc`.
-   */
+  /** DI override for the app class (tests). Default: a dynamic import of
+   *  `@ledgerhq/hw-app-btc`. */
   btc?: BtcAppConstructor;
-  /** Ledger has no internal "current chain", so this is stored locally and
-   *  only affects the ChainBase id butr surfaces. Default: mainnet. */
-  chainId?: string;
-  /** `getAccounts(n)` appends the account index as the last, non-hardened
-   *  segment. Default: `"84'/0'/0'/0"` (BIP-84 native SegWit mainnet). */
-  derivationPathPrefix?: string;
-  /** Override the wallet icon shown in pickers. */
-  icon?: string;
-  /** Override the connector id. Default `"ledger"`. */
-  id?: string;
-  /**
-   * DI override for the Btc app loader (tests / custom packaging). Takes
-   * precedence over `btc`.
-   */
-  loadBtc?: () => Promise<BtcAppConstructor>;
-  /** Override the wallet name. Default `"Ledger"`. */
-  name?: string;
-  /** Discriminant for the main `createLedgerAdapter` dispatch. */
   platform: "bitcoin";
-  /**
-   * DI override for the WebUSB transport factory (tests). When omitted, the
-   * factory dynamic-imports `@ledgerhq/hw-transport-webusb`.
-   */
-  transport?: TransportFactory;
 };
 
-const buildBitcoinChain = (chainId: string, walletName: string): ChainBase => {
-  const colonIndex = chainId.indexOf(":");
-  const namespace = colonIndex === -1 ? "bip122" : chainId.slice(0, colonIndex);
-  const reference = colonIndex === -1 ? chainId : chainId.slice(colonIndex + 1);
-  return {
-    id: chainId,
-    name: walletName,
-    namespace,
-    reference,
-  };
-};
-
-const buildBitcoinAccount = (address: string, chain: ChainBase): Account => ({
-  chain,
-  id: `${chain.id}:${address}`,
-  walletAddress: address,
-});
+/** BIP-137 header for a compressed key: 27 + 4 + the recovery id, which is
+ *  what the device produces and Ledger's SDK strips back to `v`. */
+const COMPRESSED_KEY_HEADER = 31;
 
 /**
- * The returned adapter is UN-paired: pairing happens on `adapter.connect()`,
- * when the browser prompts for WebUSB and the user opens the Bitcoin app.
- * `signMessage` hex-encodes, as the app pre-dates the takes-bytes convention.
+ * Un-paired until `connect()`, when the browser asks for WebUSB access and
+ * the user opens the Bitcoin app. Testnet needs the Bitcoin Test app, a
+ * `1'` coin type and `chainId: BITCOIN_CHAINS.testnet.id`.
  */
-const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): Promise<WalletAdapter> => {
-  const derivationPathPrefix = options.derivationPathPrefix ?? DEFAULT_DERIVATION_PATH_PREFIX;
-  const addressFormat = options.addressFormat ?? DEFAULT_ADDRESS_FORMAT;
-
-  let chainId = options.chainId ?? DEFAULT_CHAIN_ID;
-
-  const core = createLedgerAdapterCore<BtcAppLike>({
-    accountCount: options.accountCount,
+const createBitcoinLedgerAdapter = async (
+  options: BitcoinLedgerOptions,
+): Promise<BitcoinAdapter> => {
+  const addressFormat = options.addressFormat ?? "bech32";
+  const core = await createLedgerAdapterCore<BtcAppLike>(options, {
     addressAt: async (btc, path) => {
-      const result = await btc.getWalletPublicKey(path, { format: addressFormat });
-      return result.bitcoinAddress;
+      const { bitcoinAddress } = await btc.getWalletPublicKey(path, { format: addressFormat });
+      return bitcoinAddress;
     },
-    derivationPathPrefix,
-    getBalanceHint: "Use bitcoinjs-lib with an Esplora / Electrum client.",
-    icon: options.icon,
-    id: options.id,
+    chains: BITCOIN_CHAINS_LIST,
+    defaultChain: BITCOIN_CHAINS.mainnet,
+    defaultPathPrefix: "84'/0'/0'/0",
+    hardenedIndex: false,
     loadApp: async () => {
-      const BtcApp = options.btc ?? (await (options.loadBtc ?? loadBtc)());
-      return (transport) => new BtcApp({ currency: "bitcoin", transport });
+      const Btc =
+        options.btc ??
+        (await loadPeer(
+          import("@ledgerhq/hw-app-btc"),
+          "@ledgerhq/hw-app-btc",
+          isClassWith<BtcAppConstructor>("getWalletPublicKey", "signMessage", "signPsbtBuffer"),
+        ));
+      return (transport) => new Btc({ currency: "bitcoin", transport });
     },
-    name: options.name,
-    pathAt: (prefix, index) => `${prefix}/${index}`,
-    sendTxHint: "Use signTransaction + an Esplora / Electrum client.",
-    switchAccountHint: "signMessage(msg, account)",
-    transport: options.transport,
+    signer: (app) => ({ app, kind: "ledger-bitcoin" }),
   });
 
-  const accountPath = (): string => {
-    const lastSlash = derivationPathPrefix.lastIndexOf("/");
-    return lastSlash === -1 ? derivationPathPrefix : derivationPathPrefix.slice(0, lastSlash);
-  };
-
-  const currentChain = (): ChainBase => buildBitcoinChain(chainId, core.name);
-
-  const adapter: WalletAdapter = {
-    capabilities: LEDGER_SIGN_TRANSACTION_CAPABILITIES,
+  return {
+    ...core.base,
     chainPlatform: "bitcoin",
-    connect: core.connect,
-    disconnect: core.disconnect,
-
-    getAccount: () => {
-      const address = core.currentAddress();
-      return Promise.resolve(
-        address === null ? null : buildBitcoinAccount(address, currentChain()),
-      );
+    /** A 65-byte BIP-137 compact signature (header, r, s), as Unisat and
+     *  Ledger Live produce it before base64. */
+    async signMessage(message, signOptions) {
+      const { app, path } = core.resolve(signOptions);
+      const { r, s, v } = await app.signMessage(path, bytesToHex(message));
+      return {
+        signature: Uint8Array.of(COMPRESSED_KEY_HEADER + v, ...rsBytes(r, s)),
+        signedMessage: message,
+      };
     },
-
-    async getAccounts() {
-      const chain = currentChain();
-      const addresses = await core.listAddresses();
-      return addresses.map((address) => buildBitcoinAccount(address, chain));
-    },
-
-    getBalance: core.getBalance,
-    getSigner: core.getSigner,
-    getTransactionReceipt: core.getTransactionReceipt,
-    icon: core.icon,
-    id: core.id,
-    name: core.name,
-    sendTx: core.sendTx,
-    sendTxToChain: core.sendTxToChain,
-
-    async signMessage(message, account) {
-      const btc = core.requireApp();
-      const path = await core.resolvePath(account);
-      const { r, s, v } = await btc.signMessage(path, bytesToHex(message));
-      const sigHex = `${r.padStart(64, "0")}${s.padStart(64, "0")}${v.toString(16).padStart(2, "0")}`;
-      return { signature: hexToBytes(sigHex), signedMessage: message };
-    },
-
     /**
-     * `finalizePsbt: false` mirrors the WalletConnect `bitcoin:signPsbt`
-     * contract. The factory passes an empty `knownAddressDerivations`, so a
-     * PSBT lacking `PSBT_IN_BIP32_DERIVATION` rejects at the device.
+     * `finalizePsbt: false` mirrors `bitcoin:signPsbt`. The device signs every
+     * input its BIP-32 derivations place under the account path, so the PSBT
+     * builder must populate `PSBT_IN_BIP32_DERIVATION`.
      */
-    async signTransaction(tx, account) {
-      const btc = core.requireApp();
-      if (!(tx instanceof Uint8Array)) {
-        throw new TypeError(
-          "[butr/ledger] signTransaction expects a Uint8Array (serialized PSBT v0 or v2).",
-        );
-      }
-      await core.resolvePath(account);
-      const result = await btc.signPsbtBuffer(tx, {
-        accountPath: accountPath(),
+    async signTransaction(psbt, signOptions) {
+      const { app, path } = core.resolve(signOptions);
+      const result = await app.signPsbtBuffer(psbt, {
+        // `<purpose>'/<coin>'/<account>'/<change>/<index>` minus the last two.
+        accountPath: path.split("/").slice(0, -2).join("/"),
         addressFormat,
         finalizePsbt: false,
         knownAddressDerivations: new Map(),
       });
       return new Uint8Array(result.psbt);
     },
-
-    subscribe: core.subscribe,
-    switchAccount: core.switchAccount,
-
-    switchChain: (chain) => {
-      if (chain.namespace !== "bip122") {
-        return Promise.reject(
-          new Error(
-            `[butr/ledger] received non-Bitcoin chain "${chain.id}". Pass a chain with namespace "bip122".`,
-          ),
-        );
-      }
-      chainId = chain.id;
-      return Promise.resolve();
-    },
   };
-
-  return Promise.resolve(adapter);
 };
 
 export type { BitcoinAddressFormat, BitcoinLedgerOptions, BtcAppConstructor, BtcAppLike };

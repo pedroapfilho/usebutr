@@ -1,4 +1,4 @@
-import { useConnectingConnectorId } from "@usebutr/react";
+import { useConnect } from "@usebutr/react";
 import { useEffect, useRef, useState } from "react";
 import { renderSVG } from "uqr";
 
@@ -6,7 +6,7 @@ import { clearPairingUri, usePairingUri } from "./pairing-store";
 
 const PairingDialog = () => {
   const uri = usePairingUri();
-  const connectingId = useConnectingConnectorId();
+  const { connectingId } = useConnect();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [copied, setCopied] = useState(false);
 

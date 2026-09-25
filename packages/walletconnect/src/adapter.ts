@@ -1,5 +1,5 @@
 import type { ChainPlatform, WalletAdapter } from "@usebutr/core";
-import { CHAIN_PLATFORMS } from "@usebutr/core";
+import { CHAIN_PLATFORMS, isChainPlatform } from "@usebutr/core";
 
 import type {
   UniversalProviderConstructor,
@@ -91,41 +91,13 @@ const namespaceRequest = (
   methods: [...builder.defaultMethods],
 });
 
-/**
- * Registry of known per-namespace builders. Adding a new namespace =
- * import its builder + add the entry. Today EVM, SVM, Sui, and Bitcoin
- * (bip122) all ship.
- */
-const KNOWN_NAMESPACES = {
+/** The namespace builder per platform. Polkadot has no WalletConnect
+ *  namespace yet. */
+const KNOWN_NAMESPACES: Partial<Record<ChainPlatform, WalletConnectNamespaceBuilder>> = {
   bitcoin: bitcoinNamespace,
   evm: evmNamespace,
   sui: suiNamespace,
   svm: solanaNamespace,
-} satisfies Partial<Record<ChainPlatform, WalletConnectNamespaceBuilder>>;
-
-const namespaceBuilderFor = (
-  platform: ChainPlatform,
-): WalletConnectNamespaceBuilder | undefined => {
-  switch (platform) {
-    case "bitcoin": {
-      return KNOWN_NAMESPACES.bitcoin;
-    }
-    case "evm": {
-      return KNOWN_NAMESPACES.evm;
-    }
-    case "sui": {
-      return KNOWN_NAMESPACES.sui;
-    }
-    case "svm": {
-      return KNOWN_NAMESPACES.svm;
-    }
-    case "polkadot": {
-      return undefined;
-    }
-    default: {
-      throw new Error("Unknown chain platform");
-    }
-  }
 };
 
 /**
@@ -136,53 +108,34 @@ const namespaceBuilderFor = (
 const createWalletConnectAdapters = async (
   options: WalletConnectOptions,
 ): Promise<Array<WalletAdapter>> => {
-  const unknownPlatforms = Object.keys(options.namespaces).filter(
-    (key) => !CHAIN_PLATFORMS.some((platform) => platform === key),
+  const unsupported = Object.keys(options.namespaces).filter(
+    (key) => !isChainPlatform(key) || KNOWN_NAMESPACES[key] === undefined,
   );
-  if (unknownPlatforms.length > 0) {
-    throw new Error(
-      `[butr/walletconnect] no namespace builder registered for: ${unknownPlatforms.join(", ")}. Today "evm", "svm", "sui", and "bitcoin" ship.`,
-    );
-  }
-  const requested: Array<[ChainPlatform, ReadonlyArray<string>]> = [];
-  for (const platform of CHAIN_PLATFORMS) {
-    const value = options.namespaces[platform];
-    if (value !== undefined) {
-      requested.push([platform, value]);
-    }
-  }
-  if (requested.length === 0) {
-    throw new Error(
-      "[butr/walletconnect] createWalletConnectAdapters needs at least one namespace",
-    );
-  }
-  const unsupported: Array<ChainPlatform> = [];
-  const selected: Array<{
-    builder: WalletConnectNamespaceBuilder;
-    chains: ReadonlyArray<string>;
-    platform: ChainPlatform;
-  }> = [];
-  for (const [platform, chains] of requested) {
-    const builder = namespaceBuilderFor(platform);
-    if (builder === undefined) {
-      unsupported.push(platform);
-      continue;
-    }
-    selected.push({
-      builder,
-      chains: chains.length > 0 ? chains : builder.defaultChains,
-      platform,
-    });
-  }
   if (unsupported.length > 0) {
     throw new Error(
       `[butr/walletconnect] no namespace builder registered for: ${unsupported.join(", ")}. Today "evm", "svm", "sui", and "bitcoin" ship.`,
     );
   }
-
+  const selected = CHAIN_PLATFORMS.flatMap((platform) => {
+    const chains = options.namespaces[platform];
+    const builder = KNOWN_NAMESPACES[platform];
+    return chains === undefined || builder === undefined
+      ? []
+      : [
+          {
+            builder,
+            chains: (chains.length > 0 ? chains : builder.defaultChains).map(
+              (chainId) => builder.chainAliases?.get(chainId) ?? chainId,
+            ),
+            platform,
+          },
+        ];
+  });
   const [primary, ...secondary] = selected;
   if (primary === undefined) {
-    throw new Error("Unreachable: empty namespace selection");
+    throw new Error(
+      "[butr/walletconnect] createWalletConnectAdapters needs at least one namespace",
+    );
   }
   const namespaces: PairingRequest = {
     [primary.builder.caipPrefix]: namespaceRequest(primary.builder, primary.chains),
@@ -202,36 +155,19 @@ const createWalletConnectAdapters = async (
   const baseName = options.name ?? "WalletConnect";
   const icon = options.icon ?? DEFAULT_ICON;
   const multiNamespace = selected.length > 1;
-  const connectedAdapters = new Set<WalletAdapter>();
 
-  return selected.map(({ builder, chains, platform }) => {
-    const adapter = builder.buildAdapter({
+  return selected.map(({ builder, chains, platform }) =>
+    builder.buildAdapter({
       chains,
       icon,
       id: multiNamespace ? `${baseId}-${platform}` : baseId,
       name: multiNamespace ? `${baseName} (${platform.toUpperCase()})` : baseName,
       provider,
       session,
-    });
-    const release = session.retain();
-    const innerConnect = adapter.connect.bind(adapter);
-    return Object.assign(adapter, {
-      connect: async (connectOptions?: { silent?: boolean }) => {
-        await innerConnect(connectOptions);
-        connectedAdapters.add(adapter);
-      },
-      disconnect: async () => {
-        connectedAdapters.delete(adapter);
-        release();
-        if (connectedAdapters.size === 0) {
-          await session.disconnect();
-        }
-      },
-    });
-  });
+    }),
+  );
 };
 
-export type { Account } from "@usebutr/core";
 export type { UniversalProviderConstructor, UniversalProviderLike } from "./loader";
 export type { WalletConnectNamespaceBuilder } from "./namespaces/types";
 export type { WalletConnectMetadata, WalletConnectOptions };

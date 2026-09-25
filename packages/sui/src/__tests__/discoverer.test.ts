@@ -1,21 +1,57 @@
 import type { WalletAdapter } from "@usebutr/core";
+import type {
+  StandardConnectFeature,
+  WalletStandardModuleLoader,
+  WalletStandardWallet,
+} from "@usebutr/wallet-standard-shared";
 import { describe, expect, it, vi } from "vitest";
 
 import { suiDiscoverer } from "../discoverer";
+import { discoverSuiAdapters } from "../wallet-standard-adapter";
+
+const connectFeature: StandardConnectFeature = {
+  connect: () => Promise.resolve({ accounts: [] }),
+  version: "1.0.0",
+};
+
+const wallet = (name: string, chains: ReadonlyArray<string>): WalletStandardWallet => ({
+  accounts: [],
+  chains,
+  features: { "standard:connect": connectFeature },
+  icon: "",
+  name,
+  version: "1.0.0",
+});
+
+const loaderFor =
+  (wallets: ReadonlyArray<WalletStandardWallet>): WalletStandardModuleLoader =>
+  () =>
+    Promise.resolve({ getWallets: () => ({ get: () => wallets, on: () => () => {} }) });
 
 describe("suiDiscoverer", () => {
   it("exposes Wallet Standard discovery with no legacy fallback", () => {
-    expect(typeof suiDiscoverer.subscribe).toBe("function");
+    expect(suiDiscoverer.subscribe).toBe(discoverSuiAdapters);
     expect(suiDiscoverer.fallback).toBeUndefined();
   });
+});
 
-  // The optional `@wallet-standard/app` peer dep is absent in this suite, so
-  // subscribing must degrade to a no-op teardown rather than throwing.
-  it("returns an unsubscribe handle without the optional peer dep present", () => {
+describe("discoverSuiAdapters", () => {
+  it("announces only wallets that speak Sui", async () => {
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
-    const unsubscribe = suiDiscoverer.subscribe(onAdapter);
+    const unsubscribe = discoverSuiAdapters(
+      onAdapter,
+      loaderFor([wallet("Suiet", ["sui:mainnet"]), wallet("Solflare", ["solana:mainnet"])]),
+    );
 
-    expect(typeof unsubscribe).toBe("function");
+    await vi.waitFor(() => {
+      expect(onAdapter).toHaveBeenCalledTimes(1);
+    });
+    expect(onAdapter.mock.calls[0]?.[0].id).toBe("wallet-standard:sui-suiet");
+    unsubscribe();
+  });
+
+  it("returns an unsubscribe that is safe before the module loads", () => {
+    const unsubscribe = discoverSuiAdapters(() => {}, loaderFor([]));
     expect(() => {
       unsubscribe();
     }).not.toThrow();

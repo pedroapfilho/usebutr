@@ -1,119 +1,209 @@
 ---
 title: Testing
-description: "@usebutr/testing: fake adapters and fake persistence so unit tests never touch a real wallet or localStorage."
+description: "@usebutr/testing: fake adapters, fake connected wallets and fake persistence, so unit tests never touch a real wallet or browser storage."
 ---
 
-`@usebutr/testing` provides deterministic test doubles. Install it as a dev
-dependency:
+`@usebutr/testing` provides test doubles that behave like real wallets on
+each platform. Install it as a dev dependency:
 
 ```npm
 npm install --save-dev @usebutr/testing
 ```
 
-## `createFakeAdapter(options?): WalletAdapter`
+## Drive a manager
 
-Every method resolves to a deterministic stub. Override individual methods
-after construction to inject failure modes.
-
-```ts
-import { createFakeAdapter } from "@usebutr/testing";
-
-const adapter = createFakeAdapter({ id: "metamask" });
-adapter.connect = () => Promise.reject(new Error("user rejected"));
-```
-
-### `FakeAdapterOptions`
-
-| Field           | Default                                 |
-| --------------- | --------------------------------------- |
-| `id`            | `"fake"`                                |
-| `name`          | `"Fake Wallet"`                         |
-| `chainPlatform` | `"evm"`                                 |
-| `accounts`      | `[]`                                    |
-| `icon`          | —                                       |
-| `capabilities`  | all `true` (merged over your overrides) |
-
-Stub returns include: `getAccount()` → first account or `null`; `sendTx()` →
-`"0xfakehash"`; `signMessage(msg)` → `{ signature: msg, signedMessage: msg }`;
-`getBalance()` → `{ decimals: 18, formatted: "0", symbol: "ETH" | "SOL", value: 0n }`;
-`subscribe()` → no-op unsubscribe.
-
-Wire it through `createConnector` to test the store or React hooks:
+Fakes go into `sources` through `fromAdapters`, like any built adapter, and
+`createFakePersistence` replaces browser storage:
 
 ```ts
-const adapter = createFakeAdapter({ id: "fake" });
-const config: WalletManagerConfig = {
-  connectors: [{ id: "fake", name: "Fake", chainPlatform: "evm" }],
-  createConnector: (id) => (id === "fake" ? adapter : null),
-};
+import { createWalletManager, fromAdapters } from "@usebutr/core";
+import { createFakeAdapter, createFakePersistence } from "@usebutr/testing";
+
+const metamask = createFakeAdapter({ id: "io.metamask", name: "MetaMask" });
+const phantom = createFakeAdapter({ chainPlatform: "svm", id: "phantom", omit: ["signIn"] });
+const locked = createFakeAdapter({
+  id: "locked",
+  overrides: { connect: () => Promise.reject(new Error("wallet is locked")) },
+});
+
+const storage = createFakePersistence();
+const manager = createWalletManager({
+  sources: [fromAdapters([metamask, phantom, locked])],
+  storage,
+});
+const stop = manager.start();
+
+await manager.connect("io.metamask");
+metamask.emit({ type: "disconnected" }); // the wallet ends the session
+storage.saves.at(-1); // what the manager persisted
 ```
 
-## `createFakeConnectedWallet(options?): ConnectedWallet`
-
-A pool entry: what `usePool`, `useActiveWallet`, and `useConnectedWallets` hand
-your components, and therefore what UI tests render. Accounts are built through
-core's `buildAccount`, so the `<chain>:<address>` id format stays in one place
-instead of being restated in every fixture.
+For components, pass the same config to `WalletManagerProvider`. A test may
+build it inline: the provider reads it once per mount.
 
 ```tsx
+import type { WalletManagerConfig } from "@usebutr/core";
+import { fromAdapters } from "@usebutr/core";
+import { WalletManagerProvider } from "@usebutr/react";
+import { createFakeAdapter, createFakePersistence } from "@usebutr/testing";
+
+const config: WalletManagerConfig = {
+  sources: [fromAdapters(createFakeAdapter({ id: "io.metamask", name: "MetaMask" }))],
+  storage: createFakePersistence(),
+};
+
+render(
+  <WalletManagerProvider config={config}>
+    <WalletPicker />
+  </WalletManagerProvider>,
+);
+```
+
+## `createFakeAdapter(options?): FakeAdapter<P>`
+
+An EVM adapter unless `chainPlatform` says otherwise, with the members a real
+wallet on that platform has, typed to it: `createFakeAdapter({ chainPlatform: "svm" })`
+is a `FakeAdapter<"svm">`, an `SvmAdapter` plus the test controls.
+
+| Platform   | Optional members                                                                                                            |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `evm`      | `disconnect`, `getBalance`, `getTransactionReceipt`, `requestAccounts`, `sendTx`, `signMessage`, `subscribe`, `switchChain` |
+| `svm`      | `disconnect`, `sendTx`, `signIn`, `signMessage`, `signTransaction`, `subscribe`                                             |
+| `sui`      | `disconnect`, `sendTx`, `signMessage`, `signTransaction`, `subscribe`                                                       |
+| `bitcoin`  | `disconnect`, `sendTx`, `signMessage`, `signTransaction`, `subscribe`                                                       |
+| `polkadot` | `disconnect`, `signMessage`, `subscribe`                                                                                    |
+
+It follows the adapter contract, so code under test meets the same failures
+it would in production:
+
+- An `account` the fake does not expose rejects. After `disconnect()` or a
+  `disconnected` event, `getAccounts()` resolves `[]` and signing, sending
+  and balance calls reject with a `NotConnected` `ConnectionError` until the
+  next `connect()`.
+- A `chain` from another namespace rejects. The EVM fake switches its
+  accounts to a new chain before `sendTx`, as a real EVM wallet does, and
+  tells its listeners.
+- Hashes and signatures are distinct on every call, so two results never
+  compare equal by accident. `signMessage` resolves your message as
+  `signedMessage`.
+- `getBalance` reports `balance` in the native asset (`ETH`, `SOL`, `SUI`,
+  `BTC`, `DOT`), one unit by default, and rejects a `token`: override it to
+  fake token balances. Only the EVM fake has it unless you pass `balance`,
+  matching the real adapters.
+- `getSigner()` resolves the `signer` option and rejects without one. The
+  package registers no signer kind of its own, so your app's exhaustive
+  `switch (signer.kind)` never grows a test-only case.
+
+### `FakeAdapterOptions<P>`
+
+| Field           | Default                                         | Notes                                                                     |
+| --------------- | ----------------------------------------------- | ------------------------------------------------------------------------- |
+| `chainPlatform` | `"evm"`                                         | Picks the platform and the adapter type.                                  |
+| `id`            | `"fake"`                                        |                                                                           |
+| `name`          | `"Fake Wallet"`                                 |                                                                           |
+| `icon`          | none                                            |                                                                           |
+| `accounts`      | one plausible address on the platform's mainnet | Exposed accounts, active first.                                           |
+| `balance`       | EVM: one unit of the native asset               | In base units. On non-EVM platforms, passing it adds `getBalance`.        |
+| `omit`          | `[]`                                            | Optional members to leave off, to exercise the "this wallet cannot" path. |
+| `overrides`     | none                                            | Replace any member but `chainPlatform`, e.g. a `connect` that rejects.    |
+| `signer`        | none                                            | What `getSigner()` resolves: any `WalletSigner`.                          |
+
+```ts
+import type { WalletSigner } from "@usebutr/core";
+
+const signer: WalletSigner = {
+  kind: "eip1193",
+  provider: { on: () => {}, removeListener: () => {}, request: () => Promise.resolve(null) },
+};
+const metamask = createFakeAdapter({ id: "io.metamask", signer });
+```
+
+### Controls
+
+`FakeAdapterControls`, on every fake:
+
+- `emit(event)` delivers a `ConnectorEvent` to the manager, as the wallet
+  would. `getAccounts()` follows it: a new account list replaces the exposed
+  accounts, and `disconnected` exposes none until the next `connect()`.
+- `listenerCount()` returns the live `subscribe` listeners: zero once the
+  manager has detached.
+
+## `createFakeConnectedWallet(options?): FakeConnectedWallet<P>`
+
+A pool entry as the manager builds it after `connect`: a fake adapter plus
+the accounts it exposes, so the two never disagree. Hand it to components and
+helpers that take a `ConnectedWallet`; drive it through
+`wallet.connector.emit`.
+
+```tsx
+import { EVM_CHAINS } from "@usebutr/core";
 import { createFakeConnectedWallet } from "@usebutr/testing";
 
-const wallet = createFakeConnectedWallet({ chainPlatform: "svm", id: "phantom" });
-render(<WalletCard wallet={wallet} />);
-```
+const phantom = createFakeConnectedWallet({ chainPlatform: "svm", id: "phantom" });
+render(<WalletCard wallet={phantom} />);
 
-### `FakeConnectedWalletOptions`
-
-Every [`FakeAdapterOptions`](#fakeadapteroptions) field, plus:
-
-| Field       | Default                                                                 |
-| ----------- | ----------------------------------------------------------------------- |
-| `chain`     | the platform's mainnet (`eip155:1`, `solana:mainnet`, `sui:mainnet`, …) |
-| `addresses` | one deterministic address for the platform                              |
-| `adapter`   | built from the adapter options                                          |
-
-`accounts[0]` is always `account`, matching the invariant on `ConnectedWallet`.
-Pass `adapter` to wrap a connector you already built, in which case the entry
-takes its `chainPlatform` and the adapter-shaping options are ignored:
-
-```ts
-const adapter = createFakeAdapter({ id: "phantom", chainPlatform: "svm" });
-adapter.signMessage = () => Promise.reject(new Error("user rejected"));
-const wallet = createFakeConnectedWallet({ adapter });
-```
-
-## `createFakePersistence(seed?): WalletPersistence`
-
-In-memory `WalletPersistence` mirroring `WalletStorage`'s shape: no
-`localStorage`, no cookies. Reads/writes resolve synchronously (wrapped in
-`Promise.resolve`).
-
-```ts
-import { createFakePersistence } from "@usebutr/testing";
-
-const persistence = createFakePersistence({
-  activeConnectorId: "fake",
-  pool: {
-    fake: {
-      account: seedAccount,
-      accounts: [seedAccount],
-      chainPlatform: "evm",
-      connectorId: "fake",
-      name: "Fake Wallet",
-    },
-  },
-  selection: { evm: "fake" },
-  userDisconnected: true,
+const multi = createFakeConnectedWallet({
+  addresses: ["0xabc…", "0xdef…"],
+  chain: EVM_CHAINS.base,
 });
 ```
 
-`FakePersistenceSeed` fields: `pool`, `selection`, `activeConnectorId`,
-`userDisconnected`. Pass it as the `storage` in
-[`WalletManagerConfig`](/guides/lifecycle-callbacks) to test hydration and
-persistence without side effects. `clearAll()` resets everything.
+`FakeConnectedWalletOptions<P>` takes every adapter option plus:
+
+| Field       | Default                                                                 | Notes                                                      |
+| ----------- | ----------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `addresses` | one plausible address for the platform                                  | Exposed on `chain`, active first. Ignored with `accounts`. |
+| `chain`     | the platform's mainnet (`EVM_CHAINS.ethereum`, `SVM_CHAINS.mainnet`, …) | For the generated accounts.                                |
+
+`account` is always `accounts[0]`, as on a real pool entry.
+
+## `createFakePersistence(seed?): FakePersistence`
+
+A `WalletPersistence` over the production `createWalletStorage` with
+in-memory drivers, so `load()` decodes and validates exactly as it does in the
+browser. `seed` (a `Partial<PersistedWalletState>`) is what the first
+`load()` finds, as if a previous session had saved it. `saves` lists every
+state the manager handed to `save`, oldest first.
+
+Seed it to test hydration: the manager silently reconnects the stored wallet
+once its fake adapter is announced.
+
+```ts
+import { createWalletManager, fromAdapters } from "@usebutr/core";
+import { createFakeConnectedWallet, createFakePersistence } from "@usebutr/testing";
+
+const wallet = createFakeConnectedWallet({ id: "io.metamask", name: "MetaMask" });
+const storage = createFakePersistence({
+  activeConnectorId: "io.metamask",
+  pool: {
+    "io.metamask": {
+      account: wallet.account,
+      accounts: wallet.accounts,
+      chainPlatform: "evm",
+      connectorId: "io.metamask",
+      name: "MetaMask",
+    },
+  },
+  selection: { evm: "io.metamask" },
+});
+
+const manager = createWalletManager({
+  onHydrated: ({ restoredIds }) => {
+    // ["io.metamask"]
+  },
+  sources: [fromAdapters(wallet.connector)],
+  storage,
+});
+manager.start();
+```
+
+## Types
+
+`FakeAdapter`, `FakeAdapterControls`, `FakeAdapterOptions`,
+`FakeConnectedWallet`, `FakeConnectedWalletOptions`, `FakePersistence`.
 
 <Callout type="info">
-  **Source:** `packages/testing/src` (`fake-adapter.ts`, `fake-persistence.ts`, and their
-  `__tests__`) in the [butr
+  **Source:** `packages/testing/src` (`fake-adapter.ts`, `fake-connected-wallet.ts`,
+  `fake-persistence.ts`) in the [butr
   repository](https://github.com/pedroapfilho/usebutr/tree/main/packages/testing).
 </Callout>

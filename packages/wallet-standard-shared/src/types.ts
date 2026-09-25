@@ -11,7 +11,9 @@ type WalletStandardWalletAccount = {
   publicKey?: { readonly length: number; readonly [index: number]: number };
 };
 
-type WalletStandardFeature = { version?: string };
+/** Reverse-DNS-keyed and open-ended by spec; `getFeature` is the one place
+ *  that reads a member off it. */
+type WalletStandardFeature = { readonly [member: string]: unknown; version?: string };
 
 type WalletStandardWallet = {
   accounts: ReadonlyArray<WalletStandardWalletAccount>;

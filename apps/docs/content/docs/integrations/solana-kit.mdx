@@ -1,31 +1,75 @@
 ---
 title: "@solana/kit"
-description: Build the transaction message with kit's functional pipeline, sign and send through Wallet Standard.
+description: Build the transaction message with kit's functional pipeline, sign and send through the wallet's Wallet Standard features.
 ---
 
-`@solana/kit` is the next-gen modular Solana SDK. butr owns the wallet; kit
-owns the functional message builder; the wallet's Wallet Standard features own
-signing.
+`@solana/kit` is the modular Solana SDK. butr owns the wallet; kit owns the
+RPC client and the functional message builder; the wallet's Wallet Standard
+features own signing.
 
-## Get the signer and read state
+## Get the wallet
+
+`useSelectedWallet("svm")` types the wallet to Solana, and `useSigner`
+resolves its signer. On a Wallet Standard wallet the signer carries the raw
+wallet, whose features you call directly:
+
+```tsx
+import { useSelectedWallet, useSigner } from "@usebutr/react";
+
+const wallet = useSelectedWallet("svm");
+const signer = useSigner(wallet);
+// `null` for a WalletConnect or Ledger wallet, which resolve another kind.
+const walletStd = signer.data?.kind === "wallet-standard" ? signer.data.wallet : null;
+```
+
+## Read state
 
 ```ts
-import { address, createSolanaRpc, type Address } from "@solana/kit";
+import { address, createSolanaRpc } from "@solana/kit";
 
 const rpc = createSolanaRpc("https://api.devnet.solana.com");
-const walletStd = (await wallet.connector.getSigner()) as WalletStandardWallet;
 
-const addr: Address = address(wallet.account.walletAddress);
-const { value } = await rpc.getBalance(addr).send();
+const { value } = await rpc.getBalance(address(wallet.account.walletAddress)).send();
 const sol = `${Number(value) / 1_000_000_000} SOL`;
+```
+
+## Sign a message
+
+`getFeature` reads a feature off the wallet, typed by the feature shape
+`@usebutr/svm` exports, and `findAccount` finds the Wallet Standard account
+for butr's address. Neither needs a cast:
+
+```ts
+import type { ConnectedWallet } from "@usebutr/core";
+import type { SolanaSignMessageFeature } from "@usebutr/svm";
+import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
+import { findAccount, getFeature } from "@usebutr/wallet-standard-shared";
+
+const signMessage = async (
+  walletStd: WalletStandardWallet,
+  wallet: ConnectedWallet<"svm">,
+  message: Uint8Array,
+) => {
+  const feature = getFeature<SolanaSignMessageFeature>(
+    walletStd,
+    "solana:signMessage",
+    "signMessage",
+  );
+  const account = findAccount(walletStd.accounts, wallet.account.walletAddress);
+  if (feature === undefined || account === undefined) {
+    throw new Error("This wallet cannot sign messages for the active account");
+  }
+  const [output] = await feature.signMessage({ account, message });
+  return output; // verify `output.signature` against `output.signedMessage`
+};
 ```
 
 ## Build and send a transaction
 
-Build the message with kit's `pipe()`, compile to a wire transaction, and hand
-the bytes to `solana:signAndSendTransaction`:
+Build the message with kit's `pipe()` and compile it to wire bytes:
 
 ```ts
+import type { Address } from "@solana/kit";
 import {
   appendTransactionMessageInstruction,
   compileTransaction,
@@ -35,32 +79,59 @@ import {
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
 } from "@solana/kit";
+import { base64ToBytes } from "@usebutr/core";
 
-const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
-
-const message = pipe(
-  createTransactionMessage({ version: 0 }),
-  (m) => setTransactionMessageFeePayer(addr, m),
-  (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
-  (m) => appendTransactionMessageInstruction(transferIx, m),
-);
-
-const compiled = compileTransaction(message);
-const wire = getBase64EncodedWireTransaction(compiled);
-const bytes = base64ToBytes(wire);
-
-const feature = walletStd.features["solana:signAndSendTransaction"];
-if (!feature) throw new Error("Wallet does not advertise solana:signAndSendTransaction");
-const account = walletStd.accounts[0];
-const [output] = await feature.signAndSendTransaction({
-  account,
-  chain: "solana:devnet",
-  transaction: bytes,
-});
+const buildTransfer = async (payer: Address) => {
+  const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+  const transactionMessage = pipe(
+    createTransactionMessage({ version: 0 }),
+    (m) => setTransactionMessageFeePayer(payer, m),
+    (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+    (m) => appendTransactionMessageInstruction(transferIx, m),
+  );
+  return base64ToBytes(getBase64EncodedWireTransaction(compileTransaction(transactionMessage)));
+};
 ```
 
-Message signing uses `solana:signMessage` exactly as in the
-[`@solana/web3.js` integration](/integrations/solana-web3js).
+Then hand the bytes to `solana:signAndSendTransaction`. Its `chain` input
+routes this one call to devnet without moving the wallet:
+
+```ts
+import { bytesToBase58 } from "@usebutr/core";
+import type { SolanaSignAndSendTransactionFeature } from "@usebutr/svm";
+
+const signAndSend = async (
+  walletStd: WalletStandardWallet,
+  wallet: ConnectedWallet<"svm">,
+  transaction: Uint8Array,
+) => {
+  const feature = getFeature<SolanaSignAndSendTransactionFeature>(
+    walletStd,
+    "solana:signAndSendTransaction",
+    "signAndSendTransaction",
+  );
+  const account = findAccount(walletStd.accounts, wallet.account.walletAddress);
+  if (feature === undefined || account === undefined) {
+    throw new Error("This wallet cannot send transactions for the active account");
+  }
+  const [output] = await feature.signAndSendTransaction({
+    account,
+    chain: "solana:devnet",
+    transaction,
+  });
+  if (output === undefined) {
+    throw new Error("signAndSendTransaction returned no output");
+  }
+  return bytesToBase58(output.signature);
+};
+```
+
+<Callout type="info">
+  butr's adapter wraps the same two features: `wallet.connector.sendTx(bytes, { chain:
+  SVM_CHAINS.devnet })` resolves the base58 signature, and `wallet.connector.signMessage(message)`
+  the signature. Both also work on WalletConnect wallets, which have no Wallet Standard handle.
+  Check for the method first; it exists only when the wallet can back it.
+</Callout>
 
 <Callout type="info">
   The demo hand-rolls the System Program transfer instruction (a 12-byte buffer: `u32` variant `2` +

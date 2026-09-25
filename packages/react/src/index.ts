@@ -1,49 +1,23 @@
 export type { WalletManagerProviderProps } from "./context";
-export {
-  WalletManagerProvider,
-  WalletStoreContext,
-  useDiscoveredWallets,
-  useWalletStoreContext,
-} from "./context";
+export { WalletManagerProvider, useWalletManager } from "./context";
 
+export type { ConnectionStatus } from "./hooks/state";
 export {
   useAccounts,
-  useActiveConnectorId,
-  useActiveWallet,
   useConnectedWallets,
-  useConnectingConnectorId,
-  useConnectionError,
   useConnectionStatus,
-  useGetConnectorInstance,
-  useGetSelectedWallet,
-  useGetWallet,
-  useIsConnecting,
+  useDiscoveredWallets,
   useIsHydrated,
-  useIsPlatformConnected,
   useIsReconnecting,
-  useIsUserDisconnected,
-  usePool,
   useSelectedWallet,
-  useSelection,
-  useWalletConnected,
-  useWalletEntry,
-  useWalletStore,
-} from "./hooks/selectors";
+  useWallet,
+  useWalletState,
+} from "./hooks/state";
+
+export type { UseConnectResult } from "./hooks/connect";
+export { useConnect } from "./hooks/connect";
 
 export { useConnectedWalletsByPlatform, useDiscoveredWalletsByPlatform } from "./hooks/grouped";
 
-export {
-  useConnectWallet,
-  useDisconnectWallet,
-  useRefreshWallet,
-  useRequestAccounts,
-  useResetConnectionStatus,
-  useResetWallet,
-  useSetActiveConnector,
-  useSetConnectionError,
-  useSetSelection,
-  useUpdateWalletAccount,
-} from "./hooks/actions";
-
-export type { AsyncState, UseBalanceResult } from "./hooks/async-resources";
+export type { AsyncState, UseBalanceOptions, UseBalanceResult } from "./hooks/async-resources";
 export { useBalance, useSigner } from "./hooks/async-resources";

@@ -1,9 +1,8 @@
-import { isEip1193Provider } from "@usebutr/evm";
-import { useActiveWallet, useConnectWallet, useDisconnectWallet } from "@usebutr/react";
+import type { ConnectedWallet } from "@usebutr/core";
+import { useConnect, useSigner, useWallet, useWalletManager } from "@usebutr/react";
 import { useEffect, useMemo, useState } from "react";
 import {
   type Address,
-  type WalletClient,
   createPublicClient,
   createWalletClient,
   custom,
@@ -44,9 +43,9 @@ const Connected = ({
   wallet,
 }: {
   onDisconnect: () => void;
-  wallet: ReturnType<typeof useActiveWallet> & object;
+  wallet: ConnectedWallet;
 }) => {
-  const [walletClient, setWalletClient] = useState<WalletClient | null>(null);
+  const signer = useSigner(wallet);
   const [balance, setBalance] = useState<string>("…");
   const [signature, setSignature] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -60,37 +59,14 @@ const Connected = ({
     return candidate;
   }, [wallet.account.walletAddress]);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        if (cancelled) {
-          return;
-        }
-        const provider = await wallet.connector.getSigner();
-        if (!isEip1193Provider(provider)) {
-          throw new Error("EVM signer is not an EIP-1193 provider");
-        }
-        if (cancelled) {
-          return;
-        }
-        setWalletClient(
-          createWalletClient({
-            account,
-            chain: sepolia,
-            transport: custom(provider),
-          }),
-        );
-      } catch (error) {
-        if (!cancelled) {
-          setErrorMsg(formatError(error instanceof Error ? error : String(error)));
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [account, wallet.connector]);
+  const walletClient = useMemo(
+    () =>
+      signer.data?.kind === "eip1193"
+        ? createWalletClient({ account, chain: sepolia, transport: custom(signer.data.provider) })
+        : null,
+    [account, signer.data],
+  );
+  const shownError = errorMsg ?? (signer.status === "error" ? signer.error.message : null);
 
   useEffect(() => {
     let cancelled = false;
@@ -202,9 +178,9 @@ const Connected = ({
           </a>
         </Row>
       ) : null}
-      {errorMsg !== null && errorMsg !== "" ? (
+      {shownError !== null && shownError !== "" ? (
         <p className="border-danger-border bg-danger-surface text-danger-foreground rounded-md border p-3 text-sm">
-          {errorMsg}
+          {shownError}
         </p>
       ) : null}
     </section>
@@ -212,9 +188,9 @@ const Connected = ({
 };
 
 const Content = () => {
-  const active = useActiveWallet();
-  const connectWallet = useConnectWallet();
-  const disconnect = useDisconnectWallet();
+  const active = useWallet();
+  const { connect } = useConnect();
+  const { disconnect } = useWalletManager();
   const discovered = useDiscoveredWallets();
 
   if (!active) {
@@ -233,7 +209,7 @@ const Content = () => {
                 <button
                   className="border-border-default hover:bg-surface-subtle flex w-full items-center gap-3 rounded-lg border bg-white px-4 py-3 text-left"
                   onClick={() => {
-                    void connectWallet(wallet.id);
+                    connect(wallet.id);
                   }}
                   type="button"
                 >
@@ -278,9 +254,9 @@ const App = () => (
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">butr + viem</h1>
         <p className="text-foreground-muted mt-1 text-sm">
-          butr handles wallet discovery and connection state. viem wraps the EIP-1193 provider
-          returned by <code>wallet.connector.getSigner()</code> with <code>createWalletClient</code>{" "}
-          for chain reads, signing, and tx submission.
+          butr handles wallet discovery and connection state. viem wraps the EIP-1193 provider that{" "}
+          <code>useSigner()</code> resolves with <code>createWalletClient</code> for chain reads,
+          signing, and tx submission.
         </p>
       </header>
       <Content />

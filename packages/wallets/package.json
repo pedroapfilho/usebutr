@@ -1,14 +1,13 @@
 {
   "name": "@usebutr/wallets",
   "version": "1.2.0",
-  "description": "Batteries-included EVM + SVM + Sui + Bitcoin + Polkadot discovery: autoDiscovery() WalletSource + combined chain registries.",
+  "description": "Batteries-included EVM + SVM + Sui + Bitcoin + Polkadot discovery: autoDiscovery(), one WalletSource for every platform.",
   "keywords": [
     "bitcoin",
     "butr",
     "dapp",
     "ethereum",
     "polkadot",
-    "react",
     "solana",
     "sui",
     "typescript",
@@ -57,7 +56,6 @@
     "@usebutr/core": "workspace:*",
     "@usebutr/evm": "workspace:*",
     "@usebutr/polkadot": "workspace:*",
-    "@usebutr/react": "workspace:*",
     "@usebutr/sui": "workspace:*",
     "@usebutr/svm": "workspace:*",
     "@wallet-standard/app": "^1.1.0"
@@ -65,17 +63,7 @@
   "devDependencies": {
     "@repo/config-vitest": "workspace:*",
     "@repo/typescript-config": "workspace:*",
-    "@testing-library/jest-dom": "^7.0.1",
-    "@testing-library/react": "^16.3.3",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "jsdom": "^30.0.1",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0",
-    "zustand": "^5.0.14"
-  },
-  "peerDependencies": {
-    "react": ">=18.0.0",
-    "zustand": ">=4.0.0"
+    "vitest": "^5.0.0"
   }
 }

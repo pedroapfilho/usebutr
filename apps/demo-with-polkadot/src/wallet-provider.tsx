@@ -1,13 +1,16 @@
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
 import type { ReactNode } from "react";
 
-const polkadotDiscovery = autoDiscovery({ polkadot: true });
+// `autoDiscovery` pairs injectedWeb3 with the Polkadot Wallet Standard channel.
+const config: WalletManagerConfig = {
+  sources: [autoDiscovery(["polkadot"])],
+  storageKeyPrefix: "butr-polkadot-demo",
+};
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <WalletManagerProvider discovery={polkadotDiscovery} storageKeyPrefix="butr-polkadot-demo">
-    {children}
-  </WalletManagerProvider>
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 
 export { WalletProvider };

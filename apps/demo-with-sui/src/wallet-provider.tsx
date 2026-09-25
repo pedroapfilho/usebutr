@@ -1,14 +1,15 @@
-import { createWalletSource } from "@usebutr/core";
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
 import { discoverSuiAdapters } from "@usebutr/sui";
 import type { ReactNode } from "react";
 
-const suiDiscovery = createWalletSource(discoverSuiAdapters);
+const config: WalletManagerConfig = {
+  sources: [discoverSuiAdapters],
+  storageKeyPrefix: "butr-sui-demo",
+};
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <WalletManagerProvider discovery={suiDiscovery} storageKeyPrefix="butr-sui-demo">
-    {children}
-  </WalletManagerProvider>
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 
 export { WalletProvider };

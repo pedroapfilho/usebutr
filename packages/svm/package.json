@@ -35,6 +35,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./transaction": {
+      "types": "./dist/transaction.d.ts",
+      "default": "./dist/transaction.js"
     }
   },
   "publishConfig": {

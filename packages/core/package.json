@@ -61,6 +61,6 @@
     "zustand": "^5.0.14"
   },
   "peerDependencies": {
-    "zustand": ">=4.0.0"
+    "zustand": ">=4.5.0"
   }
 }

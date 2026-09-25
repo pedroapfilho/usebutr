@@ -1,68 +1,80 @@
 ---
 title: viem
-description: Wrap butr's EIP-1193 provider with viem's createWalletClient.
+description: Narrow butr's signer to its EIP-1193 provider and hand it to viem's createWalletClient.
 ---
 
 butr owns wallet discovery and connection state. viem owns chain abstraction
-and RPC. The bridge is one line: `getSigner()` on an EVM adapter returns the
-raw EIP-1193 provider, exactly what viem's `custom()` transport wants.
+and RPC. The bridge is the signer: on an injected EVM wallet, `getSigner()`
+resolves `{ kind: "eip1193", provider }`, and `provider` is exactly what
+viem's `custom()` transport takes.
 
 ## Wire the wallet client
 
+`useSigner` resolves the signer and re-resolves it when the wallet changes,
+so the client is a memo over it. Narrowing on `kind` types the provider; a
+Ledger or another non-EIP-1193 wallet yields a different kind and no client.
+
 ```tsx
-import { createWalletClient, custom, type EIP1193Provider } from "viem";
+import { useSelectedWallet, useSigner } from "@usebutr/react";
+import { useMemo } from "react";
+import { createWalletClient, custom, getAddress } from "viem";
 import { sepolia } from "viem/chains";
 
-useEffect(() => {
-  let cancelled = false;
-  void (async () => {
-    const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
-    if (cancelled) {
-      return;
+export const useWalletClient = () => {
+  const wallet = useSelectedWallet("evm");
+  const signer = useSigner(wallet);
+
+  return useMemo(() => {
+    if (wallet === undefined || signer.data?.kind !== "eip1193") {
+      return null;
     }
-    setWalletClient(
-      createWalletClient({
-        account,
-        chain: sepolia,
-        transport: custom(provider),
-      }),
-    );
-  })();
-  return () => {
-    cancelled = true;
-  };
-}, [account, wallet.connector]);
+    return createWalletClient({
+      account: getAddress(wallet.account.walletAddress),
+      chain: sepolia,
+      transport: custom(signer.data.provider),
+    });
+  }, [signer.data, wallet]);
+};
 ```
 
-`account` is `wallet.account.walletAddress` cast to viem's `Address`.
+Outside React, narrow the same way after `await wallet.connector.getSigner()`.
 
 ## Read, sign, send
 
-Reads go through viem's own public client (its RPC, not the wallet's, so you
-don't double-spend the wallet on `eth_getBalance`):
+Reads go through viem's own public client, over your RPC rather than the
+wallet's:
 
 ```ts
+import { createPublicClient, http } from "viem";
+
 const publicClient = createPublicClient({ chain: sepolia, transport: http() });
-const wei = await publicClient.getBalance({ address: account });
-const eth = `${formatEther(wei)} ETH`;
+const wei = await publicClient.getBalance({ address: walletClient.account.address });
 ```
 
-Signing and sending go through the wallet client (the real wallet):
+Signing and sending go through the wallet client, so the real wallet prompts:
 
 ```ts
-const sig = await walletClient.signMessage({ account, message: "Hello from butr + viem" });
-
-const hash = await walletClient.sendTransaction({
-  account,
-  chain: sepolia,
-  to: BURN_ADDRESS,
-  value: parseEther("0"),
-});
+const signature = await walletClient.signMessage({ message: "Hello from butr + viem" });
+const hash = await walletClient.sendTransaction({ to: BURN_ADDRESS, value: 0n });
 ```
 
-The split is the whole point: **butr handles discovery + connection; viem
-handles chain reads, signing, and tx submission against the provider butr
-exposes.**
+viem compares the wallet's current chain with the client's `chain` and throws
+on a mismatch. Move the wallet first with butr:
+
+```ts
+import { EVM_CHAINS } from "@usebutr/core";
+
+await wallet.connector.switchChain?.(EVM_CHAINS.sepolia);
+```
+
+<Callout type="info">
+  For a plain transfer you do not need viem at all: `wallet.connector.sendTx({ to, value: 0n }, {
+  chain: EVM_CHAINS.sepolia })` switches the wallet and sends in one call.
+</Callout>
+
+The split is the whole point: **butr handles discovery and connection; viem
+handles chain reads, signing, and transaction submission against the provider
+butr exposes.**
 
 <Callout type="info">
   **Source:** `apps/demo-with-viem/src/app.tsx` in the [butr

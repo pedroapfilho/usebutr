@@ -1,58 +1,73 @@
 ---
 title: wagmi
-description: Bridge butr's provider into wagmi's injected connector via target.provider.
+description: Adopt the wallet butr connected into @wagmi/core's own EIP-6963 connector, then use wagmi actions.
 ---
 
-butr discovers and manages the wallet; `@wagmi/core` handles chain reads,
-signing, and tx submission against the same EIP-1193 provider butr exposes.
+butr discovers and connects the wallet; `@wagmi/core` handles chain reads,
+signing, and transaction submission against that same wallet.
 
 ## Build the wagmi config
 
-Pass butr's provider into wagmi's `injected` connector via the
-`target.provider` override. Keep the transport as plain RPC (`http()`) for
-read-only queries so reads don't hit the wallet.
+wagmi runs its own EIP-6963 discovery, so the config needs no connectors. Keep
+the transport on plain RPC (`http()`) so reads do not hit the wallet.
 
 ```ts
-import { createConfig, http, type Config } from "@wagmi/core";
-import { injected } from "@wagmi/connectors";
+import { createConfig, http } from "@wagmi/core";
 import { sepolia } from "viem/chains";
 
-const buildWagmiConfig = (provider: EIP1193Provider, name: string, id: string): Config =>
-  createConfig({
-    chains: [sepolia],
-    connectors: [injected({ target: { id, name, provider: () => provider } })],
-    transports: { [sepolia.id]: http() },
-  });
+export const wagmiConfig = createConfig({
+  chains: [sepolia],
+  transports: { [sepolia.id]: http() },
+});
 ```
 
-## Run the connect lifecycle once
+## Adopt butr's wallet
 
-After building the config, run wagmi's `connect` so subsequent `@wagmi/core`
-actions know which connector to use. The wallet already authorised the dapp
-through butr, so this resolves **silently, with no second popup**:
+An injected EVM adapter's id is the wallet's EIP-6963 `rdns`, which is also
+the id of wagmi's connector for that wallet. The wallet has already
+authorised the site through butr, so wagmi's `reconnect` adopts that
+authorisation silently; `connect` would prompt a second time.
 
 ```ts
-const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
-const cfg = buildWagmiConfig(provider, wallet.connector.name, wallet.connector.id);
-const connector = cfg.connectors[0];
-if (connector) {
-  await connect(cfg, { connector });
-}
+import type { ConnectedWallet } from "@usebutr/core";
+import { reconnect } from "@wagmi/core";
+
+export const adoptWallet = async (wallet: ConnectedWallet<"evm">) => {
+  const connector = wagmiConfig.connectors.find(({ id }) => id === wallet.connector.id);
+  if (connector === undefined) {
+    throw new Error(`wagmi found no connector for ${wallet.connector.name}`);
+  }
+  await reconnect(wagmiConfig, { connectors: [connector] });
+};
 ```
+
+Call it whenever `useSelectedWallet("evm")` changes.
+
+<Callout type="info">
+  Why not hand wagmi `signer.provider`? wagmi's `injected({target})` types its provider as viem's
+  fully typed `EIP1193Provider`, and butr's `Eip1193Provider` is deliberately looser, so it only
+  fits with a cast. viem's `custom()` transport accepts it directly; see the [viem
+  integration](/integrations/viem).
+</Callout>
 
 ## Use wagmi actions
 
 ```ts
-const result = await getBalance(cfg, { address: account });
-const sig = await signMessage(cfg, { message: "Hello from butr + wagmi" });
-const hash = await sendTransaction(cfg, {
+import { getBalance, sendTransaction, signMessage } from "@wagmi/core";
+import { getAddress, parseEther } from "viem";
+
+const balance = await getBalance(wagmiConfig, {
+  address: getAddress(wallet.account.walletAddress),
+});
+const signature = await signMessage(wagmiConfig, { message: "Hello from butr + wagmi" });
+const hash = await sendTransaction(wagmiConfig, {
   chainId: sepolia.id,
   to: BURN_ADDRESS,
   value: parseEther("0"),
 });
 ```
 
-Every sign and every transaction hits the actual wallet butr connected, not a
+Every signature and transaction goes to the wallet butr connected, not a
 mock.
 
 <Callout type="info">

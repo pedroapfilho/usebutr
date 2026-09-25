@@ -1,542 +1,201 @@
-import type { SuiAdapter, WalletAdapter } from "@usebutr/core";
-import { base64ToBytes } from "@usebutr/core";
-import type { Eip1193Listener, Eip1193Value } from "@usebutr/evm";
+import type { SuiAdapter } from "@usebutr/core";
+import { base64ToBytes, buildAccount, bytesToBase64, SUI_CHAINS } from "@usebutr/core";
+import type { Eip1193Value } from "@usebutr/evm";
 import { describe, expect, it } from "vitest";
 
-import type { UniversalProviderLike } from "../adapter";
 import { suiNamespace } from "../namespaces/sui";
 
-/** signTransaction only exists on the sui variant of the
- *  WalletAdapter union; narrow on the discriminant before calling. */
-const expectSuiAdapter = (adapter: WalletAdapter): SuiAdapter => {
-  if (adapter.chainPlatform !== "sui") {
-    throw new Error("expected a sui adapter");
-  }
-  return adapter;
-};
+import type { FakeProvider } from "./fake-provider";
+import { createFakeProvider } from "./fake-provider";
 
-type RequestArgs = Parameters<UniversalProviderLike["request"]>[0];
-type ConnectArgs = Parameters<UniversalProviderLike["connect"]>[0];
-type Session = {
-  namespaces?: Record<string, { accounts?: ReadonlyArray<string> }>;
-} | null;
+const buildAdapter = (
+  provider: FakeProvider,
+  chains: ReadonlyArray<string> = ["sui:mainnet"],
+): SuiAdapter =>
+  suiNamespace.buildAdapter({
+    chains,
+    icon: "data:image/svg+xml;base64,Zm9v",
+    id: "walletconnect-sui",
+    name: "WalletConnect (SUI)",
+    provider,
+  });
 
-/** A wallet approving everything the dapp asked for: the resulting
- *  session carries one entry per requested namespace. */
-const approvedSession = (opts: ConnectArgs): Session => ({
-  namespaces: Object.fromEntries(
-    Object.keys({ ...opts.namespaces, ...opts.optionalNamespaces }).map((prefix) => [
-      prefix,
-      { accounts: [] },
-    ]),
-  ),
-});
-
-const createFakeProvider = (overrides?: {
-  request?: (args: RequestArgs) => Promise<Eip1193Value | undefined>;
-  session?: Session;
-}): UniversalProviderLike & {
-  connectCalls: Array<ConnectArgs>;
-  requestCalls: Array<RequestArgs>;
-} => {
-  const listeners = new Map<string, Set<Eip1193Listener>>();
-  const connectCalls: Array<ConnectArgs> = [];
-  const requestCalls: Array<RequestArgs> = [];
-  let session: Session = overrides?.session ?? null;
-
-  return {
-    connect(opts) {
-      connectCalls.push(opts);
-      session = approvedSession(opts);
-      return Promise.resolve(undefined);
-    },
-    connectCalls,
-    disconnect() {
-      return Promise.resolve();
-    },
-    on(event, listener) {
-      let set = listeners.get(event);
-      if (!set) {
-        set = new Set();
-        listeners.set(event, set);
-      }
-      set.add(listener);
-    },
-    removeListener(event, listener) {
-      listeners.get(event)?.delete(listener);
-    },
-    request(args) {
-      requestCalls.push(args);
-      return overrides?.request ? overrides.request(args) : Promise.resolve(null);
-    },
-    requestCalls,
-    get session() {
-      return session;
-    },
-  };
-};
+const connectedProvider = (
+  answer: Eip1193Value = null,
+  accounts: ReadonlyArray<string> = ["sui:mainnet:0xabc"],
+) => createFakeProvider({ request: () => answer, session: { namespaces: { sui: { accounts } } } });
 
 describe("suiNamespace", () => {
-  it("declares the right CAIP prefix and chain platform", () => {
+  it("declares the right CAIP prefix, platform, chains, methods and events", () => {
     expect(suiNamespace.caipPrefix).toBe("sui");
     expect(suiNamespace.chainPlatform).toBe("sui");
     expect(suiNamespace.defaultChains).toEqual(["sui:mainnet"]);
-    expect(suiNamespace.defaultMethods).toContain("sui_signTransaction");
-    expect(suiNamespace.defaultMethods).toContain("sui_signAndExecuteTransaction");
-    expect(suiNamespace.defaultMethods).toContain("sui_signPersonalMessage");
+    expect(suiNamespace.defaultMethods).toEqual([
+      "sui_signTransaction",
+      "sui_signAndExecuteTransaction",
+      "sui_signPersonalMessage",
+    ]);
     expect(suiNamespace.defaultEvents).toContain("accountsChanged");
-    expect(suiNamespace.defaultEvents).toContain("chainChanged");
   });
 
-  it("builds an adapter with the expected identity and capabilities", () => {
-    const provider = createFakeProvider();
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet"],
-      icon: "data:image/svg+xml;base64,Zm9v",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
-
+  it("defines only what WalletConnect can do", () => {
+    const adapter = buildAdapter(createFakeProvider());
     expect(adapter.id).toBe("walletconnect-sui");
-    expect(adapter.name).toBe("WalletConnect (SUI)");
-    expect(adapter.icon).toBe("data:image/svg+xml;base64,Zm9v");
     expect(adapter.chainPlatform).toBe("sui");
-    expect(adapter.capabilities.sendTransaction).toBe(true);
-    expect(adapter.capabilities.signMessage).toBe(true);
-    expect(adapter.capabilities.signTransaction).toBe(true);
-    expect(adapter.capabilities.signIn).toBe(false);
-    expect(adapter.capabilities.subscribe).toBe(false);
-    expect(adapter.capabilities.switchChain).toBe(true);
-    expect(adapter.capabilities.getBalance).toBe(false);
-    expect(adapter.capabilities.getTransactionReceipt).toBe(false);
-    expect(adapter.capabilities.requestAccounts).toBe(false);
-  });
-
-  it("connect() drives the WC namespace handshake with the sui methods + events", async () => {
-    const provider = createFakeProvider();
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet", "sui:testnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
-
-    await adapter.connect();
-
-    expect(provider.connectCalls).toHaveLength(1);
-    const namespace = provider.connectCalls[0]?.namespaces.sui;
-    expect(namespace?.chains).toEqual(["sui:mainnet", "sui:testnet"]);
-    expect(namespace?.methods).toContain("sui_signTransaction");
-    expect(namespace?.methods).toContain("sui_signAndExecuteTransaction");
-    expect(namespace?.methods).toContain("sui_signPersonalMessage");
-    expect(namespace?.events).toContain("accountsChanged");
-  });
-
-  it("connect() short-circuits when a session already carries the sui namespace", async () => {
-    const provider = createFakeProvider({ session: { namespaces: { sui: { accounts: [] } } } });
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
-
-    await adapter.connect();
-    expect(provider.connectCalls).toHaveLength(0);
+    expect(adapter.subscribe).toBeTypeOf("function");
+    expect(adapter.getBalance).toBeUndefined();
+    expect(adapter.getTransactionReceipt).toBeUndefined();
+    expect(adapter.requestAccounts).toBeUndefined();
+    expect(adapter.signTransaction).toBeTypeOf("function");
   });
 
   it("connect({ silent: true }) without a session rejects rather than prompting", async () => {
     const provider = createFakeProvider();
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
-
-    await expect(adapter.connect({ silent: true })).rejects.toThrow(/silent reconnect/v);
+    await expect(buildAdapter(provider).connect({ silent: true })).rejects.toThrow(
+      /silent reconnect/v,
+    );
+    expect(provider.connectCalls).toHaveLength(0);
   });
 
-  it("getAccount / getAccounts parse CAIP-10 addresses from the session", async () => {
-    const provider = createFakeProvider({
-      session: {
-        namespaces: {
-          sui: { accounts: ["sui:mainnet:0xabc1234567890abcdef"] },
-        },
-      },
-    });
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
+  it("getAccounts() returns the accounts on the current chain, named after the chain", async () => {
+    const provider = connectedProvider(null, ["sui:mainnet:0xaaa", "sui:testnet:0xbbb"]);
+    const adapter = buildAdapter(provider, ["sui:mainnet", "sui:testnet"]);
 
-    const account = await adapter.getAccount();
-    expect(account?.walletAddress).toBe("0xabc1234567890abcdef");
-    expect(account?.chain.namespace).toBe("sui");
-    expect(account?.chain.id).toBe("sui:mainnet");
+    await expect(adapter.getAccounts()).resolves.toEqual([
+      buildAccount("0xaaa", SUI_CHAINS.mainnet),
+    ]);
 
-    const accounts = await adapter.getAccounts?.();
-    expect(accounts).toHaveLength(1);
-    expect(accounts?.[0]?.walletAddress).toBe("0xabc1234567890abcdef");
+    await adapter.switchChain?.(SUI_CHAINS.testnet);
+    await expect(adapter.getAccounts()).resolves.toEqual([
+      buildAccount("0xbbb", SUI_CHAINS.testnet),
+    ]);
   });
 
-  it("getAccounts surfaces all session accounts when the wallet exposes multiple addresses", async () => {
-    const provider = createFakeProvider({
-      session: {
-        namespaces: {
-          sui: {
-            accounts: ["sui:mainnet:0xaaa111", "sui:testnet:0xbbb222"],
-          },
-        },
-      },
-    });
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet", "sui:testnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
+  it("getAccounts() follows session account drift", async () => {
+    const sui = { accounts: ["sui:mainnet:0xaaa"] };
+    const adapter = buildAdapter(createFakeProvider({ session: { namespaces: { sui } } }));
 
-    const accounts = await adapter.getAccounts?.();
-    expect(accounts).toHaveLength(2);
-    expect(accounts?.map((a) => a.walletAddress)).toEqual(["0xaaa111", "0xbbb222"]);
-    expect(accounts?.map((a) => a.chain.id)).toEqual(["sui:mainnet", "sui:testnet"]);
-    expect(accounts?.map((a) => a.chain.reference)).toEqual(["mainnet", "testnet"]);
-    expect(accounts?.map((a) => a.id)).toEqual(["sui:mainnet:0xaaa111", "sui:testnet:0xbbb222"]);
+    await expect(adapter.getAccounts()).resolves.toEqual([
+      buildAccount("0xaaa", SUI_CHAINS.mainnet),
+    ]);
+    sui.accounts = ["sui:mainnet:0xbbb"];
+    await expect(adapter.getAccounts()).resolves.toEqual([
+      buildAccount("0xbbb", SUI_CHAINS.mainnet),
+    ]);
   });
 
-  it("signMessage routes through sui_signPersonalMessage and decodes base64 signature + bytes", async () => {
-    const echoedBytes = new Uint8Array([4, 5, 6]);
-    const echoedB64 = btoa(String.fromCodePoint(...echoedBytes));
-    const provider = createFakeProvider({
-      request: (args) => {
-        if (args.method === "sui_signPersonalMessage") {
-          return Promise.resolve({ bytes: echoedB64, signature: "Zm9v" }); // "foo"
-        }
-        return Promise.resolve(null);
-      },
-      session: {
-        namespaces: {
-          sui: { accounts: ["sui:mainnet:0xabc1234567890abcdef"] },
-        },
-      },
-    });
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
+  it("switchChain rejects another namespace and a chain the session did not approve", async () => {
+    const adapter = buildAdapter(connectedProvider(), ["sui:mainnet", "sui:testnet"]);
 
-    const result = await adapter.signMessage(new Uint8Array([1, 2, 3]));
-
-    expect(provider.requestCalls).toHaveLength(1);
-    const call = provider.requestCalls[0];
-    expect(call?.method).toBe("sui_signPersonalMessage");
-    expect(call?.params).toMatchObject({
-      address: "0xabc1234567890abcdef",
-      message: btoa(String.fromCodePoint(1, 2, 3)),
+    const pending = adapter.switchChain?.({
+      id: "solana:mainnet",
+      name: "Solana",
+      namespace: "solana",
+      reference: "mainnet",
     });
-    expect(result.signature).toEqual(new Uint8Array([102, 111, 111]));
-    expect(result.signedMessage).toEqual(echoedBytes);
+    expect(pending).toBeInstanceOf(Promise);
+    await expect(pending).rejects.toThrow(/non-Sui chain/v);
+    await expect(adapter.switchChain?.(SUI_CHAINS.testnet)).rejects.toThrow(/did not approve/v);
   });
 
-  it("signMessage falls back to the input bytes when the wallet omits `bytes`", async () => {
-    const provider = createFakeProvider({
-      request: () => Promise.resolve({ signature: "Zm9v" }),
-      session: {
-        namespaces: {
-          sui: { accounts: ["sui:mainnet:0xabc1234567890abcdef"] },
-        },
-      },
-    });
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
+  it("signMessage routes through sui_signPersonalMessage and decodes the signature", async () => {
+    const echoed = new Uint8Array([4, 5, 6]);
+    const provider = connectedProvider({ bytes: bytesToBase64(echoed), signature: "Zm9v" });
 
-    const msg = new Uint8Array([1, 2, 3]);
-    const result = await adapter.signMessage(msg);
-    expect(result.signedMessage).toEqual(msg);
-    expect(result.signature).toEqual(new Uint8Array([102, 111, 111]));
+    const result = await buildAdapter(provider).signMessage?.(new Uint8Array([1, 2, 3]));
+
+    expect(provider.requests).toEqual([
+      {
+        args: {
+          method: "sui_signPersonalMessage",
+          params: { address: "0xabc", message: bytesToBase64(new Uint8Array([1, 2, 3])) },
+        },
+        chain: "sui:mainnet",
+      },
+    ]);
+    expect(result).toEqual({ signature: base64ToBytes("Zm9v"), signedMessage: echoed });
   });
 
-  it("signTransaction returns the base64-decoded signed transaction bytes (`transactionBytes`)", async () => {
-    const signedBytes = new Uint8Array([7, 8, 9, 10]);
-    const signedB64 = btoa(String.fromCodePoint(...signedBytes));
-    const provider = createFakeProvider({
-      request: (args) => {
-        if (args.method === "sui_signTransaction") {
-          return Promise.resolve({ signature: "Zm9v", transactionBytes: signedB64 });
-        }
-        return Promise.resolve(null);
-      },
-      session: {
-        namespaces: {
-          sui: { accounts: ["sui:mainnet:0xabc1234567890abcdef"] },
-        },
-      },
-    });
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
-
-    const out = await expectSuiAdapter(adapter).signTransaction?.(new Uint8Array([1, 2, 3]));
-    expect(provider.requestCalls[0]?.method).toBe("sui_signTransaction");
-    expect(provider.requestCalls[0]?.params).toMatchObject({
-      address: "0xabc1234567890abcdef",
-      transaction: btoa(String.fromCodePoint(1, 2, 3)),
-    });
-    expect(out?.bytes).toEqual(signedBytes);
-    expect(out?.signature).toEqual(base64ToBytes("Zm9v"));
+  it("signMessage falls back to the input bytes when the wallet echoes none", async () => {
+    const message = new Uint8Array([1, 2, 3]);
+    const result = await buildAdapter(connectedProvider({ signature: "Zm9v" })).signMessage?.(
+      message,
+    );
+    expect(result?.signedMessage).toEqual(message);
   });
 
-  it("signTransaction also accepts the legacy `transactionBlockBytes` key from older Dappkit wallets", async () => {
-    const signedBytes = new Uint8Array([7, 8, 9, 10]);
-    const signedB64 = btoa(String.fromCodePoint(...signedBytes));
-    const provider = createFakeProvider({
-      request: () =>
-        Promise.resolve({
-          signature: "Zm9v",
-          transactionBlockBytes: signedB64,
-        }),
-      session: {
-        namespaces: {
-          sui: { accounts: ["sui:mainnet:0xabc1234567890abcdef"] },
-        },
-      },
-    });
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
+  it("signs as the requested account and rejects one the session does not expose", async () => {
+    const provider = connectedProvider({ signature: "Zm9v" }, [
+      "sui:mainnet:0xaaa",
+      "sui:mainnet:0xbbb",
+    ]);
+    const adapter = buildAdapter(provider);
 
-    const out = await expectSuiAdapter(adapter).signTransaction?.(new Uint8Array([1, 2, 3]));
-    expect(out?.bytes).toEqual(signedBytes);
-    expect(out?.signature).toEqual(base64ToBytes("Zm9v"));
+    await adapter.signMessage?.(new Uint8Array([1]), {
+      account: buildAccount("0xbbb", SUI_CHAINS.mainnet),
+    });
+    expect(provider.requests[0]?.args.params).toMatchObject({ address: "0xbbb" });
+
+    await expect(
+      adapter.signMessage?.(new Uint8Array([1]), {
+        account: buildAccount("0xccc", SUI_CHAINS.mainnet),
+      }),
+    ).rejects.toThrow(/does not expose Sui account 0xccc/v);
+    expect(provider.requests).toHaveLength(1);
   });
 
-  it("signTransaction accepts a base64 string tx input as well as Uint8Array", async () => {
-    const signedBytes = new Uint8Array([7, 8, 9]);
-    const signedB64 = btoa(String.fromCodePoint(...signedBytes));
-    const provider = createFakeProvider({
-      request: () =>
-        Promise.resolve({
-          signature: "Zm9v",
-          transactionBytes: signedB64,
-        }),
-      session: {
-        namespaces: {
-          sui: { accounts: ["sui:mainnet:0xabc1234567890abcdef"] },
-        },
-      },
-    });
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
+  it.each([
+    ["transactionBytes", "transactionBytes"],
+    ["the legacy transactionBlockBytes", "transactionBlockBytes"],
+  ])("signTransaction returns the bytes the wallet echoes under %s", async (_label, field) => {
+    const signed = new Uint8Array([7, 8, 9, 10]);
+    const provider = connectedProvider({ [field]: bytesToBase64(signed), signature: "Zm9v" });
 
-    const out = await expectSuiAdapter(adapter).signTransaction?.("AAEC");
-    expect(provider.requestCalls[0]?.params).toMatchObject({ transaction: "AAEC" });
-    expect(out?.bytes).toEqual(signedBytes);
-    expect(out?.signature).toEqual(base64ToBytes("Zm9v"));
+    const out = await buildAdapter(provider).signTransaction?.(new Uint8Array([1, 2, 3]));
+
+    expect(provider.requests[0]?.args).toEqual({
+      method: "sui_signTransaction",
+      params: { address: "0xabc", transaction: bytesToBase64(new Uint8Array([1, 2, 3])) },
+    });
+    expect(out).toEqual({ bytes: signed, signature: base64ToBytes("Zm9v") });
   });
 
-  it("sendTx routes through sui_signAndExecuteTransaction and returns the digest", async () => {
-    const provider = createFakeProvider({
-      request: (args) => {
-        if (args.method === "sui_signAndExecuteTransaction") {
-          return Promise.resolve({ digest: "0xdeadbeef" });
-        }
-        return Promise.resolve(null);
-      },
-      session: {
-        namespaces: {
-          sui: { accounts: ["sui:mainnet:0xabc1234567890abcdef"] },
-        },
-      },
-    });
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
+  it("signTransaction falls back to submitted bytes, and rejects when it has none", async () => {
+    const adapter = buildAdapter(connectedProvider({ signature: "Zm9v" }));
+    const tx = new Uint8Array([1, 2, 3]);
 
-    const digest = await adapter.sendTx(new Uint8Array([9, 8, 7]));
-    expect(provider.requestCalls[0]?.method).toBe("sui_signAndExecuteTransaction");
-    expect(provider.requestCalls[0]?.params).toMatchObject({
-      address: "0xabc1234567890abcdef",
-      transaction: btoa(String.fromCodePoint(9, 8, 7)),
+    await expect(adapter.signTransaction?.(tx)).resolves.toEqual({
+      bytes: tx,
+      signature: base64ToBytes("Zm9v"),
     });
+    await expect(adapter.signTransaction?.('{"version":2}')).rejects.toThrow(
+      /returned no transaction bytes/v,
+    );
+  });
+
+  it("sendTx serializes a Transaction through toJSON() and returns the digest", async () => {
+    const provider = connectedProvider({ digest: "0xdeadbeef" });
+    const transaction = { toJSON: () => Promise.resolve('{"version":2}') };
+
+    const digest = await buildAdapter(provider).sendTx?.(transaction);
+
+    expect(provider.requests).toEqual([
+      {
+        args: {
+          method: "sui_signAndExecuteTransaction",
+          params: { address: "0xabc", transaction: '{"version":2}' },
+        },
+        chain: "sui:mainnet",
+      },
+    ]);
     expect(digest).toBe("0xdeadbeef");
   });
 
-  it("sendTx throws when the response is missing a digest", async () => {
-    const provider = createFakeProvider({
-      request: () => Promise.resolve({}),
-      session: {
-        namespaces: {
-          sui: { accounts: ["sui:mainnet:0xabc1234567890abcdef"] },
-        },
-      },
-    });
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
-
-    await expect(adapter.sendTx(new Uint8Array([1]))).rejects.toThrow(/no digest/v);
-  });
-
-  it("sendTxToChain forwards through sendTx and fires the callback", async () => {
-    const provider = createFakeProvider({
-      request: () => Promise.resolve({ digest: "0xfeed" }),
-      session: {
-        namespaces: {
-          sui: { accounts: ["sui:mainnet:0xabc1234567890abcdef"] },
-        },
-      },
-    });
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
-
-    let calls = 0;
-    const digest = await adapter.sendTxToChain(
-      new Uint8Array([1, 2, 3]),
-      "sui:testnet",
-      undefined,
-      () => {
-        calls += 1;
-      },
+  it("sendTx passes a string through and throws when the response has no digest", async () => {
+    const provider = connectedProvider({});
+    await expect(buildAdapter(provider).sendTx?.("AAEC")).rejects.toThrow(
+      /sui_signAndExecuteTransaction returned no digest/v,
     );
-    expect(digest).toBe("0xfeed");
-    expect(calls).toBe(1);
-  });
-
-  it("routes signMessage through a specific account when one is passed", async () => {
-    const provider = createFakeProvider({
-      request: () => Promise.resolve({ signature: "Zm9v" }),
-      session: {
-        namespaces: {
-          sui: {
-            accounts: ["sui:mainnet:0xaaa111", "sui:mainnet:0xbbb222"],
-          },
-        },
-      },
-    });
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
-
-    const accounts = await adapter.getAccounts?.();
-    const target = accounts?.find((a) => a.walletAddress === "0xbbb222");
-    expect(target).toBeDefined();
-
-    await adapter.signMessage(new Uint8Array([1]), target);
-    expect(provider.requestCalls[0]?.params).toMatchObject({ address: "0xbbb222" });
-  });
-
-  it("switchChain updates the active chain for subsequent calls; non-Sui rejects", async () => {
-    const provider = createFakeProvider({
-      request: () => Promise.resolve({ signature: "Zm9v" }),
-      session: {
-        namespaces: {
-          sui: {
-            accounts: ["sui:mainnet:0xaaa111", "sui:testnet:0xbbb222"],
-          },
-        },
-      },
-    });
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet", "sui:testnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
-
-    await adapter.switchChain({
-      id: "sui:testnet",
-      name: "Sui Testnet",
-      namespace: "sui",
-      reference: "testnet",
-    });
-
-    const first = await adapter.getAccount();
-    expect(first?.chain.id).toBe("sui:testnet");
-    expect(first?.walletAddress).toBe("0xbbb222");
-
-    expect(() =>
-      adapter.switchChain({
-        id: "solana:mainnet",
-        name: "Solana",
-        namespace: "solana",
-        reference: "mainnet",
-      }),
-    ).toThrow(/non-Sui chain/v);
-  });
-
-  it("getAccount reflects session account drift (simulating an accountsChanged event)", async () => {
-    let accounts: ReadonlyArray<string> = ["sui:mainnet:0xaaa111"];
-    const provider: UniversalProviderLike = {
-      connect: () => Promise.resolve(undefined),
-      disconnect: () => Promise.resolve(),
-      on: () => {},
-      removeListener: () => {},
-      request: () => Promise.resolve(null),
-      get session() {
-        return { namespaces: { sui: { accounts } } };
-      },
-    };
-    const adapter = suiNamespace.buildAdapter({
-      chains: ["sui:mainnet"],
-      icon: "x",
-      id: "walletconnect-sui",
-      name: "WalletConnect (SUI)",
-      provider,
-    });
-
-    let active = await adapter.getAccount();
-    expect(active?.walletAddress).toBe("0xaaa111");
-
-    accounts = ["sui:mainnet:0xbbb222"];
-    active = await adapter.getAccount();
-    expect(active?.walletAddress).toBe("0xbbb222");
+    expect(provider.requests[0]?.args.params).toMatchObject({ transaction: "AAEC" });
   });
 });

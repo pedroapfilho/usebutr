@@ -1,37 +1,49 @@
 export type { Account, Balance } from "./account";
 export { buildAccount } from "./account";
-export type { WalletCapabilities } from "./capabilities";
 export type { ChainBase } from "./chain";
+export { resolveChain } from "./chain";
 export type { ChainsByPlatform } from "./chains-by-platform";
-export { buildChainsByPlatform } from "./chains-by-platform";
-export type { Connector, ConnectorEvent, ConnectorMeta, WalletAvailability } from "./connector";
+
+export type { Connector, ConnectorEvent } from "./connector";
 export type { PlatformDiscoverer } from "./discoverer";
-export type { CodedError, ConnectionError, ConnectionErrorKind } from "./errors";
-export { mapConnectionError } from "./errors";
+export type { ConnectionErrorKind } from "./errors";
+export { ConnectionError, toConnectionError } from "./errors";
 export type { HydrationOutcome, WalletManagerConfig } from "./manager";
 export type { ChainPlatform } from "./platform";
-export { CHAIN_PLATFORMS } from "./platform";
-export type { SignerForPlatform, SignerOf } from "./signer";
+export { CHAIN_PLATFORMS, isChainPlatform } from "./platform";
+export type {
+  WalletSigner,
+  WalletSignerKind,
+  WalletSignerOf,
+  WalletSignerRegistry,
+} from "./signer";
 
 export type {
+  AccountOptions,
+  BalanceOptions,
   BitcoinAdapter,
+  BitcoinTransfer,
   BitcoinWallet,
   ConnectedWallet,
   EvmAdapter,
+  EvmTransactionRequest,
+  EvmTransactionValue,
   EvmWallet,
   PolkadotAdapter,
   PolkadotWallet,
+  SignedMessage,
   SignInInput,
+  SignInOutput,
   SignInValue,
   SuiAdapter,
+  SuiTransactionInput,
   SuiWallet,
   SvmAdapter,
   SvmWallet,
-  TransactionInput,
-  TransactionMethod,
-  TransactionObject,
-  TransactionValue,
+  TransactionOptions,
+  TransactionReceipt,
   WalletAdapter,
+  WalletAdapterFor,
   WalletBase,
-  WalletSigner,
 } from "./wallet";
+export { isPlatformWallet } from "./wallet";

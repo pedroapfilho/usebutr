@@ -1,73 +1,76 @@
 /**
  * Wallet SDKs disagree on error shape (EIP-1193 codes, bare strings,
  * bespoke classes), so consumers branch on `kind` rather than regexing
- * messages. `cause` keeps the original value for the `Unknown` case.
+ * messages. `cause` keeps the original value.
  */
-type ConnectionError =
-  | { kind: "UserRejected"; message: string }
-  | { kind: "RequestPending"; message: string }
-  | { kind: "WalletLocked"; message: string }
-  | { actualChain?: string; expectedChain?: string; kind: "ChainMismatch"; message: string }
-  | { kind: "NotConnected"; message: string }
-  | { kind: "Timeout"; message: string }
-  | { cause?: ErrorCause; kind: "Unknown"; message: string };
+type ConnectionErrorKind =
+  | "ChainMismatch"
+  | "NotConnected"
+  | "RequestPending"
+  | "Timeout"
+  | "Unknown"
+  | "UserRejected"
+  | "WalletLocked"
+  | "WalletNotFound";
 
-type ConnectionErrorKind = ConnectionError["kind"];
-type ErrorCause = Error | string;
+class ConnectionError extends Error {
+  readonly kind: ConnectionErrorKind;
 
-type CodedError = Error & { code: number | string };
+  constructor(kind: ConnectionErrorKind, message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "ConnectionError";
+    this.kind = kind;
+  }
+}
 
-const isCodedError = (error: Error): error is CodedError => "code" in error;
-
-const toErrorCause = (value: ErrorCause): ErrorCause => value;
+const readCode = (error: Error): number | string | undefined =>
+  "code" in error && (typeof error.code === "number" || typeof error.code === "string")
+    ? error.code
+    : undefined;
 
 /**
  * EIP-1193 codes: `4001` rejected, `-32002` pending, `4100`/`4900`/`4901`
  * unauthorized or disconnected. Message-substring matching is the last
  * resort for SDKs that ship no codes at all.
  */
-const mapConnectionError = (raw: ErrorCause): ConnectionError => {
-  if (raw instanceof Error) {
-    const message = raw.message;
-    const lower = message.toLowerCase();
-
-    if (message === "Connection timeout") {
-      return { kind: "Timeout", message };
-    }
-    if (message === "Failed to get account" || lower.includes("not connected")) {
-      return { kind: "NotConnected", message };
-    }
-
-    const code = isCodedError(raw) ? raw.code : undefined;
-    if (code === 4001) {
-      return { kind: "UserRejected", message };
-    }
-    if (code === -32_002) {
-      return { kind: "RequestPending", message };
-    }
-    if (code === 4100 || code === 4900 || code === 4901) {
-      return { kind: "NotConnected", message };
-    }
-
-    if (lower.includes("user rejected") || lower.includes("user denied")) {
-      return { kind: "UserRejected", message };
-    }
-    if (lower.includes("locked")) {
-      return { kind: "WalletLocked", message };
-    }
-    if (lower.includes("chain") && (lower.includes("mismatch") || lower.includes("unsupported"))) {
-      return { kind: "ChainMismatch", message };
-    }
-
-    return { cause: raw, kind: "Unknown", message };
+const classify = (error: Error): ConnectionErrorKind => {
+  const code = readCode(error);
+  if (code === 4001) {
+    return "UserRejected";
   }
-
-  if (typeof raw === "string") {
-    return { kind: "Unknown", message: raw };
+  if (code === -32_002) {
+    return "RequestPending";
   }
-
-  return { cause: raw, kind: "Unknown", message: "Connection failed" };
+  if (code === 4100 || code === 4900 || code === 4901) {
+    return "NotConnected";
+  }
+  const lower = error.message.toLowerCase();
+  if (lower.includes("user rejected") || lower.includes("user denied")) {
+    return "UserRejected";
+  }
+  if (lower.includes("not connected")) {
+    return "NotConnected";
+  }
+  if (lower.includes("locked")) {
+    return "WalletLocked";
+  }
+  if (lower.includes("chain") && (lower.includes("mismatch") || lower.includes("unsupported"))) {
+    return "ChainMismatch";
+  }
+  return "Unknown";
 };
 
-export type { CodedError, ConnectionError, ConnectionErrorKind, ErrorCause };
-export { mapConnectionError, toErrorCause };
+/** The one boundary where a thrown value of unknown shape becomes typed. */
+const toConnectionError = (raw: unknown): ConnectionError => {
+  if (raw instanceof ConnectionError) {
+    return raw;
+  }
+  if (raw instanceof Error) {
+    return new ConnectionError(classify(raw), raw.message, { cause: raw });
+  }
+  const message = typeof raw === "string" && raw !== "" ? raw : "Connection failed";
+  return new ConnectionError("Unknown", message, { cause: raw });
+};
+
+export type { ConnectionErrorKind };
+export { ConnectionError, toConnectionError };

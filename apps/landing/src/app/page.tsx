@@ -47,7 +47,7 @@ const FEATURES = [
     title: "Connector-shaped",
   },
   {
-    body: "getSigner() returns the raw provider. Bridge it into viem, wagmi, gill, or @solana/kit.",
+    body: "getSigner() hands back the wallet's own provider, tagged by kind. Bridge it into viem, wagmi, gill, or @solana/kit.",
     href: INTEGRATIONS_URL,
     title: "No lock-in",
   },
@@ -74,17 +74,17 @@ const CHAINS = [
 const OVERVIEW_CODE = `// 1. Import the provider and hooks.
 import {
   WalletManagerProvider,
-  useConnectWallet,
+  useConnect,
   useDiscoveredWallets,
   useIsHydrated,
 } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
 
-// 2. Discover the browser's wallets.
-const discovery = autoDiscovery();
+// 2. Discover the browser's wallets; config is read once.
+const config = { sources: [autoDiscovery()] };
 
 export const App = () => (
-  <WalletManagerProvider discovery={discovery}>
+  <WalletManagerProvider config={config}>
     <WalletPicker />
   </WalletManagerProvider>
 );
@@ -92,7 +92,7 @@ export const App = () => (
 // 3. Read the pool; UI stays yours.
 const WalletPicker = () => {
   const wallets = useDiscoveredWallets();
-  const connect = useConnectWallet();
+  const { connect } = useConnect();
   const isHydrated = useIsHydrated();
   // Wait for persisted connections before showing the picker.
   if (!isHydrated) return null;
@@ -111,20 +111,19 @@ const BRIDGE_CODE = `import {
 import {
   createWalletClient,
   custom,
-  type Address,
-  type EIP1193Provider,
+  getAddress,
 } from "viem";
 import { sepolia } from "viem/chains";
 
 export const useSelectedWalletClient = () => {
   const wallet = useSelectedWallet("evm");
-  const signer = useSigner(wallet?.connector.id);
-  if (!wallet || signer.status !== "success") return null;
+  const { data: signer } = useSigner(wallet);
+  if (!wallet || signer?.kind !== "eip1193") return null;
 
   return createWalletClient({
-    account: wallet.account.walletAddress as Address,
+    account: getAddress(wallet.account.walletAddress),
     chain: sepolia,
-    transport: custom(signer.data as EIP1193Provider),
+    transport: custom(signer.provider),
   });
 };`;
 
@@ -257,8 +256,8 @@ const Page = () => (
             <code className="bg-card border-border rounded-sm border px-1.5 py-0.5 font-mono text-base">
               getSigner()
             </code>{" "}
-            returns the wallet&apos;s raw provider. Wrap it with viem, wagmi, gill, or @solana/kit
-            and keep the stack you already have.
+            hands back the wallet&apos;s own provider, tagged by kind. Wrap it with viem, wagmi,
+            gill, or @solana/kit and keep the stack you already have.
           </p>
           <div className="mt-8">
             <ButtonLink href={INTEGRATIONS_URL} variant="secondary">

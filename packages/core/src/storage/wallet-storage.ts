@@ -1,17 +1,16 @@
 import { logWarn } from "../logger";
-import type { ChainPlatform, ConnectedWallet } from "../types";
 
 import { createBrowserStorageDriver } from "./browser-storage-driver";
 import type {
+  PersistedWalletState,
   StorageDriver,
-  StoredPoolEntry,
   StoredPoolRecord,
   StoredSelectionRecord,
   WalletPersistence,
 } from "./persistence";
-import { decodePool, decodeSelection, parseStoredPoolEntry, storageKeys } from "./validation";
+import { decodePool, decodeSelection, storageKeys } from "./validation";
 
-type StorageConfig = {
+type WalletStorageOptions = {
   /** Defaults to `"butr"`, matching `readWalletSnapshot`. */
   keyPrefix?: string;
   /** Survives app restart. Defaults to localStorage on web. */
@@ -20,214 +19,77 @@ type StorageConfig = {
   session?: StorageDriver;
 };
 
-class WalletStorage implements WalletPersistence {
-  private readonly poolKey: string;
-  private readonly selectionKey: string;
-  private readonly activeKey: string;
-  private readonly userDisconnectedKey: string;
-  private readonly persistent: StorageDriver;
-  private readonly session: StorageDriver;
-  /**
-   * Serializes pool read-modify-writes; without it concurrent `setPool`
-   * calls drop each other's entries. Not reentrant, so a queued mutation
-   * must read via `readPool`: `getPool` re-enters and deadlocks it.
-   */
-  private poolMutationQueue: Promise<unknown> = Promise.resolve();
+const isEmpty = (record: StoredPoolRecord | StoredSelectionRecord): boolean =>
+  Object.keys(record).length === 0;
 
-  constructor(config: StorageConfig) {
-    const keys = storageKeys(config.keyPrefix);
-    this.poolKey = keys.pool;
-    this.selectionKey = keys.selection;
-    this.activeKey = keys.active;
-    this.userDisconnectedKey = keys.userDisconnected;
+/**
+ * Pool, selection and active id go to the persistent driver, the disconnect
+ * intent to the session driver. Unchanged keys are not rewritten, so a
+ * cookie-backed driver does not re-send every cookie on each save.
+ */
+const createWalletStorage = (options: WalletStorageOptions = {}): WalletPersistence => {
+  const keys = storageKeys(options.keyPrefix);
+  // Cheap: wraps the globals (or in-memory maps) without touching them.
+  const browser = createBrowserStorageDriver();
+  const persistent = options.persistent ?? browser.persistent;
+  const session = options.session ?? browser.session;
+  const written = new Map<string, string | null>();
 
-    if (config.persistent && config.session) {
-      this.persistent = config.persistent;
-      this.session = config.session;
-    } else {
-      const defaults = createBrowserStorageDriver();
-      this.persistent = config.persistent ?? defaults.persistent;
-      this.session = config.session ?? defaults.session;
-    }
-  }
-
-  /** Chain `fn` after the in-flight pool mutation. */
-  private async serializePoolMutation<T>(fn: () => Promise<T>): Promise<T> {
-    const previous = this.poolMutationQueue;
-    // oxlint-disable-next-line unicorn/consistent-function-scoping -- assigned by Promise constructor below
-    let resolve: () => void = () => {};
-    this.poolMutationQueue = new Promise<void>((r) => {
-      resolve = r;
-    });
+  const read = async (driver: StorageDriver, key: string): Promise<string | null> => {
     try {
-      await previous;
-    } catch {
-      // Previous mutation's failure shouldn't jam the queue; each
-      // call site already observes its own rejection.
-    }
-    try {
-      return await fn();
-    } finally {
-      resolve();
-    }
-  }
-
-  /** Read and decode the pool without touching the mutation queue. Safe to
-   *  call from inside a queued mutation, unlike `getPool`. */
-  private async readPool(): Promise<{ corrupt: boolean; decoded: StoredPoolRecord }> {
-    let stored: string | null;
-    try {
-      stored = await this.persistent.getItem(this.poolKey);
+      const value = await driver.getItem(key);
+      written.set(key, value);
+      return value;
     } catch (error) {
-      logWarn("[butr] failed to read pool from storage:", error);
-      return { corrupt: false, decoded: {} };
-    }
-    if (stored === null || stored === "") {
-      return { corrupt: false, decoded: {} };
-    }
-    const decoded = decodePool(stored);
-    // An empty decode from a non-empty payload means the whole record was
-    // unreadable, not that the user has no wallets.
-    return { corrupt: Object.keys(decoded).length === 0, decoded };
-  }
-
-  async getPool(): Promise<StoredPoolRecord> {
-    const { corrupt, decoded } = await this.readPool();
-    if (corrupt) {
-      // Evict the unreadable key directly. Going through `clearPool` would
-      // acquire the mutation queue, which self-deadlocks when a queued
-      // mutation is what triggered this read.
-      try {
-        await this.persistent.removeItem(this.poolKey);
-      } catch (error) {
-        logWarn("[butr] failed to clear corrupt pool:", error);
-      }
-    }
-    return decoded;
-  }
-
-  /**
-   * Additive on purpose: a failed silent reconnect drops the entry from
-   * the live pool, and it must survive to be retried next load.
-   * Eviction goes through `removePoolEntry` or `clearAll`.
-   */
-  async setPool(pool: Map<string, ConnectedWallet>): Promise<void> {
-    await this.serializePoolMutation(async () => {
-      try {
-        const { decoded: existing } = await this.readPool();
-        const serializable: StoredPoolRecord = { ...existing };
-        for (const [connectorId, wallet] of pool) {
-          const entry: StoredPoolEntry = {
-            account: wallet.account,
-            accounts: wallet.accounts,
-            chainPlatform: wallet.connector.chainPlatform,
-            connectorId,
-            icon: wallet.connector.icon,
-            name: wallet.connector.name,
-          };
-          if (parseStoredPoolEntry(connectorId, entry) === null) {
-            throw new Error(`[butr] refusing to persist invalid pool entry for ${connectorId}`);
-          }
-          serializable[connectorId] = entry;
-        }
-        await this.persistent.setItem(this.poolKey, JSON.stringify(serializable));
-      } catch (error) {
-        logWarn("[butr] failed to persist pool:", error);
-      }
-    });
-  }
-
-  async removePoolEntry(connectorId: string): Promise<void> {
-    await this.serializePoolMutation(async () => {
-      try {
-        const { decoded: stored } = await this.readPool();
-        if (stored[connectorId]) {
-          const { [connectorId]: _, ...remaining } = stored;
-          await this.persistent.setItem(this.poolKey, JSON.stringify(remaining));
-        }
-      } catch (error) {
-        logWarn(`[butr] failed to remove pool entry ${connectorId}:`, error);
-      }
-    });
-  }
-
-  async clearPool(): Promise<void> {
-    await this.serializePoolMutation(async () => {
-      await this.persistent.removeItem(this.poolKey);
-    });
-  }
-
-  async getSelection(): Promise<StoredSelectionRecord> {
-    try {
-      return decodeSelection(await this.persistent.getItem(this.selectionKey));
-    } catch (error) {
-      logWarn("[butr] failed to read selection from storage:", error);
-      return {};
-    }
-  }
-
-  async setSelection(selection: Map<ChainPlatform, string>): Promise<void> {
-    try {
-      const serializable: StoredSelectionRecord = {};
-      for (const [platform, connectorId] of selection) {
-        serializable[platform] = connectorId;
-      }
-      await this.persistent.setItem(this.selectionKey, JSON.stringify(serializable));
-    } catch (error) {
-      logWarn("[butr] failed to persist selection:", error);
-    }
-  }
-
-  async getActiveConnectorId(): Promise<string | null> {
-    try {
-      const value = await this.persistent.getItem(this.activeKey);
-      return value !== null && value.length > 0 ? value : null;
-    } catch {
+      logWarn(`[butr] failed to read ${key} from storage:`, error);
       return null;
     }
-  }
+  };
 
-  async setActiveConnectorId(connectorId: string | null): Promise<void> {
-    try {
-      await (connectorId === null
-        ? this.persistent.removeItem(this.activeKey)
-        : this.persistent.setItem(this.activeKey, connectorId));
-    } catch (error) {
-      logWarn("[butr] failed to persist active connector id:", error);
+  const write = async (driver: StorageDriver, key: string, value: string | null) => {
+    if (written.get(key) === value) {
+      return;
     }
-  }
+    await (value === null ? driver.removeItem(key) : driver.setItem(key, value));
+    written.set(key, value);
+  };
 
-  async clearAll(): Promise<void> {
-    await Promise.all([
-      this.clearPool(),
-      this.persistent.removeItem(this.selectionKey),
-      this.persistent.removeItem(this.activeKey),
-    ]);
-  }
+  return {
+    load: async () => {
+      const [pool, selection, active, userDisconnected] = await Promise.all([
+        read(persistent, keys.pool),
+        read(persistent, keys.selection),
+        read(persistent, keys.active),
+        read(session, keys.userDisconnected),
+      ]);
+      return {
+        activeConnectorId: active === null || active === "" ? null : active,
+        isUserDisconnected: userDisconnected === "true",
+        pool: decodePool(pool),
+        selection: decodeSelection(selection),
+      };
+    },
 
-  /**
-   * Kept in the session driver so it survives remounts (unlike a ref)
-   * yet clears at session end (unlike the persistent driver): a manual
-   * disconnect must suppress auto-connect now, not forever.
-   */
-  async isUserDisconnected(): Promise<boolean> {
-    try {
-      const value = await this.session.getItem(this.userDisconnectedKey);
-      return value === "true";
-    } catch {
-      return false;
-    }
-  }
+    save: async (state: PersistedWalletState) => {
+      // A failed key must not release the manager's save queue while other
+      // writes from this snapshot can still overwrite the next snapshot.
+      const results = await Promise.allSettled([
+        write(persistent, keys.pool, isEmpty(state.pool) ? null : JSON.stringify(state.pool)),
+        write(
+          persistent,
+          keys.selection,
+          isEmpty(state.selection) ? null : JSON.stringify(state.selection),
+        ),
+        write(persistent, keys.active, state.activeConnectorId),
+        write(session, keys.userDisconnected, state.isUserDisconnected ? "true" : null),
+      ]);
+      const failure = results.find((result) => result.status === "rejected");
+      if (failure !== undefined) {
+        throw failure.reason;
+      }
+    },
+  };
+};
 
-  async markUserDisconnected(value: boolean): Promise<void> {
-    try {
-      await (value
-        ? this.session.setItem(this.userDisconnectedKey, "true")
-        : this.session.removeItem(this.userDisconnectedKey));
-    } catch {
-      void 0;
-    }
-  }
-}
-
-export { WalletStorage };
+export type { WalletStorageOptions };
+export { createWalletStorage };

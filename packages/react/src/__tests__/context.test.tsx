@@ -1,169 +1,133 @@
 import { act, renderHook } from "@testing-library/react";
-import type { WalletAdapter, WalletSource } from "@usebutr/core";
-import { createFakeAdapter, createFakePersistence } from "@usebutr/testing";
-import React, { type PropsWithChildren } from "react";
+import type { WalletManagerConfig, WalletSource } from "@usebutr/core";
+import {
+  createFakeAdapter,
+  createFakeConnectedWallet,
+  createFakePersistence,
+} from "@usebutr/testing";
+import type { PropsWithChildren } from "react";
+import { StrictMode } from "react";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { WalletManagerProvider, useDiscoveredWallets, useWalletStoreContext } from "../context";
-import { useConnectWallet } from "../hooks/actions";
-import { useConnectedWallets, useWalletStore } from "../hooks/selectors";
+import { useWalletManager, WalletManagerProvider } from "../context";
+import { useWallet } from "../hooks/state";
 
-const sourceOf = (...adapters: Array<WalletAdapter>): WalletSource => ({
-  subscribe: (onAdapter) => {
-    for (const a of adapters) {
-      onAdapter(a);
-    }
-    return () => {};
-  },
-});
+import { renderWithManager, settle, staticSource, storedEntryOf } from "./render";
 
-const wrap = (props: Partial<React.ComponentProps<typeof WalletManagerProvider>>) => {
-  const TestWrapper = ({ children }: PropsWithChildren) => (
-    <WalletManagerProvider storage={createFakePersistence()} {...props}>
-      {children}
-    </WalletManagerProvider>
-  );
-  TestWrapper.displayName = "WalletManagerTestWrapper";
-  return TestWrapper;
+const WalletName = () => {
+  const wallet = useWallet();
+  return <span>{wallet === undefined ? "none" : wallet.account.walletAddress}</span>;
 };
 
-describe("WalletManagerProvider (unified)", () => {
-  it("hydrates and provides the store", async () => {
-    const { result } = renderHook(() => useWalletStoreContext(), {
-      wrapper: wrap({}),
+describe("WalletManagerProvider", () => {
+  it("starts the manager after mount and hydrates", async () => {
+    const onHydrated = vi.fn<NonNullable<WalletManagerConfig["onHydrated"]>>();
+    const { result } = renderWithManager(() => null, { config: { onHydrated } });
+
+    await settle();
+
+    expect(result.current.manager.getState().isHydrated).toBe(true);
+    expect(onHydrated).toHaveBeenCalledOnce();
+  });
+
+  it("keeps one manager for the lifetime of a mount", () => {
+    const { rerender, result } = renderWithManager(() => null);
+    const first = result.current.manager;
+    rerender();
+    expect(result.current.manager).toBe(first);
+  });
+
+  it("runs nothing on the server", () => {
+    const source = vi.fn<WalletSource>(() => () => {});
+    const storage = createFakePersistence();
+    const load = vi.spyOn(storage, "load");
+
+    const html = renderToString(
+      <WalletManagerProvider config={{ sources: [source], storage }}>
+        <WalletName />
+      </WalletManagerProvider>,
+    );
+
+    expect(html).toContain("none");
+    expect(source).not.toHaveBeenCalled();
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("renders a seeded wallet from the first server render", () => {
+    const wallet = createFakeConnectedWallet({ addresses: ["0xseeded"], id: "metamask" });
+    const initialState = {
+      activeConnectorId: "metamask",
+      pool: { metamask: storedEntryOf(wallet) },
+      selection: {},
+    };
+
+    const html = renderToString(
+      <WalletManagerProvider
+        config={{ storage: createFakePersistence() }}
+        initialState={initialState}
+      >
+        <WalletName />
+      </WalletManagerProvider>,
+    );
+
+    expect(html).toContain("0xseeded");
+  });
+
+  it("stops the manager on unmount", async () => {
+    const adapter = createFakeAdapter({ id: "metamask" });
+    const unsubscribe = vi.fn<() => void>();
+    const source = vi.fn<WalletSource>((onAdapter) => {
+      onAdapter(adapter);
+      return unsubscribe;
     });
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
+    const { result, unmount } = renderWithManager(() => null, {
+      config: { sources: [source] },
     });
+    await settle();
+    await act(() => result.current.manager.connect("metamask"));
+    expect(adapter.listenerCount()).toBe(1);
+
+    unmount();
+
+    expect(unsubscribe).toHaveBeenCalledOnce();
+    expect(adapter.listenerCount()).toBe(0);
+  });
+
+  it("hydrates once under StrictMode's double effect", async () => {
+    const storage = createFakePersistence();
+    const load = vi.spyOn(storage, "load");
+    const source = vi.fn(staticSource(createFakeAdapter()));
+    const Wrapper = ({ children }: PropsWithChildren) => (
+      <StrictMode>
+        <WalletManagerProvider config={{ sources: [source], storage }}>
+          {children}
+        </WalletManagerProvider>
+      </StrictMode>
+    );
+
+    const { result } = renderHook(() => useWalletManager(), { wrapper: Wrapper });
+    await settle();
+
+    expect(load).toHaveBeenCalledOnce();
     expect(result.current.getState().isHydrated).toBe(true);
+    expect(result.current.getState().adapters).toHaveLength(1);
   });
 
-  it("useDiscoveredWallets is empty without a discovery prop", () => {
-    const { result } = renderHook(() => useDiscoveredWallets(), { wrapper: wrap({}) });
-    expect(result.current).toEqual([]);
+  it("gives stable action references", () => {
+    const { rerender, result } = renderWithManager(() => null);
+    const { connect, disconnect, setActive } = result.current.manager;
+    rerender();
+    expect(result.current.manager.connect).toBe(connect);
+    expect(result.current.manager.disconnect).toBe(disconnect);
+    expect(result.current.manager.setActive).toBe(setActive);
   });
 
-  it("populates useDiscoveredWallets from the discovery WalletSource", async () => {
-    const adapter = createFakeAdapter({ id: "fake-evm" });
-    const { result } = renderHook(() => useDiscoveredWallets(), {
-      wrapper: wrap({ discovery: sourceOf(adapter) }),
-    });
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(result.current.map((a) => a.id)).toEqual(["fake-evm"]);
-  });
-
-  it("resolves discovered id before falling back to createConnector", async () => {
-    const discovered = createFakeAdapter({
-      accounts: [
-        {
-          chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" },
-          id: "eip155:1:0x1",
-          walletAddress: "0x1",
-        },
-      ],
-      id: "dup",
-    });
-    const fallback = vi.fn(() => null);
-    const { result } = renderHook(
-      () => ({ connect: useConnectWallet(), connected: useConnectedWallets() }),
-      { wrapper: wrap({ createConnector: fallback, discovery: sourceOf(discovered) }) },
+  it("throws outside a provider", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(() => renderHook(() => useWalletManager())).toThrow(
+      "useWalletManager must be used within WalletManagerProvider",
     );
-    await act(async () => {
-      await Promise.resolve();
-      await result.current.connect("dup");
-    });
-    expect(fallback).not.toHaveBeenCalledWith("dup");
-    expect(result.current.connected.map((w) => w.connector.id)).toContain("dup");
-  });
-
-  it("uses createConnector when discovery has no match", async () => {
-    const manual = createFakeAdapter({
-      accounts: [
-        {
-          chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" },
-          id: "eip155:1:0x1",
-          walletAddress: "0x1",
-        },
-      ],
-      id: "manual",
-    });
-    const { result } = renderHook(
-      () => ({ connect: useConnectWallet(), connected: useConnectedWallets() }),
-      { wrapper: wrap({ createConnector: (id) => (id === "manual" ? manual : null) }) },
-    );
-    await act(async () => {
-      await Promise.resolve();
-      await result.current.connect("manual");
-    });
-    expect(result.current.connected.map((w) => w.connector.id)).toContain("manual");
-  });
-
-  it("forwards onHydrated", async () => {
-    const onHydrated = vi.fn<() => void>();
-    renderHook(() => null, { wrapper: wrap({ onHydrated }) });
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    expect(onHydrated).toHaveBeenCalledTimes(1);
-  });
-
-  it("restores a pending wallet when its adapter announces after mount (deferred)", async () => {
-    const deferredAccount = {
-      chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155" as const, reference: "1" },
-      id: "eip155:1:0xdeferred",
-      walletAddress: "0xdeferred",
-    };
-    const seededPersistence = createFakePersistence({
-      activeConnectorId: "deferred",
-      pool: {
-        deferred: {
-          account: deferredAccount,
-          accounts: [deferredAccount],
-          chainPlatform: "evm",
-          connectorId: "deferred",
-          name: "Deferred Wallet",
-        },
-      },
-    });
-
-    let emitAdapter: ((adapter: ReturnType<typeof createFakeAdapter>) => void) | null = null;
-    const deferredSource: WalletSource = {
-      subscribe: (onAdapter) => {
-        emitAdapter = onAdapter;
-        queueMicrotask(() => {
-          emitAdapter?.(createFakeAdapter({ accounts: [deferredAccount], id: "deferred" }));
-        });
-        return () => {
-          emitAdapter = null;
-        };
-      },
-    };
-
-    const { result } = renderHook(
-      () => useWalletStore((s) => ({ isHydrated: s.isHydrated, pool: s.pool })),
-      {
-        wrapper: wrap({ discovery: deferredSource, storage: seededPersistence }),
-      },
-    );
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(result.current.isHydrated).toBe(true);
-    expect(result.current.pool.has("deferred")).toBe(true);
-  });
-});
-
-describe("useDiscoveredWallets outside provider", () => {
-  it("returns empty array", () => {
-    const { result } = renderHook(() => useDiscoveredWallets());
-    expect(result.current).toEqual([]);
+    vi.restoreAllMocks();
   });
 });

@@ -1,49 +1,75 @@
 export type {
   Account,
+  AccountOptions,
   Balance,
+  BalanceOptions,
   BitcoinAdapter,
+  BitcoinTransfer,
   BitcoinWallet,
   ChainBase,
   ChainPlatform,
   ChainsByPlatform,
   ConnectedWallet,
-  ConnectionError,
   ConnectionErrorKind,
   Connector,
   ConnectorEvent,
-  ConnectorMeta,
   EvmAdapter,
+  EvmTransactionRequest,
+  EvmTransactionValue,
   EvmWallet,
   HydrationOutcome,
   PlatformDiscoverer,
   PolkadotAdapter,
   PolkadotWallet,
+  SignedMessage,
   SignInInput,
+  SignInOutput,
   SignInValue,
-  SignerForPlatform,
-  SignerOf,
   SuiAdapter,
+  SuiTransactionInput,
   SuiWallet,
   SvmAdapter,
   SvmWallet,
-  TransactionInput,
-  TransactionMethod,
-  TransactionObject,
-  TransactionValue,
+  TransactionOptions,
+  TransactionReceipt,
   WalletAdapter,
-  WalletAvailability,
+  WalletAdapterFor,
   WalletBase,
-  WalletCapabilities,
   WalletManagerConfig,
   WalletSigner,
+  WalletSignerKind,
+  WalletSignerOf,
+  WalletSignerRegistry,
 } from "./types";
-export { buildAccount, buildChainsByPlatform, CHAIN_PLATFORMS, mapConnectionError } from "./types";
+export {
+  buildAccount,
+  CHAIN_PLATFORMS,
+  ConnectionError,
+  isChainPlatform,
+  isPlatformWallet,
+  resolveChain,
+  toConnectionError,
+} from "./types";
+
+export {
+  BITCOIN_CHAINS,
+  BITCOIN_CHAINS_LIST,
+  CHAINS_BY_PLATFORM,
+  EVM_CHAINS,
+  EVM_CHAINS_LIST,
+  POLKADOT_CHAINS,
+  POLKADOT_CHAINS_LIST,
+  SUI_CHAINS,
+  SUI_CHAINS_LIST,
+  SVM_CHAINS,
+  SVM_CHAINS_LIST,
+} from "./chains";
 
 export type { WalletSource } from "./wallet-source";
-export { createWalletSource } from "./wallet-source";
+export { fromAdapters } from "./wallet-source";
 
-export type { ConnectionStatus, WalletStore, WalletStoreState } from "./store";
-export { createWalletStore, isShadowAdapter, ShadowConnectorError } from "./store";
+export type { ConnectStatus, WalletManager, WalletState } from "./store";
+export { createWalletManager, ShadowConnectorError } from "./store";
 
 export type {
   BrowserStorageDrivers,
@@ -51,6 +77,7 @@ export type {
   CookieSource,
   InitialCookies,
   MaybePromise,
+  PersistedWalletState,
   SnapshotOptions,
   StorageDriver,
   StoredPoolEntry,
@@ -58,14 +85,15 @@ export type {
   StoredSelectionRecord,
   WalletPersistence,
   WalletSnapshot,
+  WalletStorageOptions,
 } from "./storage";
 export {
   createBrowserStorageDriver,
   createCookieStorageDriver,
   createMemoryStorageDriver,
+  createWalletStorage,
   EMPTY_SNAPSHOT,
   readWalletSnapshot,
-  WalletStorage,
 } from "./storage";
 
 export { groupByPlatform } from "./group-by-platform";
@@ -73,7 +101,7 @@ export { groupByPlatform } from "./group-by-platform";
 export type { SignInFlowOptions, SignInMessageContext, SignInResult } from "./sign-in";
 export { SignInUnsupportedError, createSignInFlow } from "./sign-in";
 
-export { walletEqual } from "./wallet-equal";
+export { accountsEqual, walletEqual } from "./wallet-equal";
 
 export { logError, logWarn } from "./logger";
 

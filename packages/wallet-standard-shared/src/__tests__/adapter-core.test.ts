@@ -1,4 +1,5 @@
 import type { ChainBase, ConnectorEvent } from "@usebutr/core";
+import { buildAccount, SVM_CHAINS, SVM_CHAINS_LIST } from "@usebutr/core";
 import { describe, expect, it, vi } from "vitest";
 
 import type { WalletStandardCore } from "../adapter-core";
@@ -90,11 +91,10 @@ const buildCore = (
   overrides: CoreOverrides = {},
 ): WalletStandardCore | null =>
   createWalletStandardCore({
-    chainPrefix: "solana:",
+    chains: SVM_CHAINS_LIST,
     id: "wallet-standard:svm-mock",
-    label: "SVM",
+    label: "Solana",
     namespace: "solana",
-    platform: "Solana",
     preferredChainIds: ["solana:mainnet"],
     trackChainChanges: true,
     wallet,
@@ -114,19 +114,30 @@ const coreFor = (
   return core;
 };
 
+/** Optional members exist only when the wallet supports them; tests that
+ *  exercise one assert its presence first. */
+const present = <T>(value: T | undefined, name: string): T => {
+  if (value === undefined) {
+    throw new Error(`expected ${name} to be defined`);
+  }
+  return value;
+};
+
+const subscribeTo = (core: WalletStandardCore) => present(core.base.subscribe, "subscribe");
+const switchChainOf = (core: WalletStandardCore) => present(core.base.switchChain, "switchChain");
+
 const listenerFn = () => vi.fn<(event: ConnectorEvent) => void>();
 
 const chain = (id: string, namespace = "solana"): ChainBase => ({
   id,
-  name: "Mock Solana Wallet",
+  name: id,
   namespace,
   reference: id.slice(id.indexOf(":") + 1),
 });
 
-const accountOn = (chainId: string, address: string) => ({
-  chain: chain(chainId),
-  id: `${chainId}:${address}`,
-  walletAddress: address,
+const accountsChanged = (chainBase: ChainBase, ...addresses: ReadonlyArray<string>) => ({
+  accounts: addresses.map((address) => buildAccount(address, chainBase)),
+  type: "accountsChanged",
 });
 
 describe("createWalletStandardCore chain resolution", () => {
@@ -147,12 +158,14 @@ describe("createWalletStandardCore chain resolution", () => {
     expect(buildCore(wallet)).toBeNull();
   });
 
+  it("returns null when standard:connect carries no connect method", () => {
+    const wallet = buildWallet({ features: { "standard:connect": { version: "1.0.0" } } });
+    expect(buildCore(wallet)).toBeNull();
+  });
+
   it("prefers a preferred chain over the wallet's first-listed chain", () => {
-    const core = coreFor(
-      { chains: ["solana:devnet", "solana:mainnet"] },
-      { preferredChainIds: ["solana:mainnet"] },
-    );
-    expect(core.currentChainId()).toBe("solana:mainnet");
+    const core = coreFor({ chains: ["solana:devnet", "solana:mainnet"] });
+    expect(core.currentChain()).toBe(SVM_CHAINS.mainnet);
   });
 
   it("keeps the wallet's ordering when several preferred chains are advertised", () => {
@@ -160,70 +173,56 @@ describe("createWalletStandardCore chain resolution", () => {
       { chains: ["solana:devnet", "solana:mainnet"] },
       { preferredChainIds: ["solana:mainnet", "solana:devnet"] },
     );
-    expect(core.currentChainId()).toBe("solana:devnet");
+    expect(core.currentChain()).toBe(SVM_CHAINS.devnet);
   });
 
-  it("falls back to the first prefix-matching chain when no preferred chain is advertised", () => {
-    const core = coreFor(
-      { chains: ["eip155:1", "solana:testnet", "solana:devnet"] },
-      { preferredChainIds: ["solana:mainnet"] },
-    );
-    expect(core.currentChainId()).toBe("solana:testnet");
+  it("falls back to the first chain in the namespace when no preferred chain is advertised", () => {
+    const core = coreFor({ chains: ["eip155:1", "solana:testnet", "solana:devnet"] });
+    expect(core.currentChain()).toBe(SVM_CHAINS.testnet);
   });
 
-  it("builds a butr chain from the active chain id", () => {
-    const core = coreFor({ chains: ["solana:devnet"] });
-    expect(core.toChain()).toEqual({
+  it("names a chain from the registry, never after the wallet", () => {
+    const core = coreFor({ chains: ["solana:devnet"], name: "Phantom" });
+    expect(core.currentChain()).toEqual({
       id: "solana:devnet",
-      name: "Mock Solana Wallet",
+      name: "Solana Devnet",
       namespace: "solana",
       reference: "devnet",
     });
   });
-});
 
-describe("createWalletStandardCore chainCount", () => {
-  it("counts only the chains matching the prefix", () => {
-    const core = coreFor({
-      chains: ["solana:mainnet", "solana:devnet", "bip122:000000000019d6689c085ae1", "sui:mainnet"],
+  it("names a chain outside the registry by its CAIP-2 id", () => {
+    const core = coreFor({ chains: ["solana:mainnet-beta"] });
+    expect(core.currentChain()).toEqual({
+      id: "solana:mainnet-beta",
+      name: "solana:mainnet-beta",
+      namespace: "solana",
+      reference: "mainnet-beta",
     });
-    expect(core.chainCount).toBe(2);
-  });
-
-  it("counts a multi-namespace wallet with one Solana chain as one", () => {
-    const core = coreFor({ chains: ["solana:mainnet", "sui:mainnet", "sui:testnet"] });
-    expect(core.chainCount).toBe(1);
   });
 });
 
 describe("createWalletStandardCore metadata", () => {
   it("exposes the caller's id alongside the wallet's name", () => {
     const core = coreFor({ name: "Phantom" });
-    expect(core.id).toBe("wallet-standard:svm-mock");
-    expect(core.name).toBe("Phantom");
+    expect(core.base.id).toBe("wallet-standard:svm-mock");
+    expect(core.base.name).toBe("Phantom");
   });
 
   it("trims the wallet icon", () => {
     const core = coreFor({ icon: "  data:image/png;base64,AA  " });
-    expect(core.icon).toBe("data:image/png;base64,AA");
+    expect(core.base.icon).toBe("data:image/png;base64,AA");
   });
 
   it("treats an all-whitespace icon as absent", () => {
     const core = coreFor({ icon: "   " });
-    expect(core.icon).toBeUndefined();
+    expect(core.base.icon).toBeUndefined();
   });
 
-  it("reports whether the wallet advertises standard:events", () => {
-    expect(coreFor().hasEvents).toBe(false);
-    const events = buildEventsFeature();
-    const core = coreFor({ features: { "standard:events": events.feature } });
-    expect(core.hasEvents).toBe(true);
-  });
-
-  it("hands back the raw Wallet Standard wallet as the signer", async () => {
+  it("hands back the raw Wallet Standard wallet as a wallet-standard signer", async () => {
     const wallet = buildWallet();
     const core = buildCore(wallet);
-    await expect(core?.getSigner()).resolves.toBe(wallet);
+    await expect(core?.base.getSigner()).resolves.toEqual({ kind: "wallet-standard", wallet });
   });
 });
 
@@ -231,21 +230,21 @@ describe("createWalletStandardCore connect", () => {
   it("forwards { silent: true } to standard:connect", async () => {
     const connectFeature = buildConnectFeature();
     const core = coreFor({ features: { "standard:connect": connectFeature } });
-    await core.connect({ silent: true });
+    await core.base.connect({ silent: true });
     expect(connectFeature.connect).toHaveBeenCalledWith({ silent: true });
   });
 
   it("passes no options for a plain connect()", async () => {
     const connectFeature = buildConnectFeature();
     const core = coreFor({ features: { "standard:connect": connectFeature } });
-    await core.connect();
+    await core.base.connect();
     expect(connectFeature.connect).toHaveBeenCalledWith(undefined);
   });
 
   it("passes no options when silent is false", async () => {
     const connectFeature = buildConnectFeature();
     const core = coreFor({ features: { "standard:connect": connectFeature } });
-    await core.connect({ silent: false });
+    await core.base.connect({ silent: false });
     expect(connectFeature.connect).toHaveBeenCalledWith(undefined);
   });
 });
@@ -256,13 +255,12 @@ describe("createWalletStandardCore disconnect", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     const core = coreFor({ features: { "standard:disconnect": disconnectFeature } });
-    await core.disconnect();
+    await present(core.base.disconnect, "disconnect")();
     expect(disconnectFeature.disconnect).toHaveBeenCalledTimes(1);
   });
 
-  it("resolves silently when the wallet advertises no standard:disconnect", async () => {
-    const core = coreFor();
-    await expect(core.disconnect()).resolves.toBeUndefined();
+  it("is absent when the wallet advertises no standard:disconnect", () => {
+    expect(coreFor().base.disconnect).toBeUndefined();
   });
 
   it("swallows a throwing standard:disconnect and warns", async () => {
@@ -272,34 +270,31 @@ describe("createWalletStandardCore disconnect", () => {
       disconnect: vi.fn().mockRejectedValue(failure),
     };
     const core = coreFor({ features: { "standard:disconnect": disconnectFeature } });
-    await expect(core.disconnect()).resolves.toBeUndefined();
-    expect(warn).toHaveBeenCalledWith("[butr] SVM Wallet Standard disconnect threw:", failure);
+    await expect(present(core.base.disconnect, "disconnect")()).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalledWith("[butr] Solana Wallet Standard disconnect threw:", failure);
     warn.mockRestore();
   });
 });
 
-describe("createWalletStandardCore account reads", () => {
-  it("returns the first exposed account from getAccount()", async () => {
+describe("createWalletStandardCore getAccounts", () => {
+  it("maps every exposed account on the current chain, in the wallet's order", async () => {
     const core = coreFor({ accounts: [buildWalletAccount("A"), buildWalletAccount("B")] });
-    await expect(core.getAccount()).resolves.toEqual(accountOn("solana:mainnet", "A"));
-  });
-
-  it("returns null from getAccount() when the wallet exposes no accounts", async () => {
-    const core = coreFor({ accounts: [] });
-    await expect(core.getAccount()).resolves.toBeNull();
-  });
-
-  it("maps every exposed account in getAccounts()", async () => {
-    const core = coreFor({ accounts: [buildWalletAccount("A"), buildWalletAccount("B")] });
-    await expect(core.getAccounts()).resolves.toEqual([
-      accountOn("solana:mainnet", "A"),
-      accountOn("solana:mainnet", "B"),
+    await expect(core.base.getAccounts()).resolves.toEqual([
+      buildAccount("A", SVM_CHAINS.mainnet),
+      buildAccount("B", SVM_CHAINS.mainnet),
     ]);
   });
 
-  it("returns an empty array from getAccounts() when the wallet exposes no accounts", async () => {
+  it("resolves an empty list when the wallet exposes no accounts", async () => {
     const core = coreFor({ accounts: [] });
-    await expect(core.getAccounts()).resolves.toEqual([]);
+    await expect(core.base.getAccounts()).resolves.toEqual([]);
+  });
+
+  it("keeps the address exactly as the wallet reports it", async () => {
+    const core = coreFor({ accounts: [buildWalletAccount("MixedCaseAddr")] });
+    const [account] = await core.base.getAccounts();
+    expect(account?.walletAddress).toBe("MixedCaseAddr");
+    expect(account?.id).toBe("solana:mainnet:MixedCaseAddr");
   });
 });
 
@@ -307,16 +302,17 @@ describe("createWalletStandardCore resolveAccount", () => {
   it("returns the Wallet Standard account matching the address", () => {
     const second = buildWalletAccount("B");
     const core = coreFor({ accounts: [buildWalletAccount("A"), second] });
-    expect(core.resolveAccount({ walletAddress: "B" })).toBe(second);
+    expect(core.resolveAccount(buildAccount("B", SVM_CHAINS.mainnet))).toBe(second);
   });
 
-  it("falls back to the first account for an address the wallet doesn't expose", () => {
-    const first = buildWalletAccount("A");
-    const core = coreFor({ accounts: [first] });
-    expect(core.resolveAccount({ walletAddress: "unknown" })).toBe(first);
+  it("throws for an address the wallet does not expose instead of signing with another", () => {
+    const core = coreFor({ accounts: [buildWalletAccount("A")] });
+    expect(() => core.resolveAccount(buildAccount("unknown", SVM_CHAINS.mainnet))).toThrow(
+      "Wallet Mock Solana Wallet does not expose account unknown",
+    );
   });
 
-  it("returns the first account when no account is passed", () => {
+  it("returns the active (first) account when no account is passed", () => {
     const first = buildWalletAccount("A");
     const core = coreFor({ accounts: [first, buildWalletAccount("B")] });
     expect(core.resolveAccount()).toBe(first);
@@ -324,77 +320,115 @@ describe("createWalletStandardCore resolveAccount", () => {
 
   it("throws when the wallet exposes no account", () => {
     const core = coreFor({ accounts: [] });
-    expect(() => core.resolveAccount()).toThrow("No connected account");
-    expect(() => core.resolveAccount({ walletAddress: "A" })).toThrow("No connected account");
+    expect(() => core.resolveAccount()).toThrow(
+      "Wallet Mock Solana Wallet has no connected account",
+    );
+    expect(() => core.resolveAccount(buildAccount("A", SVM_CHAINS.mainnet))).toThrow(
+      "does not expose account A",
+    );
+  });
+});
+
+describe("createWalletStandardCore resolveChainId", () => {
+  it("returns the current chain id when no chain is passed", () => {
+    expect(coreFor().resolveChainId()).toBe("solana:mainnet");
+  });
+
+  it("returns an advertised chain without moving the current chain", () => {
+    const core = coreFor({ chains: ["solana:mainnet", "solana:devnet"] });
+    expect(core.resolveChainId(SVM_CHAINS.devnet)).toBe("solana:devnet");
+    expect(core.currentChain()).toBe(SVM_CHAINS.mainnet);
+  });
+
+  it("throws for a chain from another namespace", () => {
+    expect(() => coreFor().resolveChainId(chain("eip155:1", "eip155"))).toThrow(
+      'Solana adapter received non-Solana chain "eip155:1". Pass a chain with namespace "solana".',
+    );
+  });
+
+  it("throws for a chain the wallet does not advertise", () => {
+    expect(() => coreFor().resolveChainId(SVM_CHAINS.devnet)).toThrow(
+      'Wallet Mock Solana Wallet does not advertise chain "solana:devnet". Available: solana:mainnet',
+    );
   });
 });
 
 describe("createWalletStandardCore switchChain", () => {
-  it("rejects on a namespace mismatch", async () => {
-    const core = coreFor();
-    await expect(core.switchChain(chain("eip155:1", "eip155"))).rejects.toThrow(
-      'SVM adapter received non-Solana chain "eip155:1". Pass a chain with namespace "solana".',
-    );
+  it("is absent when the wallet advertises a single chain in the namespace", () => {
+    const core = coreFor({ chains: ["solana:mainnet", "sui:mainnet", "sui:testnet"] });
+    expect(core.base.switchChain).toBeUndefined();
   });
 
-  it("rejects when the wallet does not advertise the chain", async () => {
-    const core = coreFor({ chains: ["solana:mainnet"] });
-    await expect(core.switchChain(chain("solana:devnet"))).rejects.toThrow(
-      'Wallet Mock Solana Wallet does not advertise chain "solana:devnet". Available: solana:mainnet',
-    );
+  it("is present when the wallet advertises several chains in the namespace", () => {
+    const core = coreFor({ chains: ["solana:mainnet", "solana:devnet", "sui:mainnet"] });
+    expect(core.base.switchChain).toBeTypeOf("function");
   });
 
-  it("re-points currentChainId and toChain on success", async () => {
+  it("rejects a chain from another namespace asynchronously", async () => {
+    const switchChain = switchChainOf(coreFor({ chains: ["solana:mainnet", "solana:devnet"] }));
+    let result: Promise<void> | undefined;
+    expect(() => {
+      result = switchChain(chain("eip155:1", "eip155"));
+    }).not.toThrow();
+    await expect(result).rejects.toThrow(/non-Solana chain "eip155:1"/v);
+  });
+
+  it("rejects a chain the wallet does not advertise", async () => {
     const core = coreFor({ chains: ["solana:mainnet", "solana:devnet"] });
-    await core.switchChain(chain("solana:devnet"));
-    expect(core.currentChainId()).toBe("solana:devnet");
-    expect(core.toChain().reference).toBe("devnet");
+    await expect(switchChainOf(core)(SVM_CHAINS.testnet)).rejects.toThrow(
+      /does not advertise chain "solana:testnet"/v,
+    );
+    expect(core.currentChain()).toBe(SVM_CHAINS.mainnet);
   });
 
-  it("notifies subscribers with an accountChanged carrying the new chain", async () => {
+  it("re-points the current chain, and later reads, on success", async () => {
+    const core = coreFor({ chains: ["solana:mainnet", "solana:devnet"] });
+    await switchChainOf(core)(SVM_CHAINS.devnet);
+    expect(core.currentChain()).toBe(SVM_CHAINS.devnet);
+    expect(core.resolveChainId()).toBe("solana:devnet");
+    await expect(core.base.getAccounts()).resolves.toEqual([
+      buildAccount("So1Address1", SVM_CHAINS.devnet),
+    ]);
+  });
+
+  it("notifies subscribers with the accounts on the new chain", async () => {
+    const events = buildEventsFeature();
     const core = coreFor({
       accounts: [buildWalletAccount("A"), buildWalletAccount("B")],
       chains: ["solana:mainnet", "solana:devnet"],
+      features: { "standard:events": events.feature },
     });
     const listener = listenerFn();
-    core.subscribe(listener);
-    await core.switchChain(chain("solana:devnet"));
-    expect(listener).toHaveBeenCalledWith({
-      account: accountOn("solana:devnet", "A"),
-      accounts: [accountOn("solana:devnet", "A"), accountOn("solana:devnet", "B")],
-      type: "accountChanged",
-    });
-  });
-
-  it("re-points the chain but emits nothing when the wallet exposes no accounts", async () => {
-    const core = coreFor({ accounts: [], chains: ["solana:mainnet", "solana:devnet"] });
-    const listener = listenerFn();
-    core.subscribe(listener);
-    await core.switchChain(chain("solana:devnet"));
-    expect(core.currentChainId()).toBe("solana:devnet");
-    expect(listener).not.toHaveBeenCalled();
+    subscribeTo(core)(listener);
+    await switchChainOf(core)(SVM_CHAINS.devnet);
+    expect(listener).toHaveBeenCalledExactlyOnceWith(accountsChanged(SVM_CHAINS.devnet, "A", "B"));
   });
 });
 
 describe("createWalletStandardCore subscribe", () => {
-  it("translates a change carrying accounts into accountChanged", () => {
+  it("is absent without standard:events or a disconnector", () => {
+    expect(coreFor().base.subscribe).toBeUndefined();
+  });
+
+  it("is present with only a disconnector, so removal still reaches the manager", () => {
+    const core = coreFor({}, { registerDisconnector: buildDisconnector().register });
+    expect(core.base.subscribe).toBeTypeOf("function");
+  });
+
+  it("translates a change carrying accounts into accountsChanged, active first", () => {
     const events = buildEventsFeature();
     const core = coreFor({ features: { "standard:events": events.feature } });
     const listener = listenerFn();
-    core.subscribe(listener);
-    events.emit({ accounts: [buildWalletAccount("C")] });
-    expect(listener).toHaveBeenCalledWith({
-      account: accountOn("solana:mainnet", "C"),
-      accounts: [accountOn("solana:mainnet", "C")],
-      type: "accountChanged",
-    });
+    subscribeTo(core)(listener);
+    events.emit({ accounts: [buildWalletAccount("C"), buildWalletAccount("D")] });
+    expect(listener).toHaveBeenCalledWith(accountsChanged(SVM_CHAINS.mainnet, "C", "D"));
   });
 
   it("translates an empty accounts array into disconnected", () => {
     const events = buildEventsFeature();
     const core = coreFor({ features: { "standard:events": events.feature } });
     const listener = listenerFn();
-    core.subscribe(listener);
+    subscribeTo(core)(listener);
     events.emit({ accounts: [] });
     expect(listener).toHaveBeenCalledWith({ type: "disconnected" });
   });
@@ -403,7 +437,7 @@ describe("createWalletStandardCore subscribe", () => {
     const events = buildEventsFeature();
     const core = coreFor({ features: { "standard:events": events.feature } });
     const listener = listenerFn();
-    core.subscribe(listener);
+    subscribeTo(core)(listener);
     events.emit({ features: ["solana:signIn"] });
     expect(listener).not.toHaveBeenCalled();
   });
@@ -412,14 +446,10 @@ describe("createWalletStandardCore subscribe", () => {
     const events = buildEventsFeature();
     const core = coreFor({ features: { "standard:events": events.feature } });
     const listener = listenerFn();
-    core.subscribe(listener);
+    subscribeTo(core)(listener);
     events.emit({ chains: ["solana:devnet"] });
-    expect(core.currentChainId()).toBe("solana:devnet");
-    expect(listener).toHaveBeenCalledWith({
-      account: accountOn("solana:devnet", "So1Address1"),
-      accounts: [accountOn("solana:devnet", "So1Address1")],
-      type: "accountChanged",
-    });
+    expect(core.currentChain()).toBe(SVM_CHAINS.devnet);
+    expect(listener).toHaveBeenCalledWith(accountsChanged(SVM_CHAINS.devnet, "So1Address1"));
   });
 
   it("ignores a chains-only change when trackChainChanges is false", () => {
@@ -429,9 +459,9 @@ describe("createWalletStandardCore subscribe", () => {
       { trackChainChanges: false },
     );
     const listener = listenerFn();
-    core.subscribe(listener);
+    subscribeTo(core)(listener);
     events.emit({ chains: ["solana:devnet"] });
-    expect(core.currentChainId()).toBe("solana:mainnet");
+    expect(core.currentChain()).toBe(SVM_CHAINS.mainnet);
     expect(listener).not.toHaveBeenCalled();
   });
 
@@ -439,43 +469,46 @@ describe("createWalletStandardCore subscribe", () => {
     const events = buildEventsFeature();
     const core = coreFor({ features: { "standard:events": events.feature } });
     const listener = listenerFn();
-    core.subscribe(listener);
+    subscribeTo(core)(listener);
     events.emit({ chains: ["eip155:1"] });
-    expect(core.currentChainId()).toBe("solana:mainnet");
+    expect(core.currentChain()).toBe(SVM_CHAINS.mainnet);
+    expect(listener).not.toHaveBeenCalled();
   });
 
   it("uses the chain from the same change when accounts and chains move together", () => {
     const events = buildEventsFeature();
     const core = coreFor({ features: { "standard:events": events.feature } });
     const listener = listenerFn();
-    core.subscribe(listener);
+    subscribeTo(core)(listener);
     events.emit({ accounts: [buildWalletAccount("D")], chains: ["solana:devnet"] });
-    expect(listener).toHaveBeenCalledTimes(1);
-    expect(listener).toHaveBeenCalledWith({
-      account: accountOn("solana:devnet", "D"),
-      accounts: [accountOn("solana:devnet", "D")],
-      type: "accountChanged",
-    });
+    expect(listener).toHaveBeenCalledExactlyOnceWith(accountsChanged(SVM_CHAINS.devnet, "D"));
   });
 
-  it("stops delivery and drops the wallet listener on unsubscribe", () => {
+  it("delivers each wallet change once to every subscriber", () => {
     const events = buildEventsFeature();
     const core = coreFor({ features: { "standard:events": events.feature } });
+    const first = listenerFn();
+    const second = listenerFn();
+    subscribeTo(core)(first);
+    subscribeTo(core)(second);
+    events.emit({ accounts: [buildWalletAccount("C")] });
+    expect(first).toHaveBeenCalledExactlyOnceWith(accountsChanged(SVM_CHAINS.mainnet, "C"));
+    expect(second).toHaveBeenCalledExactlyOnceWith(accountsChanged(SVM_CHAINS.mainnet, "C"));
+  });
+
+  it("stops delivery and drops the wallet listener on unsubscribe", async () => {
+    const events = buildEventsFeature();
+    const core = coreFor({
+      chains: ["solana:mainnet", "solana:devnet"],
+      features: { "standard:events": events.feature },
+    });
     const listener = listenerFn();
-    const unsubscribe = core.subscribe(listener);
+    const unsubscribe = subscribeTo(core)(listener);
     expect(events.listenerCount()).toBe(1);
     unsubscribe();
     expect(events.listenerCount()).toBe(0);
     events.emit({ accounts: [buildWalletAccount("C")] });
-    expect(listener).not.toHaveBeenCalled();
-  });
-
-  it("subscribes without standard:events and unsubscribes cleanly", async () => {
-    const core = coreFor({ chains: ["solana:mainnet", "solana:devnet"] });
-    const listener = listenerFn();
-    const unsubscribe = core.subscribe(listener);
-    unsubscribe();
-    await core.switchChain(chain("solana:devnet"));
+    await switchChainOf(core)(SVM_CHAINS.devnet);
     expect(listener).not.toHaveBeenCalled();
   });
 });
@@ -486,18 +519,18 @@ describe("createWalletStandardCore registerDisconnector", () => {
     const core = coreFor({}, { registerDisconnector: disconnector.register });
     const first = listenerFn();
     const second = listenerFn();
-    core.subscribe(first);
-    core.subscribe(second);
+    subscribeTo(core)(first);
+    subscribeTo(core)(second);
     disconnector.emit();
-    expect(first).toHaveBeenCalledWith({ type: "disconnected" });
-    expect(second).toHaveBeenCalledWith({ type: "disconnected" });
+    expect(first).toHaveBeenCalledExactlyOnceWith({ type: "disconnected" });
+    expect(second).toHaveBeenCalledExactlyOnceWith({ type: "disconnected" });
   });
 
   it("reaches nobody once every subscriber has unsubscribed", () => {
     const disconnector = buildDisconnector();
     const core = coreFor({}, { registerDisconnector: disconnector.register });
     const listener = listenerFn();
-    const unsubscribe = core.subscribe(listener);
+    const unsubscribe = subscribeTo(core)(listener);
     unsubscribe();
     disconnector.emit();
     expect(listener).not.toHaveBeenCalled();

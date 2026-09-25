@@ -1,16 +1,5 @@
-import type { StoredPoolRecord, StoredSelectionRecord } from "./persistence";
+import type { StoredPoolRecord, StoredSelectionRecord, WalletSnapshot } from "./persistence";
 import { decodePool, decodeSelection, storageKeys } from "./validation";
-
-/**
- * Carries no `Connector` by design: a wallet extension exists only in
- * the browser, so a server render can name the wallet and its address
- * but can never dispatch on it.
- */
-type WalletSnapshot = {
-  activeConnectorId: string | null;
-  pool: StoredPoolRecord;
-  selection: StoredSelectionRecord;
-};
 
 type CookieSource =
   | Iterable<{ name: string; value: string }>
@@ -19,7 +8,7 @@ type CookieSource =
 
 type SnapshotOptions = {
   /**
-   * Same prefix passed to `WalletManagerProvider` / `WalletStorage`.
+   * Same prefix passed as `storageKeyPrefix` / to `createWalletStorage`.
    * Defaults to `"butr"` to match the library default.
    */
   keyPrefix?: string;
@@ -85,5 +74,5 @@ const readWalletSnapshot = (
   return { activeConnectorId, pool, selection };
 };
 
-export type { CookieSource, SnapshotOptions, WalletSnapshot };
+export type { CookieSource, SnapshotOptions };
 export { EMPTY_SNAPSHOT, readWalletSnapshot };

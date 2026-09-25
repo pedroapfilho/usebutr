@@ -1,16 +1,13 @@
 ---
 title: WalletConnect
-description: "WalletConnect v2 for EVM, Solana, Sui, and Bitcoin mobile wallets: one Reown project id, one QR scan, multiple namespaces."
+description: "WalletConnect v2 for EVM, Solana, Sui, and Bitcoin mobile wallets: one Reown project id, one QR scan, one adapter per namespace."
 ---
 
-`@usebutr/walletconnect` is a WalletConnect v2 adapter for **mobile** wallets
-(Trust, Rainbow, Argent, Zerion, MetaMask Mobile, Phantom Mobile, Slush, Magic
-Eden, …). It is not browser-injected; you build the adapter once and register
-it through `createConnector`.
-
-It ships namespace builders for all four `ChainPlatform` variants: `eip155`
-(EVM), `solana` (SVM), `sui`, and `bip122` (Bitcoin). A multi-namespace
-factory lets a single pairing hand back one adapter per platform.
+`@usebutr/walletconnect` connects **mobile** wallets (Trust, Rainbow,
+MetaMask Mobile, Phantom, Slush, Magic Eden, …) over WalletConnect v2. It is
+not injected into the page: a factory builds the adapters, and `fromAdapters`
+hands them to the manager. One pairing serves every namespace you request
+(`eip155`, `solana`, `sui`, `bip122`), with one adapter per namespace.
 
 ## Install
 
@@ -18,144 +15,168 @@ factory lets a single pairing hand back one adapter per platform.
 npm install @usebutr/walletconnect @walletconnect/universal-provider
 ```
 
-`@walletconnect/universal-provider` is an optional peer dependency; the adapter
-dynamically imports it, so it never bloats your bundle unless used.
+`@walletconnect/universal-provider` is an optional peer dependency, imported
+on first use.
 
-## Build the adapter
+## Register it
 
-```ts
+```tsx
+import type { WalletManagerConfig } from "@usebutr/core";
+import { SVM_CHAINS, fromAdapters } from "@usebutr/core";
+import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 import { createWalletConnectAdapters } from "@usebutr/walletconnect";
 
-const wcs = await createWalletConnectAdapters({
-  projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
-  metadata: { name: "My dapp", url: "https://my-dapp.example" },
-  namespaces: {
-    evm: ["eip155:1", "eip155:137"],
-    svm: ["solana:mainnet"],
-    sui: ["sui:mainnet"],
-    bitcoin: ["bip122:000000000019d6689c085ae165831e93"],
-  },
-  onPairingUri: (uri) => setQrUri(uri),
-});
+const config: WalletManagerConfig = {
+  sources: [
+    autoDiscovery(),
+    fromAdapters(
+      createWalletConnectAdapters({
+        metadata: { name: "My dapp", url: "https://my-dapp.example" },
+        namespaces: {
+          bitcoin: [],
+          evm: ["eip155:1", "eip155:137"],
+          sui: ["sui:mainnet"],
+          svm: [SVM_CHAINS.mainnet.id, SVM_CHAINS.devnet.id],
+        },
+        onPairingUri: showQr,
+        projectId: "<your Reown project id>",
+      }),
+    ),
+  ],
+  storageKeyPrefix: "my-app",
+};
+
+export const Providers = ({ children }: { children: React.ReactNode }) => (
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
+);
 ```
 
-`createWalletConnectAdapters(options)` returns `Promise<Array<WalletAdapter>>`:
-one per requested namespace, all sharing the same paired session. When more
-than one namespace is requested, each adapter's id is suffixed with the
-platform (`walletconnect-evm`, `walletconnect-svm`, …) so they coexist in
-butr's pool. With a single namespace, the id stays the base
-`options.id ?? "walletconnect"`.
+The adapters then appear in `useDiscoveredWallets()` next to the browser
+wallets: `walletconnect-evm`, `walletconnect-svm` and so on, named
+`WalletConnect (EVM)`. With a single namespace the id and name stay
+`walletconnect` and `WalletConnect`. An empty array uses the namespace's
+default chain; an omitted key skips the namespace. The first namespace is
+required at pairing, the rest are optional, and an adapter whose namespace the
+wallet declined rejects on `connect()`.
 
-Pass an empty array for a platform to use the namespace builder's default
-chains. Omit a key entirely to skip that platform.
+<Callout type="warn">
+  `createWalletConnectAdapters` starts loading the provider as soon as it is called. In a
+  server-rendered app, call it only in the browser: `fromAdapters(typeof window === "undefined" ? []
+  : createWalletConnectAdapters(options))`.
+</Callout>
 
 ### Options
 
 | Option         | Type                                                    | Notes                                                                                                |
 | -------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `projectId`    | `string` (required)                                     | From [Reown Cloud](https://cloud.reown.com).                                                         |
-| `namespaces`   | `Partial<Record<ChainPlatform, ReadonlyArray<string>>>` | Per-platform CAIP-2 chain map. Omit a key to skip the namespace; empty array uses defaults.          |
+| `namespaces`   | `Partial<Record<ChainPlatform, ReadonlyArray<string>>>` | CAIP-2 chains per platform. Polkadot has no namespace.                                               |
 | `metadata`     | `{ name?; url?; description?; icons? }`                 | Shown in the mobile wallet during pairing. **Some wallets refuse to pair without `name` and `url`.** |
-| `onPairingUri` | `(uri: string) => void`                                 | Fires when a QR / deep link must be shown.                                                           |
-| `id`           | `string`                                                | Adapter id base. Default `"walletconnect"`. Suffixed with `-<platform>` when multi-namespace.        |
+| `onPairingUri` | `(uri: string) => void`                                 | Fires when a QR code or deep link must be shown.                                                     |
+| `id`           | `string`                                                | Adapter id base. Default `"walletconnect"`.                                                          |
 | `name`         | `string`                                                | Display name. Default `"WalletConnect"`.                                                             |
-| `icon`         | `string`                                                | Override icon (`WALLETCONNECT_DEFAULT_ICON` is the fallback).                                        |
+| `icon`         | `string`                                                | Default `WALLETCONNECT_DEFAULT_ICON`.                                                                |
 
-## Register it
+## Pairing and reconnecting
 
-The adapter is fully formed but **un-paired**; pairing happens when butr's
-runtime calls `adapter.connect()` (when the user clicks "Connect"). Build the
-adapter once at module scope, then pass it through the unified provider:
-
-```tsx
-import { WalletManagerProvider } from "@usebutr/react";
-import { autoDiscovery } from "@usebutr/wallets";
-import { createWalletConnectAdapters } from "@usebutr/walletconnect";
-
-const discovery = autoDiscovery();
-const wcs = await createWalletConnectAdapters({
-  projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
-  namespaces: { evm: ["eip155:1"], svm: ["solana:mainnet"] },
-  onPairingUri: (uri) => setQrUri(uri),
-});
-const extra = new Map(wcs.map((a) => [a.id, a] as const));
-
-<WalletManagerProvider
-  discovery={discovery}
-  connectors={wcs.map((a) => ({ id: a.id, name: a.name, chainPlatform: a.chainPlatform }))}
-  createConnector={(id) => extra.get(id) ?? null}
->
-  {children}
-</WalletManagerProvider>;
-```
-
-Build the adapter **once at app boot**, cache it, and re-register on each
-mount. butr's hydration reconnects through the same session if it's still live
-on the relay.
-
-## Rendering the QR
+Pairing starts when the user connects any of the adapters; the first
+`connect()` pairs every namespace, and a second adapter connects without a
+new QR code. The session ends when the last connected adapter disconnects. On
+reload, a session still live on the relay restores silently; otherwise the
+wallet waits for the user to connect again.
 
 <Callout type="warn">
-  butr ships **no** QR renderer. `onPairingUri` hands you the URI string; you render it
-  (`@walletconnect/modal`, a `qrcode` lib, or your own UI). On mobile, forward it to
-  `window.location` to trigger the OS wallet picker.
+  butr ships **no** QR renderer. `onPairingUri` hands you the URI string; render it with
+  `@walletconnect/modal`, a `qrcode` library or your own UI. On mobile, forward it to
+  `window.location` to open the OS wallet picker.
 </Callout>
+
+## What each namespace defines
+
+|                         |               EVM                |     Solana, Sui, Bitcoin      |
+| ----------------------- | :------------------------------: | :---------------------------: |
+| `signMessage`           |       ✓ (`personal_sign`)        |               ✓               |
+| `sendTx`                |                ✓                 |               ✓               |
+| `signTransaction`       |                                  |               ✓               |
+| `switchChain`           | ✓ (`wallet_switchEthereumChain`) | when 2+ chains are configured |
+| `getBalance`            |   ✓ (`eth_getBalance`, ERC-20)   |                               |
+| `getTransactionReceipt` |                ✓                 |                               |
+| `subscribe`             |                ✓                 |               ✓               |
+| `requestAccounts`       |                                  |                               |
+| `signIn`                |                                  |                               |
+
+- **EVM** is the injected EVM adapter over the session's `eip155` side, and
+  behaves like it: `sendTx({ chain })` switches the wallet first. There is no
+  `requestAccounts`: more accounts means re-pairing. `subscribe` ignores the
+  other namespaces' events.
+- **Solana** `sendTx` is `solana_signAndSendTransaction` and resolves the
+  signature. `signTransaction` resolves the full signed transaction, splicing
+  the signature in when the wallet returns only that. There is no Sign In With
+  Solana over WalletConnect.
+- **Sui** accepts a `Transaction`, its JSON string or BCS bytes.
+  `signTransaction` resolves `{ bytes, signature }`.
+- **Bitcoin** `sendTx({ amount, recipient })` is `sendTransfer`, with `amount`
+  in satoshis. `signTransaction(psbt)` is `signPsbt` without broadcasting.
+  Reown's `bip122` methods still drift between wallets; see
+  [its reference](https://docs.reown.com/advanced/multichain/rpc-reference/bitcoin-rpc).
+- `subscribe` on Solana, Sui and Bitcoin reports the new chain's accounts
+  after `switchChain`, and `disconnected` when the wallet deletes the session.
+
+## Chains and accounts
+
+Every call names its CAIP-2 chain, so a Solana request never reaches the EVM
+side of a shared session. On Solana, Sui and Bitcoin, `options.chain` routes
+one call without moving anything; it must be a chain the session approved,
+or the call rejects. `switchChain` re-points the adapter's later calls to
+another approved chain.
+
+WalletConnect sessions name Solana clusters by genesis hash
+(`solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` is mainnet), not by the
+`solana:mainnet` alias Wallet Standard uses. The Solana adapter translates at
+its boundary: pass `SVM_CHAINS` ids in `namespaces.svm` and `SVM_CHAINS`
+entries as `options.chain`, as on every other transport, and its accounts
+carry `SVM_CHAINS` chains. Genesis-hash ids are accepted too.
+
+`options.account` must be an account the session exposes on that chain.
+Accounts on other approved chains surface after `switchChain`: a pool entry
+holds one chain at a time.
+
+## Signers
+
+The EVM adapter resolves `{ kind: "eip1193", provider }`, an EIP-1193 view of
+the session that viem and wagmi accept. Solana, Sui and Bitcoin resolve
+`{ kind: "walletconnect", chainId, provider }`, where `chainId` is the
+session's own id for the adapter's current chain (the genesis hash on
+Solana). Pass it as `provider.request`'s second argument, or
+UniversalProvider routes the call to the session's first namespace:
+
+```ts
+import { bytesToBase58 } from "@usebutr/core";
+
+const signer = await wallet.connector.getSigner();
+if (signer.kind === "walletconnect") {
+  const result = await signer.provider.request(
+    {
+      method: "solana_signMessage",
+      params: { message: bytesToBase58(message), pubkey: wallet.account.walletAddress },
+    },
+    signer.chainId,
+  );
+}
+```
 
 ## Namespace builders
 
-Each platform's RPC shape lives in its own builder. The package exports them so
-you can compose your own factory if needed:
-
-```ts
-import {
-  KNOWN_NAMESPACES,
-  bitcoinNamespace,
-  evmNamespace,
-  solanaNamespace,
-  suiNamespace,
-} from "@usebutr/walletconnect";
-```
-
-`KNOWN_NAMESPACES` is the registry `createWalletConnectAdapters` dispatches
-through, keyed by `ChainPlatform`. Adding a fifth platform is three touches:
-write a builder under `src/namespaces/<platform>.ts`, add an entry to
-`KNOWN_NAMESPACES`, and re-export it.
-
-## Capabilities & caveats
-
-Per-namespace capabilities are fixed once paired. Each builder exposes its
-own constant:
-
-```ts
-import {
-  WALLETCONNECT_CAPABILITIES, // EVM; single-platform factory uses this
-  WALLETCONNECT_BITCOIN_CAPABILITIES,
-  WALLETCONNECT_SUI_CAPABILITIES,
-  WALLETCONNECT_SVM_CAPABILITIES,
-} from "@usebutr/walletconnect";
-```
-
-| Capability              | EVM | SVM | Sui | Bitcoin | Notes                                                                  |
-| ----------------------- | :-: | :-: | :-: | :-----: | ---------------------------------------------------------------------- |
-| `signMessage`           |  ✓  |  ✓  |  ✓  |    ✓    | EVM: EIP-191/712; SVM: bytes; Sui: personal message; BTC: BIP-322-ish. |
-| `sendTransaction`       |  ✓  |  ✓  |  ✓  |    ✓    | BTC routes through `bip122:signPsbt` with `broadcast: true`.           |
-| `signTransaction`       |     |     |  ✓  |    ✓    | Sui: raw tx bytes; BTC: PSBT round-trip.                               |
-| `switchChain`           |  ✓  |  ✓  |  ✓  |         | BTC: switching network ≈ re-pair.                                      |
-| `requestAccounts`       |     |     |     |         | No EIP-2255 equivalent; "more accounts" means re-pairing.              |
-| `switchAccount`         |     |     |     |         | Pick the account in the mobile wallet.                                 |
-| `subscribe`             |  ✓  |  ✓  |  ✓  |    ✓    | Relayed via session events (`accountsChanged`, `chainChanged`, …).     |
-| `getBalance`            |  ✓  |     |     |         | EVM: via the relay's `eth_getBalance`. Others have no RPC contract.    |
-| `getTransactionReceipt` |  ✓  |     |     |         | Same.                                                                  |
-
-- Changing the account set means tearing down the session and re-pairing.
-- Session events (`accountsChanged`, `chainChanged`, `disconnect`) are relayed
-  through `adapter.subscribe()` automatically.
-- **Bitcoin RPC spec is unstable.** The `bip122` namespace follows
-  [Reown's reference](https://docs.reown.com/advanced/multichain/rpc-reference/bitcoin-rpc).
-  Method names and response shapes still drift between wallets.
+Each platform's RPC shape lives in its own builder, exported so you can
+compose your own factory: `evmNamespace`, `solanaNamespace`, `suiNamespace`,
+`bitcoinNamespace`, and `KNOWN_NAMESPACES`, the table
+`createWalletConnectAdapters` dispatches through. See the
+[API reference](/api/walletconnect#namespace-builders) for their default
+chains and methods.
 
 <Callout type="info">
-  **Source:** `packages/walletconnect/src` (`adapter.ts`, `capabilities.ts`,
-  `namespaces/{evm,svm,sui,bitcoin}.ts`) in the [butr
+  **Source:** `packages/walletconnect/src` (`adapter.ts`, `session.ts`,
+  `namespaces/{evm,svm,sui,bitcoin,caip}.ts`) in the [butr
   repository](https://github.com/pedroapfilho/usebutr/tree/main/packages/walletconnect).
 </Callout>

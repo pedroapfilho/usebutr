@@ -1,200 +1,155 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createMockAccount, createMockConnector } from "../../__tests__/helpers";
-import type { Connector, ConnectorEvent } from "../../types";
+import { ETHEREUM, evmAdapter, walletOf } from "../../__tests__/helpers";
+import { buildAccount } from "../../types";
+import type { LifecycleHandlers } from "../connector-lifecycle";
 import { createConnectorLifecycle } from "../connector-lifecycle";
 
-type EmitFn = (event: ConnectorEvent) => void;
-
-const createSubscribableConnector = (id = "wallet-a", chainPlatform: "evm" | "svm" = "evm") => {
-  let emit: EmitFn | null = null;
-  const unsubscribe = vi.fn();
-  const connector: Connector = {
-    ...createMockConnector({ chainPlatform, id }),
-    subscribe: vi.fn().mockImplementation((listener: EmitFn) => {
-      emit = listener;
-      return unsubscribe;
-    }),
-  };
-  return {
-    connector,
-    emit: (event: ConnectorEvent) => {
-      if (!emit) {
-        throw new Error("subscribe was never called");
-      }
-      emit(event);
-    },
-    unsubscribe,
-  };
+const setup = () => {
+  const onAccountsChanged = vi.fn<LifecycleHandlers["onAccountsChanged"]>();
+  const onDisconnected = vi.fn<LifecycleHandlers["onDisconnected"]>();
+  const lifecycle = createConnectorLifecycle({ onAccountsChanged, onDisconnected });
+  return { lifecycle, onAccountsChanged, onDisconnected };
 };
 
+const poolOf = (...wallets: ReadonlyArray<ReturnType<typeof walletOf>>) =>
+  new Map(wallets.map((wallet) => [wallet.connector.id, wallet]));
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("createConnectorLifecycle", () => {
-  it("subscribes to the connector on attach", () => {
-    const { connector } = createSubscribableConnector();
-    const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn<() => void>(),
-      onDisconnected: vi.fn<() => void>(),
-    });
-    lifecycle.attach("wallet-a", connector);
-    expect(connector.subscribe).toHaveBeenCalledTimes(1);
+  it("holds at most one subscription per live connector", () => {
+    const { lifecycle } = setup();
+    const adapter = evmAdapter("metamask");
+    const pool = poolOf(walletOf(adapter));
+
+    lifecycle.sync(pool);
+    lifecycle.sync(pool);
+    lifecycle.sync(poolOf(walletOf(adapter)));
+
+    expect(adapter.subscribe).toHaveBeenCalledOnce();
+    expect(adapter.listenerCount()).toBe(1);
   });
 
-  it("no-op when the connector doesn't implement subscribe", () => {
-    const connector: Connector = {
-      ...createMockConnector(),
-      subscribe: undefined,
+  it("skips connectors without subscribe", () => {
+    const { lifecycle } = setup();
+    const pool = poolOf(walletOf(evmAdapter("metamask", { subscribe: undefined })));
+    expect(() => {
+      lifecycle.sync(pool);
+    }).not.toThrow();
+  });
+
+  it("detaches connectors that leave the pool", () => {
+    const { lifecycle } = setup();
+    const adapter = evmAdapter("metamask");
+    lifecycle.sync(poolOf(walletOf(adapter)));
+    lifecycle.sync(new Map());
+    expect(adapter.listenerCount()).toBe(0);
+  });
+
+  it("swaps the subscription when a connector is replaced under the same id", () => {
+    const { lifecycle, onAccountsChanged } = setup();
+    const before = evmAdapter("metamask");
+    const after = evmAdapter("metamask");
+    lifecycle.sync(poolOf(walletOf(before)));
+    lifecycle.sync(poolOf(walletOf(after)));
+
+    expect(before.listenerCount()).toBe(0);
+    expect(after.listenerCount()).toBe(1);
+
+    const accounts = [buildAccount("0xnew", ETHEREUM)];
+    after.emit({ accounts, type: "accountsChanged" });
+    expect(onAccountsChanged).toHaveBeenCalledWith("metamask", accounts);
+  });
+
+  it("ignores an event from a connector that has since been replaced", () => {
+    const { lifecycle, onAccountsChanged, onDisconnected } = setup();
+    const before = evmAdapter("metamask");
+    let stale: ((event: { type: "disconnected" }) => void) | undefined;
+    before.subscribe = (listener) => {
+      stale = listener;
+      return () => {};
     };
-    const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn<() => void>(),
-      onDisconnected: vi.fn<() => void>(),
-    });
-    expect(() => {
-      lifecycle.attach("wallet-a", connector);
-    }).not.toThrow();
+    const replacement = walletOf(evmAdapter("metamask"));
+    lifecycle.sync(poolOf(walletOf(before)));
+    lifecycle.sync(poolOf(replacement));
+
+    stale?.({ type: "disconnected" });
+    expect(onDisconnected).not.toHaveBeenCalled();
+    expect(onAccountsChanged).not.toHaveBeenCalled();
   });
 
-  it("routes accountChanged events to onAccountChanged with the full accounts list", () => {
-    const { connector, emit } = createSubscribableConnector();
-    const onAccountChanged = vi.fn<() => void>();
-    const lifecycle = createConnectorLifecycle({
-      onAccountChanged,
-      onDisconnected: vi.fn<() => void>(),
-    });
-    lifecycle.attach("wallet-a", connector);
+  it("forwards accountsChanged, active account first", () => {
+    const { lifecycle, onAccountsChanged } = setup();
+    const adapter = evmAdapter("metamask");
+    lifecycle.sync(poolOf(walletOf(adapter)));
 
-    const account = createMockAccount({ walletAddress: "0xabc" });
-    const accounts = [account, createMockAccount({ walletAddress: "0xdef" })];
-    emit({ account, accounts, type: "accountChanged" });
-
-    expect(onAccountChanged).toHaveBeenCalledWith("wallet-a", accounts, account);
+    const accounts = [buildAccount("0xb", ETHEREUM), buildAccount("0xa", ETHEREUM)];
+    adapter.emit({ accounts, type: "accountsChanged" });
+    expect(onAccountsChanged).toHaveBeenCalledWith("metamask", accounts);
   });
 
-  it("routes disconnected events to onDisconnected and tears down the subscription first", () => {
-    const { connector, emit, unsubscribe } = createSubscribableConnector("wallet-a", "svm");
-    const onDisconnected = vi.fn<() => void>();
-    const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn<() => void>(),
-      onDisconnected,
-    });
-    lifecycle.attach("wallet-a", connector);
-
-    emit({ type: "disconnected" });
-
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
-    expect(onDisconnected).toHaveBeenCalledWith("wallet-a", "svm");
-  });
-
-  it("attach is idempotent — re-attaching the same id detaches the prior subscription", () => {
-    const first = createSubscribableConnector("wallet-a");
-    const second = createSubscribableConnector("wallet-a");
-    const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn<() => void>(),
-      onDisconnected: vi.fn<() => void>(),
+  it.each([
+    ["a disconnected event", { type: "disconnected" as const }],
+    ["an empty account list", { accounts: [], type: "accountsChanged" as const }],
+  ])("detaches before reporting %s", (_label, event) => {
+    const { lifecycle, onDisconnected } = setup();
+    const adapter = evmAdapter("metamask");
+    lifecycle.sync(poolOf(walletOf(adapter)));
+    onDisconnected.mockImplementation(() => {
+      expect(adapter.listenerCount()).toBe(0);
     });
 
-    lifecycle.attach("wallet-a", first.connector);
-    lifecycle.attach("wallet-a", second.connector);
-
-    expect(first.unsubscribe).toHaveBeenCalledTimes(1);
-    expect(second.connector.subscribe).toHaveBeenCalledTimes(1);
+    adapter.emit(event);
+    expect(onDisconnected).toHaveBeenCalledExactlyOnceWith("metamask");
   });
 
-  it("detach is a no-op when no subscription is registered for the id", () => {
-    const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn<() => void>(),
-      onDisconnected: vi.fn<() => void>(),
-    });
-    expect(() => {
-      lifecycle.detach("never-attached");
-    }).not.toThrow();
-  });
-
-  it("detach calls the connector's unsubscribe", () => {
-    const { connector, unsubscribe } = createSubscribableConnector();
-    const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn<() => void>(),
-      onDisconnected: vi.fn<() => void>(),
-    });
-    lifecycle.attach("wallet-a", connector);
-    lifecycle.detach("wallet-a");
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
-  });
-
-  it("detachAll tears down every registered subscription", () => {
-    const a = createSubscribableConnector("a");
-    const b = createSubscribableConnector("b");
-    const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn<() => void>(),
-      onDisconnected: vi.fn<() => void>(),
-    });
-    lifecycle.attach("a", a.connector);
-    lifecycle.attach("b", b.connector);
-
-    lifecycle.detachAll();
-
-    expect(a.unsubscribe).toHaveBeenCalledTimes(1);
-    expect(b.unsubscribe).toHaveBeenCalledTimes(1);
-  });
-
-  it("swallows + logs subscribe() throws so one bad connector can't poison the lifecycle", () => {
+  it("logs a subscribe that throws and retries it on the next sync", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const connector: Connector = {
-      ...createMockConnector(),
-      subscribe: vi.fn().mockImplementation(() => {
-        throw new Error("subscribe blew up");
-      }),
-    };
-    const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn<() => void>(),
-      onDisconnected: vi.fn<() => void>(),
-    });
+    const { lifecycle } = setup();
+    const adapter = evmAdapter("metamask");
+    const subscribe = vi
+      .fn<NonNullable<typeof adapter.subscribe>>()
+      .mockImplementationOnce(() => {
+        throw new Error("boom");
+      })
+      .mockImplementation(() => () => {});
+    adapter.subscribe = subscribe;
+    const pool = poolOf(walletOf(adapter));
 
-    expect(() => {
-      lifecycle.attach("wallet-a", connector);
-    }).not.toThrow();
+    lifecycle.sync(pool);
     expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("subscribe failed for wallet-a"),
+      expect.stringContaining("subscribe failed"),
       expect.any(Error),
     );
-    warn.mockRestore();
+    lifecycle.sync(pool);
+    expect(subscribe).toHaveBeenCalledTimes(2);
   });
 
-  it("swallows + logs unsubscribe() throws on detach", () => {
+  it("logs an unsubscribe that throws", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const connector: Connector = {
-      ...createMockConnector(),
-      subscribe: vi.fn().mockImplementation(() => () => {
-        throw new Error("unsubscribe blew up");
-      }),
+    const { lifecycle } = setup();
+    const adapter = evmAdapter("metamask");
+    adapter.subscribe = () => () => {
+      throw new Error("boom");
     };
-    const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn<() => void>(),
-      onDisconnected: vi.fn<() => void>(),
-    });
-    lifecycle.attach("wallet-a", connector);
-
-    expect(() => {
-      lifecycle.detach("wallet-a");
-    }).not.toThrow();
-    expect(warn).toHaveBeenCalledWith("[butr] unsubscribe threw:", expect.any(Error));
-    warn.mockRestore();
+    lifecycle.sync(poolOf(walletOf(adapter)));
+    lifecycle.detachAll();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("unsubscribe threw"),
+      expect.any(Error),
+    );
   });
 
-  it("detaches before invoking onDisconnected handler", () => {
-    const { connector, emit, unsubscribe } = createSubscribableConnector();
-    let unsubAtCallTime = 0;
-    const onDisconnected = vi.fn<() => void>().mockImplementation(() => {
-      unsubAtCallTime = (unsubscribe as unknown as { mock: { calls: Array<unknown> } }).mock.calls
-        .length;
-    });
-    const lifecycle = createConnectorLifecycle({
-      onAccountChanged: vi.fn<() => void>(),
-      onDisconnected,
-    });
-    lifecycle.attach("wallet-a", connector);
-
-    emit({ type: "disconnected" });
-
-    expect(unsubAtCallTime).toBe(1);
+  it("detachAll drops every subscription", () => {
+    const { lifecycle } = setup();
+    const metamask = evmAdapter("metamask");
+    const rabby = evmAdapter("rabby");
+    lifecycle.sync(poolOf(walletOf(metamask), walletOf(rabby)));
+    lifecycle.detachAll();
+    expect(metamask.listenerCount()).toBe(0);
+    expect(rabby.listenerCount()).toBe(0);
   });
 });

@@ -1,4 +1,4 @@
-import type { WalletAdapter } from "@usebutr/core";
+import type { BitcoinAdapter, WalletAdapter } from "@usebutr/core";
 
 import type { SatsConnectProvider } from "./sats-connect";
 import { buildSatsConnectAdapter } from "./sats-connect";
@@ -45,8 +45,8 @@ const readHost = (target: InjectedBitcoinDiscoveryOptions["target"]): InjectedHo
   return window;
 };
 
-const probeProviders = (host: InjectedHost): Array<WalletAdapter> => {
-  const adapters: Array<WalletAdapter> = [];
+const probeProviders = (host: InjectedHost): Array<BitcoinAdapter> => {
+  const adapters: Array<BitcoinAdapter> = [];
   const seen = new Set<UnisatProvider | SatsConnectProvider>();
 
   if (host.unisat && !seen.has(host.unisat)) {

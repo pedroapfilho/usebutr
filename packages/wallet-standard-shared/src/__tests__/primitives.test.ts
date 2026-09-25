@@ -1,15 +1,8 @@
-import type { ChainBase } from "@usebutr/core";
 import { describe, expect, it } from "vitest";
 
-import {
-  buildAccount,
-  getFeature,
-  pickAccountByAddress,
-  pickFirstAddress,
-  slugify,
-} from "../primitives";
+import { findAccount, getFeature, slugify } from "../primitives";
 import type {
-  WalletStandardFeature,
+  StandardConnectFeature,
   WalletStandardWallet,
   WalletStandardWalletAccount,
 } from "../types";
@@ -30,18 +23,6 @@ const account = (address: string): WalletStandardWalletAccount => ({
   features: [],
 });
 
-const chain: ChainBase = {
-  id: "test:chain",
-  name: "Test",
-  namespace: "test",
-  reference: "chain",
-};
-
-const hasConnect = (
-  feature: WalletStandardFeature,
-): feature is WalletStandardFeature & { connect: () => Promise<void> } =>
-  "connect" in feature && typeof feature.connect === "function";
-
 describe("slugify", () => {
   it("produces wallet-standard:<prefix>-<slug>", () => {
     expect(slugify("svm", "Phantom")).toBe("wallet-standard:svm-phantom");
@@ -56,43 +37,42 @@ describe("slugify", () => {
 });
 
 describe("getFeature", () => {
-  it("returns the feature value when present", () => {
-    const fakeFeature = { connect: () => Promise.resolve(), version: "1.0.0" };
-    const w = wallet({ features: { "standard:connect": fakeFeature } });
-    expect(getFeature(w, "standard:connect", hasConnect)).toBe(fakeFeature);
+  it("returns the wallet's own feature object when the method is present", () => {
+    const connectFeature: StandardConnectFeature = {
+      connect: () => Promise.resolve({ accounts: [] }),
+      version: "1.0.0",
+    };
+    const w = wallet({ features: { "standard:connect": connectFeature } });
+    expect(getFeature<StandardConnectFeature>(w, "standard:connect", "connect")).toBe(
+      connectFeature,
+    );
   });
 
-  it("returns undefined when absent", () => {
-    expect(getFeature(wallet(), "standard:connect", hasConnect)).toBeUndefined();
+  it("returns undefined when the feature is absent", () => {
+    expect(
+      getFeature<StandardConnectFeature>(wallet(), "standard:connect", "connect"),
+    ).toBeUndefined();
   });
-});
 
-describe("buildAccount", () => {
-  it("produces the composite account id butr's reducer compares on", () => {
-    expect(buildAccount("0xabc", chain)).toEqual({
-      chain,
-      id: "test:chain:0xabc",
-      walletAddress: "0xabc",
-    });
-  });
-});
-
-describe("pickFirstAddress", () => {
-  it("returns the first address or null", () => {
-    expect(pickFirstAddress([])).toBeNull();
-    expect(pickFirstAddress([account("0x1"), account("0x2")])).toBe("0x1");
+  it("returns undefined when the feature lacks the named method", () => {
+    const w = wallet({ features: { "standard:connect": { connect: "nope", version: "1.0.0" } } });
+    expect(getFeature<StandardConnectFeature>(w, "standard:connect", "connect")).toBeUndefined();
   });
 });
 
-describe("pickAccountByAddress", () => {
-  it("returns the matching account when present", () => {
+describe("findAccount", () => {
+  it("returns the account with the exact address", () => {
     const a = account("0x1");
     const b = account("0x2");
-    expect(pickAccountByAddress([a, b], "0x2")).toBe(b);
+    expect(findAccount([a, b], "0x2")).toBe(b);
   });
 
-  it("falls back to the first account when the address isn't present", () => {
-    const a = account("0x1");
-    expect(pickAccountByAddress([a], "0xmissing")).toBe(a);
+  it("returns undefined for an address the wallet does not expose", () => {
+    expect(findAccount([account("0x1")], "0xmissing")).toBeUndefined();
+    expect(findAccount([], "0x1")).toBeUndefined();
+  });
+
+  it("matches case-sensitively, since addresses are never normalised", () => {
+    expect(findAccount([account("AbC")], "abc")).toBeUndefined();
   });
 });

@@ -1,78 +1,150 @@
 ---
 title: Persistence
-description: How connection state survives reloads, the storage driver interface, and why writes are silent by design.
+description: What survives a reload, when it is written, the two-method persistence interface, and the storage drivers under it.
 ---
 
-butr persists the pool, the per-platform selection, the active connector id,
-and the session-scoped disconnect flag, so a reload restores the previous
-session (subject to [hydration](/concepts/hydration)).
+butr persists enough to restore the previous session on the next load (subject
+to [hydration](/concepts/hydration)). You never call a save: the manager
+derives the persisted state from its own state and writes it after every change.
 
-## Storage keys
-
-Keys are prefixed: `{prefix}:pool`, `{prefix}:selection`, `{prefix}:active`,
-`{prefix}:userDisconnected`. The default prefix is `butr`; set
-`storageKeyPrefix` to isolate multiple apps sharing one origin.
-
-## Storage drivers
-
-A driver is a tiny get/set/remove interface. butr ships three and accepts any
-custom one (including async: React Native / IndexedDB).
+## What is persisted
 
 ```ts
-type StorageDriver = {
-  getItem(key: string): MaybePromise<string | null>;
-  setItem(key: string, value: string): MaybePromise<void>;
-  removeItem(key: string): MaybePromise<void>;
+type PersistedWalletState = {
+  activeConnectorId: string | null;
+  isUserDisconnected: boolean;
+  pool: StoredPoolRecord; // live wallets + dormant entries, by adapter id
+  selection: StoredSelectionRecord; // adapter id per platform
 };
 ```
 
-| Factory                              | Backing store                         |
-| ------------------------------------ | ------------------------------------- |
-| `createBrowserStorageDriver()`       | `localStorage` (default)              |
-| `createCookieStorageDriver(options)` | cookies (domain/path/SameSite/secure) |
-| `createMemoryStorageDriver()`        | in-memory (no persistence)            |
+Each pool entry stores what a server render or a placeholder needs to show the
+wallet before its adapter exists: `account`, `accounts`, `chainPlatform`,
+`connectorId`, `name`, and `icon`. Never the adapter itself.
 
-Wrap a driver in `WalletStorage` and pass it as `storage`:
+The pool is the union of two sets:
+
+- **Live** wallets: everything in the pool right now.
+- **Dormant** entries: persisted connections that are not live. An entry is
+  dormant while its adapter has not been announced yet, after its silent
+  reconnect failed, or after the wallet itself ended the session (locked,
+  extension removed, relay session expired). Dormant entries stay persisted so
+  the next load retries them.
+
+What removes an entry:
+
+| Action                                   | Effect on persistence                      |
+| ---------------------------------------- | ------------------------------------------ |
+| `disconnect(id)`                         | forgets that wallet                        |
+| `disconnect(id)` of the last live wallet | forgets every entry, dormant ones included |
+| `disconnectAll()`                        | forgets every entry                        |
+| the wallet ends the session              | keeps the entry, dormant                   |
+| a silent reconnect fails                 | keeps the entry, dormant                   |
+
+`isUserDisconnected` records that the user disconnected during this session. It
+lives in session storage, so it clears when the session ends, and connecting
+again resets it. butr restores only persisted entries, and a user disconnect
+removes them, so nothing reconnects behind the user's back; the flag is there
+for your own auto-connect logic: `useWalletState((state) => state.isUserDisconnected)`.
+
+## When it is written
+
+Nothing is written until hydration has loaded what was there before, so a
+fresh manager can never overwrite the previous session with an empty one. After
+that, every change to the pool, the dormant entries, the selection, the active
+id, or the disconnect intent triggers one `save` with the whole value. Saves
+are coalesced: while one is in flight, later changes collapse into a single
+follow-up write of the latest state, so an async driver never lands an older
+state after a newer one.
+
+## `WalletPersistence`
+
+The interface the manager writes through has two methods:
 
 ```ts
-import { WalletStorage } from "@usebutr/core";
+type WalletPersistence = {
+  load: () => Promise<PersistedWalletState>;
+  save: (state: PersistedWalletState) => Promise<void>;
+};
+```
 
-const storage = new WalletStorage({
+`save` receives the complete state every time, so an implementation never
+merges or diffs. `load` runs once, when the manager starts; a rejection is
+reported through `onStorageError` and treated as empty storage. Pass your own
+as `config.storage`; see [custom storage](/guides/custom-storage).
+
+## The default: `createWalletStorage`
+
+Without `config.storage`, the manager uses `createWalletStorage` over
+`localStorage` and `sessionStorage`. It splits the state across four keys:
+
+| Key                          | Driver       | Holds                 |
+| ---------------------------- | ------------ | --------------------- |
+| `{prefix}-pool`              | `persistent` | the pool entries      |
+| `{prefix}-selection`         | `persistent` | the selection         |
+| `{prefix}-active`            | `persistent` | the active id         |
+| `{prefix}-user-disconnected` | `session`    | the disconnect intent |
+
+The default prefix is `butr`. Set `storageKeyPrefix` to isolate several apps on
+one origin, and pass the same prefix to `readWalletSnapshot`. A key whose value
+did not change is not rewritten, which keeps a cookie-backed driver from
+re-sending every cookie on each save.
+
+Build one yourself to change the drivers:
+
+```ts
+import { createCookieStorageDriver, createWalletStorage } from "@usebutr/core";
+
+const storage = createWalletStorage({
   keyPrefix: "myapp",
-  persistent: driver, // multi-session
-  session: driver, // current session only
+  persistent: createCookieStorageDriver(), // readable by the server
+  // `session` defaults to sessionStorage
 });
 ```
 
-See the [custom storage guide](/guides/custom-storage) for the React
-Native / Expo `AsyncStorage` driver.
+When you pass `storage`, `storageKeyPrefix` is ignored: the prefix belongs to
+`createWalletStorage`.
 
-## Writes are silent by design
+## Storage drivers
 
-butr's persistence layer is **fire-and-forget**. Any individual write can fail
-(quota exceeded, IndexedDB shutdown, cross-tab conflicts, cookie size limits)
-without corrupting the in-memory store. Each storage key is durable on its own;
-the writes race intentionally.
+A driver is a get / set / remove interface that may be async, so React
+Native's AsyncStorage or IndexedDB fit.
 
-<Callout type="warn">
-  Because writes are unobserved, a failed write is invisible unless you ask. Set `onStorageError` to
-  surface them. `context` is a short string naming the failed write (e.g. `"failed to persist
-  pool"`). The default behaviour when no callback is set is `console.warn`.
-</Callout>
-
-```tsx
-import { WalletManagerProvider } from "@usebutr/react";
-import { autoDiscovery } from "@usebutr/wallets";
-
-const discovery = autoDiscovery();
-
-<WalletManagerProvider
-  discovery={discovery}
-  onStorageError={(error, context) => {
-    reportToSentry(error, { context });
-  }}
->
+```ts
+type StorageDriver = {
+  getItem: (key: string) => MaybePromise<string | null>;
+  removeItem: (key: string) => MaybePromise<void>;
+  setItem: (key: string, value: string) => MaybePromise<void>;
+};
 ```
 
-**Source:** `packages/core/src/storage`,
-`packages/core/src/store/wallet-store.ts`.
+| Factory                              | Backing store                                                     |
+| ------------------------------------ | ----------------------------------------------------------------- |
+| `createBrowserStorageDriver()`       | `{ persistent: localStorage, session: sessionStorage }` (default) |
+| `createCookieStorageDriver(options)` | cookies (`domain`, `path`, `sameSite`, `secure`, `maxAgeSeconds`) |
+| `createMemoryStorageDriver()`        | in-memory (no persistence)                                        |
+
+## Failures are reported, never thrown
+
+Any write can fail (quota exceeded, IndexedDB shutdown, cookie size limits).
+A failed write never breaks the in-memory state; the next change writes the
+whole state again.
+
+<Callout type="warn">
+  A failed write is invisible unless you ask. Set `onStorageError` to surface it. With no callback
+  the manager logs it with `console.warn`.
+</Callout>
+
+```ts
+import type { WalletManagerConfig } from "@usebutr/core";
+import { autoDiscovery } from "@usebutr/wallets";
+
+const config: WalletManagerConfig = {
+  onStorageError: (error) => {
+    reportToSentry(error);
+  },
+  sources: [autoDiscovery()],
+};
+```
+
+**Source:** `packages/core/src/storage`, `packages/core/src/store/wallet-manager.ts`.

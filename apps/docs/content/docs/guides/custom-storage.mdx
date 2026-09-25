@@ -1,47 +1,66 @@
 ---
-title: Custom storage driver
-description: Back persistence with cookies, memory, or React Native AsyncStorage.
+title: Custom storage
+description: Back persistence with cookies, memory, React Native AsyncStorage, or a WalletPersistence of your own.
 ---
 
-butr persists through a `StorageDriver`: a three-method get/set/remove
-interface that may be async. Wrap a driver in `WalletStorage` and pass it as
-`storage`.
+The manager persists through `config.storage`, a `WalletPersistence`. There are
+two levels to customise it at:
+
+- **A storage driver** keeps butr's key layout and swaps where the strings go:
+  cookies, memory, AsyncStorage. Wrap it with `createWalletStorage`.
+- **A `WalletPersistence`** replaces the layout entirely: one key, a server,
+  IndexedDB. Implement `load` and `save`.
+
+See [persistence](/concepts/persistence) for what is stored and when.
+
+## Drivers
+
+A driver is a three-method get / set / remove interface that may be async:
 
 ```ts
 type StorageDriver = {
-  getItem(key: string): MaybePromise<string | null>;
-  setItem(key: string, value: string): MaybePromise<void>;
-  removeItem(key: string): MaybePromise<void>;
+  getItem: (key: string) => MaybePromise<string | null>;
+  removeItem: (key: string) => MaybePromise<void>;
+  setItem: (key: string, value: string) => MaybePromise<void>;
 };
 ```
 
-## Built-in drivers
+`createWalletStorage` takes a `persistent` driver (pool, selection, active id)
+and a `session` driver (the disconnect intent), defaulting to `localStorage` and
+`sessionStorage`:
 
 ```ts
+import type { WalletManagerConfig } from "@usebutr/core";
 import {
-  createBrowserStorageDriver, // localStorage (the default)
-  createCookieStorageDriver, // cookies: domain/path/SameSite/secure
+  createCookieStorageDriver, // cookies: domain, path, sameSite, secure, maxAgeSeconds
   createMemoryStorageDriver, // in-memory, no persistence
-  WalletStorage,
+  createWalletStorage,
 } from "@usebutr/core";
+import { autoDiscovery } from "@usebutr/wallets";
 
-const storage = new WalletStorage({
-  keyPrefix: "myapp",
-  persistent: createCookieStorageDriver({
-    domain: "example.com",
-    maxAgeSec: 604_800,
-    path: "/",
-    sameSite: "Lax",
-    secure: true,
+const config: WalletManagerConfig = {
+  sources: [autoDiscovery()],
+  storage: createWalletStorage({
+    keyPrefix: "myapp",
+    persistent: createCookieStorageDriver({
+      domain: "example.com",
+      maxAgeSeconds: 604_800,
+      path: "/",
+      sameSite: "lax",
+      secure: true,
+    }),
+    session: createMemoryStorageDriver(),
   }),
-  session: createMemoryStorageDriver(),
-});
+};
 ```
+
+With `storage` set, `storageKeyPrefix` is ignored; the prefix goes to
+`createWalletStorage`, and `readWalletSnapshot` needs the same one.
 
 ## React Native / Expo (AsyncStorage)
 
-The driver is async-friendly, so any `AsyncStorage`-like API works. This is the
-exact `demo-expo-web` driver:
+Drivers may be async, so any `AsyncStorage`-like API works. This is the exact
+`demo-expo-web` driver:
 
 ```ts title="async-storage-driver.ts"
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -56,42 +75,77 @@ const asyncStorageDriver: StorageDriver = {
 export { asyncStorageDriver };
 ```
 
-Wire it into `WalletManagerProvider`:
+Wire it into the config:
 
 ```tsx title="wallet-provider.tsx"
-import type { ReactNode } from "react";
-import { WalletStorage } from "@usebutr/core";
+import type { WalletManagerConfig } from "@usebutr/core";
+import { createWalletStorage } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
+import type { ReactNode } from "react";
+
 import { asyncStorageDriver } from "./async-storage-driver";
 
-const KEY_PREFIX = "butr-demo";
-
-const discovery = autoDiscovery();
-
-const storage = new WalletStorage({
-  keyPrefix: KEY_PREFIX,
-  persistent: asyncStorageDriver,
-  session: asyncStorageDriver,
-});
+const config: WalletManagerConfig = {
+  sources: [autoDiscovery()],
+  storage: createWalletStorage({
+    keyPrefix: "butr-demo",
+    persistent: asyncStorageDriver,
+    session: asyncStorageDriver,
+  }),
+};
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
-  <WalletManagerProvider discovery={discovery} storage={storage} storageKeyPrefix={KEY_PREFIX}>
-    {children}
-  </WalletManagerProvider>
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 ```
 
 <Callout type="warn">
   AsyncStorage has no true session-storage equivalent. The demo backs both drivers with the same
-  store and accepts that session entries outlive the session. That's harmless here, since butr's
-  session storage only holds the active-connector id, which is overwritten on the next connect. If
-  you need strict session semantics, namespace session keys and sweep them on startup.
+  store and accepts that session entries outlive the session. butr's session slot holds only the
+  `isUserDisconnected` flag, which the next connect clears, and butr itself never reads it to decide
+  anything. If your own auto-connect logic depends on it, back `session` with
+  `createMemoryStorageDriver()` instead, which resets on every app start.
 </Callout>
 
+## Your own `WalletPersistence`
+
+For anything the driver layout doesn't fit, implement the interface directly.
+The manager hands `save` the complete state after every change, so an
+implementation never merges, diffs, or queues:
+
+```ts
+import type { PersistedWalletState, WalletPersistence } from "@usebutr/core";
+
+const EMPTY: PersistedWalletState = {
+  activeConnectorId: null,
+  isUserDisconnected: false,
+  pool: {},
+  selection: {},
+};
+
+const storage: WalletPersistence = {
+  load: async () => (await db.get<PersistedWalletState>("wallets")) ?? EMPTY,
+  save: async (state) => {
+    await db.put("wallets", state);
+  },
+};
+```
+
+- `load` runs once, when the manager starts. A rejection is reported through
+  `onStorageError` and treated as empty storage, so validate what you read
+  rather than trusting it.
+- `save` never runs before `load` has resolved, and saves never overlap: while
+  one is in flight, later changes collapse into one follow-up call with the
+  latest state.
+- A rejected `save` is reported through `onStorageError` and does not affect
+  the in-memory state.
+- `readWalletSnapshot` parses butr's own key layout, so server rendering from
+  a custom layout means building the `WalletSnapshot` yourself.
+
 <Callout type="info">
-  **Source:** `apps/demo-expo-web/src/async-storage-driver.ts` and
-  `apps/demo-expo-web/src/wallet-provider.tsx` in the [butr
-  repository](https://github.com/pedroapfilho/usebutr/tree/main/apps/demo-expo-web). See also
-  [persistence concepts](/concepts/persistence).
+  **Source:** `apps/demo-expo-web/src/async-storage-driver.ts`,
+  `apps/demo-expo-web/src/wallet-provider.tsx`, and `packages/core/src/storage` in the [butr
+  repository](https://github.com/pedroapfilho/usebutr). See also [persistence
+  concepts](/concepts/persistence).
 </Callout>

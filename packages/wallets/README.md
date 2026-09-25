@@ -1,6 +1,6 @@
 # @usebutr/wallets
 
-Batteries-included EVM + SVM + Sui + Bitcoin + Polkadot discovery: autoDiscovery() WalletSource + combined chain registries.
+Batteries-included EVM + SVM + Sui + Bitcoin + Polkadot discovery: `autoDiscovery()`, one `WalletSource` for every platform.
 
 Part of [butr](https://www.usebutr.com), a multi-chain wallet discovery and
 connection-state library. Your application owns the picker UI and chain client.
@@ -11,37 +11,45 @@ connection-state library. Your application owns the picker UI and chain client.
 npm install @usebutr/react @usebutr/wallets zustand
 ```
 
-React 18+ is a peer dependency. `autoDiscovery()` discovers all five platforms by default and installs `@wallet-standard/app` for Wallet Standard discovery.
+`autoDiscovery()` discovers all five platforms by default and installs `@wallet-standard/app` for Wallet Standard discovery.
 
 ## Usage
 
 ```tsx
+import type { WalletManagerConfig } from "@usebutr/core";
 import {
   WalletManagerProvider,
-  useConnectWallet,
+  useConnect,
   useDiscoveredWallets,
   useIsHydrated,
 } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
 
-const discovery = autoDiscovery();
+const config: WalletManagerConfig = { sources: [autoDiscovery()] };
+
 const WalletPicker = () => {
   const wallets = useDiscoveredWallets();
-  const connect = useConnectWallet();
+  const { connect } = useConnect();
   const hydrated = useIsHydrated();
   if (!hydrated) return null;
   return wallets.map(({ id, name }) => (
-    <button key={id} onClick={() => connect(id)} type="button">
+    <button key={id} onClick={() => void connect(id)} type="button">
       Connect {name}
     </button>
   ));
 };
+
 export const App = () => (
-  <WalletManagerProvider discovery={discovery}>
+  <WalletManagerProvider config={config}>
     <WalletPicker />
   </WalletManagerProvider>
 );
 ```
+
+Pass a platform list to discover only those, e.g. `autoDiscovery(["evm", "svm"])`.
+`autoDiscovery(undefined, { fallbacks: false })` skips the secondary channels
+(`window.ethereum`, injected Bitcoin wallets, Polkadot Wallet Standard).
+Chain registries (`EVM_CHAINS`, `CHAINS_BY_PLATFORM`, …) live in `@usebutr/core`.
 
 ## Documentation
 

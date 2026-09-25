@@ -47,8 +47,8 @@ type ScanTask = {
  * costs a full RPC sweep, which would hammer the public testnet endpoints.
  */
 const usePendingTransfers = (
-  evmWallet: ConnectedWallet | undefined,
-  svmWallet: ConnectedWallet | undefined,
+  evmWallet: ConnectedWallet<"evm"> | undefined,
+  svmWallet: ConnectedWallet<"svm"> | undefined,
 ) => {
   const [items, setItems] = useState<Array<ResumableTransfer>>([]);
   const [state, setState] = useState<ScanState>("idle");

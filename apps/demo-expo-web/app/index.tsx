@@ -9,7 +9,7 @@ const Index = () => (
         <Text className="native-h1">butr · Expo</Text>
         <Text className="native-lede">
           React Native target. EVM (EIP-6963) and SVM (Wallet Standard) discovery via
-          @usebutr/wallets; persistence via an AsyncStorage-backed WalletStorage driver.
+          @usebutr/wallets; persistence via createWalletStorage over an AsyncStorage driver.
         </Text>
       </View>
       <Content />

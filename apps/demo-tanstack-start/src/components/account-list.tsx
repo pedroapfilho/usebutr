@@ -11,14 +11,14 @@ const SIGN_MESSAGE_TEXT = "Hello from the butr demo";
 
 const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWallet }) => {
   const isCurrent = account.walletAddress === wallet.account.walletAddress;
-  const canSign = wallet.connector.capabilities.signMessage;
+  const { signMessage } = wallet.connector;
   const [state, setState] = useState<SignState>({ kind: "idle" });
 
-  const handleSign = async () => {
+  const handleSign = async (sign: NonNullable<typeof signMessage>) => {
     setState({ kind: "signing" });
     try {
       const bytes = new TextEncoder().encode(SIGN_MESSAGE_TEXT);
-      await wallet.connector.signMessage(bytes, account);
+      await sign(bytes, { account });
       setState({ kind: "ok" });
     } catch (error) {
       setState({
@@ -48,7 +48,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
       }`}
     >
       <span className="font-mono text-xs break-all">{account.walletAddress}</span>
-      {canSign ? (
+      {signMessage ? (
         <span className="flex shrink-0 items-center gap-2">
           {signIndicator}
           <button
@@ -56,7 +56,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
             className="border-border-strong hover:bg-surface-subtle rounded border bg-white px-2 py-0.5 text-xs disabled:opacity-50"
             disabled={state.kind === "signing"}
             onClick={() => {
-              void handleSign();
+              void handleSign(signMessage);
             }}
             type="button"
           >

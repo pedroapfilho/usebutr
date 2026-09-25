@@ -57,9 +57,7 @@ class SignInUnsupportedError extends Error {
   readonly connectorId: string;
 
   constructor(connectorId: string) {
-    super(
-      `Wallet "${connectorId}" reports capabilities.signMessage === false, so it cannot sign in.`,
-    );
+    super(`Wallet "${connectorId}" cannot sign messages, so it cannot sign in.`);
     this.connectorId = connectorId;
     this.name = "SignInUnsupportedError";
   }
@@ -80,18 +78,13 @@ const createSignInFlow = (options: SignInFlowOptions): SignInFlow => {
     const { connector } = wallet;
     const signingAccount = account ?? wallet.account;
 
-    if (!connector.capabilities.signMessage) {
-      throw new SignInUnsupportedError(connector.id);
-    }
-
-    const nonce = await options.getNonce({ account: signingAccount, wallet });
-
+    // SIWS needs no `signMessage`: the wallet composes and signs itself.
     if (
       options.preferSignMessage !== true &&
       connector.chainPlatform === "svm" &&
-      connector.capabilities.signIn &&
       connector.signIn !== undefined
     ) {
+      const nonce = await options.getNonce({ account: signingAccount, wallet });
       const output = await connector.signIn({ nonce });
       return {
         account: output.account,
@@ -104,10 +97,15 @@ const createSignInFlow = (options: SignInFlowOptions): SignInFlow => {
       };
     }
 
+    if (connector.signMessage === undefined) {
+      throw new SignInUnsupportedError(connector.id);
+    }
+
+    const nonce = await options.getNonce({ account: signingAccount, wallet });
     const message = buildMessage({ account: signingAccount, nonce, wallet });
     const { signature, signedMessage } = await connector.signMessage(
       new TextEncoder().encode(message),
-      signingAccount,
+      { account: signingAccount },
     );
 
     return {

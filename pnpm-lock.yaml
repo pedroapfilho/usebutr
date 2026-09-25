@@ -1324,6 +1324,9 @@ importers:
       '@usebutr/core':
         specifier: workspace:*
         version: link:../core
+      '@usebutr/svm':
+        specifier: workspace:*
+        version: link:../svm
     devDependencies:
       '@ledgerhq/hw-app-btc':
         specifier: ^11.3.1
@@ -1566,6 +1569,9 @@ importers:
       '@usebutr/evm':
         specifier: workspace:*
         version: link:../evm
+      '@usebutr/svm':
+        specifier: workspace:*
+        version: link:../svm
       zod:
         specifier: ^4.6.1
         version: 4.6.5
@@ -1600,9 +1606,6 @@ importers:
       '@usebutr/polkadot':
         specifier: workspace:*
         version: link:../polkadot
-      '@usebutr/react':
-        specifier: workspace:*
-        version: link:../react
       '@usebutr/sui':
         specifier: workspace:*
         version: link:../sui
@@ -1612,9 +1615,6 @@ importers:
       '@wallet-standard/app':
         specifier: ^1.1.0
         version: 1.1.1
-      react:
-        specifier: '>=18.0.0'
-        version: 19.3.0
     devDependencies:
       '@repo/config-vitest':
         specifier: workspace:*
@@ -1622,30 +1622,12 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../config-typescript
-      '@testing-library/jest-dom':
-        specifier: ^7.0.1
-        version: 7.0.1(@testing-library/dom@10.4.1)(vitest@5.0.1)
-      '@testing-library/react':
-        specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      '@types/react':
-        specifier: ^19.3.0
-        version: 19.3.0
-      '@types/react-dom':
-        specifier: ^19.3.0
-        version: 19.3.0(@types/react@19.3.0)
-      jsdom:
-        specifier: ^30.0.1
-        version: 30.0.1(@noble/hashes@2.3.0)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
         version: 5.0.1(@types/node@26.2.0)(@vitest/coverage-v8@5.0.1)(jsdom@30.0.1(@noble/hashes@2.3.0))(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(yaml@2.9.0))
-      zustand:
-        specifier: ^5.0.14
-        version: 5.0.14(@types/react@19.3.0)(immer@11.1.9)(react@19.3.0)(use-sync-external-store@1.6.0(react@19.3.0))
 
 packages:
 
@@ -19699,7 +19681,7 @@ snapshots:
       jiti: 2.7.0
       magic-string: 0.30.21
       prettier: 3.9.6
-      zod: 4.4.3
+      zod: 4.6.5
     transitivePeerDependencies:
       - supports-color
 
@@ -19770,7 +19752,7 @@ snapshots:
       ufo: 1.6.4
       vitefu: 1.1.3(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(yaml@2.9.0))
       xmlbuilder2: 4.0.3
-      zod: 4.4.3
+      zod: 4.6.5
     optionalDependencies:
       vite: 8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(yaml@2.9.0)
     transitivePeerDependencies:

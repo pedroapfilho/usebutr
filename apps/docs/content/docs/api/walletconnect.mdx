@@ -1,86 +1,107 @@
 ---
 title: "@usebutr/walletconnect"
-description: createWalletConnectAdapters, namespace builders, per-platform capabilities.
+description: createWalletConnectAdapters, the namespace builders, and the WalletConnect signer.
 ---
 
-WalletConnect v2 transport for EVM, SVM, Sui, and Bitcoin mobile wallets.
-Requires the optional peer dependency `@walletconnect/universal-provider`
-(dynamically imported).
+WalletConnect v2 for EVM, Solana, Sui and Bitcoin mobile wallets. Requires the
+optional peer dependency `@walletconnect/universal-provider`, imported on
+first use.
 
 ## Factory
 
 ### `createWalletConnectAdapters(options): Promise<Array<WalletAdapter>>`
 
-Single factory for all namespaces. Returns one adapter per requested
-namespace; all share the same paired session.
+One pairing, one adapter per requested namespace. The adapters are un-paired
+until the user connects one; hand them to the manager with `fromAdapters`:
 
 ```ts
-const wcs = await createWalletConnectAdapters({
-  projectId,
-  namespaces: {
-    evm: ["eip155:1"],
-    svm: ["solana:mainnet"],
-    sui: ["sui:mainnet"],
-    bitcoin: ["bip122:000000000019d6689c085ae165831e93"],
-  },
-  onPairingUri: (uri) => setQrUri(uri),
-});
+import type { WalletManagerConfig } from "@usebutr/core";
+import { fromAdapters } from "@usebutr/core";
+import { autoDiscovery } from "@usebutr/wallets";
+import { createWalletConnectAdapters } from "@usebutr/walletconnect";
+
+const config: WalletManagerConfig = {
+  sources: [
+    autoDiscovery(),
+    fromAdapters(
+      createWalletConnectAdapters({
+        metadata: { name: "My dapp", url: "https://my-dapp.example" },
+        namespaces: { evm: ["eip155:1", "eip155:137"], svm: [] },
+        onPairingUri: showQr,
+        projectId: "<your Reown project id>",
+      }),
+    ),
+  ],
+};
 ```
 
-When more than one namespace is requested, each adapter's id is suffixed
-with the platform (`walletconnect-evm`, `walletconnect-svm`, …). With a
-single namespace, the id stays the base `options.id ?? "walletconnect"`.
+With more than one namespace each adapter's id and name carry the platform
+(`walletconnect-evm`, `WalletConnect (EVM)`); with one, they stay
+`options.id ?? "walletconnect"` and `options.name ?? "WalletConnect"`. The
+promise rejects for an unknown namespace key or an empty `namespaces`.
 
 ### `WalletConnectOptions`
 
-| Field          | Type                                                    | Default                      |
-| -------------- | ------------------------------------------------------- | ---------------------------- |
-| `projectId`    | `string` (required)                                     | —                            |
-| `namespaces`   | `Partial<Record<ChainPlatform, ReadonlyArray<string>>>` | —                            |
-| `metadata`     | `WalletConnectMetadata`                                 | —                            |
-| `onPairingUri` | `(uri: string) => void`                                 | —                            |
-| `id`           | `string`                                                | `"walletconnect"`            |
-| `name`         | `string`                                                | `"WalletConnect"`            |
-| `icon`         | `string`                                                | `WALLETCONNECT_DEFAULT_ICON` |
-
-`WalletConnectMetadata = { name?; url?; description?; icons? }`.
+| Field               | Type                                                    | Notes                                                                                                                                                                                                             |
+| ------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `projectId`         | `string`                                                | Required. From [Reown Cloud](https://cloud.reown.com).                                                                                                                                                            |
+| `namespaces`        | `Partial<Record<ChainPlatform, ReadonlyArray<string>>>` | Required. CAIP-2 chains per platform (`SVM_CHAINS` ids work for Solana). Omit a key to skip it; an empty array uses the builder's `defaultChains`. The first namespace is required at pairing, the rest optional. |
+| `metadata`          | `WalletConnectMetadata`                                 | `{ description?; icons?; name?; url? }`. Some wallets refuse to pair without `name` and `url`.                                                                                                                    |
+| `onPairingUri`      | `(uri: string) => void`                                 | Render the QR code or deep link; butr ships no QR renderer.                                                                                                                                                       |
+| `id`                | `string`                                                | Default `"walletconnect"`.                                                                                                                                                                                        |
+| `name`              | `string`                                                | Default `"WalletConnect"`.                                                                                                                                                                                        |
+| `icon`              | `string`                                                | Default `WALLETCONNECT_DEFAULT_ICON`.                                                                                                                                                                             |
+| `universalProvider` | `UniversalProviderConstructor`                          | Replaces the dynamic import (tests).                                                                                                                                                                              |
 
 ## Namespace builders
 
+`evmNamespace`, `solanaNamespace`, `suiNamespace` and `bitcoinNamespace`, and
+`KNOWN_NAMESPACES: Partial<Record<ChainPlatform, WalletConnectNamespaceBuilder>>`,
+the table the factory dispatches through. Polkadot has no namespace yet.
+
+`WalletConnectNamespaceBuilder<Adapter>` has `buildAdapter(input)`,
+`caipPrefix`, `chainPlatform`, `defaultChains`, `defaultEvents`,
+`defaultMethods`, and `chainAliases?`: butr chain ids mapped to the ids
+sessions use where they differ. `solanaNamespace` maps `SVM_CHAINS` ids to
+genesis-hash ids, so callers pass `SVM_CHAINS` as on any other transport. `buildAdapter` takes `{ chains, icon, id, name, provider, session? }`;
+without a shared `session` the adapter pairs for its own namespace only.
+
+| Builder            | `caipPrefix` | `defaultChains`                           | `defaultMethods`                                                                                                                                   |
+| ------------------ | ------------ | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `evmNamespace`     | `eip155`     | `eip155:1`                                | `eth_sendTransaction`, `eth_accounts`, `eth_chainId`, `eth_getBalance`, `eth_getTransactionReceipt`, `personal_sign`, `wallet_switchEthereumChain` |
+| `solanaNamespace`  | `solana`     | `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` | `solana_signMessage`, `solana_signTransaction`, `solana_signAndSendTransaction`                                                                    |
+| `suiNamespace`     | `sui`        | `sui:mainnet`                             | `sui_signTransaction`, `sui_signAndExecuteTransaction`, `sui_signPersonalMessage`                                                                  |
+| `bitcoinNamespace` | `bip122`     | `bip122:000000000019d6689c085ae165831e93` | `signMessage`, `signPsbt`, `sendTransfer`, `getAccountAddresses`                                                                                   |
+
+## Signers
+
+The EVM adapter resolves `{ kind: "eip1193", provider }`: an EIP-1193 shim over
+the session's `eip155` side. Importing the package registers the
+`walletconnect` kind the other namespaces resolve:
+
 ```ts
-import {
-  KNOWN_NAMESPACES,
-  bitcoinNamespace,
-  evmNamespace,
-  solanaNamespace,
-  suiNamespace,
-} from "@usebutr/walletconnect";
+type WalletConnectSigner = {
+  chainId: string; // the session's id for the adapter's current chain
+  kind: "walletconnect";
+  provider: UniversalProviderLike;
+};
 ```
 
-`KNOWN_NAMESPACES: Readonly<Partial<Record<ChainPlatform, WalletConnectNamespaceBuilder>>>` is
-the dispatch table `createWalletConnectAdapters` walks. Today: `evm`, `svm`,
-`sui`, `bitcoin` all ship.
-
-`WalletConnectNamespaceBuilder` exposes `caipNamespace`, `methods`, `events`,
-`defaultChains`, and `buildAdapter(...)`. Compose your own factory by importing
-the builders directly.
+Pass `chainId` as `provider.request`'s second argument. Without it,
+UniversalProvider routes the call to the session's first namespace, so a
+Solana request in an EVM + Solana session would reach the EVM wallet.
 
 ## Constants
 
-- `WALLETCONNECT_DEFAULT_ICON: string`: default SVG data URI.
-- `WALLETCONNECT_CAPABILITIES: WalletCapabilities`: EVM (used by
-  `evmNamespace`).
-- `WALLETCONNECT_SVM_CAPABILITIES: WalletCapabilities`: Solana.
-- `WALLETCONNECT_SUI_CAPABILITIES: WalletCapabilities`: Sui.
-- `WALLETCONNECT_BITCOIN_CAPABILITIES: WalletCapabilities`: Bitcoin.
+`WALLETCONNECT_DEFAULT_ICON`: the default adapter icon.
 
 ## Types
 
 `WalletConnectOptions`, `WalletConnectMetadata`,
-`WalletConnectNamespaceBuilder`, `UniversalProviderLike`,
-`UniversalProviderConstructor`, and a re-exported `Account`.
+`WalletConnectNamespaceBuilder`, `WalletConnectSession`,
+`UniversalProviderLike`, `UniversalProviderConstructor`.
 
-See the [WalletConnect connector guide](/connectors/walletconnect) for the
-full setup, QR rendering, per-platform capabilities, and caveats.
+See the [WalletConnect connector](/connectors/walletconnect) for what each
+namespace defines and how it routes chains.
 
 **Source:** `packages/walletconnect/src/index.ts`.

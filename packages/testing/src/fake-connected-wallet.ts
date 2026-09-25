@@ -1,93 +1,83 @@
-import type {
-  Account,
-  ChainBase,
-  ChainPlatform,
-  ConnectedWallet,
-  WalletAdapter,
-} from "@usebutr/core";
+import type { ChainBase, ChainPlatform, ConnectedWallet } from "@usebutr/core";
 import { buildAccount } from "@usebutr/core";
 
-import { type FakeAdapterOptions, createFakeAdapter } from "./fake-adapter";
+import type { FakeAdapter, FakeAdapterOptions } from "./fake-adapter";
+import { buildFakeAdapter } from "./fake-adapter";
+import { DEFAULT_ADDRESSES, DEFAULT_CHAINS } from "./fake-values";
 
-/** Mirrors the per-platform registries in `@usebutr/evm` and friends.
- *  Duplicated rather than imported so `@usebutr/testing` keeps its single
- *  `@usebutr/core` dependency. */
-const DEFAULT_CHAINS = {
-  bitcoin: {
-    id: "bip122:000000000019d6689c085ae165831e93",
-    name: "Bitcoin",
-    namespace: "bip122",
-    reference: "000000000019d6689c085ae165831e93",
-  },
-  evm: { id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" },
-  polkadot: {
-    id: "polkadot:91b171bb158e2d3848fa23a9f1c25182",
-    name: "Polkadot",
-    namespace: "polkadot",
-    reference: "91b171bb158e2d3848fa23a9f1c25182",
-  },
-  sui: { id: "sui:mainnet", name: "Sui Mainnet", namespace: "sui", reference: "mainnet" },
-  svm: { id: "solana:mainnet", name: "Solana Mainnet", namespace: "solana", reference: "mainnet" },
-} satisfies Readonly<Record<ChainPlatform, ChainBase>>;
+type FakeConnectedWallet<P extends ChainPlatform> = Omit<ConnectedWallet<P>, "connector"> & {
+  connector: FakeAdapter<P>;
+};
 
-/** Plausibly-shaped addresses per platform: the wrong-looking address is
- *  a common source of confusion when a snapshot test fails. */
-const DEFAULT_ADDRESSES = {
-  bitcoin: "bc1qfake000000000000000000000000000000000",
-  evm: "0x0000000000000000000000000000000000000001",
-  polkadot: "5FakeAddress00000000000000000000000000000000000000",
-  sui: "0x0000000000000000000000000000000000000000000000000000000000000001",
-  svm: "So11111111111111111111111111111111111111112",
-} satisfies Readonly<Record<ChainPlatform, string>>;
-
-type FakeConnectedWalletOptions = FakeAdapterOptions & {
-  /** Wrap an existing adapter instead of building one. When set, the
-   *  adapter-shaping fields (`id`, `name`, `capabilities`, `icon`) are
-   *  ignored: they belong to the adapter you already built. */
-  adapter?: WalletAdapter;
-  /** Addresses to build accounts from, first one active. Ignored when
-   *  `accounts` is passed. */
+type FakeConnectedWalletOptions<P extends ChainPlatform = "evm"> = FakeAdapterOptions<P> & {
+  /** Addresses to expose on `chain`, active first. Ignored when `accounts`
+   *  is passed. */
   addresses?: ReadonlyArray<string>;
-  /** Chain for generated accounts. Defaults to the platform's mainnet. */
+  /** Chain for the generated accounts. Defaults to the platform's mainnet. */
   chain?: ChainBase;
 };
 
-/**
- * Builds a `ConnectedWallet` pool entry, the shape `usePool` and
- * `useActiveWallet` hand components. Accounts go through `buildAccount` so the
- * `<chain>:<address>` id format is never restated here.
- */
-const createFakeConnectedWallet = (options: FakeConnectedWalletOptions = {}): ConnectedWallet => {
-  const { adapter, addresses, chain, ...adapterOptions } = options;
-  const chainPlatform: ChainPlatform =
-    adapter?.chainPlatform ?? adapterOptions.chainPlatform ?? "evm";
-  const resolvedChain = chain ?? DEFAULT_CHAINS[chainPlatform];
+/** One member per platform, so a `switch` on `chainPlatform` narrows it. */
+type AnyFakeConnectedWalletOptions =
+  | FakeConnectedWalletOptions
+  | {
+      [K in ChainPlatform]: FakeConnectedWalletOptions<K> & { chainPlatform: K };
+    }[ChainPlatform];
 
-  const accounts: Array<Account> =
-    adapterOptions.accounts ??
-    (addresses ?? [DEFAULT_ADDRESSES[chainPlatform]]).map((address) =>
-      buildAccount(address, resolvedChain),
+const connectedWallet = <P extends ChainPlatform>(
+  platform: P,
+  options: FakeConnectedWalletOptions<P>,
+): FakeConnectedWallet<P> => {
+  const chain = options.chain ?? DEFAULT_CHAINS[platform];
+  const accounts =
+    options.accounts ??
+    (options.addresses ?? [DEFAULT_ADDRESSES[platform]]).map((address) =>
+      buildAccount(address, chain),
     );
-
-  const account = accounts[0];
+  const [account] = accounts;
   if (account === undefined) {
-    throw new Error(
-      "createFakeConnectedWallet needs at least one account: pass `addresses` or `accounts`, or omit both for the default.",
-    );
+    throw new Error("createFakeConnectedWallet needs at least one account or address.");
   }
-
-  if (adapter && (addresses !== undefined || adapterOptions.accounts !== undefined)) {
-    throw new Error(
-      "createFakeConnectedWallet: pass either `adapter` or `addresses`/`accounts`, not both. The entry's accounts must come from the adapter that serves them.",
-    );
-  }
-
-  return {
-    account,
-    accounts,
-    connector: adapter ?? createFakeAdapter({ ...adapterOptions, accounts, chainPlatform }),
-  };
+  return { account, accounts, connector: buildFakeAdapter(platform, { ...options, accounts }) };
 };
 
-export type { FakeConnectedWalletOptions };
+/**
+ * A pool entry as the manager builds it after `connect`: a fake adapter and
+ * the accounts it exposes, so the two never disagree. Drive the wallet
+ * through `wallet.connector.emit`.
+ */
+function createFakeConnectedWallet(
+  options?: FakeConnectedWalletOptions,
+): FakeConnectedWallet<"evm">;
+function createFakeConnectedWallet<P extends ChainPlatform>(
+  options: FakeConnectedWalletOptions<P> & { chainPlatform: P },
+): FakeConnectedWallet<P>;
+function createFakeConnectedWallet(
+  options: AnyFakeConnectedWalletOptions = {},
+): FakeConnectedWallet<ChainPlatform> {
+  switch (options.chainPlatform) {
+    case "bitcoin": {
+      return connectedWallet("bitcoin", options);
+    }
+    case "polkadot": {
+      return connectedWallet("polkadot", options);
+    }
+    case "sui": {
+      return connectedWallet("sui", options);
+    }
+    case "svm": {
+      return connectedWallet("svm", options);
+    }
+    case undefined:
+    case "evm": {
+      return connectedWallet("evm", options);
+    }
+    default: {
+      const unknownPlatform: never = options;
+      return unknownPlatform;
+    }
+  }
+}
+
+export type { FakeConnectedWallet, FakeConnectedWalletOptions };
 export { createFakeConnectedWallet };

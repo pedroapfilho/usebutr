@@ -42,7 +42,7 @@ the capability; it is not a claim that an extension is impossible.
 | [RainbowKit][rainbow-intro]                  | Yes                  | Outside documented scope | Outside documented scope | Outside documented scope | Outside documented scope   | Yes                         | wagmi + viem                             | React UI; uses wagmi core | EIP-6963 / EIP-1193                                            | Through wagmi connectors                     | Through wagmi `mock` |
 | [`@solana/wallet-adapter-react`][solana-app] | Outside Solana scope | Yes                      | Outside Solana scope     | Outside Solana scope     | Outside Solana scope       | Separate `react-ui` package | `@solana/web3.js`                        | Separate base/adapters    | Wallet Standard / Mobile Wallet Adapter / legacy adapters      | Adapter methods; wallet-dependent            | Not documented       |
 | [Reown AppKit][reown-start]                  | Yes                  | Solana adapter           | AppKit Core              | Bitcoin adapter          | Namespace option; see note | Yes                         | Adapter-specific (wagmi, ethers, Solana) | JavaScript integration    | EIP-6963; adapter-specific discovery                           | `useAppKitProvider` returns adapter provider | Not documented       |
-| [butr](/getting-started/installation)        | Yes                  | Yes                      | Yes                      | Yes                      | Yes                        | Consumer UI                 | None in discovery/core                   | `@usebutr/core`           | EIP-6963 / Wallet Standard / injected fallbacks / injectedWeb3 | `getSigner`; platform-specific handle        | `@usebutr/testing`   |
+| [butr](/getting-started/installation)        | Yes                  | Yes                      | Yes                      | Yes                      | Yes                        | Consumer UI                 | None in discovery/core                   | `@usebutr/core`           | EIP-6963 / Wallet Standard / injected fallbacks / injectedWeb3 | `getSigner`; tagged by transport             | `@usebutr/testing`   |
 
 Reown's JavaScript guide provides a Sui example through **AppKit Core's Universal
 Connector**. Its options reference lists a Polkadot namespace; the reviewed
@@ -51,8 +51,9 @@ separate capabilities from the dedicated discovery adapters in butr.
 
 “Raw provider access” is not a uniform type across ecosystems. wagmi exposes
 connector providers, AppKit exposes its adapter's provider, Solana Wallet Adapter
-exposes adapter methods, and butr returns an EIP-1193 provider, a Wallet Standard
-wallet, or a platform-specific handle. See [signer bridges](/integrations/viem).
+exposes adapter methods, and butr returns a signer tagged by transport: an
+EIP-1193 provider, a Wallet Standard wallet, or a transport-specific handle such
+as a Ledger device app. See [signer bridges](/integrations/viem).
 
 Sources for the architectural columns:
 
@@ -88,7 +89,7 @@ Sources for the architectural columns:
 ## What butr deliberately does not do
 
 butr ships no RPC client, no connect modal, and no key custody. It does not
-read balances, build transactions, or render UI.
+build transactions or render UI.
 
 That smaller surface is the reason it composes. Because butr stops at discovery
 and connection state, it slots underneath a connect kit's UI, beside an

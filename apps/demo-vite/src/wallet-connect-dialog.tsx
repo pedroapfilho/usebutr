@@ -3,7 +3,7 @@
  * ::backdrop click handler is the fallback for older browsers.
  */
 import type { WalletAdapter } from "@usebutr/core";
-import { useConnectWallet, useConnectingConnectorId } from "@usebutr/react";
+import { useConnect } from "@usebutr/react";
 import { useEffect, useRef } from "react";
 
 type WalletBrand = {
@@ -27,14 +27,8 @@ const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand>
   return [...byName.values()];
 };
 
-const WalletBrandRow = ({
-  brand,
-  connect,
-}: {
-  brand: WalletBrand;
-  connect: (id: string) => void;
-}) => {
-  const connectingId = useConnectingConnectorId();
+const WalletBrandRow = ({ brand }: { brand: WalletBrand }) => {
+  const { connect, connectingId } = useConnect();
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="flex items-center gap-3">
@@ -77,7 +71,6 @@ const WalletConnectDialog = ({
   open: boolean;
 }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const connect = useConnectWallet();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -124,12 +117,7 @@ const WalletConnectDialog = ({
         {brands.map((brand) => (
           <li key={brand.name}>
             <div className="px-4 py-3">
-              <WalletBrandRow
-                brand={brand}
-                connect={(id) => {
-                  void connect(id);
-                }}
-              />
+              <WalletBrandRow brand={brand} />
             </div>
           </li>
         ))}

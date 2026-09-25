@@ -1,4 +1,4 @@
-import type { Account, ChainPlatform, ConnectedWallet } from "../types";
+import type { Account, ChainPlatform } from "../types";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -10,47 +10,54 @@ type StorageDriver = {
   setItem: (key: string, value: string) => MaybePromise<void>;
 };
 
+/** Everything needed to render a connection before its adapter exists:
+ *  the shadow adapter shows this identity until silent reconnect lands. */
 type StoredPoolEntry = {
   account: Account;
-  /** All known accounts on the wallet at last persist. Always contains
-   *  `account`. */
-  accounts: Array<Account>;
+  accounts: ReadonlyArray<Account>;
   chainPlatform: ChainPlatform;
   connectorId: string;
-  /** Wallet icon URL or data-URI captured at persist time. Lets the
-   *  shadow adapter render the same icon the live adapter will when
-   *  the store is seeded from a snapshot. Omitted when the adapter
-   *  itself has no icon. */
   icon?: string;
-  /** Human-facing wallet name (e.g. "MetaMask") captured at persist
-   *  time. Required so the shadow adapter renders the same identity
-   *  the live adapter will; no "metamask" → "MetaMask" swap at the
-   *  hydration boundary. */
   name: string;
 };
 
 type StoredPoolRecord = Partial<Record<string, StoredPoolEntry>>;
 type StoredSelectionRecord = Partial<Record<ChainPlatform, string>>;
 
+/**
+ * Carries no `Connector` by design: a wallet extension exists only in the
+ * browser, so a server render can name the wallet and its address but can
+ * never dispatch on it.
+ */
+type WalletSnapshot = {
+  activeConnectorId: string | null;
+  pool: StoredPoolRecord;
+  selection: StoredSelectionRecord;
+};
+
+type PersistedWalletState = WalletSnapshot & {
+  /** Session-scoped: a manual disconnect suppresses auto-connect for this
+   *  session, not forever. */
+  isUserDisconnected: boolean;
+};
+
+/**
+ * `save` receives the whole derived state after every change, so an
+ * implementation never merges or diffs. A `load` rejection is reported
+ * through `onStorageError` and treated as empty storage.
+ */
 type WalletPersistence = {
-  clearAll: () => Promise<void>;
-  clearPool: () => Promise<void>;
-  getActiveConnectorId: () => Promise<string | null>;
-  getPool: () => Promise<StoredPoolRecord>;
-  getSelection: () => Promise<StoredSelectionRecord>;
-  isUserDisconnected: () => Promise<boolean>;
-  markUserDisconnected: (value: boolean) => Promise<void>;
-  removePoolEntry: (connectorId: string) => Promise<void>;
-  setActiveConnectorId: (connectorId: string | null) => Promise<void>;
-  setPool: (pool: Map<string, ConnectedWallet>) => Promise<void>;
-  setSelection: (selection: Map<ChainPlatform, string>) => Promise<void>;
+  load: () => Promise<PersistedWalletState>;
+  save: (state: PersistedWalletState) => Promise<void>;
 };
 
 export type {
   MaybePromise,
+  PersistedWalletState,
   StorageDriver,
   StoredPoolEntry,
   StoredPoolRecord,
   StoredSelectionRecord,
   WalletPersistence,
+  WalletSnapshot,
 };

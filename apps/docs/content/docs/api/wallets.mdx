@@ -1,66 +1,54 @@
 ---
 title: "@usebutr/wallets"
-description: "Batteries-included discovery source: autoDiscovery(), composed multi-platform discovery, combined chains."
+description: "autoDiscovery(): one wallet source for every platform, and the composed discovery behind it."
 ---
 
-## Discovery
+## `autoDiscovery(platforms?, options?): WalletSource`
 
-### `autoDiscovery(options?: DiscoverOptions): WalletSource`
-
-The headline export. Returns a `WalletSource` that composes EVM (EIP-6963 +
-injected fallback), SVM / Sui / Bitcoin (Wallet Standard, plus an injected
-fallback for Bitcoin), and Polkadot (`injectedWeb3` + Wallet Standard fallback)
-discovery. Pass it directly as the `discovery` prop on `WalletManagerProvider`:
+The one-call source for `WalletManagerConfig.sources`. It composes EVM
+(EIP-6963 plus the `window.ethereum` fallback), Solana and Sui (Wallet
+Standard), Bitcoin (Wallet Standard plus the injected fallbacks) and Polkadot
+(`injectedWeb3` plus the Wallet Standard fallback), deduplicated by adapter
+id.
 
 ```tsx
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
 
-// Hoist to module scope so the reference is stable.
-const discovery = autoDiscovery();
+const config: WalletManagerConfig = { sources: [autoDiscovery()] };
 
-export function App() {
-  return <WalletManagerProvider discovery={discovery}>{children}</WalletManagerProvider>;
-}
+export const Providers = ({ children }: { children: React.ReactNode }) => (
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
+);
 ```
 
-`DiscoverOptions = { evm?; svm?; sui?; bitcoin?; polkadot?; injected?;
-injectedBitcoin?; polkadotWalletStandard? }`. Omit options to enable
-everything. Each fallback defaults to `true` whenever its primary platform is
-enabled (`injected` follows `evm`, `injectedBitcoin` follows `bitcoin`,
-`polkadotWalletStandard` follows `polkadot`).
+| Argument            | Type                           | Default                                                                                                                                        |
+| ------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `platforms`         | `ReadonlyArray<ChainPlatform>` | Every platform. `autoDiscovery(["evm", "svm"])` discovers only those; an empty list warns and finds nothing.                                   |
+| `options.fallbacks` | `boolean`                      | `true`. `false` skips each platform's secondary channel: `window.ethereum`, the injected Bitcoin wallets, and Polkadot's Wallet Standard path. |
 
-## Discovery primitives
+```ts
+autoDiscovery(undefined, { fallbacks: false }); // every platform, standards only
+```
 
-### `discoverWalletAdapters(onAdapter, options?: DiscoverOptions): () => void`
+A single-platform app can pass that package's `discover*Adapters` export
+instead and keep the other platforms out of its bundle.
 
-Composed multi-platform discovery. Calls `onAdapter` for each wallet found and
-returns an unsubscribe function.
+## `discoverWalletAdapters(onAdapter, options?): () => void`
 
-### `resolveDiscoverOptions(auto: true | DiscoverOptions)`
+The composed discovery `autoDiscovery` wraps: calls `onAdapter` once per
+adapter id and returns the unsubscribe. `DiscoverOptions` is
+`{ fallbacks?: boolean; platforms?: ReadonlyArray<ChainPlatform> }`.
 
-Normalises an options value. `true` enables everything. Object form is opt-in:
-unspecified flags default to `false` (so `{}` enables nothing); each fallback
-flag defaults to `true` only when its primary platform is enabled. Returns
-`{ bitcoin, evm, injected, injectedBitcoin, polkadot, polkadotWalletStandard, sui, svm }`.
-
-### `KNOWN_DISCOVERERS`
-
-Registry of the built-in `PlatformDiscoverer`s keyed by `ChainPlatform`
-(`bitcoin`, `evm`, `polkadot`, `sui`, `svm`).
-
-### `createDiscoveryBus(onAdapter): DiscoveryBus`
-
-Lower-level multiplexer. Types: `DiscoveryBus`, `DiscoveryPath`.
-
-## Chains
-
-- `CHAINS`: `{ bitcoin: Record<…>, evm: Record<…>, polkadot: Record<…>, sui: Record<…>, svm: Record<…> }`.
-- `CHAINS_BY_PLATFORM`: `Record<ChainPlatform, ChainBase[]>`. Index with
-  `wallet.connector.chainPlatform`.
+Importing the package loads every platform package, so `WalletSigner`
+carries their signer kinds (`eip1193`, `wallet-standard`, `unisat`,
+`sats-connect`, `polkadot-injected`) even in an app that imports nothing
+else. Chain registries (`CHAINS_BY_PLATFORM`, `EVM_CHAINS`, …) live in
+[`@usebutr/core`](/api/core#registries).
 
 ## Types
 
-`DiscoverOptions`, `DiscoveryBus`, `DiscoveryPath`.
+`DiscoverOptions`.
 
 **Source:** `packages/wallets/src/index.ts`.

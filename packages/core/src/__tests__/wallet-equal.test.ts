@@ -1,75 +1,51 @@
 import { describe, expect, it } from "vitest";
 
-import type { ConnectedWallet, WalletAdapter } from "../types";
-import { walletEqual } from "../wallet-equal";
+import { EVM_CHAINS } from "../chains";
+import { buildAccount } from "../types";
+import { accountsEqual, walletEqual } from "../wallet-equal";
 
-const buildConnector = (id: string): WalletAdapter => ({ id }) as unknown as WalletAdapter;
+import { ETHEREUM, evmAdapter, walletOf } from "./helpers";
 
-const buildWallet = (
-  connector: WalletAdapter,
-  address: string,
-  chainId: string,
-): ConnectedWallet => ({
-  account: {
-    chain: {
-      id: chainId,
-      name: "Ethereum",
-      namespace: "eip155",
-      reference: chainId.split(":")[1] ?? "1",
-    },
-    id: `${chainId}:${address}`,
-    walletAddress: address,
-  },
-  accounts: [],
-  connector,
+const a = buildAccount("0xa", ETHEREUM);
+const b = buildAccount("0xb", ETHEREUM);
+
+describe("accountsEqual", () => {
+  it("compares account ids in order", () => {
+    expect(
+      accountsEqual([a, b], [buildAccount("0xa", ETHEREUM), buildAccount("0xb", ETHEREUM)]),
+    ).toBe(true);
+    expect(accountsEqual([a, b], [b, a])).toBe(false);
+    expect(accountsEqual([a], [a, b])).toBe(false);
+    expect(accountsEqual([], [])).toBe(true);
+  });
+
+  it("tells the same address on another chain apart", () => {
+    expect(accountsEqual([a], [buildAccount("0xa", EVM_CHAINS.base)])).toBe(false);
+  });
 });
 
 describe("walletEqual", () => {
-  it("returns true when both are undefined", () => {
-    expect(walletEqual(undefined, undefined)).toBe(true);
-  });
+  const adapter = evmAdapter("metamask");
 
-  it("returns false when only one is undefined", () => {
-    const wallet = buildWallet(buildConnector("a"), "0x1", "eip155:1");
+  it("handles undefined on either side", () => {
+    const wallet = walletOf(adapter);
+    expect(walletEqual(undefined, undefined)).toBe(true);
     expect(walletEqual(wallet, undefined)).toBe(false);
     expect(walletEqual(undefined, wallet)).toBe(false);
   });
 
-  it("returns true when identity is the same reference", () => {
-    const wallet = buildWallet(buildConnector("a"), "0x1", "eip155:1");
-    expect(walletEqual(wallet, wallet)).toBe(true);
+  it("equates entries with the same adapter, active account and account list", () => {
+    expect(walletEqual(walletOf(adapter, [a, b]), walletOf(adapter, [a, b]))).toBe(true);
   });
 
-  it("returns true when connector + walletAddress + chain id all match", () => {
-    const connector = buildConnector("a");
-    const first = buildWallet(connector, "0x1", "eip155:1");
-    const second = buildWallet(connector, "0x1", "eip155:1");
-    expect(walletEqual(first, second)).toBe(true);
+  it("tells a shadow and its live adapter apart under the same id", () => {
+    const live = walletOf(evmAdapter("metamask"));
+    expect(walletEqual(walletOf(adapter), live)).toBe(false);
   });
 
-  it("returns false when the adapter instance is swapped under an unchanged id", () => {
-    const shadow = buildWallet(buildConnector("a"), "0x1", "eip155:1");
-    const live = buildWallet(buildConnector("a"), "0x1", "eip155:1");
-    expect(walletEqual(shadow, live)).toBe(false);
-  });
-
-  it("returns false when connectorId differs", () => {
-    const first = buildWallet(buildConnector("a"), "0x1", "eip155:1");
-    const second = buildWallet(buildConnector("b"), "0x1", "eip155:1");
-    expect(walletEqual(first, second)).toBe(false);
-  });
-
-  it("returns false when walletAddress differs", () => {
-    const connector = buildConnector("a");
-    const first = buildWallet(connector, "0x1", "eip155:1");
-    const second = buildWallet(connector, "0x2", "eip155:1");
-    expect(walletEqual(first, second)).toBe(false);
-  });
-
-  it("returns false when chain id differs", () => {
-    const connector = buildConnector("a");
-    const first = buildWallet(connector, "0x1", "eip155:1");
-    const second = buildWallet(connector, "0x1", "eip155:137");
-    expect(walletEqual(first, second)).toBe(false);
+  it("tells a changed active account or account list apart", () => {
+    const wallet = walletOf(adapter, [a, b]);
+    expect(walletEqual(wallet, { ...wallet, account: b })).toBe(false);
+    expect(walletEqual(wallet, walletOf(adapter, [a]))).toBe(false);
   });
 });

@@ -4,46 +4,46 @@ description: Per-account message signing, and why you verify against signedMessa
 ---
 
 `signMessage` lives on the wallet half of the adapter. It takes the message
-bytes and an optional `account` to sign with a specific exposed address.
+bytes and an optional `account`, which must be one the wallet exposes:
 
 ```ts
-signMessage(
-  msg: Uint8Array,
-  account?: Account,
-): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
+signMessage?: (
+  message: Uint8Array,
+  options?: { account?: Account },
+) => Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
 ```
 
-## EVM (and via butr's adapter)
+Omit `account` to sign with the active account. An account the wallet does not
+expose rejects; no adapter falls back to another account.
 
-The `demo-vite` reference signs per account straight off the connector:
+## Sign with a connected wallet
+
+`signMessage` exists only when the wallet can sign, so the check that gates the
+button is the same one TypeScript wants before the call. The `demo-vite`
+reference signs per account straight off the adapter:
 
 ```tsx
-const canSign = wallet.connector.capabilities.signMessage;
+import type { Account, ConnectedWallet } from "@usebutr/core";
 
-const handleSign = async () => {
-  const bytes = new TextEncoder().encode("Hello from the butr demo");
-  await wallet.connector.signMessage(bytes, account);
+const SignButton = ({ account, wallet }: { account: Account; wallet: ConnectedWallet }) => {
+  const handleSign = async () => {
+    const bytes = new TextEncoder().encode("Hello from the butr demo");
+    const signed = await wallet.connector.signMessage?.(bytes, { account });
+    // send `signed.signature` and `signed.signedMessage` to whatever verifies them
+  };
+
+  // No signMessage, no button.
+  return wallet.connector.signMessage ? (
+    <button type="button" onClick={() => void handleSign()}>
+      Sign
+    </button>
+  ) : null;
 };
-
-{
-  canSign ? <button onClick={() => void handleSign()}>Sign</button> : null;
-}
 ```
 
-Always gate the affordance on `capabilities.signMessage`.
-
-## Solana / Wallet Standard
-
-When you've bridged into a Solana library you'll often call the wallet's
-feature directly. The pattern from `demo-with-solana-kit`:
-
-```ts
-const feature = walletStd.features["solana:signMessage"];
-if (!feature) throw new Error("Wallet does not advertise solana:signMessage");
-const account = walletStd.accounts[0];
-const [output] = await feature.signMessage({ account, message });
-// output.signature is a Uint8Array
-```
+What comes back depends on the platform: an EIP-191 `personal_sign` signature
+on EVM, a Solana, Sui, or Bitcoin Signed Message signature on those, a
+`signRaw` result on Polkadot. See [platforms](/concepts/platforms#platform-differences).
 
 <Callout type="warn">
   Verify the signature against the returned `signedMessage`, **not** your input bytes. Solana Wallet
@@ -51,11 +51,45 @@ const [output] = await feature.signMessage({ account, message });
   there it's the same bytes, but writing verification against `signedMessage` works for both.
 </Callout>
 
+For a full nonce-and-verify login, use [`createSignInFlow`](/guides/sign-in).
+
+## Calling a Wallet Standard feature directly
+
+When you need a feature butr doesn't wrap, reach the wallet through
+`getSigner()`. Narrow on `kind`, then read the feature with `getFeature` from
+`@usebutr/wallet-standard-shared`, which checks the method exists before
+handing it back:
+
+```ts
+import type { SolanaSignMessageFeature } from "@usebutr/svm";
+import { findAccount, getFeature } from "@usebutr/wallet-standard-shared";
+
+const signer = await wallet.connector.getSigner();
+if (signer.kind !== "wallet-standard") {
+  throw new Error(`${wallet.connector.name} is not a Wallet Standard wallet`);
+}
+const feature = getFeature<SolanaSignMessageFeature>(
+  signer.wallet,
+  "solana:signMessage",
+  "signMessage",
+);
+const account = findAccount(signer.wallet.accounts, wallet.account.walletAddress);
+if (!feature || !account) {
+  throw new Error("Wallet cannot sign Solana messages for this account");
+}
+const message = new TextEncoder().encode("Hello");
+const [output] = await feature.signMessage({ account, message });
+```
+
+No casts and no structural guards: `signer.kind` narrows the union,
+`getFeature` returns the typed feature or `undefined`, and `findAccount` returns
+the wallet's own account object for a butr address.
+
 ## Signing through an integration library
 
 If you've wired viem / wagmi (see [Integrations](/integrations/viem)),
-sign through that library's API instead; it uses the same underlying provider
-butr handed you:
+sign through that library's API instead; it uses the same provider butr handed
+you:
 
 ```ts
 // viem
@@ -65,6 +99,6 @@ const sig = await signMessage(wagmiConfig, { message: "Hello" });
 ```
 
 <Callout type="info">
-  **Source:** `AccountRow` in `apps/demo-vite/src/app.tsx`; `handleSign` in
-  `apps/demo-with-solana-kit/src/app.tsx` and `apps/demo-with-viem/src/app.tsx`.
+  **Source:** `apps/demo-vite/src/app.tsx`; `handleSign` in `apps/demo-with-solana-kit/src/app.tsx`
+  and `apps/demo-with-viem/src/app.tsx`.
 </Callout>

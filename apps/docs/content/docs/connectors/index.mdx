@@ -1,56 +1,101 @@
 ---
 title: Overview
-description: Every connector plugs in through the same createConnector seam, discovered or registered explicitly.
+description: Every connector reaches butr through config.sources, discovered or built, and defines only the methods that work for it.
 ---
 
-A connector is a `WalletAdapter`. They reach butr two ways, both through
-`WalletManagerProvider`:
+A connector is a `WalletAdapter`. Every one reaches the manager through
+`config.sources`, in one of two ways:
 
 - **Discovered**: browser wallets announce themselves. `@usebutr/evm` listens
-  for EIP-6963; `@usebutr/svm`, `@usebutr/sui`, and `@usebutr/bitcoin` listen
-  for the Wallet Standard (`@usebutr/bitcoin` also tries injected fallbacks
-  like `window.unisat` and `sats-connect`). `@usebutr/wallets` composes all of
-  them via `autoDiscovery()`. You don't register these by hand.
-- **Registered explicitly**: WalletConnect and Ledger aren't browser-injected.
-  You build the adapter once and return it from `createConnector`. Both now
-  ship per-platform builders for EVM, SVM, Sui, and Bitcoin.
+  for EIP-6963; `@usebutr/svm`, `@usebutr/sui` and `@usebutr/bitcoin` listen
+  for the Wallet Standard; `@usebutr/bitcoin` also probes injected providers
+  such as `window.unisat`; `@usebutr/polkadot` reads `window.injectedWeb3`.
+  `autoDiscovery()` from `@usebutr/wallets` composes all of them, and each
+  `discover*Adapters` export is a source on its own.
+- **Built**: WalletConnect and Ledger are not injected into the page. Their
+  factories resolve adapters, and `fromAdapters` from `@usebutr/core` turns
+  an adapter, a list of them, or a promise of either into a source.
 
-| Connector                                                      | Package                  | Platforms                   | Discovery                           | Notes                                           |
-| -------------------------------------------------------------- | ------------------------ | --------------------------- | ----------------------------------- | ----------------------------------------------- |
-| [Injected EVM](/connectors/injected-evm)                       | `@usebutr/evm`           | `evm`                       | EIP-6963 + injected fallback        | MetaMask, Rabby, Brave, …                       |
-| [Solana Wallet Standard](/connectors/solana-wallet-standard)   | `@usebutr/svm`           | `svm`                       | Wallet Standard                     | Phantom, Solflare, Backpack, …                  |
-| [Sui Wallet Standard](/connectors/sui-wallet-standard)         | `@usebutr/sui`           | `sui`                       | Wallet Standard                     | Slush, Phantom Sui, Suiet, Surf, …              |
-| [Bitcoin Wallet Standard](/connectors/bitcoin-wallet-standard) | `@usebutr/bitcoin`       | `bitcoin`                   | Wallet Standard + injected fallback | Phantom, Magic Eden, Leather, Unisat, Xverse, … |
-| [Polkadot injectedWeb3](/connectors/polkadot-injected-web3)    | `@usebutr/polkadot`      | `polkadot`                  | injectedWeb3 + Wallet Standard      | Polkadot.js, Talisman, SubWallet, …             |
-| [WalletConnect](/connectors/walletconnect)                     | `@usebutr/walletconnect` | `evm` `svm` `sui` `bitcoin` | explicit                            | Mobile wallets; needs a Reown project id        |
-| [Ledger](/connectors/ledger)                                   | `@usebutr/ledger`        | `evm` `svm` `sui` `bitcoin` | explicit                            | WebUSB, Chromium-only, signing-only             |
-
-Registering an explicit connector follows the same shape every time. Build the
-adapter at module scope (it's async), then wire it through the unified provider:
+Both kinds land in `useDiscoveredWallets()` and connect the same way.
 
 ```tsx
+import type { WalletManagerConfig } from "@usebutr/core";
+import { fromAdapters } from "@usebutr/core";
+import { createLedgerAdapter } from "@usebutr/ledger";
 import { WalletManagerProvider } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
 import { createWalletConnectAdapters } from "@usebutr/walletconnect";
 
-const discovery = autoDiscovery();
-const [wc] = await createWalletConnectAdapters({
-  projectId,
-  namespaces: { evm: ["eip155:1"] },
-  onPairingUri,
-});
-const extra = new Map([[wc.id, wc]]);
+const config: WalletManagerConfig = {
+  sources: [
+    autoDiscovery(),
+    fromAdapters(
+      createWalletConnectAdapters({
+        namespaces: { evm: [] },
+        onPairingUri: showQr,
+        projectId: "<your Reown project id>",
+      }),
+    ),
+    fromAdapters(createLedgerAdapter({ platform: "evm" })),
+  ],
+};
 
-<WalletManagerProvider
-  discovery={discovery}
-  connectors={[{ id: wc.id, name: wc.name, chainPlatform: wc.chainPlatform }]}
-  createConnector={(id) => extra.get(id) ?? null}
->
-  {children}
-</WalletManagerProvider>;
+export const Providers = ({ children }: { children: React.ReactNode }) => (
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
+);
 ```
 
-When both `discovery` and `createConnector` are present, an id is resolved from
-discovered adapters first, then `createConnector`.
+Give each factory its own `fromAdapters`: a rejected promise is logged and
+contributes nothing, so one factory that fails never hides the others. The
+first adapter announced for an id wins.
 
-`@usebutr/polkadot` reads `window.injectedWeb3`, with Wallet Standard as a fallback. See [Polkadot injectedWeb3](/connectors/polkadot-injected-web3).
+| Connector                                                    | Package                  | Platforms                   | Reaches butr through                   | Signer `kind`                                              |
+| ------------------------------------------------------------ | ------------------------ | --------------------------- | -------------------------------------- | ---------------------------------------------------------- |
+| [Injected EVM](/connectors/injected-evm)                     | `@usebutr/evm`           | `evm`                       | EIP-6963, `window.ethereum` fallback   | `eip1193`                                                  |
+| [Solana Wallet Standard](/connectors/solana-wallet-standard) | `@usebutr/svm`           | `svm`                       | Wallet Standard                        | `wallet-standard`                                          |
+| [Sui Wallet Standard](/connectors/sui-wallet-standard)       | `@usebutr/sui`           | `sui`                       | Wallet Standard                        | `wallet-standard`                                          |
+| [Bitcoin](/connectors/bitcoin-wallet-standard)               | `@usebutr/bitcoin`       | `bitcoin`                   | Wallet Standard, injected fallbacks    | `wallet-standard`, `unisat`, `sats-connect`                |
+| [Polkadot](/connectors/polkadot-injected-web3)               | `@usebutr/polkadot`      | `polkadot`                  | injectedWeb3, Wallet Standard fallback | `polkadot-injected`, `wallet-standard`                     |
+| [WalletConnect](/connectors/walletconnect)                   | `@usebutr/walletconnect` | `evm` `svm` `sui` `bitcoin` | `fromAdapters`                         | `eip1193` (EVM), `walletconnect`                           |
+| [Ledger](/connectors/ledger)                                 | `@usebutr/ledger`        | `evm` `svm` `sui` `bitcoin` | `fromAdapters`                         | `ledger-evm`, `ledger-svm`, `ledger-sui`, `ledger-bitcoin` |
+
+## What each connector defines
+
+A method exists only when calling it can succeed for that wallet, so check it
+before calling. ✓ means always, a feature name means only when the wallet
+advertises it.
+
+| Method                  | Injected EVM | Wallet Standard (SVM, Sui, BTC) |     Unisat-style     | Xverse |            Polkadot injected             | WalletConnect EVM | WalletConnect SVM, Sui, BTC |   Ledger   |
+| ----------------------- | :----------: | :-----------------------------: | :------------------: | :----: | :--------------------------------------: | :---------------: | :-------------------------: | :--------: |
+| `signMessage`           |      ✓       |           its feature           |          ✓           |   ✓    |      after connect, with `signRaw`       |         ✓         |              ✓              | not on Sui |
+| `sendTx`                |      ✓       |           its feature           |  with `sendBitcoin`  |   ✓    |                                          |         ✓         |              ✓              |            |
+| `signTransaction`       |              |           its feature           |          ✓           |   ✓    |                                          |                   |              ✓              | not on EVM |
+| `signIn`                |              |         `solana:signIn`         |                      |        |                                          |                   |                             |            |
+| `switchChain`           |      ✓       |      2+ chains advertised       | with `switchNetwork` |   ✓    |                                          |         ✓         |    2+ chains configured     |            |
+| `requestAccounts`       |      ✓       |                                 |                      |        |                                          |                   |                             |            |
+| `getBalance`            |      ✓       |                                 |                      |        |                                          |         ✓         |                             |            |
+| `getTransactionReceipt` |      ✓       |                                 |                      |        |                                          |         ✓         |                             |            |
+| `subscribe`             |      ✓       |                ✓                |      with `on`       |   ✓    | after connect, with `accounts.subscribe` |         ✓         |              ✓              |            |
+| `disconnect`            |      ✓       |      `standard:disconnect`      |                      |   ✓    |                    ✓                     |         ✓         |              ✓              |     ✓      |
+
+Polkadot's Wallet Standard adapters follow the Wallet Standard column, with
+`signMessage` behind `polkadot:signMessage` and never `sendTx` or
+`signTransaction`.
+
+## Chains and accounts
+
+`sendTx` and `signTransaction` take `{ account, chain }`. What a transport
+does with a `chain` that is not its current one depends on what the wallet
+can do:
+
+| Transport                       | A different `chain`                                                                  | `switchChain`                                          |
+| ------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| Injected EVM, WalletConnect EVM | Switches the wallet's network first (`wallet_switchEthereumChain`), then sends.      | Switches the wallet's network.                         |
+| Wallet Standard                 | Routes that one call; the wallet must advertise the chain.                           | Re-points butr's view; the wallet is not asked.        |
+| WalletConnect SVM, Sui, BTC     | Routes that one call; the session must have approved the chain.                      | Re-points butr's view to another approved chain.       |
+| Unisat, Xverse                  | Switches the wallet's network first, or rejects with `ChainMismatch` when it cannot. | Switches the wallet's network, where the provider can. |
+| Ledger                          | Rejects with `ChainMismatch`: build one adapter per chain.                           | None.                                                  |
+| Polkadot                        | Not applicable: no `sendTx`, and `signMessage` takes no chain.                       | Wallet Standard only, with 2+ chains advertised.       |
+
+An `account` the wallet does not expose rejects everywhere. No adapter falls
+back to its first account.

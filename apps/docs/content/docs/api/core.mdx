@@ -1,86 +1,388 @@
 ---
 title: "@usebutr/core"
-description: Types, the wallet store, persistence, and the discovery seam. No React, no protocols.
+description: The wallet manager, the adapter types, chain registries, persistence, and the discovery seam. No React, no protocols.
 ---
 
-## Functions
+## Wallet manager
 
-### `createWalletSource(subscribe): WalletSource`
-
-```ts
-import { createWalletSource } from "@usebutr/core";
-
-const source = createWalletSource(discoverEvmAdapters);
-// Pass as: <WalletManagerProvider discovery={source}>
-```
-
-Wraps a bare `(onAdapter: (adapter: WalletAdapter) => void) => () => void`
-discoverer into a `WalletSource`. Use this when you want EVM-only or SVM-only
-discovery without importing `@usebutr/wallets`:
+### `createWalletManager(config?, options?): WalletManager`
 
 ```ts
-import { createWalletSource } from "@usebutr/core";
-import { discoverEvmAdapters } from "@usebutr/evm";
-import { discoverSvmAdapters } from "@usebutr/svm";
+import { createWalletManager } from "@usebutr/core";
+import { autoDiscovery } from "@usebutr/wallets";
 
-const evmOnly = createWalletSource(discoverEvmAdapters);
-const svmOnly = createWalletSource(discoverSvmAdapters);
+const manager = createWalletManager({ sources: [autoDiscovery()] });
+const stop = manager.start();
+
+manager.subscribe((state) => {
+  renderPicker(state.adapters);
+});
+
+const wallet = await manager.connect("io.metamask");
 ```
 
-`WalletSource` (the discovery seam) is `{ subscribe(onAdapter): () => void }`.
+Framework-free: `@usebutr/react`'s provider creates one per mount and calls
+`start()` in an effect. Creating a manager has no side effects, so it is safe
+during a server render. `options.initialState` (a `WalletSnapshot`) seeds it
+synchronously, as the provider's `initialState` prop does.
 
-### `createWalletStore(config: WalletManagerConfig): WalletStore`
+### `WalletManager`
 
-Creates the Zustand-backed wallet store. `@usebutr/react`'s provider wraps this;
-call it directly only for non-React hosts.
+A read-only zustand store plus actions. Every action is a stable reference.
 
-### `mapConnectionError(raw: unknown): ConnectionError`
+| Member                                     | Notes                                                                                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `getState()`                               | The current `WalletState`, without subscribing.                                                                                       |
+| `subscribe(listener)`                      | `(state, prev) => void`; returns the unsubscribe.                                                                                     |
+| `getInitialState()`                        | The state the manager was created with.                                                                                               |
+| `start()`                                  | Subscribes the sources, hydrates persisted connections once, bridges wallet events. The returned function undoes all but hydration.   |
+| `connect(connectorId)`                     | `Promise<ConnectedWallet>`; rejects with a `ConnectionError`.                                                                         |
+| `disconnect(connectorId)`                  | Tears the wallet down and forgets it.                                                                                                 |
+| `disconnectAll()`                          | Disconnects every wallet and forgets every persisted connection.                                                                      |
+| `requestAccounts(connectorId)`             | `Promise<void>`. Opens the wallet's account picker, then refreshes the pool entry. A no-op when the adapter has no `requestAccounts`. |
+| `setAccount(connectorId, account)`         | Selects an exposed `account` without changing any account's chain. Unknown accounts are ignored.                                      |
+| `setActive(connectorId)`                   | Makes a pool entry the active wallet.                                                                                                 |
+| `setSelection(chainPlatform, connectorId)` | Picks which pool entry serves a platform.                                                                                             |
+| `clearConnectionError()`                   | Clears `connectionError` and returns `connectionStatus` to `"idle"`.                                                                  |
 
-Normalises any thrown value into a tagged
-[`ConnectionError`](/concepts/errors).
+### `WalletManagerConfig`
 
-### `walletEqual(a: ConnectedWallet, b: ConnectedWallet): boolean`
+Read once, when the manager is created. Define it at module scope.
 
-Identity comparison used by the async hooks (compares connector id + active
-account address + chain id). Stable wallets don't re-trigger
-`useSigner`/`useBalance`.
+| Field                    | Type                                            | Notes                                                                                                                |
+| ------------------------ | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `sources`                | `ReadonlyArray<WalletSource>`                   | `autoDiscovery()`, any `discover*Adapters` export, or `fromAdapters(…)`. The first adapter announced for an id wins. |
+| `storage`                | `WalletPersistence`                             | Replaces the default localStorage + sessionStorage persistence.                                                      |
+| `storageKeyPrefix`       | `string`                                        | Key prefix for the default persistence. Ignored when `storage` is set.                                               |
+| `onConnect`              | `(wallet, { reconnected }) => void`             | A user `connect` (`reconnected: false`) or a silent restore (`true`).                                                |
+| `onConnectError`         | `(error: ConnectionError, connectorId) => void` | Every failed attempt.                                                                                                |
+| `onDisconnect`           | `(wallet, { byUser }) => void`                  | `byUser` is false when the wallet ended the session.                                                                 |
+| `onHydrated`             | `(outcome: HydrationOutcome) => void`           | Once, after the start-up hydration pass.                                                                             |
+| `onSlowConnect`          | `(connectorId) => void`                         | At most once per attempt, after `slowConnectThresholdMs`.                                                            |
+| `slowConnectThresholdMs` | `number`                                        | Default `5000`.                                                                                                      |
+| `onStorageError`         | `(error: Error) => void`                        | A failed persistence read or write. Defaults to `console.warn`.                                                      |
 
-### `groupByPlatform(items, getPlatform): Map<ChainPlatform, Array<T>>`
+### `WalletState`
 
-Buckets a flat list by chain platform, keyed in `CHAIN_PLATFORMS` order with
-empty platforms omitted. `getPlatform` reads the discriminant, which sits at a
-different depth depending on the input: `adapter.chainPlatform` on a discovered
-wallet, `wallet.connector.chainPlatform` on a pool entry.
+| Field                   | Type                                   | Notes                                                                                                                   |
+| ----------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `adapters`              | `ReadonlyArray<WalletAdapter>`         | Every adapter the sources announced, in announcement order.                                                             |
+| `pool`                  | `ReadonlyMap<string, ConnectedWallet>` | Live connections, keyed by connector id.                                                                                |
+| `selection`             | `ReadonlyMap<ChainPlatform, string>`   | Which pool entry serves each platform present in the pool.                                                              |
+| `activeConnectorId`     | `string \| null`                       | In the pool, or `null` when the pool is empty.                                                                          |
+| `reconnectingIds`       | `ReadonlySet<string>`                  | Pool entries still backed by a shadow adapter seeded from `initialState`.                                               |
+| `dormant`               | `ReadonlyMap<string, StoredPoolEntry>` | Persisted connections that are not live: awaiting their adapter, failed their silent reconnect, or ended by the wallet. |
+| `connectionStatus`      | `ConnectStatus`                        | `"idle" \| "connecting" \| "success" \| "error"`: the latest `connect` attempt.                                         |
+| `connectingConnectorId` | `string \| null`                       | The wallet the in-flight attempt is for.                                                                                |
+| `connectionError`       | `ConnectionError \| null`              | The latest attempt's failure.                                                                                           |
+| `isHydrated`            | `boolean`                              | True after the start-up hydration pass, and from the start when seeded.                                                 |
+| `isUserDisconnected`    | `boolean`                              | Session-scoped: set by a user disconnect, cleared by the next connect.                                                  |
+
+### `HydrationOutcome`
 
 ```ts
-import { groupByPlatform } from "@usebutr/core";
-
-const byPlatform = groupByPlatform(adapters, (a) => a.chainPlatform);
+type HydrationOutcome = {
+  dropped: ReadonlyArray<{ connectorId: string; reason: ConnectionError }>;
+  pendingIds: ReadonlyArray<string>;
+  restoredIds: ReadonlyArray<string>;
+};
 ```
 
-React consumers should reach for
-[`useDiscoveredWalletsByPlatform` / `useConnectedWalletsByPlatform`](/api/react)
-instead, which bind the accessor and memoise the result.
+`pendingIds` are not failures: their adapters had not been announced yet, and
+the manager restores them the moment they are.
 
-### `sanitizeIcon(icon: string | undefined): string | undefined`
+## Sources
 
-Trims a wallet-announced icon and treats an all-whitespace value as absent.
-Discovery already applies this at adapter construction, so `Connector.icon` is
-safe to render as-is; reach for this only when building adapter or
-`ConnectorMeta` metadata yourself.
+### `WalletSource`
 
-### `createSignInFlow(options)`
+```ts
+type WalletSource = (onAdapter: (adapter: WalletAdapter) => void) => () => void;
+```
 
-Returns an object with `signIn(wallet, account?)`, which checks capabilities,
-fetches a nonce, obtains a wallet signature, and calls your verifier. Options are
-`getNonce`, `verify`, optional `buildMessage`, and optional `preferSignMessage`.
-See the [sign-in guide](/guides/sign-in) for SIWS routing and backend boundaries.
-`SignInUnsupportedError` is thrown before the nonce request when message signing
-is unsupported; it exposes `connectorId`.
+A function that announces adapters and returns its unsubscribe. Every
+`discover*Adapters` export already has this shape, so it goes into `sources`
+as-is.
 
-## Encoding
+### `fromAdapters(adapters): WalletSource`
 
-All helpers are exported from `@usebutr/core`:
+Takes an adapter, an iterable of adapters, or a promise of either, for
+adapters that are built rather than discovered: WalletConnect, Ledger,
+hand-rolled ones. They then appear in `useDiscoveredWallets()` like any
+discovered wallet. A rejected promise is logged and contributes nothing, so
+give each factory its own `fromAdapters`.
+
+```ts
+import { fromAdapters } from "@usebutr/core";
+import { createLedgerAdapter } from "@usebutr/ledger";
+import { createWalletConnectAdapters } from "@usebutr/walletconnect";
+
+const sources = [
+  fromAdapters(createWalletConnectAdapters({ namespaces: { evm: [] }, projectId })),
+  fromAdapters(createLedgerAdapter({ platform: "evm" })),
+];
+```
+
+### `PlatformDiscoverer`
+
+`{ subscribe: WalletSource; fallback?: { subscribe(onAdapter, { hasAnyPrimaryAdapter }) } }`.
+Each platform package exports one; `@usebutr/wallets` composes them.
+
+## Adapters
+
+### `Connector<P>`
+
+What butr itself calls. Every adapter has `chainPlatform`, `id`, `name`,
+`connect(options?: { silent?: boolean })` and `getAccounts()`, plus `icon?`.
+`disconnect`, `requestAccounts` and `subscribe` are optional. `getAccounts()`
+resolves the accounts the wallet exposes, active first; an empty list means
+not connected.
+
+### `WalletBase<Tx>`
+
+The wallet half. `getSigner()` is always there; everything else exists only
+when it works for that wallet, so presence is the capability check:
+
+```ts
+type WalletBase<Tx> = {
+  getBalance?: (options?: BalanceOptions) => Promise<Balance>;
+  getSigner: () => Promise<WalletSigner>;
+  getTransactionReceipt?: (hash: string) => Promise<TransactionReceipt>;
+  sendTx?: (tx: Tx, options?: TransactionOptions) => Promise<string>;
+  signMessage?: (message: Uint8Array, options?: AccountOptions) => Promise<SignedMessage>;
+  switchChain?: (chain: ChainBase) => Promise<void>;
+};
+```
+
+| Platform   | Wallet type      | Adapter type      | Transaction input       | Additions                                                                      |
+| ---------- | ---------------- | ----------------- | ----------------------- | ------------------------------------------------------------------------------ |
+| `evm`      | `EvmWallet`      | `EvmAdapter`      | `EvmTransactionRequest` | none                                                                           |
+| `svm`      | `SvmWallet`      | `SvmAdapter`      | `Uint8Array`            | `signIn?(input?)`, `signTransaction?(tx, options?)` resolving the signed bytes |
+| `sui`      | `SuiWallet`      | `SuiAdapter`      | `SuiTransactionInput`   | `signTransaction?(tx, options?)` resolving `{ bytes, signature }`              |
+| `bitcoin`  | `BitcoinWallet`  | `BitcoinAdapter`  | `BitcoinTransfer`       | `signTransaction?(psbt, options?)` resolving signed PSBT bytes                 |
+| `polkadot` | `PolkadotWallet` | `PolkadotAdapter` | none: no `sendTx`       | none                                                                           |
+
+- `WalletAdapter` is the union of the five adapter types. Narrow on
+  `chainPlatform` to reach a platform's own methods and transaction type.
+- `WalletAdapterFor<P>` picks one: `WalletAdapterFor<"svm">` is `SvmAdapter`.
+- `EvmTransactionRequest` is an `eth_sendTransaction` object whose quantities
+  may be `bigint`; `EvmTransactionValue` is its value type.
+- `SuiTransactionInput` is a `@mysten/sui` `Transaction` (anything with
+  `toJSON()`), its JSON string, or BCS bytes.
+- `BitcoinTransfer` is `{ amount: bigint; recipient: string }`, in satoshis.
+
+### Options and results
+
+```ts
+type AccountOptions = { account?: Account };
+type TransactionOptions = AccountOptions & { chain?: ChainBase };
+type BalanceOptions = AccountOptions & { token?: string };
+
+type SignedMessage = { signature: Uint8Array; signedMessage: Uint8Array };
+type SignInOutput = { account: Account; signature: Uint8Array; signedMessage: Uint8Array };
+type TransactionReceipt = { status: "Error" | "Pending" | "Success" };
+type Balance = { decimals: number; formatted: string; symbol: string; value: bigint };
+```
+
+An `account` the wallet does not expose rejects; omit it to use the active
+account. A `chain` targets one transaction: Wallet Standard and WalletConnect
+route it per call, an EVM wallet switches its network first, and a transport
+that can do neither rejects when it is not the current chain. `SignInInput`
+and `SignInValue` type the Sign In With Solana fields.
+
+### `ConnectedWallet<P>`
+
+```ts
+type ConnectedWallet<P extends ChainPlatform = ChainPlatform> = {
+  account: Account; // the active account, always one of `accounts`
+  accounts: ReadonlyArray<Account>;
+  connector: WalletAdapterFor<P>;
+};
+```
+
+### `isPlatformWallet(wallet, platform)`
+
+Type guard that narrows a pool entry to `ConnectedWallet<P>`, e.g. before
+calling its `sendTx`. The reverse needs nothing: a `ConnectedWallet<"evm">` is
+already a `ConnectedWallet`.
+
+```ts
+import { isPlatformWallet } from "@usebutr/core";
+
+if (isPlatformWallet(wallet, "svm") && wallet.connector.sendTx) {
+  await wallet.connector.sendTx(serializedTx);
+}
+```
+
+### `ConnectorEvent`
+
+```ts
+type ConnectorEvent =
+  { accounts: ReadonlyArray<Account>; type: "accountsChanged" } | { type: "disconnected" };
+```
+
+`accounts` is every account the wallet still exposes, active first. A chain
+switch arrives as a changed `account.chain`.
+
+## Signers
+
+`getSigner()` resolves a `WalletSigner`. Narrow it on `kind`; each branch is
+fully typed:
+
+```ts
+const signer = await wallet.connector.getSigner();
+switch (signer.kind) {
+  case "eip1193": {
+    // signer.provider: Eip1193Provider, ready for viem's `custom()`
+    break;
+  }
+  case "wallet-standard": {
+    // signer.wallet: WalletStandardWallet, read features with `getFeature`
+    break;
+  }
+  default: {
+    // WalletConnect, Ledger, Unisat, … each carry their own fields
+  }
+}
+```
+
+- `WalletSignerRegistry` is an empty interface that transport packages fill
+  through module augmentation. The [signer kinds](/api#signer-kinds) table
+  lists every registered variant.
+- `WalletSigner` is the union built from it, `WalletSignerKind` its `kind`
+  values, and `WalletSignerOf<K>` one variant: `WalletSignerOf<"eip1193">`.
+
+A kind exists in the union only when its package is part of the program. An
+app that imports neither `@usebutr/evm` nor `@usebutr/wallets` has no
+`eip1193` variant; `@usebutr/wallets` loads every platform's kinds.
+
+## Chains and accounts
+
+- `ChainBase`: `{ id; name; namespace; reference }`, CAIP-2 shaped. `name` is
+  the chain's name, never the wallet's.
+- `ChainPlatform`: `"evm" | "svm" | "sui" | "bitcoin" | "polkadot"`.
+  `CHAIN_PLATFORMS` is the same list at runtime; `isChainPlatform(value)`
+  narrows a string.
+- `ChainsByPlatform`: `Readonly<Record<ChainPlatform, ReadonlyArray<ChainBase>>>`.
+- `Account`: `{ chain: ChainBase; id: string; walletAddress: string }`.
+- `buildAccount(address, chain): Account` builds the `<chain id>:<address>`
+  id the manager compares accounts by. Hand-rolled adapters must use it.
+- `resolveChain(id, known?): ChainBase` looks a CAIP-2 id up in a registry,
+  and names a chain outside it by its id.
+
+### Registries
+
+| Record            | List                   | Keys                                                                    |
+| ----------------- | ---------------------- | ----------------------------------------------------------------------- |
+| `EVM_CHAINS`      | `EVM_CHAINS_LIST`      | `arbitrum`, `base`, `bsc`, `ethereum`, `optimism`, `polygon`, `sepolia` |
+| `SVM_CHAINS`      | `SVM_CHAINS_LIST`      | `devnet`, `mainnet`, `testnet` (`solana:devnet`, …)                     |
+| `SUI_CHAINS`      | `SUI_CHAINS_LIST`      | `devnet`, `localnet`, `mainnet`, `testnet`                              |
+| `BITCOIN_CHAINS`  | `BITCOIN_CHAINS_LIST`  | `mainnet`, `signet`, `testnet`, `testnet4` (`bip122:<genesis>`)         |
+| `POLKADOT_CHAINS` | `POLKADOT_CHAINS_LIST` | `kusama`, `paseo`, `polkadot`, `westend`                                |
+
+`CHAINS_BY_PLATFORM` holds every list, keyed by platform: the shape a chain
+picker wants. The platform packages export no chain registries; an app that
+imports none of these bundles none of them.
+
+## Errors
+
+### `class ConnectionError extends Error`
+
+`kind: ConnectionErrorKind`, `message`, and a standard `cause` holding the
+original value. `ConnectionErrorKind` is `"UserRejected" | "RequestPending" |
+"WalletLocked" | "ChainMismatch" | "NotConnected" | "Timeout" |
+"WalletNotFound" | "Unknown"`. See [errors](/concepts/errors).
+
+### `toConnectionError(raw: unknown): ConnectionError`
+
+Normalises any thrown value: EIP-1193 codes first, then message matching,
+else `"Unknown"`. A `ConnectionError` passes through unchanged.
+
+### `class ShadowConnectorError extends Error`
+
+Thrown by `connect`, `getAccounts` and `getSigner` on a wallet still
+reconnecting from `initialState`. Carries `connectorId` and `method`; match
+it with `instanceof`. Check `useIsReconnecting(id)` first.
+
+## Persistence
+
+### `createWalletStorage(options?): WalletPersistence`
+
+The default persistence: pool, selection and active id in the persistent
+driver, the disconnect intent in the session driver.
+`WalletStorageOptions` is `{ keyPrefix?; persistent?: StorageDriver; session?: StorageDriver }`;
+`keyPrefix` defaults to `"butr"` and the drivers to localStorage and
+sessionStorage.
+
+### `WalletPersistence`
+
+```ts
+type WalletPersistence = {
+  load: () => Promise<PersistedWalletState>;
+  save: (state: PersistedWalletState) => Promise<void>;
+};
+```
+
+The manager derives `PersistedWalletState` (a `WalletSnapshot` plus
+`isUserDisconnected`) after every change and hands the whole value to `save`,
+so an implementation never merges or diffs. See
+[custom storage](/guides/custom-storage).
+
+### Drivers
+
+- `createBrowserStorageDriver(): BrowserStorageDrivers`: `{ persistent, session }`
+  over localStorage and sessionStorage, falling back to memory where they do
+  not exist.
+- `createMemoryStorageDriver(): StorageDriver`: in-memory.
+- `createCookieStorageDriver(options?: CookieDriverOptions): StorageDriver`:
+  options are `domain`, `initialCookies` (`InitialCookies`, read on the server),
+  `maxAgeSeconds` (default 30 days), `path` (default `/`), `sameSite` (default
+  `"lax"`) and `secure` (default `true`).
+
+`StorageDriver` is `{ getItem; removeItem; setItem }`, each returning a
+`MaybePromise`.
+
+### Server snapshots
+
+- `readWalletSnapshot(cookies: CookieSource, options?: SnapshotOptions): WalletSnapshot`
+  reads what the browser last persisted from a cookie list, map or record.
+  Pass the same `keyPrefix` as `storageKeyPrefix`. See
+  [SSR without a flash](/guides/ssr-no-flash).
+- `EMPTY_SNAPSHOT`: a frozen snapshot with no connections.
+- `WalletSnapshot`: `{ activeConnectorId; pool: StoredPoolRecord; selection: StoredSelectionRecord }`.
+  `StoredPoolEntry` is what a connection needs to render before its adapter
+  exists: `account`, `accounts`, `chainPlatform`, `connectorId`, `icon?`, `name`.
+
+## Sign-in
+
+### `createSignInFlow(options): { signIn(wallet, account?) }`
+
+Fetches a nonce, has the wallet sign, and hands the result to your verifier.
+Solana wallets with `signIn` take the Sign In With Solana path unless
+`preferSignMessage` is set.
+
+| Option              | Type                                       |
+| ------------------- | ------------------------------------------ |
+| `getNonce`          | `({ account, wallet }) => Promise<string>` |
+| `verify`            | `(result: SignInResult) => Promise<void>`  |
+| `buildMessage`      | `(ctx: SignInMessageContext) => string`    |
+| `preferSignMessage` | `boolean`                                  |
+
+`SignInResult` carries `account`, `nonce`, `message?`, `signature`,
+`signedMessage`, their base64 forms and `wallet`. `SignInUnsupportedError`
+(with `connectorId`) is thrown before the nonce request when the flow needs
+`signMessage` and the wallet has none. See the [sign-in guide](/guides/sign-in).
+
+## Helpers
+
+| Export                                | Purpose                                                                                                   |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `groupByPlatform(items, getPlatform)` | Buckets a list into a `Map<ChainPlatform, Array<T>>` in `CHAIN_PLATFORMS` order, empty platforms omitted. |
+| `walletEqual(a, b)`                   | Same adapter object, same active account, same account list.                                              |
+| `accountsEqual(a, b)`                 | Same account ids in the same order.                                                                       |
+| `sanitizeIcon(icon)`                  | Trims a wallet icon; an all-whitespace one becomes `undefined`. Discovery already applies it.             |
+| `logWarn`, `logError`                 | butr's console sink, for adapter authors.                                                                 |
+
+### Encoding
 
 | Function             | Conversion                             |
 | -------------------- | -------------------------------------- |
@@ -91,86 +393,5 @@ All helpers are exported from `@usebutr/core`:
 | `base64ToBytes`      | Base64 to bytes.                       |
 | `bytesToBase58`      | Bytes to base58.                       |
 | `base58ToBytes`      | Base58 to bytes.                       |
-
-Use base64 when sending signature bytes through JSON. Verify against the
-returned signed bytes, which may differ from the original message.
-
-## Storage
-
-### `createBrowserStorageDriver(): StorageDriver`
-
-`localStorage`-backed driver (the default).
-
-### `createCookieStorageDriver(options: CookieDriverOptions): StorageDriver`
-
-Cookie-backed driver. Options cover domain, path, `maxAgeSec`, `sameSite`,
-`secure`.
-
-### `createMemoryStorageDriver(): StorageDriver`
-
-In-memory driver; no persistence.
-
-### `class WalletStorage`
-
-The default `WalletPersistence` implementation. Construct with
-`{ keyPrefix, persistent, session }` driver triple. See
-[persistence](/concepts/persistence) and
-[custom storage](/guides/custom-storage).
-
-## Types
-
-Store: `ConnectionStatus`, `WalletStore`, `WalletStoreState`.
-
-Wallet model: `Account`, `Balance`, `ChainBase`, `ChainPlatform`,
-`ConnectedWallet`, `Connector`, `ConnectorEvent`, `ConnectorMeta`, `WalletBase`,
-`WalletAdapter`, `WalletAvailability`, `WalletCapabilities`,
-`WalletManagerConfig`, `HydrationOutcome`.
-
-Errors: `ConnectionError`, `ConnectionErrorKind`, `SignInUnsupportedError`.
-
-Sign-in: `SignInInput`, `SignInValue`, `SignInFlowOptions`, `SignInMessageContext`, `SignInResult`.
-
-Storage: `BrowserStorageDrivers`, `CookieDriverOptions`, `MaybePromise`,
-`StorageDriver`, `StoredPoolEntry`, `StoredPoolRecord`,
-`StoredSelectionRecord`, `WalletPersistence`.
-
-Discovery seam: `WalletSource`, shaped as `{ subscribe(onAdapter): () => void }`.
-
-## Key shapes
-
-```ts
-type WalletAdapter = EvmAdapter | SvmAdapter | SuiAdapter | BitcoinAdapter | PolkadotAdapter;
-
-type ConnectedWallet = {
-  account: Account; // active account
-  accounts: Array<Account>; // all exposed accounts (≥ 1)
-  connector: WalletAdapter;
-};
-
-type Account = { chain: ChainBase; id: string; walletAddress: string };
-
-type ChainBase = {
-  id: string; // CAIP-2, e.g. "eip155:1"
-  name: string;
-  namespace: string; // "eip155" | "solana"
-  reference: string; // "1" | "5eykt4Us…"
-};
-
-type Balance = {
-  decimals: number;
-  formatted: string;
-  symbol: string;
-  value: bigint;
-};
-
-type HydrationOutcome = {
-  restoredIds: Array<string>;
-  pendingIds: Array<string>;
-  dropped: Array<{ connectorId: string; reason: unknown }>;
-};
-```
-
-See [connectors and wallets](/concepts/connectors-and-wallets) for the
-full `Connector` / `WalletBase` / `WalletManagerConfig` definitions.
 
 **Source:** `packages/core/src/index.ts`.

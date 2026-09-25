@@ -46,7 +46,7 @@ const coerceSuiTransaction = (tx: TransactionInput) => {
     const encoded = bytesToBase64(tx);
     return { toJSON: () => Promise.resolve(encoded) };
   }
-  if (typeof tx === "object" && tx !== null && "toJSON" in tx && typeof tx.toJSON === "function") {
+  if (typeof tx === "object" && "toJSON" in tx && typeof tx.toJSON === "function") {
     return { toJSON: tx.toJSON };
   }
   throw new TypeError(

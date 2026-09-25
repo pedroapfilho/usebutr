@@ -64,7 +64,6 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     }
     if (
       typeof tx !== "object" ||
-      tx === null ||
       !("recipient" in tx) ||
       typeof tx.recipient !== "string" ||
       !("amount" in tx) ||
@@ -118,7 +117,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
 
     async getAccount() {
       const accounts = await provider.getAccounts();
-      const first = accounts[0];
+      const first = accounts.at(0);
       if (first === undefined) {
         return null;
       }
@@ -187,7 +186,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
           return;
         }
         const built = accounts.map((a) => buildAccount(a, chain));
-        const first = built[0];
+        const first = built.at(0);
         if (first === undefined) {
           return;
         }

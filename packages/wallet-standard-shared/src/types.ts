@@ -16,7 +16,7 @@ type WalletStandardFeature = { version?: string };
 type WalletStandardWallet = {
   accounts: ReadonlyArray<WalletStandardWalletAccount>;
   chains: ReadonlyArray<string>;
-  features: Readonly<Record<string, WalletStandardFeature>>;
+  features: Readonly<Partial<Record<string, WalletStandardFeature>>>;
   icon: string;
   name: string;
   version: string;

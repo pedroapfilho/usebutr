@@ -36,7 +36,7 @@ const createFakeAdapter = (options: FakeAdapterOptions = {}): WalletAdapter => {
   const name = options.name ?? "Fake Wallet";
   const chainPlatform: ChainPlatform = options.chainPlatform ?? "evm";
   const accounts = options.accounts ?? [];
-  const account = accounts[0] ?? null;
+  const account = accounts.at(0) ?? null;
   const icon = options.icon;
 
   const base = {

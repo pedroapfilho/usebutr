@@ -76,8 +76,8 @@ const readWalletSnapshot = (
   if (rawActive !== undefined && rawActive.length > 0 && pool[rawActive] !== undefined) {
     activeConnectorId = rawActive;
   } else {
-    const firstKey = Object.keys(pool)[0];
-    if (firstKey) {
+    const firstKey = Object.keys(pool).at(0);
+    if (firstKey !== undefined && firstKey !== "") {
       activeConnectorId = firstKey;
     }
   }

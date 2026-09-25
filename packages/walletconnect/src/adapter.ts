@@ -180,7 +180,8 @@ const createWalletConnectAdapters = async (
     );
   }
 
-  const [primary, ...secondary] = selected;
+  const primary = selected.at(0);
+  const secondary = selected.slice(1);
   if (primary === undefined) {
     throw new Error("Unreachable: empty namespace selection");
   }

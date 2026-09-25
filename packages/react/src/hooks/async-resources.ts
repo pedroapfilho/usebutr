@@ -56,7 +56,8 @@ const useAsyncResource = <T>(fn: (() => Promise<T>) | null): AsyncState<T> => {
       return undefined;
     }
     dispatch({ type: "load" });
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
         const data = await fn();

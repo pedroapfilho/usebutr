@@ -150,7 +150,6 @@ const buildSatsConnectAdapter = (
     }
     if (
       typeof tx !== "object" ||
-      tx === null ||
       !("recipient" in tx) ||
       typeof tx.recipient !== "string" ||
       !("amount" in tx) ||

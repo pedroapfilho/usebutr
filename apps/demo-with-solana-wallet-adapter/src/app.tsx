@@ -51,7 +51,8 @@ const AdapterConsumer = ({
     if (pubkey === null) {
       return undefined;
     }
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
         const lamports = await connection.getBalance(pubkey);
@@ -181,12 +182,10 @@ const BridgeAndExplore = ({ wallet }: { wallet: ReturnType<typeof useActiveWalle
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
-        if (cancelled) {
-          return;
-        }
         const signer = await wallet.connector.getSigner();
         if (!isWalletStandardWallet(signer)) {
           throw new Error("SVM signer is not a Wallet Standard wallet");

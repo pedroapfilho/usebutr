@@ -110,11 +110,12 @@ const buildSvmAdapter = (
     if (!(tx instanceof Uint8Array)) {
       throw new TypeError("SVM sendTx expects a serialized transaction (Uint8Array)");
     }
-    const [output] = await signAndSendTx.signAndSendTransaction({
+    const outputs = await signAndSendTx.signAndSendTransaction({
       account: wsAccount,
       chain: chain ?? core.currentChainId(),
       transaction: tx,
     });
+    const output = outputs.at(0);
     if (output === undefined) {
       throw new Error("signAndSendTransaction returned no outputs");
     }
@@ -164,10 +165,11 @@ const buildSvmAdapter = (
       if (signMessage === undefined) {
         throw new Error(`Wallet ${wallet.name} does not advertise solana:signMessage`);
       }
-      const [output] = await signMessage.signMessage({
+      const outputs = await signMessage.signMessage({
         account: core.resolveAccount(account),
         message: msg,
       });
+      const output = outputs.at(0);
       if (output === undefined) {
         throw new Error("signMessage returned no outputs");
       }
@@ -181,11 +183,12 @@ const buildSvmAdapter = (
       if (!(tx instanceof Uint8Array)) {
         throw new TypeError("SVM signTransaction expects a serialized transaction (Uint8Array)");
       }
-      const [output] = await signTx.signTransaction({
+      const outputs = await signTx.signTransaction({
         account: wsAccount,
         chain: core.currentChainId(),
         transaction: tx,
       });
+      const output = outputs.at(0);
       if (output === undefined) {
         throw new Error("signTransaction returned no outputs");
       }
@@ -195,7 +198,8 @@ const buildSvmAdapter = (
 
   if (signIn !== undefined) {
     adapter.signIn = async (input) => {
-      const [output] = await signIn.signIn(input);
+      const outputs = await signIn.signIn(input);
+      const output = outputs.at(0);
       if (output === undefined) {
         throw new Error("signIn returned no outputs");
       }

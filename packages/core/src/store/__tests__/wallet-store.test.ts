@@ -187,7 +187,9 @@ describe("createWalletStore", () => {
       const { store } = createTestStore({
         createConnector: vi.fn().mockReturnValue(connector),
       });
-      await expect(store.getState().connectWallet("test")).rejects.toThrow();
+      await expect(store.getState().connectWallet("test")).rejects.toThrow(
+        "user denied transaction",
+      );
       expect(store.getState().connectionError?.kind).toBe("UserRejected");
     });
 
@@ -199,7 +201,9 @@ describe("createWalletStore", () => {
       const { store } = createTestStore({
         createConnector: vi.fn().mockReturnValue(connector),
       });
-      await expect(store.getState().connectWallet("test")).rejects.toThrow();
+      await expect(store.getState().connectWallet("test")).rejects.toThrow(
+        "request already pending",
+      );
       expect(store.getState().connectionError?.kind).toBe("RequestPending");
     });
 
@@ -213,7 +217,7 @@ describe("createWalletStore", () => {
       });
       const promise = store.getState().connectWallet("slow");
       vi.advanceTimersByTime(90_001);
-      await expect(promise).rejects.toThrow();
+      await expect(promise).rejects.toThrow("Connection timeout");
       vi.useRealTimers();
       expect(store.getState().connectionError?.kind).toBe("Timeout");
     });

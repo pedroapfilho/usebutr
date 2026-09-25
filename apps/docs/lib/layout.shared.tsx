@@ -12,7 +12,7 @@ export const baseOptions = (): BaseLayoutProps => ({
   nav: {
     title: (
       <>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- static SVG logo; next/image does not optimize SVGs */}
         <img
           alt="butr"
           className="block h-5 w-auto dark:hidden"
@@ -20,7 +20,7 @@ export const baseOptions = (): BaseLayoutProps => ({
           src="/butr-logo-light.svg"
           width={80}
         />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- static SVG logo; next/image does not optimize SVGs */}
         <img
           alt="butr"
           className="hidden h-5 w-auto dark:block"

@@ -55,7 +55,7 @@ const isWalletStandardWallet = (value: WalletSigner): value is WalletStandardWal
   typeof value.version === "string";
 
 const pickFirstAddress = (accounts: ReadonlyArray<WalletStandardWalletAccount>): string | null => {
-  const first = accounts[0];
+  const first = accounts.at(0);
   return first === undefined ? null : first.address;
 };
 

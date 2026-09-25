@@ -16,9 +16,7 @@ import { isSolanaSignAndSendTransactionFeature, isSolanaSignMessageFeature } fro
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 import { getFeature } from "@usebutr/wallet-standard-shared";
 
-// @solana/wallet-adapter's interface declares Promise-returning methods whose
-// bodies are synchronous here; async would only trip require-await.
-// oxlint-disable typescript/promise-function-async
+// oxlint-disable typescript/promise-function-async -- @solana/wallet-adapter declares Promise-returning methods whose bodies are synchronous here; async would only trip require-await
 
 /**
  * Constructed only after butr has already connected, so `connect()` is a
@@ -97,11 +95,12 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     if (feature === undefined) {
       throw new Error("Wallet does not advertise solana:signMessage");
     }
-    const account = this._wallet.accounts[0];
+    const account = this._wallet.accounts.at(0);
     if (account === undefined) {
       throw new Error("No exposed account");
     }
-    const [output] = await feature.signMessage({ account, message });
+    const outputs = await feature.signMessage({ account, message });
+    const output = outputs.at(0);
     if (output === undefined) {
       throw new Error("signMessage returned no outputs");
     }
@@ -129,7 +128,7 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     if (feature === undefined) {
       throw new Error("Wallet does not advertise solana:signAndSendTransaction");
     }
-    const account = this._wallet.accounts[0];
+    const account = this._wallet.accounts.at(0);
     if (account === undefined) {
       throw new Error("No exposed account");
     }
@@ -137,11 +136,12 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
       transaction instanceof Transaction
         ? transaction.serialize({ requireAllSignatures: false })
         : transaction.serialize();
-    const [output] = await feature.signAndSendTransaction({
+    const outputs = await feature.signAndSendTransaction({
       account,
       chain: "solana:devnet",
       transaction: new Uint8Array(serialised),
     });
+    const output = outputs.at(0);
     if (output === undefined) {
       throw new Error("signAndSendTransaction returned no outputs");
     }

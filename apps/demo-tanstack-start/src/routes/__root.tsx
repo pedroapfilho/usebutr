@@ -4,7 +4,6 @@ import appCss from "../styles.css?url";
 import { WalletProvider } from "../wallet-provider";
 
 const RootDocument = ({ children }: { children: React.ReactNode }) => (
-  // oxlint-disable-next-line no-head-element -- TanStack Start uses native <head>, not Next.js
   <html className="scheme-light" lang="en">
     {/* oxlint-disable-next-line no-head-element -- TanStack Start shell */}
     <head>

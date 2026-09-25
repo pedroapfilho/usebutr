@@ -88,7 +88,6 @@ const buildBitcoinAdapter = (
     }
     if (
       typeof tx !== "object" ||
-      tx === null ||
       !("amount" in tx) ||
       typeof tx.amount !== "bigint" ||
       !("recipient" in tx) ||

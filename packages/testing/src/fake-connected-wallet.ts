@@ -69,7 +69,7 @@ const createFakeConnectedWallet = (options: FakeConnectedWalletOptions = {}): Co
       buildAccount(address, resolvedChain),
     );
 
-  const account = accounts[0];
+  const account = accounts.at(0);
   if (account === undefined) {
     throw new Error(
       "createFakeConnectedWallet needs at least one account: pass `addresses` or `accounts`, or omit both for the default.",

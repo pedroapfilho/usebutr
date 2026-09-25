@@ -50,7 +50,6 @@ class ButrEvmWormholeSigner<N extends Network, C extends Chain> implements SignA
     const hashes: Array<TxHash> = [];
     for (const tx of txs) {
       const parsedTx = evmUnsignedTxSchema.parse(tx);
-      // oxlint-disable-next-line no-console
       console.log(`[wormhole/evm] sending: ${parsedTx.description}`);
       const response = await signer.sendTransaction(parsedTx.transaction);
       await response.wait(1);

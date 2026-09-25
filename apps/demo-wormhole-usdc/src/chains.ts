@@ -92,7 +92,7 @@ const CHAIN_LIST: ReadonlyArray<ChainSpec> = [
   },
 ];
 
-const CHAINS: Record<string, ChainSpec> = Object.fromEntries(
+const CHAINS: Partial<Record<string, ChainSpec>> = Object.fromEntries(
   CHAIN_LIST.map((spec) => [spec.chain, spec]),
 );
 

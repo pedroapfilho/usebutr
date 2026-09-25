@@ -40,7 +40,7 @@ A read-only zustand store plus actions. Every action is a stable reference.
 | `disconnect(connectorId)`                  | Tears the wallet down and forgets it.                                                                                                 |
 | `disconnectAll()`                          | Disconnects every wallet and forgets every persisted connection.                                                                      |
 | `requestAccounts(connectorId)`             | `Promise<void>`. Opens the wallet's account picker, then refreshes the pool entry. A no-op when the adapter has no `requestAccounts`. |
-| `setAccount(connectorId, account)`         | Makes `account` the wallet's active account.                                                                                          |
+| `setAccount(connectorId, account)`         | Selects an exposed `account` without changing any account's chain. Unknown accounts are ignored.                                      |
 | `setActive(connectorId)`                   | Makes a pool entry the active wallet.                                                                                                 |
 | `setSelection(chainPlatform, connectorId)` | Picks which pool entry serves a platform.                                                                                             |
 | `clearConnectionError()`                   | Clears `connectionError` and returns `connectionStatus` to `"idle"`.                                                                  |

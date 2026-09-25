@@ -16,7 +16,6 @@ import type {
   WalletAdapter,
   WalletManagerConfig,
 } from "../types";
-import { buildAccount } from "../types/account";
 import { ConnectionError, toConnectionError } from "../types/errors";
 
 import { createConnectorLifecycle } from "./connector-lifecycle";
@@ -41,7 +40,8 @@ type WalletManager = Pick<StoreApi<WalletState>, "getInitialState" | "getState" 
   /** Opens the wallet's account picker, then refreshes the pool entry. A no-op
    *  for wallets without `requestAccounts`. */
   requestAccounts: (connectorId: string) => Promise<void>;
-  /** Makes `account` the wallet's active account. */
+  /** Selects an exposed account without changing its chain or the account
+   *  list. Unknown wallets and accounts are ignored. */
   setAccount: (connectorId: string, account: Account) => void;
   setActive: (connectorId: string) => void;
   setSelection: (chainPlatform: ChainPlatform, connectorId: string) => void;
@@ -402,16 +402,11 @@ const createWalletManager = (
 
     setAccount: (connectorId, account) => {
       const wallet = getState().pool.get(connectorId);
-      if (wallet === undefined) {
+      const active = wallet?.accounts.find((candidate) => candidate.id === account.id);
+      if (wallet === undefined || active === undefined) {
         return;
       }
-      // An account on another chain means the wallet moved; carry the rest of
-      // its accounts to that chain so the list stays single-chain.
-      const onChain = wallet.accounts.map((a) =>
-        a.chain.id === account.chain.id ? a : buildAccount(a.walletAddress, account.chain),
-      );
-      const accounts = onChain.some((a) => a.id === account.id) ? onChain : [...onChain, account];
-      dispatch({ accounts, active: account, connectorId, type: "ACCOUNTS_CHANGED" });
+      dispatch({ accounts: wallet.accounts, active, connectorId, type: "ACCOUNTS_CHANGED" });
     },
 
     setActive: (connectorId) => {

@@ -62,6 +62,21 @@ if (signer.kind === "wallet-standard") {
 }
 ```
 
+## Transaction signing
+
+### `prepareSolanaTransaction(tx, signer): SolanaSigningPayload`
+
+Import from `@usebutr/svm/transaction` to integrate a transport that returns
+a bare signature. This entry point loads no wallet discovery code.
+
+`tx` is a serialized legacy or v0 transaction and `signer` its signer's
+base58 address. The helper validates the signature/header/key layout and
+rejects an account that is not a required signer. Instructions stay opaque.
+The result exposes `message` for device signing and `withSignature(bytes)`,
+which inserts a 64-byte signature into the matching slot of a copy,
+preserving other signatures and the original input. Ledger and
+WalletConnect share this implementation.
+
 ## Types
 
 Solana feature shapes, narrowed to the fields butr reads:

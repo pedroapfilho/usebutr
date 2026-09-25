@@ -164,7 +164,7 @@ describe("createSvmLedgerAdapter", () => {
     const adapter = await connectedSvm();
 
     await expect(adapter.signTransaction?.(Uint8Array.of(1, 2, 3, 4))).rejects.toThrow(
-      /expected a serialized Solana transaction/v,
+      /Truncated Solana transaction message/v,
     );
   });
 

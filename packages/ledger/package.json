@@ -50,7 +50,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@usebutr/core": "workspace:*"
+    "@usebutr/core": "workspace:*",
+    "@usebutr/svm": "workspace:*"
   },
   "devDependencies": {
     "@ledgerhq/hw-app-btc": "^11.3.1",

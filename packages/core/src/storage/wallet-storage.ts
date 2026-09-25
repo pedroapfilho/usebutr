@@ -71,7 +71,9 @@ const createWalletStorage = (options: WalletStorageOptions = {}): WalletPersiste
     },
 
     save: async (state: PersistedWalletState) => {
-      await Promise.all([
+      // A failed key must not release the manager's save queue while other
+      // writes from this snapshot can still overwrite the next snapshot.
+      const results = await Promise.allSettled([
         write(persistent, keys.pool, isEmpty(state.pool) ? null : JSON.stringify(state.pool)),
         write(
           persistent,
@@ -81,6 +83,10 @@ const createWalletStorage = (options: WalletStorageOptions = {}): WalletPersiste
         write(persistent, keys.active, state.activeConnectorId),
         write(session, keys.userDisconnected, state.isUserDisconnected ? "true" : null),
       ]);
+      const failure = results.find((result) => result.status === "rejected");
+      if (failure !== undefined) {
+        throw failure.reason;
+      }
     },
   };
 };

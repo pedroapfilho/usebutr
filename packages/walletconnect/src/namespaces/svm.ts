@@ -7,6 +7,7 @@ import {
   bytesToBase58,
   bytesToBase64,
 } from "@usebutr/core";
+import { prepareSolanaTransaction } from "@usebutr/svm/transaction";
 
 import { createCaipAdapterCore } from "./caip";
 import type { WalletConnectNamespaceBuilder } from "./types";
@@ -25,9 +26,6 @@ const GENESIS_IDS: ReadonlyMap<string, string> = new Map([
   [SVM_CHAINS.testnet.id, "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z"],
 ]);
 
-const SIGNATURE_LENGTH = 64;
-const PUBLIC_KEY_LENGTH = 32;
-
 const DEFAULT_CHAINS: ReadonlyArray<string> = [SOLANA_MAINNET];
 
 const DEFAULT_METHODS: ReadonlyArray<string> = [
@@ -37,56 +35,6 @@ const DEFAULT_METHODS: ReadonlyArray<string> = [
 ];
 
 const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged", "disconnect"];
-
-/** Solana's compact-u16: 7 bits per byte, low bits first, at most 3 bytes. */
-const readCompactU16 = (bytes: Uint8Array, offset: number) => {
-  let value = 0;
-  for (let size = 0; size < 3; size += 1) {
-    const byte = bytes[offset + size];
-    if (byte === undefined) {
-      break;
-    }
-    value += (byte % 128) * 128 ** size;
-    if (byte < 128) {
-      return { size: size + 1, value };
-    }
-  }
-  throw new Error("Malformed Solana transaction: bad compact-u16 length");
-};
-
-/**
- * A serialized transaction is `[signature count][64-byte slots][message]`,
- * and slot `i` belongs to the message's `i`-th account key. Some wallets
- * answer `solana_signTransaction` with only the signature.
- */
-const spliceSignature = (tx: Uint8Array, signer: string, signature: Uint8Array): Uint8Array => {
-  if (signature.length !== SIGNATURE_LENGTH) {
-    throw new Error("solana_signTransaction returned a signature that is not 64 bytes");
-  }
-  const slots = readCompactU16(tx, 0);
-  let cursor = slots.size + slots.value * SIGNATURE_LENGTH;
-  // A versioned message starts with a 0x80 | version prefix byte.
-  if ((tx[cursor] ?? 0) >= 128) {
-    cursor += 1;
-  }
-  const requiredSignatures = tx[cursor] ?? 0;
-  // Header: required signatures, read-only signed, read-only unsigned.
-  cursor += 3;
-  const keys = readCompactU16(tx, cursor);
-  cursor += keys.size;
-  const signerKey = base58ToBytes(signer);
-  const signers = Math.min(requiredSignatures, keys.value, slots.value);
-  for (let index = 0; index < signers; index += 1) {
-    const start = cursor + index * PUBLIC_KEY_LENGTH;
-    const key = tx.subarray(start, start + PUBLIC_KEY_LENGTH);
-    if (key.length === signerKey.length && key.every((byte, i) => byte === signerKey[i])) {
-      const signed = Uint8Array.from(tx);
-      signed.set(signature, slots.size + index * SIGNATURE_LENGTH);
-      return signed;
-    }
-  }
-  throw new Error(`${signer} is not a required signer of this transaction`);
-};
 
 /** Wallet response shapes drift between releases (a signed transaction,
  *  or only its signature), so decoding stays lenient. There is no
@@ -132,6 +80,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder<SvmAdapter> = {
 
       async signTransaction(tx, options) {
         const { address, chainId } = resolveTarget(options);
+        const transaction = prepareSolanaTransaction(tx, address);
         const result = await request(
           "solana_signTransaction",
           { pubkey: address, transaction: bytesToBase64(tx) },
@@ -142,7 +91,7 @@ const solanaNamespace: WalletConnectNamespaceBuilder<SvmAdapter> = {
           return base64ToBytes(signed);
         }
         const signature = readResultString(result, "signature", "solana_signTransaction");
-        return spliceSignature(tx, address, base58ToBytes(signature));
+        return transaction.withSignature(base58ToBytes(signature));
       },
     };
   },

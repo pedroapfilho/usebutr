@@ -269,35 +269,92 @@ describe("createWalletConnectAdapters (EVM events in a mixed session)", () => {
     provider.emit("chainChanged", "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp");
     provider.emit("chainChanged", "000000000019d6689c085ae165831e93");
     provider.emit("chainChanged", "mainnet");
+    for (const chainId of [
+      SOL_MAINNET_ID,
+      "sui:mainnet",
+      "bip122:000000000019d6689c085ae165831e93",
+    ]) {
+      // Even EVM-shaped data and empty lists belong to the envelope's namespace.
+      provider.emit("session_event", {
+        params: { chainId, event: { data: [], name: "accountsChanged" } },
+      });
+      provider.emit("session_event", {
+        params: { chainId, event: { data: [EVM_ADDRESS], name: "accountsChanged" } },
+      });
+      provider.emit("session_event", {
+        params: { chainId, event: { data: 137, name: "chainChanged" } },
+      });
+    }
     await flush();
 
     expect(listener).not.toHaveBeenCalled();
     unsubscribe?.();
   });
 
-  it("keeps only the EVM addresses of an accountsChanged event", async () => {
+  it.each([EVM_ADDRESS, `eip155:1:${EVM_ADDRESS}`])(
+    "forwards an EVM account (%s) once",
+    async (address) => {
+      const { listener, provider, unsubscribe } = await subscribeEvm();
+
+      // UniversalProvider emits the bare projection before the original envelope.
+      provider.emit("accountsChanged", [EVM_ADDRESS]);
+      provider.emit("session_event", {
+        params: { chainId: "eip155:1", event: { data: [address], name: "accountsChanged" } },
+      });
+      await flush();
+
+      expect(listener).toHaveBeenCalledExactlyOnceWith({
+        accounts: [buildAccount(EVM_ADDRESS, EVM_CHAINS.ethereum)],
+        type: "accountsChanged",
+      });
+      unsubscribe?.();
+    },
+  );
+
+  it("forwards an empty EVM accountsChanged as disconnected", async () => {
     const { listener, provider, unsubscribe } = await subscribeEvm();
 
-    provider.emit("accountsChanged", [SOL_ADDRESS, EVM_ADDRESS]);
-    await flush();
-
-    expect(listener).toHaveBeenCalledExactlyOnceWith({
-      accounts: [buildAccount(EVM_ADDRESS, EVM_CHAINS.ethereum)],
-      type: "accountsChanged",
+    provider.emit("accountsChanged", []);
+    provider.emit("session_event", {
+      params: { chainId: "eip155:1", event: { data: [], name: "accountsChanged" } },
     });
+
+    expect(listener).toHaveBeenCalledExactlyOnceWith({ type: "disconnected" });
     unsubscribe?.();
   });
 
-  it("forwards an eip155 chainChanged, whose reference UniversalProvider emits in decimal", async () => {
+  it.each([137, "137", "0x89", "eip155:137"])(
+    "forwards an EVM chainChanged (%s) once",
+    async (chain) => {
+      const { listener, provider, unsubscribe } = await subscribeEvm();
+
+      provider.emit("chainChanged", "137");
+      provider.emit("session_event", {
+        params: { chainId: "eip155:1", event: { data: chain, name: "chainChanged" } },
+      });
+      await flush();
+
+      expect(listener).toHaveBeenCalledExactlyOnceWith({
+        accounts: [buildAccount(EVM_ADDRESS, EVM_CHAINS.polygon)],
+        type: "accountsChanged",
+      });
+      unsubscribe?.();
+    },
+  );
+
+  it("ignores malformed remote events instead of inventing a disconnect", async () => {
     const { listener, provider, unsubscribe } = await subscribeEvm();
 
-    provider.emit("chainChanged", "137");
+    provider.emit("session_event", { params: { chainId: "eip155:1" } });
+    provider.emit("session_event", {
+      params: { chainId: "eip155:1", event: { data: [7], name: "accountsChanged" } },
+    });
+    provider.emit("session_event", {
+      params: { chainId: "eip155:1", event: { data: "bad", name: "chainChanged" } },
+    });
     await flush();
 
-    expect(listener).toHaveBeenCalledExactlyOnceWith({
-      accounts: [buildAccount(EVM_ADDRESS, EVM_CHAINS.polygon)],
-      type: "accountsChanged",
-    });
+    expect(listener).not.toHaveBeenCalled();
     unsubscribe?.();
   });
 

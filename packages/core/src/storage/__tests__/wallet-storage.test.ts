@@ -2,9 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createAsyncDriver,
+  createGate,
   createSyncDriver,
   EMPTY_PERSISTED,
   evmAdapter,
+  flush,
+  rejectionOf,
   walletOf,
 } from "../../__tests__/helpers";
 import { toStoredEntry } from "../../store/reducer";
@@ -163,6 +166,38 @@ describe("createWalletStorage", () => {
 
     await storage.save({ ...connectedState, isUserDisconnected: true });
     expect(await storage.load()).toEqual({ ...connectedState, isUserDisconnected: true });
+  });
+
+  it("finishes pending writes before rejecting, so a later disconnect stays saved", async () => {
+    const persistent = createSyncDriver();
+    const gate = createGate();
+    const failure = new Error("active write failed");
+    persistent.setItem = async (key, value) => {
+      if (key === "test-active") {
+        throw failure;
+      }
+      if (key === "test-pool") {
+        await gate.promise;
+      }
+      persistent.entries.set(key, value);
+    };
+    const { storage } = setup({ persistent });
+    await storage.load();
+    let settled = false;
+    const save = (async () => {
+      const error = await rejectionOf(storage.save(connectedState));
+      settled = true;
+      return error;
+    })();
+    await flush();
+    expect(settled).toBe(false);
+
+    gate.open();
+    expect(await save).toBe(failure);
+    await storage.save({ ...EMPTY_PERSISTED, isUserDisconnected: true });
+
+    expect(persistent.entries.size).toBe(0);
+    expect(await storage.load()).toEqual({ ...EMPTY_PERSISTED, isUserDisconnected: true });
   });
 
   it("defaults the prefix to butr and the drivers to web storage", async () => {

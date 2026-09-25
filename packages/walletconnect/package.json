@@ -51,6 +51,7 @@
   "dependencies": {
     "@usebutr/core": "workspace:*",
     "@usebutr/evm": "workspace:*",
+    "@usebutr/svm": "workspace:*",
     "zod": "^4.6.1"
   },
   "devDependencies": {

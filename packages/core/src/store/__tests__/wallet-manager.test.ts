@@ -12,9 +12,9 @@ import {
   staticSource,
   svmAdapter,
 } from "../../__tests__/helpers";
-import { EVM_CHAINS } from "../../chains";
+import { EVM_CHAINS, POLKADOT_CHAINS } from "../../chains";
 import type { WalletPersistence } from "../../storage/persistence";
-import type { Account, WalletAdapter, WalletManagerConfig } from "../../types";
+import type { Account, PolkadotAdapter, WalletAdapter, WalletManagerConfig } from "../../types";
 import { buildAccount, ConnectionError } from "../../types";
 import type { WalletSource } from "../../wallet-source";
 import { createWalletManager } from "../wallet-manager";
@@ -432,34 +432,45 @@ describe("createWalletManager", () => {
       expect(wallet?.accounts).toEqual([first, second]);
     });
 
-    it("setAccount on another chain moves every account to that chain", async () => {
-      const { manager } = await startManager({
-        adapters: [evmAdapter("metamask", { accounts: [first, second] })],
-      });
-      await manager.connect("metamask");
-      const onBase = buildAccount("0xsecond", EVM_CHAINS.base);
+    it("setAccount preserves accounts pinned to different Polkadot chains", async () => {
+      const alice = buildAccount("Alice", POLKADOT_CHAINS.polkadot);
+      const bob = buildAccount("Bob", POLKADOT_CHAINS.kusama);
+      const accounts = [alice, bob];
+      const adapter: PolkadotAdapter = {
+        chainPlatform: "polkadot",
+        connect: () => Promise.resolve(),
+        getAccounts: () => Promise.resolve(accounts),
+        getSigner: () => Promise.reject(new Error("unused")),
+        id: "polkadot",
+        name: "Polkadot",
+      };
+      const { manager } = await startManager({ adapters: [adapter] });
+      await manager.connect(adapter.id);
 
-      manager.setAccount("metamask", onBase);
+      // Selection uses the exposed entry, even if the caller passes a copy.
+      manager.setAccount(adapter.id, { ...bob });
 
-      const wallet = manager.getState().pool.get("metamask");
-      expect(wallet?.account).toBe(onBase);
-      expect(wallet?.accounts.map((account) => account.id)).toEqual([
-        "eip155:8453:0xfirst",
-        "eip155:8453:0xsecond",
+      const wallet = manager.getState().pool.get(adapter.id);
+      expect(wallet?.account).toBe(bob);
+      expect(wallet?.accounts).toBe(accounts);
+      expect(wallet?.accounts.map((account) => account.chain.id)).toEqual([
+        POLKADOT_CHAINS.polkadot.id,
+        POLKADOT_CHAINS.kusama.id,
       ]);
     });
 
-    it("setAccount appends an account the entry did not list, and ignores unknown wallets", async () => {
+    it("setAccount ignores unexposed accounts, chains and wallets", async () => {
       const { manager } = await startManager({
         adapters: [evmAdapter("metamask", { accounts: [first] })],
       });
       await manager.connect("metamask");
+      const before = manager.getState();
 
       manager.setAccount("metamask", second);
+      manager.setAccount("metamask", buildAccount(first.walletAddress, EVM_CHAINS.base));
       manager.setAccount("nope", second);
 
-      expect(manager.getState().pool.get("metamask")?.accounts).toEqual([first, second]);
-      expect(manager.getState().pool.has("nope")).toBe(false);
+      expect(manager.getState()).toBe(before);
     });
   });
 

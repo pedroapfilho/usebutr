@@ -61,6 +61,11 @@ const config: WalletManagerConfig = {
 | `CHAINS`, `CHAINS_BY_PLATFORM` from `@usebutr/wallets` | `CHAINS_BY_PLATFORM`, `EVM_CHAINS`, `SVM_CHAINS`, … from `@usebutr/core`; per-platform packages no longer export chain registries       |
 | `buildChainsByPlatform`                                | removed: import only the `*_CHAINS_LIST` you need                                                                                       |
 
+`setAccount(id, account)` selects an account already exposed by the wallet.
+It preserves every account's chain and ignores unknown accounts. To change
+networks, call the adapter's `switchChain`; the adapter reports the resulting
+accounts through its events.
+
 ## Hooks
 
 | Before                                                                                                                                  | After                                                                                                                                                                                               |

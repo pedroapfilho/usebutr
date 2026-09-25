@@ -59,6 +59,8 @@ const unsignedTransaction = (versioned: boolean) =>
     ...SIGNER_KEY,
     ...key(3),
     ...new Uint8Array(32).fill(4),
+    0, // instruction count
+    ...(versioned ? [0] : []), // address table lookup count
   ]);
 
 describe("solanaNamespace", () => {
@@ -172,9 +174,9 @@ describe("solanaNamespace", () => {
     const signed = new Uint8Array([7, 7, 7]);
     const provider = connectedProvider({ signature: "111", transaction: bytesToBase64(signed) });
 
-    await expect(buildAdapter(provider).signTransaction?.(new Uint8Array([1]))).resolves.toEqual(
-      signed,
-    );
+    await expect(
+      buildAdapter(provider).signTransaction?.(unsignedTransaction(false)),
+    ).resolves.toEqual(signed);
   });
 
   it.each([

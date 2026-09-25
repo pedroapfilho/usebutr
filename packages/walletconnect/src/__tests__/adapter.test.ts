@@ -1,4 +1,4 @@
-import type { EvmAdapter } from "@usebutr/core";
+import type { ConnectorEvent, EvmAdapter } from "@usebutr/core";
 import { buildAccount, EVM_CHAINS } from "@usebutr/core";
 import type { Eip1193RequestArgs } from "@usebutr/evm";
 import { describe, expect, it, vi } from "vitest";
@@ -174,6 +174,27 @@ describe("createWalletConnectAdapters (EVM namespace)", () => {
       }),
     ).rejects.toThrow(/does not expose account/v);
     expect(walletRequests(provider).map(({ args }) => args.method)).not.toContain("personal_sign");
+  });
+
+  it("reports a local chain switch once, even if the wallet echoes a remote event", async () => {
+    const provider = createFakeProvider({ request: evmWallet() });
+    const adapter = await createEvmAdapter(provider, { chains: ["eip155:1", "eip155:137"] });
+    await adapter.connect();
+    const listener = vi.fn<(event: ConnectorEvent) => void>();
+    const unsubscribe = adapter.subscribe?.(listener);
+
+    await adapter.switchChain?.(EVM_CHAINS.polygon);
+    provider.emit("session_event", {
+      params: { chainId: "eip155:1", event: { data: 137, name: "chainChanged" } },
+    });
+    await vi.waitFor(() => {
+      expect(listener).toHaveBeenCalledExactlyOnceWith({
+        accounts: [buildAccount(ADDRESS, EVM_CHAINS.polygon)],
+        type: "accountsChanged",
+      });
+    });
+
+    unsubscribe?.();
   });
 });
 

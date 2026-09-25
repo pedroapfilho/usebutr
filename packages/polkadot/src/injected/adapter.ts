@@ -86,7 +86,7 @@ const buildInjectedPolkadotAdapter = (
 
   const emitAccounts = (accounts: ReadonlyArray<InjectedAccount>): void => {
     const built = accounts.map((a) => buildPolkadotAccount(a.address, chain));
-    const first = built[0];
+    const first = built.at(0);
     if (first !== undefined) {
       emit({ account: first, accounts: built, type: "accountChanged" });
     }

@@ -17,8 +17,8 @@ const accountsEqual = (a: ReadonlyArray<Account>, b: ReadonlyArray<Account>) => 
     return false;
   }
   for (let i = 0; i < a.length; i += 1) {
-    const x = a[i];
-    const y = b[i];
+    const x = a.at(i);
+    const y = b.at(i);
     if (x === undefined || y === undefined) {
       return false;
     }
@@ -56,7 +56,7 @@ const useIsReconnecting = (connectorId?: string | null) => {
   const store = useWalletStoreContext();
   return useStore(store, (state) => {
     const id = connectorId ?? state.activeConnectorId;
-    return id !== null && id !== undefined && state.reconnectingIds.has(id);
+    return id !== null && state.reconnectingIds.has(id);
   });
 };
 

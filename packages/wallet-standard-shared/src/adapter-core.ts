@@ -126,7 +126,7 @@ const createWalletStandardCore = ({
     }
     const chain = toChain();
     const built = wallet.accounts.map((a) => buildAccount(a.address, chain));
-    const first = built[0];
+    const first = built.at(0);
     if (first === undefined) {
       return;
     }
@@ -207,7 +207,7 @@ const createWalletStandardCore = ({
             }
             const chain = toChain();
             const built = changes.accounts.map((a) => buildAccount(a.address, chain));
-            const first = built[0];
+            const first = built.at(0);
             if (first === undefined) {
               return;
             }

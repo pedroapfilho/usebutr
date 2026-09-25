@@ -207,7 +207,6 @@ const createLedgerAdapterCore = <TApp extends object>({
       }
       const addresses: Array<string> = [];
       for (let i = 0; i < accountCount; i += 1) {
-        // oxlint-disable-next-line react-doctor/async-await-in-loop -- Ledger transports allow one APDU exchange at a time.
         addresses.push(await addressAt(active.app, pathAtIndex(i)));
       }
       return addresses;
@@ -223,7 +222,6 @@ const createLedgerAdapterCore = <TApp extends object>({
       }
       for (let i = 0; i < accountCount; i += 1) {
         const candidatePath = pathAtIndex(i);
-        // oxlint-disable-next-line react-doctor/async-await-in-loop -- Ledger transports allow one APDU exchange at a time.
         const candidateAddress = await addressAt(active.app, candidatePath);
         if (addressesEqual(candidateAddress, account.walletAddress)) {
           return candidatePath;

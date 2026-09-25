@@ -49,11 +49,13 @@ const isEip6963AnnounceEvent = (event: Event): event is Eip6963AnnounceEvent => 
   );
 };
 
+const windowGlobal: Partial<Pick<typeof globalThis, "window">> = globalThis;
+
 const resolveTarget = (target?: EventTarget): EventTarget | null => {
   if (target !== undefined) {
     return target;
   }
-  return globalThis.window ?? null;
+  return windowGlobal.window ?? null;
 };
 
 /**

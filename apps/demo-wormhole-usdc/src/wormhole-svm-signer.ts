@@ -129,7 +129,6 @@ class ButrSvmWormholeSigner<N extends Network, C extends Chain> implements SignA
     const hashes: Array<TxHash> = [];
     for (const tx of txs) {
       const parsedTx = solanaUnsignedTxSchema.parse(tx);
-      // oxlint-disable-next-line no-console
       console.log(`[wormhole/svm] sending: ${parsedTx.description}`);
       const { signers, transaction } = parsedTx.transaction;
       const { value } = await rpc.getLatestBlockhash().send();

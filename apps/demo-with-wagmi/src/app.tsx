@@ -80,12 +80,11 @@ const Connected = ({
   }, [wallet.account.walletAddress]);
 
   useEffect(() => {
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
+    const isCancelled = () => cancelled;
     void (async () => {
       try {
-        if (cancelled) {
-          return;
-        }
         const provider = await wallet.connector.getSigner();
         if (!isWagmiProvider(provider)) {
           throw new Error("EVM signer is not an EIP-1193 provider");
@@ -94,11 +93,11 @@ const Connected = ({
           return;
         }
         const cfg = buildWagmiConfig(provider, wallet.connector.name, wallet.connector.id);
-        const connector = cfg.connectors[0];
+        const connector = cfg.connectors.at(0);
         if (connector !== undefined) {
           await connect(cfg, { connector });
         }
-        if (!cancelled) {
+        if (!isCancelled()) {
           setWagmiConfig(cfg);
         }
       } catch (error) {
@@ -116,7 +115,8 @@ const Connected = ({
     if (wagmiConfig === null) {
       return undefined;
     }
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
         const result = await getBalance(wagmiConfig, { address: account });

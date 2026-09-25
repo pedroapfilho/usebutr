@@ -67,7 +67,7 @@ const PairingDialog = () => {
     uri === null ? null : `data:image/svg+xml;utf8,${encodeURIComponent(renderSVG(uri))}`;
 
   return (
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions, react-doctor/no-noninteractive-element-interactions
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions, react-doctor/no-noninteractive-element-interactions -- backdrop click closes the modal; the native dialog already closes on Escape
     <dialog
       aria-label="WalletConnect pairing"
       aria-modal="true"

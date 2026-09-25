@@ -64,7 +64,8 @@ const Connected = ({
   useEffect(() => () => txSubRef.current?.unsubscribe(), []);
 
   useEffect(() => {
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
         const account = await api.query.System.Account.getValue(addr);
@@ -113,7 +114,6 @@ const Connected = ({
       }
       setTxStatus("Awaiting signature…");
       const tx = api.tx.Balances.transfer_keep_alive({
-        // oxlint-disable-next-line new-cap -- MultiAddress.Id is a polkadot-api enum-variant constructor
         dest: MultiAddress.Id(handle.address),
         value: 1_000_000_000n,
       });

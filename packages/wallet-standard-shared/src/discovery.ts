@@ -67,12 +67,7 @@ type WalletStandardAdapterBuilder = (
 
 const loadWalletStandardModule = async (): Promise<WalletStandardAppModule> => {
   const imported = await import("@wallet-standard/app");
-  if (
-    typeof imported !== "object" ||
-    imported === null ||
-    !("getWallets" in imported) ||
-    typeof imported.getWallets !== "function"
-  ) {
+  if (!("getWallets" in imported) || typeof imported.getWallets !== "function") {
     throw new Error("@wallet-standard/app has no getWallets export");
   }
   const source = imported.getWallets();
@@ -97,7 +92,8 @@ const discoverWalletStandard = (
   build: WalletStandardAdapterBuilder,
   loadModule: WalletStandardModuleLoader = loadWalletStandardModule,
 ): (() => void) => {
-  let cancelled = false;
+  // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+  let cancelled = false as boolean;
   let internalUnsub: (() => void) | null = null;
 
   void (async () => {

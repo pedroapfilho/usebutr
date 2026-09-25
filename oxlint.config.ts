@@ -1,26 +1,15 @@
 import { defineConfig } from "oxlint";
 import awesomeness from "oxlint-config-awesomeness";
+import shadcn from "oxlint-config-awesomeness/shadcn";
 
 export default defineConfig({
-  extends: [awesomeness],
+  extends: [awesomeness, shadcn],
   ignorePatterns: [
     ".github/ci/*.mjs",
     "apps/demo-expo-web/src/uniwind-types.d.ts",
     "apps/demo-with-polkadot/.papi/**",
   ],
-  jsPlugins: ["@shadcn/lint"],
   overrides: [
-    {
-      files: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
-      rules: {
-        "new-cap": [
-          "error",
-          {
-            capIsNewExceptions: ["Geist", "Geist_Mono", "Inter", "Scalar"],
-          },
-        ],
-      },
-    },
     {
       files: ["apps/demo-tanstack-start/src/components/**/*.tsx"],
       rules: {
@@ -55,18 +44,6 @@ export default defineConfig({
       },
     },
     {
-      files: ["apps/docs/proxy.ts"],
-      rules: {
-        "prefer-string-raw": "off",
-      },
-    },
-    {
-      files: ["**/__tests__/**/*.ts", "**/__tests__/**/*.tsx", "**/*.test.ts", "**/*.test.tsx"],
-      rules: {
-        "number-literal-case": "off",
-      },
-    },
-    {
       files: ["**/src/**/*.ts", "**/src/**/*.tsx", "apps/**/*.ts", "apps/**/*.tsx"],
       rules: {
         "callback-return": "off",
@@ -82,9 +59,6 @@ export default defineConfig({
     },
   ],
   rules: {
-    "shadcn/no-arbitrary-values": "error",
-    "shadcn/no-inline-styles": "error",
-    "shadcn/no-raw-colors": "error",
     "shadcn/no-restyle": [
       "error",
       {
@@ -97,7 +71,5 @@ export default defineConfig({
         ],
       },
     ],
-    "shadcn/no-unknown-classes": "error",
-    "shadcn/require-static-classes": "error",
   },
 });

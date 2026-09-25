@@ -101,7 +101,7 @@ const readAccountState = async (
   }
   const chain = buildEvmChain(chainIdHex, walletName);
   const builtAccounts = accounts.map((address) => buildEvmAccount(address, chain));
-  const account = builtAccounts[0];
+  const account = builtAccounts.at(0);
   return account === undefined ? null : { account, accounts: builtAccounts };
 };
 
@@ -152,7 +152,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
 
     async getBalance(mint) {
       const accounts = await requestStringArray(provider, { method: "eth_accounts" });
-      const first = accounts[0];
+      const first = accounts.at(0);
       if (first === undefined) {
         throw new Error("No connected account");
       }
@@ -247,7 +247,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       let signer = account?.walletAddress;
       if (signer === undefined || signer === "") {
         const accounts = await requestStringArray(provider, { method: "eth_accounts" });
-        signer = accounts[0];
+        signer = accounts.at(0);
       }
       if (signer === undefined || signer === "") {
         throw new Error("No connected account");

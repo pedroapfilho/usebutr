@@ -46,7 +46,7 @@ const seedStateFromSnapshot = (snapshot: WalletSnapshot): State => {
   }
   const selection = new Map<ChainPlatform, string>();
   for (const [platform, connectorId] of Object.entries(snapshot.selection)) {
-    if (isChainPlatform(platform) && connectorId !== undefined && pool.has(connectorId)) {
+    if (isChainPlatform(platform) && pool.has(connectorId)) {
       selection.set(platform, connectorId);
     }
   }

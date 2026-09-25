@@ -65,7 +65,8 @@ const Connected = ({
   );
 
   useEffect(() => {
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
         const signer = await wallet.connector.getSigner();
@@ -87,7 +88,8 @@ const Connected = ({
   }, [wallet.connector]);
 
   useEffect(() => {
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
         const { value } = await rpc.getBalance(addr).send();
@@ -117,12 +119,13 @@ const Connected = ({
       if (feature === undefined) {
         throw new Error("Wallet does not advertise solana:signMessage");
       }
-      const account = walletStd.accounts[0];
+      const account = walletStd.accounts.at(0);
       if (account === undefined) {
         throw new Error("No exposed account");
       }
       const message = new TextEncoder().encode("Hello from butr + gill");
-      const [output] = await feature.signMessage({ account, message });
+      const outputs = await feature.signMessage({ account, message });
+      const output = outputs.at(0);
       if (output === undefined) {
         throw new Error("signMessage returned no outputs");
       }
@@ -160,15 +163,16 @@ const Connected = ({
       if (feature === undefined) {
         throw new Error("Wallet does not advertise solana:signAndSendTransaction");
       }
-      const account = walletStd.accounts[0];
+      const account = walletStd.accounts.at(0);
       if (account === undefined) {
         throw new Error("No exposed account");
       }
-      const [output] = await feature.signAndSendTransaction({
+      const outputs = await feature.signAndSendTransaction({
         account,
         chain: "solana:devnet",
         transaction: bytes,
       });
+      const output = outputs.at(0);
       if (output === undefined) {
         throw new Error("signAndSendTransaction returned no outputs");
       }

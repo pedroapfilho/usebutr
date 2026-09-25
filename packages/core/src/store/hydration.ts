@@ -166,7 +166,7 @@ const createHydrationCoordinator = (
 
       const selection = new Map<ChainPlatform, string>();
       for (const [platform, connectorId] of Object.entries(storedSelection)) {
-        if (isChainPlatform(platform) && connectorId !== undefined && pool.has(connectorId)) {
+        if (isChainPlatform(platform) && pool.has(connectorId)) {
           selection.set(platform, connectorId);
         }
       }

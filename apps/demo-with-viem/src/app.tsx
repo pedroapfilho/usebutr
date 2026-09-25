@@ -61,12 +61,10 @@ const Connected = ({
   }, [wallet.account.walletAddress]);
 
   useEffect(() => {
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
-        if (cancelled) {
-          return;
-        }
         const provider = await wallet.connector.getSigner();
         if (!isEip1193Provider(provider)) {
           throw new Error("EVM signer is not an EIP-1193 provider");
@@ -93,7 +91,8 @@ const Connected = ({
   }, [account, wallet.connector]);
 
   useEffect(() => {
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
         const wei = await publicClient.getBalance({ address: account });

@@ -43,12 +43,10 @@ const mapPool = async <T, R>(
   fn: (item: T) => Promise<R>,
 ): Promise<Array<R>> => {
   const results = Array.from<R>({ length: items.length });
-  let cursor = 0;
+  const pending = items.entries();
   const worker = async (): Promise<void> => {
-    while (cursor < items.length) {
-      const index = cursor;
-      cursor += 1;
-      results[index] = await fn(items[index]);
+    for (const [index, item] of pending) {
+      results[index] = await fn(item);
     }
   };
   const workers = await Promise.allSettled(
@@ -163,7 +161,7 @@ const scanSolanaBurns = async (
   }
   const scanned = candidates.slice(0, SOLANA_SIGNATURE_LIMIT);
 
-  const isBurn = await mapPool(scanned, SOLANA_TX_CONCURRENCY, async (signature) => {
+  const matches = await mapPool(scanned, SOLANA_TX_CONCURRENCY, async (signature) => {
     try {
       const tx = await rpc
         .getTransaction(signature, {
@@ -173,17 +171,14 @@ const scanSolanaBurns = async (
         })
         .send();
       const keys = parsedTxSchema.parse(tx)?.transaction?.message?.accountKeys;
-      return Boolean(keys?.some((k) => programSet.has(k.pubkey)));
+      return keys?.some((k) => programSet.has(k.pubkey)) === true
+        ? { sourceChain: spec.chain, txid: signature }
+        : undefined;
     } catch {
-      return false;
+      return undefined;
     }
   });
-  const burns: Array<DiscoveredBurn> = [];
-  scanned.forEach((signature, index) => {
-    if (isBurn[index]) {
-      burns.push({ sourceChain: spec.chain, txid: signature });
-    }
-  });
+  const burns = matches.filter((burn) => burn !== undefined);
   return { burns, partial: !reachedEnd, scannedSignatures: scanned.length };
 };
 

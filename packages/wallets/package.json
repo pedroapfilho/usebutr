@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/wallets",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "Batteries-included EVM + SVM + Sui + Bitcoin + Polkadot discovery: autoDiscovery(), one WalletSource for every platform.",
   "keywords": [
     "bitcoin",

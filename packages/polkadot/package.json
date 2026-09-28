@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/polkadot",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "injectedWeb3 + Wallet Standard adapter for butr (Polkadot/Substrate).",
   "keywords": [
     "butr",

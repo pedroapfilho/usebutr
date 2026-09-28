@@ -1,5 +1,13 @@
 # @usebutr/polkadot
 
+## 2.0.1
+
+### Patch Changes
+
+- Updated dependencies [[`488fe13`](https://github.com/pedroapfilho/usebutr/commit/488fe13fe9cddb99ff6c5d60f798140e6ac4076f)]:
+  - @usebutr/core@3.0.1
+  - @usebutr/wallet-standard-shared@2.0.1
+
 ## 2.0.0
 
 ### Major Changes

@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/evm",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "EIP-1193 / EIP-6963 / injected wallet discovery + adapters for butr.",
   "keywords": [
     "butr",

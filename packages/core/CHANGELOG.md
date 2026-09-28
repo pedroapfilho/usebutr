@@ -1,5 +1,11 @@
 # @usebutr/core
 
+## 3.0.1
+
+### Patch Changes
+
+- [#208](https://github.com/pedroapfilho/usebutr/pull/208) [`488fe13`](https://github.com/pedroapfilho/usebutr/commit/488fe13fe9cddb99ff6c5d60f798140e6ac4076f) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - Bump runtime dependency ranges to the current non-major line.
+
 ## 3.0.0
 
 ### Major Changes

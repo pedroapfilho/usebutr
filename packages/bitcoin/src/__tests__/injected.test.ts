@@ -1,5 +1,5 @@
 import type { WalletAdapter } from "@usebutr/core";
-import { describe, expect, it, vi } from "vitest";
+import { assert, describe, expect, it, vi } from "vitest";
 
 import { discoverInjectedBitcoinAdapter } from "../injected";
 
@@ -37,6 +37,7 @@ describe("discoverInjectedBitcoinAdapter", () => {
     unsubscribe();
     expect(onAdapter).toHaveBeenCalledTimes(1);
     const adapter = onAdapter.mock.calls[0]?.[0];
+    assert(adapter, "expected the unisat adapter to be emitted");
     expect(adapter.id).toBe("injected:bitcoin:unisat");
     expect(adapter.chainPlatform).toBe("bitcoin");
   });

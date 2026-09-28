@@ -84,20 +84,23 @@ const usePendingTransfers = (
         }
       }
 
-      const settled = await Promise.allSettled(tasks.map((t) => t.run()));
+      const outcomes = await Promise.all(
+        tasks.map(async ({ run, spec }) => {
+          try {
+            return { ...(await run()), spec };
+          } catch {
+            return { burns: [], partial: true, spec };
+          }
+        }),
+      );
       const discovered: Array<DiscoveredBurn> = [];
       const partialChains: Array<string> = [];
-      settled.forEach((result, index) => {
-        const { spec } = tasks[index];
-        if (result.status === "fulfilled") {
-          discovered.push(...result.value.burns);
-          if (result.value.partial) {
-            partialChains.push(spec.label);
-          }
-        } else {
+      for (const { burns, partial, spec } of outcomes) {
+        discovered.push(...burns);
+        if (partial) {
           partialChains.push(spec.label);
         }
-      });
+      }
 
       const solanaUsdc = findChainSpec("Solana")?.usdc;
       const activeSvmAtaUniversal =

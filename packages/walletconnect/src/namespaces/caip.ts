@@ -20,7 +20,15 @@ import type { NamespaceAdapterInput } from "./types";
  *  well-formed account has exactly three segments. */
 const parseCaip10 = (caip10: string): { address: string; chainId: string } | null => {
   const [namespace, reference, address, ...rest] = caip10.split(":");
-  if (!namespace || !reference || !address || rest.length > 0) {
+  if (
+    namespace === undefined ||
+    namespace === "" ||
+    reference === undefined ||
+    reference === "" ||
+    address === undefined ||
+    address === "" ||
+    rest.length > 0
+  ) {
     return null;
   }
   return { address, chainId: `${namespace}:${reference}` };

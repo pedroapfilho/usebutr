@@ -42,7 +42,8 @@ const Connected = ({
   const addr = useMemo(() => wallet.account.walletAddress, [wallet.account.walletAddress]);
 
   useEffect(() => {
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
         const result = await client.getBalance({ owner: addr });

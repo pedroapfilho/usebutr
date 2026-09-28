@@ -63,7 +63,8 @@ const Connected = ({
   );
 
   useEffect(() => {
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
         const lamports = await connection.getBalance(publicKey);
@@ -101,7 +102,8 @@ const Connected = ({
       if (account === undefined) {
         throw new Error("Wallet does not expose the active account");
       }
-      const [output] = await feature.signMessage({ account, message });
+      const outputs = await feature.signMessage({ account, message });
+      const output = outputs.at(0);
       if (output === undefined) {
         throw new Error("signMessage returned no outputs");
       }
@@ -141,11 +143,12 @@ const Connected = ({
         throw new Error("Wallet does not expose the active account");
       }
       const serialised = tx.serialize({ requireAllSignatures: false });
-      const [output] = await feature.signAndSendTransaction({
+      const outputs = await feature.signAndSendTransaction({
         account,
         chain: "solana:devnet",
         transaction: new Uint8Array(serialised),
       });
+      const output = outputs.at(0);
       if (output === undefined) {
         throw new Error("signAndSendTransaction returned no outputs");
       }

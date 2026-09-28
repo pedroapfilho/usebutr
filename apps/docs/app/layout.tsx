@@ -24,7 +24,7 @@ export const viewport: Viewport = {
 
 const RootLayout = ({ children }: { children: ReactNode }) => (
   <html lang="en" suppressHydrationWarning>
-    <body className="flex min-h-screen flex-col">
+    <body className="flex min-h-dvh flex-col">
       {/* Scroll-driven reading progress bar; hidden when user prefers reduced motion via CSS */}
       <div
         aria-hidden="true"

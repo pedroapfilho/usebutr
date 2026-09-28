@@ -13,12 +13,14 @@ type WalletStandardWalletAccount = {
 
 /** Reverse-DNS-keyed and open-ended by spec; `getFeature` is the one place
  *  that reads a member off it. */
+// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- the Wallet Standard spec types feature members as unknown; getFeature checks the member it reads
 type WalletStandardFeature = { readonly [member: string]: unknown; version?: string };
 
 type WalletStandardWallet = {
   accounts: ReadonlyArray<WalletStandardWalletAccount>;
   chains: ReadonlyArray<string>;
-  features: Readonly<Record<string, WalletStandardFeature>>;
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- keyed by reverse-DNS feature name; getFeature checks the member it reads
+  features: Readonly<Partial<Record<string, WalletStandardFeature>>>;
   icon: string;
   name: string;
   version: string;

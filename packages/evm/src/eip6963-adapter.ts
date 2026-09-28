@@ -90,7 +90,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
   const resolveAddress = async (account?: Account): Promise<string> => {
     const exposed = await requestStringArray(provider, { method: "eth_accounts" });
     if (account === undefined) {
-      const [active] = exposed;
+      const active = exposed.at(0);
       if (active === undefined) {
         throw new Error(`Wallet ${info.name} has no connected account`);
       }

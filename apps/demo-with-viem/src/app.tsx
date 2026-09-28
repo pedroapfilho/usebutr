@@ -69,7 +69,8 @@ const Connected = ({
   const shownError = errorMsg ?? (signer.status === "error" ? signer.error.message : null);
 
   useEffect(() => {
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
         const wei = await publicClient.getBalance({ address: account });

@@ -61,15 +61,15 @@ const classify = (error: Error): ConnectionErrorKind => {
 };
 
 /** The one boundary where a thrown value of unknown shape becomes typed. */
-const toConnectionError = (raw: unknown): ConnectionError => {
-  if (raw instanceof ConnectionError) {
-    return raw;
+const toConnectionError = (cause: unknown): ConnectionError => {
+  if (cause instanceof ConnectionError) {
+    return cause;
   }
-  if (raw instanceof Error) {
-    return new ConnectionError(classify(raw), raw.message, { cause: raw });
+  if (cause instanceof Error) {
+    return new ConnectionError(classify(cause), cause.message, { cause });
   }
-  const message = typeof raw === "string" && raw !== "" ? raw : "Connection failed";
-  return new ConnectionError("Unknown", message, { cause: raw });
+  const message = typeof cause === "string" && cause !== "" ? cause : "Connection failed";
+  return new ConnectionError("Unknown", message, { cause });
 };
 
 export type { ConnectionErrorKind };

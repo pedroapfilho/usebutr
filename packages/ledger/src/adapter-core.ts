@@ -171,7 +171,6 @@ const createLedgerAdapterCore = <TApp>(
       const app = bindApp(transport);
       const addresses: Array<string> = [];
       for (let index = 0; index < accountCount; index += 1) {
-        // oxlint-disable-next-line react-doctor/async-await-in-loop -- Ledger transports allow one APDU exchange at a time.
         addresses.push(await spec.addressAt(app, pathAt(index)));
       }
       if (generation !== openedAt) {
@@ -235,7 +234,7 @@ const createLedgerAdapterCore = <TApp>(
           `[butr/ledger] ${name} signs for ${chain.id}, not ${target.id}: build an adapter per chain`,
         );
       }
-      const address = callOptions?.account?.walletAddress ?? session.addresses[0] ?? "";
+      const address = callOptions?.account?.walletAddress ?? session.addresses.at(0) ?? "";
       const index = session.addresses.indexOf(address);
       if (index === -1) {
         throw new Error(

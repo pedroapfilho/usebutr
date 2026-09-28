@@ -14,12 +14,12 @@ const LOADING: AsyncState<never> = { data: null, error: null, status: "loading" 
 
 /** Wallets throw strings and bare objects too; consumers get an `Error`
  *  either way, with the original value as its `cause`. */
-const toError = (thrown: unknown): Error => {
-  if (thrown instanceof Error) {
-    return thrown;
+const toError = (cause: unknown): Error => {
+  if (cause instanceof Error) {
+    return cause;
   }
-  const message = typeof thrown === "string" && thrown !== "" ? thrown : "Request failed";
-  return new Error(message, { cause: thrown });
+  const message = typeof cause === "string" && cause !== "" ? cause : "Request failed";
+  return new Error(message, { cause });
 };
 
 const settle = async <T>(fn: () => Promise<T>): Promise<AsyncState<T>> => {
@@ -42,7 +42,8 @@ const useAsyncResource = <T>(fn: (() => Promise<T>) | null): AsyncState<T> => {
     if (fn === null) {
       return undefined;
     }
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       const state = await settle(fn);
       if (!cancelled) {

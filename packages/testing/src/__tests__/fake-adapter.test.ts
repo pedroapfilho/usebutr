@@ -156,7 +156,7 @@ describe("createFakeAdapter", () => {
       const adapter = createFakeAdapter({ accounts: [first] });
       const attempt = adapter.signMessage?.(message, { account: second });
       expect(attempt).toBeInstanceOf(Promise);
-      return expect(attempt).rejects.toThrow();
+      return expect(attempt).rejects.toThrow(`does not expose ${second.walletAddress}`);
     });
   });
 

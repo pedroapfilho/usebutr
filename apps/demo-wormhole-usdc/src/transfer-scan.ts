@@ -150,7 +150,7 @@ const scanSolanaBurns = async (
     }
     totalFetched += page.length;
     for (const entry of page) {
-      if (entry.err === null || entry.err === undefined) {
+      if (entry.err === null) {
         candidates.push(entry.signature);
       }
     }

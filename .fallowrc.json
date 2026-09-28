@@ -23,6 +23,7 @@
     "@ledgerhq/hw-app-solana",
     "@ledgerhq/hw-app-sui",
     "@ledgerhq/hw-transport-webusb",
+    "@shadcn/lint",
     "@solana/client",
     "@solana/react-hooks",
     "@tanstack/react-query",

@@ -47,7 +47,8 @@ const AdapterConsumer = ({ butrWallet }: { butrWallet: ConnectedWallet<"svm"> })
     if (pubkey === null) {
       return undefined;
     }
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
         const lamports = await connection.getBalance(pubkey);

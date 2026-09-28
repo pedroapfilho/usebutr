@@ -9,11 +9,13 @@ type BrowserStorageDrivers = {
 
 type WebStorageKind = "localStorage" | "sessionStorage";
 
+const webStorageGlobals: Partial<Pick<typeof globalThis, WebStorageKind>> = globalThis;
+
 const hasWebStorage = (kind: WebStorageKind): boolean => {
   try {
     return kind === "localStorage"
-      ? globalThis.localStorage !== undefined
-      : globalThis.sessionStorage !== undefined;
+      ? webStorageGlobals.localStorage !== undefined
+      : webStorageGlobals.sessionStorage !== undefined;
   } catch {
     return false;
   }

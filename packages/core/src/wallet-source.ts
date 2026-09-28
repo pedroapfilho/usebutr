@@ -21,7 +21,8 @@ const isIterable = (
 const fromAdapters =
   (adapters: MaybePromise<WalletAdapter | Iterable<WalletAdapter>>): WalletSource =>
   (onAdapter) => {
-    let active = true;
+    // SAFETY: the returned cleanup clears this after the await; TypeScript cannot see writes from closures
+    let active = true as boolean;
     void (async () => {
       try {
         const resolved = await adapters;

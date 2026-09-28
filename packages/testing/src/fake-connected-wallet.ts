@@ -34,7 +34,7 @@ const connectedWallet = <P extends ChainPlatform>(
     (options.addresses ?? [DEFAULT_ADDRESSES[platform]]).map((address) =>
       buildAccount(address, chain),
     );
-  const [account] = accounts;
+  const account = accounts.at(0);
   if (account === undefined) {
     throw new Error("createFakeConnectedWallet needs at least one account or address.");
   }

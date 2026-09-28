@@ -58,7 +58,7 @@ const readSvmUsdc = async (spec: ChainSpec, owner: string): Promise<string> => {
       { encoding: "jsonParsed" },
     )
     .send();
-  const first = response.value[0];
+  const first = response.value.at(0);
   if (first === undefined) {
     return "0";
   }

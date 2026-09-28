@@ -84,8 +84,8 @@ const persistedSliceChanged = (state: WalletState, prev: WalletState): boolean =
   state.activeConnectorId !== prev.activeConnectorId ||
   state.isUserDisconnected !== prev.isUserDisconnected;
 
-const toError = (value: unknown): Error =>
-  value instanceof Error ? value : new Error(String(value));
+const toError = (cause: unknown): Error =>
+  cause instanceof Error ? cause : new Error(String(cause));
 
 /** A consumer callback that throws must not break the manager. */
 const safely = <Args extends ReadonlyArray<unknown>>(
@@ -148,11 +148,11 @@ const createWalletManager = (
   const findAdapter = (connectorId: string) =>
     getState().adapters.find((adapter) => adapter.id === connectorId);
 
-  const reportStorageError = (error: unknown) => {
+  const reportStorageError = (cause: unknown) => {
     if (config.onStorageError) {
-      safely("onStorageError", config.onStorageError, toError(error));
+      safely("onStorageError", config.onStorageError, toError(cause));
     } else {
-      logWarn("[butr] wallet persistence failed:", error);
+      logWarn("[butr] wallet persistence failed:", cause);
     }
   };
 
@@ -232,7 +232,7 @@ const createWalletManager = (
     try {
       await withTimeout(adapter.connect({ silent: true }), RESTORE_TIMEOUT_MS);
       const accounts = await adapter.getAccounts();
-      const [account] = accounts;
+      const account = accounts.at(0);
       if (account === undefined) {
         throw new ConnectionError("NotConnected", `${adapter.name} exposed no accounts`);
       }
@@ -346,7 +346,7 @@ const createWalletManager = (
         }
         await withTimeout(connector.connect(), CONNECT_TIMEOUT_MS);
         const accounts = await connector.getAccounts();
-        const [account] = accounts;
+        const account = accounts.at(0);
         if (account === undefined) {
           throw new ConnectionError("NotConnected", `${connector.name} exposed no accounts`);
         }

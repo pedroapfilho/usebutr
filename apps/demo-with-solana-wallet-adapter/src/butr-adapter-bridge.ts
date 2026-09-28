@@ -13,9 +13,7 @@ import {
 import type { Account, SvmAdapter } from "@usebutr/core";
 import { SVM_CHAINS } from "@usebutr/core";
 
-// @solana/wallet-adapter's interface declares Promise-returning methods whose
-// bodies are synchronous here; async would only trip require-await.
-// oxlint-disable typescript/promise-function-async
+// oxlint-disable typescript/promise-function-async -- @solana/wallet-adapter declares Promise-returning methods whose bodies are synchronous here; async would only trip require-await
 
 /**
  * Constructed only after butr has already connected, so `connect()` is a

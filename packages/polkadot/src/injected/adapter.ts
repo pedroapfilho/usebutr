@@ -201,7 +201,7 @@ const buildInjectedPolkadotAdapter = (
     },
 
     get subscribe() {
-      return session === null || session.unsubscribe === null ? undefined : subscribe;
+      return (session?.unsubscribe ?? null) === null ? undefined : subscribe;
     },
   };
 };

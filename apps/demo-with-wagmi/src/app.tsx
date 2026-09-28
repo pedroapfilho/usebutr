@@ -87,11 +87,12 @@ const Connected = ({
     if (provider === null) {
       return undefined;
     }
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
         const cfg = buildWagmiConfig(provider, wallet.connector.name, wallet.connector.id);
-        const connector = cfg.connectors[0];
+        const connector = cfg.connectors.at(0);
         if (connector !== undefined) {
           await connect(cfg, { connector });
         }
@@ -115,7 +116,8 @@ const Connected = ({
     if (wagmiConfig === null) {
       return undefined;
     }
-    let cancelled = false;
+    // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+    let cancelled = false as boolean;
     void (async () => {
       try {
         const result = await getBalance(wagmiConfig, { address: account });

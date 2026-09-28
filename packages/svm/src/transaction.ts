@@ -10,7 +10,7 @@ const V0_PREFIX = 0x80;
 const readCompactU16 = (bytes: Uint8Array, offset: number) => {
   let value = 0;
   for (let index = 0; index < 3; index += 1) {
-    const byte = bytes[offset + index];
+    const byte = bytes.at(offset + index);
     if (byte === undefined || (index === 2 && byte > 3)) {
       break;
     }
@@ -40,7 +40,7 @@ type SolanaSigningPayload = {
 const prepareSolanaTransaction = (tx: Uint8Array, signer: string): SolanaSigningPayload => {
   const signatures = readCompactU16(tx, 0);
   const messageStart = signatures.end + signatures.value * SIGNATURE_LENGTH;
-  const versionByte = tx[messageStart];
+  const versionByte = tx.at(messageStart);
   if (versionByte === undefined) {
     throw new TypeError("Truncated Solana transaction message");
   }

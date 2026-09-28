@@ -171,11 +171,7 @@ const applyStoredSelection = (
 ): ReadonlyMap<ChainPlatform, string> => {
   let next = selection;
   for (const [platform, id] of Object.entries(stored)) {
-    if (
-      isChainPlatform(platform) &&
-      id !== undefined &&
-      pool.get(id)?.connector.chainPlatform === platform
-    ) {
+    if (isChainPlatform(platform) && pool.get(id)?.connector.chainPlatform === platform) {
       next = withEntry(next, platform, id);
     }
   }
@@ -187,7 +183,7 @@ const changeAccounts = (
   event: Extract<WalletEvent, { type: "ACCOUNTS_CHANGED" }>,
 ): WalletState => {
   const wallet = state.pool.get(event.connectorId);
-  const [first] = event.accounts;
+  const first = event.accounts.at(0);
   if (wallet === undefined || first === undefined) {
     return state;
   }

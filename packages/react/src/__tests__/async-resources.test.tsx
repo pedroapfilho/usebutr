@@ -1,7 +1,7 @@
 import "./signer-registry";
 
 import { act, waitFor } from "@testing-library/react";
-import type { Balance, BalanceOptions, WalletSigner } from "@usebutr/core";
+import type { Balance, BalanceOptions, WalletAdapter, WalletSigner } from "@usebutr/core";
 import { buildAccount, EVM_CHAINS } from "@usebutr/core";
 import { createFakeAdapter, createFakeConnectedWallet } from "@usebutr/testing";
 import { describe, expect, it, vi } from "vitest";
@@ -131,8 +131,8 @@ describe("useBalance", () => {
 
   it("calls getBalance on its adapter", async () => {
     const adapter = createFakeAdapter({ id: "metamask" });
-    const receivers: Array<unknown> = [];
-    adapter.getBalance = function getBalance(this: unknown) {
+    const receivers: Array<WalletAdapter> = [];
+    adapter.getBalance = function getBalance(this: WalletAdapter) {
       receivers.push(this);
       return Promise.resolve({ decimals: 18, formatted: "0", symbol: "ETH", value: 0n });
     };

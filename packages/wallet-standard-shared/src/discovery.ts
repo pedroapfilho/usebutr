@@ -17,7 +17,7 @@ const isFeatureObject = (value: unknown): value is WalletStandardFeature =>
   typeof value === "object" && value !== null;
 
 const toFeatureRecord = (features: ImportedWallet["features"]) => {
-  const record: Record<string, WalletStandardFeature> = {};
+  const record: Partial<Record<string, WalletStandardFeature>> = {};
   for (const [name, value] of Object.entries(features)) {
     // Stored as-is rather than spread: a spread would detach its methods from
     // the wallet's own object, breaking any implementation that reads `this`.
@@ -70,12 +70,7 @@ type WalletStandardAdapterBuilder = (
 
 const loadWalletStandardModule = async (): Promise<WalletStandardAppModule> => {
   const imported = await import("@wallet-standard/app");
-  if (
-    typeof imported !== "object" ||
-    imported === null ||
-    !("getWallets" in imported) ||
-    typeof imported.getWallets !== "function"
-  ) {
+  if (!("getWallets" in imported) || typeof imported.getWallets !== "function") {
     throw new Error("@wallet-standard/app has no getWallets export");
   }
   const source = imported.getWallets();
@@ -100,7 +95,8 @@ const discoverWalletStandard = (
   build: WalletStandardAdapterBuilder,
   loadModule: WalletStandardModuleLoader = loadWalletStandardModule,
 ): (() => void) => {
-  let cancelled = false;
+  // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
+  let cancelled = false as boolean;
   let internalUnsub: (() => void) | null = null;
 
   void (async () => {

@@ -111,7 +111,7 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
   /** The account to act as: the active one unless `account` names another
    *  exposed account. */
   const accountFor = (account?: Account): Account => {
-    const [active] = exposed ? accounts : [];
+    const active = exposed ? accounts.at(0) : undefined;
     if (active === undefined) {
       throw new ConnectionError("NotConnected", `${name} is not connected`);
     }

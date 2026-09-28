@@ -72,6 +72,21 @@ const TRANSFER = { amount: 12_345n, recipient: "bc1qto" };
 const STRANGER = buildAccount("bc1qstranger", BITCOIN_CHAINS.mainnet);
 const SUI_MAINNET = { id: "sui:mainnet", name: "Sui", namespace: "sui", reference: "mainnet" };
 
+const buildSigner = () => {
+  const signMessage = vi.fn<BitcoinSignMessageFeature["signMessage"]>().mockResolvedValue({
+    signature: new Uint8Array([7, 8, 9]),
+    signedMessage: new Uint8Array([1, 2]),
+  });
+  const adapter = buildAdapter(buildWallet({}, { "bitcoin:signMessage": { signMessage } }));
+  return { adapter, signMessage };
+};
+
+const buildSender = (chains: ReadonlyArray<string> = [MAINNET, TESTNET]) => {
+  const { feature, sendTransfer } = sendTransferFeature();
+  const adapter = buildAdapter(buildWallet({ chains }, { "bitcoin:sendTransfer": feature }));
+  return { adapter, sendTransfer };
+};
+
 describe("buildBitcoinAdapter", () => {
   it("returns null when the wallet advertises no bip122 chain", () => {
     expect(buildBitcoinAdapter(buildWallet({ chains: ["eip155:1"] }))).toBeNull();
@@ -115,15 +130,6 @@ describe("buildBitcoinAdapter", () => {
   });
 
   describe("signMessage", () => {
-    const buildSigner = () => {
-      const signMessage = vi.fn<BitcoinSignMessageFeature["signMessage"]>().mockResolvedValue({
-        signature: new Uint8Array([7, 8, 9]),
-        signedMessage: new Uint8Array([1, 2]),
-      });
-      const adapter = buildAdapter(buildWallet({}, { "bitcoin:signMessage": { signMessage } }));
-      return { adapter, signMessage };
-    };
-
     it("bridges through bitcoin:signMessage with the active account", async () => {
       const { adapter, signMessage } = buildSigner();
       const message = new Uint8Array([99]);
@@ -158,12 +164,6 @@ describe("buildBitcoinAdapter", () => {
   });
 
   describe("sendTx", () => {
-    const buildSender = (chains: ReadonlyArray<string> = [MAINNET, TESTNET]) => {
-      const { feature, sendTransfer } = sendTransferFeature();
-      const adapter = buildAdapter(buildWallet({ chains }, { "bitcoin:sendTransfer": feature }));
-      return { adapter, sendTransfer };
-    };
-
     it("bridges through bitcoin:sendTransfer on the current chain and returns the txid", async () => {
       const { adapter, sendTransfer } = buildSender();
 

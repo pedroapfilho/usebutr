@@ -58,12 +58,12 @@
     "@usebutr/polkadot": "workspace:*",
     "@usebutr/sui": "workspace:*",
     "@usebutr/svm": "workspace:*",
-    "@wallet-standard/app": "^1.1.0"
+    "@wallet-standard/app": "^1.1.1"
   },
   "devDependencies": {
     "@repo/config-vitest": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   }
 }

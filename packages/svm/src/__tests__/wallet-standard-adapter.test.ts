@@ -288,10 +288,10 @@ describe("buildSvmAdapter session", () => {
   });
 });
 
-describe("buildSvmAdapter.switchChain", () => {
-  const switchable = (features: Readonly<Record<string, WalletStandardFeature>> = {}) =>
-    adapterFor({ chains: ["solana:mainnet", "solana:devnet"] }, features);
+const switchable = (features: Readonly<Record<string, WalletStandardFeature>> = {}) =>
+  adapterFor({ chains: ["solana:mainnet", "solana:devnet"] }, features);
 
+describe("buildSvmAdapter.switchChain", () => {
   it("rejects a non-Solana chain", async () => {
     await expect(present(switchable().switchChain, "switchChain")(ethereum)).rejects.toThrow(
       /non-Solana chain "eip155:1"/v,

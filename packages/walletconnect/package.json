@@ -52,14 +52,14 @@
     "@usebutr/core": "workspace:*",
     "@usebutr/evm": "workspace:*",
     "@usebutr/svm": "workspace:*",
-    "zod": "^4.6.1"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@repo/config-vitest": "workspace:*",
     "@repo/typescript-config": "workspace:*",
-    "@walletconnect/universal-provider": "^2.23.10",
+    "@walletconnect/universal-provider": "^2.25.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   },
   "peerDependencies": {
     "@walletconnect/universal-provider": "^2.0.0"

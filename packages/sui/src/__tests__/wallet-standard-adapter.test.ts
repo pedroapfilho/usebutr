@@ -251,9 +251,9 @@ describe("buildSuiAdapter session", () => {
   });
 });
 
-describe("buildSuiAdapter.switchChain", () => {
-  const switchable = () => adapterFor({ chains: ["sui:mainnet", "sui:testnet"] });
+const switchable = () => adapterFor({ chains: ["sui:mainnet", "sui:testnet"] });
 
+describe("buildSuiAdapter.switchChain", () => {
   it("rejects a non-Sui chain", async () => {
     await expect(present(switchable().switchChain, "switchChain")(ethereum)).rejects.toThrow(
       /non-Sui chain "eip155:1"/v,

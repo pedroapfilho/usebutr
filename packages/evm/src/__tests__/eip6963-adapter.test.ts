@@ -497,13 +497,13 @@ describe("buildEvmAdapter reads", () => {
   });
 });
 
-describe("buildEvmAdapter subscribe()", () => {
-  const subscribe = (provider: MockProviderHandle) => {
-    const listener = vi.fn<(event: ConnectorEvent) => void>();
-    const unsubscribe = buildEvmAdapter(INFO, provider).subscribe?.(listener);
-    return { listener, unsubscribe };
-  };
+const subscribe = (provider: MockProviderHandle) => {
+  const listener = vi.fn<(event: ConnectorEvent) => void>();
+  const unsubscribe = buildEvmAdapter(INFO, provider).subscribe?.(listener);
+  return { listener, unsubscribe };
+};
 
+describe("buildEvmAdapter subscribe()", () => {
   it("bridges accountsChanged into accountsChanged, active first, without reading accounts again", async () => {
     const provider = createMockProvider();
     provider.setHandler("eth_chainId", () => "0x89");

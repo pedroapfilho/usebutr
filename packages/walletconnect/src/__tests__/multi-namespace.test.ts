@@ -171,29 +171,29 @@ describe("createWalletConnectAdapters (one session across namespaces)", () => {
   });
 });
 
-describe("createWalletConnectAdapters (request routing)", () => {
-  const connectBoth = async () => {
-    const provider = createFakeProvider({
-      accounts: {
-        eip155: [`eip155:1:${EVM_ADDRESS}`],
-        solana: [`${SOL_MAINNET_ID}:${SOL_ADDRESS}`, `${SOL_DEVNET_ID}:${SOL_ADDRESS}`],
-      },
-      request: (args) => {
-        if (args.method === "eth_chainId") {
-          return 1;
-        }
-        if (args.method === "eth_accounts") {
-          return [EVM_ADDRESS];
-        }
-        return args.method === "personal_sign" ? "0xdeadbeef" : { signature: "111" };
-      },
-    });
-    const adapters = await createEvmAndSvmAdapters(provider);
-    await adapters.evm.connect();
-    await adapters.svm.connect();
-    return { ...adapters, provider };
-  };
+const connectBoth = async () => {
+  const provider = createFakeProvider({
+    accounts: {
+      eip155: [`eip155:1:${EVM_ADDRESS}`],
+      solana: [`${SOL_MAINNET_ID}:${SOL_ADDRESS}`, `${SOL_DEVNET_ID}:${SOL_ADDRESS}`],
+    },
+    request: (args) => {
+      if (args.method === "eth_chainId") {
+        return 1;
+      }
+      if (args.method === "eth_accounts") {
+        return [EVM_ADDRESS];
+      }
+      return args.method === "personal_sign" ? "0xdeadbeef" : { signature: "111" };
+    },
+  });
+  const adapters = await createEvmAndSvmAdapters(provider);
+  await adapters.evm.connect();
+  await adapters.svm.connect();
+  return { ...adapters, provider };
+};
 
+describe("createWalletConnectAdapters (request routing)", () => {
   it("names each namespace's chain, so a Solana request never reaches eip155", async () => {
     const { evm, provider, svm } = await connectBoth();
 

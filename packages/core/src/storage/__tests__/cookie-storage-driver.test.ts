@@ -14,7 +14,7 @@ const fakeDocument = (initial = ""): { cookie: string } => {
         return;
       }
       const [name] = head.split("=");
-      if (!name) {
+      if (name === undefined || name === "") {
         return;
       }
       const segments = cookie ? cookie.split("; ").filter(Boolean) : [];

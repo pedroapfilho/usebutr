@@ -19,7 +19,7 @@ Guidance for AI coding agents working in the **usebutr** monorepo — a multi-ch
 apps/                 # 17 apps: 4 framework demos + 11 integration demos + docs + landing
 packages/             # @usebutr/* library packages + 2 @repo/* configs + 1 @repo/* internal
 .changeset/           # Changesets — version bumps + release notes
-.github/workflows/    # 7 workflows: build, lint, typecheck, test, publish-checks, react-doctor, release
+.github/workflows/    # 8 workflows: build, lint, typecheck, test, e2e, publish-checks, react-doctor, release
 .fallow/              # Fallow cache + reports
 .husky/               # Pre-commit hooks (lint-staged)
 oxlint.config.ts      # Repo-wide oxlint config (TS-based)
@@ -102,12 +102,12 @@ pnpm version-packages                   # bump versions from changesets
 pnpm release                            # build + changeset publish (CI runs this)
 ```
 
-This is a library + demo repo, with no Docker or Prisma. Vitest covers the library; existing Playwright checks cover docs navigation and selected demos. Browser checks do not run in unit-test CI.
+This is a library + demo repo, with no Docker or Prisma. Vitest covers the library. Playwright covers docs navigation and the wallet flows of `demo-next`, `demo-vite` and `demo-wormhole-usdc` against a mock EIP-6963 wallet (`tests/mock-eip6963.ts`); `e2e.yml` runs all four suites.
 
 ## Conventions & gotchas
 
 - **Library profile.** This repo is `library` in orchestrator. SaaS checks (auth-config, prisma-config, e2e, i18n-leak, theme, primitives, dev, base-styles) intentionally skip here. The applicable set is profile-aware and compared against the `library` base, `acme-package`; run `orchestrator verify --repo usebutr` for the current list.
-- **CI shape.** Seven workflows: `test`, `lint` (formatting, dead code and oxlint as steps of one job), `typecheck`, `build`, `publish-checks`, `react-doctor` (advisory), and `release`. Validation runs on pull requests, a weekly schedule and manual dispatch, never on pushes to main. No `e2e.yml`.
+- **CI shape.** Eight workflows: `test`, `lint` (formatting, dead code and oxlint as steps of one job), `typecheck`, `build`, `e2e` (the four Playwright suites), `publish-checks`, `react-doctor` (advisory), and `release`. Validation runs on pull requests, a weekly schedule and manual dispatch, never on pushes to main.
 - **Per-app gitignores allowed.** Unlike SaaS repos, library demos may carry their own `.gitignore` files (the `gitignore` check is lenient here).
 - **Path aliases.** `@/*` → `src/*` in most apps; TanStack Start also maps `app/*`. Demo apps consume the library via workspace deps (`"@usebutr/core": "workspace:*"`) and tsconfig via `@repo/typescript-config`.
 - **Stable portless URLs.** `scripts/dev.mjs` resolves app links through Portless and forwards CLI arguments to Turbo. `pnpm dev --filter=<app>` includes dependency builds; direct `pnpm --filter=<app> dev` does not. Worktrees add a branch prefix to the listed URLs. Expo native iOS/Android use Metro/Expo Go on their own transport.

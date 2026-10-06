@@ -45,9 +45,6 @@ type WalletManagerConfig = {
   sources?: ReadonlyArray<WalletSource>;
   /** Replaces the default localStorage + sessionStorage persistence. */
   storage?: WalletPersistence;
-  /** Key prefix for the default persistence. Ignored when `storage` is set;
-   *  pass the same value to `readWalletSnapshot`. */
-  storageKeyPrefix?: string;
 };
 
 export type { HydrationOutcome, WalletManagerConfig };

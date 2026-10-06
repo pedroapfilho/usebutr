@@ -135,7 +135,7 @@ const createWalletManager = (
   config: WalletManagerConfig = {},
   options: { initialState?: WalletSnapshot } = {},
 ): WalletManager => {
-  const storage = config.storage ?? createWalletStorage({ keyPrefix: config.storageKeyPrefix });
+  const storage = config.storage ?? createWalletStorage();
   const store = createStore<WalletState>()(() =>
     options.initialState ? stateFromSnapshot(options.initialState) : initialState,
   );

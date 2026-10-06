@@ -1,11 +1,10 @@
 import type { Account } from "./account";
 import type { ChainPlatform } from "./platform";
 
-/**
- * `accounts` carries every account the wallet still exposes, active first;
- * the runtime mirrors it verbatim into the pool entry. Chain switches
- * arrive as a changed `account.chain`. An empty list is `disconnected`.
- */
+/** `accountsChanged` carries the wallet's exposed accounts as is, active first;
+ *  a chain switch arrives as a changed `account.chain`. An empty list means
+ *  disconnected. `disconnected` is for signals that end the session itself: a
+ *  Wallet Standard unregister, a deleted WalletConnect session. */
 type ConnectorEvent =
   | { accounts: ReadonlyArray<Account>; type: "accountsChanged" }
   | { type: "disconnected" };

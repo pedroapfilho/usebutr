@@ -2,7 +2,8 @@ import { logWarn } from "../logger";
 import type { Account, ConnectedWallet, Connector } from "../types";
 
 type LifecycleHandlers = {
-  /** The wallet exposed a new account list, active first. Never empty. */
+  /** The wallet exposed a new account list, active first. Never empty: an
+   *  empty `accountsChanged` arrives as `onDisconnected`. */
   onAccountsChanged: (connectorId: string, accounts: ReadonlyArray<Account>) => void;
   /** The wallet ended the session itself. The bridge has already dropped its
    *  subscription by the time this fires. */

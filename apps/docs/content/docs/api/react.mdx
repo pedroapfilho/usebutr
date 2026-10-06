@@ -14,7 +14,6 @@ import { autoDiscovery } from "@usebutr/wallets";
 
 const config: WalletManagerConfig = {
   sources: [autoDiscovery()],
-  storageKeyPrefix: "my-app",
 };
 
 export const Providers = ({ children }: { children: React.ReactNode }) => (
@@ -22,11 +21,11 @@ export const Providers = ({ children }: { children: React.ReactNode }) => (
 );
 ```
 
-| Prop           | Type                  | Notes                                                                                                                             |
-| -------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `children`     | `React.ReactNode`     | Required.                                                                                                                         |
-| `config`       | `WalletManagerConfig` | Read once at mount; define it at module scope. Every field is in the [core reference](/api/core#walletmanagerconfig).             |
-| `initialState` | `WalletSnapshot`      | Seeds the manager synchronously, typically from `readWalletSnapshot` in a Server Component. See [Hydration](/concepts/hydration). |
+| Prop           | Type                  | Notes                                                                                                                           |
+| -------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `children`     | `React.ReactNode`     | Required.                                                                                                                       |
+| `config`       | `WalletManagerConfig` | Read once at mount; define it at module scope. Every field is in the [core reference](/api/core#walletmanagerconfig).           |
+| `initialState` | `WalletSnapshot`      | Seeds the manager synchronously, typically from `readInitialState` in a Server Component. See [Hydration](/concepts/hydration). |
 
 The provider creates one manager per mount, so a server render never shares
 wallet state between requests, and starts it in an effect, so nothing runs on

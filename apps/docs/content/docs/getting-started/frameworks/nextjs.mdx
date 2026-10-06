@@ -25,7 +25,6 @@ import type { ReactNode } from "react";
 // EVM-only: no @usebutr/svm or @usebutr/wallets in the bundle.
 const config: WalletManagerConfig = {
   sources: [discoverEvmAdapters],
-  storageKeyPrefix: "butr-demo",
 };
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (

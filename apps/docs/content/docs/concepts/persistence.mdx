@@ -85,25 +85,41 @@ Without `config.storage`, the manager uses `createWalletStorage` over
 | `{prefix}-active`            | `persistent` | the active id         |
 | `{prefix}-user-disconnected` | `session`    | the disconnect intent |
 
-The default prefix is `butr`. Set `storageKeyPrefix` to isolate several apps on
-one origin, and pass the same prefix to `readWalletSnapshot`. A key whose value
-did not change is not rewritten, which keeps a cookie-backed driver from
-re-sending every cookie on each save.
+The default prefix is `butr`. A key whose value did not change is not
+rewritten, which keeps a cookie-backed store from re-sending every cookie on
+each save. Every key is decoded and validated the same way wherever it is read:
+a corrupt entry is dropped with a warning and overwritten by the next save.
 
-Build one yourself to change the drivers:
+Build one yourself to change the prefix or the drivers:
 
 ```ts
-import { createCookieStorageDriver, createWalletStorage } from "@usebutr/core";
+import { createWalletStorage } from "@usebutr/core";
 
 const storage = createWalletStorage({
-  keyPrefix: "myapp",
-  persistent: createCookieStorageDriver(), // readable by the server
-  // `session` defaults to sessionStorage
+  keyPrefix: "myapp", // isolates several apps on one origin
+  // `persistent` defaults to localStorage, `session` to sessionStorage
 });
 ```
 
-When you pass `storage`, `storageKeyPrefix` is ignored: the prefix belongs to
-`createWalletStorage`.
+The prefix belongs to the storage, so it is set in exactly one place.
+
+## Cookies: `createCookieWalletStorage`
+
+`createCookieWalletStorage` keeps the persistent keys in cookies, so a server
+can read them, and returns the reader along with the persistence:
+
+```ts
+import { createCookieWalletStorage } from "@usebutr/core";
+
+const walletStorage = createCookieWalletStorage({ keyPrefix: "myapp" });
+
+walletStorage; // a WalletPersistence for config.storage
+walletStorage.readInitialState(cookies); // the WalletSnapshot for initialState
+```
+
+Both halves share one key layout and one decoder, so the server cannot read a
+state the client did not write. The disconnect intent stays in `sessionStorage`.
+See [SSR without a flash](/guides/ssr-no-flash).
 
 ## Storage drivers
 
@@ -118,11 +134,10 @@ type StorageDriver = {
 };
 ```
 
-| Factory                              | Backing store                                                     |
-| ------------------------------------ | ----------------------------------------------------------------- |
-| `createBrowserStorageDriver()`       | `{ persistent: localStorage, session: sessionStorage }` (default) |
-| `createCookieStorageDriver(options)` | cookies (`domain`, `path`, `sameSite`, `secure`, `maxAgeSeconds`) |
-| `createMemoryStorageDriver()`        | in-memory (no persistence)                                        |
+| Factory                        | Backing store                                                     |
+| ------------------------------ | ----------------------------------------------------------------- |
+| `createBrowserStorageDriver()` | `{ persistent: localStorage, session: sessionStorage }` (default) |
+| `createMemoryStorageDriver()`  | in-memory (no persistence)                                        |
 
 ## Failures are reported, never thrown
 

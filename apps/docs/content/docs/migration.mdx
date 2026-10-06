@@ -13,6 +13,9 @@ This release is breaking for every `@usebutr/*` package. It does four things:
   React provider only binds it.
 - **Signers are a tagged union.** `getSigner()` resolves `{ kind, … }`, so no
   casts are needed.
+- **Storage owns its key prefix.** `storageKeyPrefix` is gone, and one
+  `createCookieWalletStorage` call gives both the cookie persistence and the
+  server reader that replaces `readWalletSnapshot`.
 
 The reasoning is in
 [ADR 0004](https://github.com/pedroapfilho/usebutr/blob/main/docs/adr/0004-capability-by-presence-and-wallet-manager.md).
@@ -34,12 +37,12 @@ const discovery = autoDiscovery();
 
 // After
 import type { WalletManagerConfig } from "@usebutr/core";
-import { fromAdapters } from "@usebutr/core";
+import { createWalletStorage, fromAdapters } from "@usebutr/core";
 
 const config: WalletManagerConfig = {
   onConnect: track,
   sources: [autoDiscovery(), fromAdapters(createWalletConnectAdapters({ … }))],
-  storageKeyPrefix: "my-app",
+  storage: createWalletStorage({ keyPrefix: "my-app" }),
 };
 
 <WalletManagerProvider config={config}>{children}</WalletManagerProvider>;
@@ -52,6 +55,7 @@ const config: WalletManagerConfig = {
 | `createWalletSource(discoverEvmAdapters)`              | `discoverEvmAdapters` as-is: a `WalletSource` is now the function                                                                       |
 | `autoDiscovery({ evm: true, svm: true })`              | `autoDiscovery(["evm", "svm"])`                                                                                                         |
 | `autoDiscovery({ injected: false, … })`                | `autoDiscovery(platforms, { fallbacks: false })`                                                                                        |
+| `storageKeyPrefix`                                     | `config.storage: createWalletStorage({ keyPrefix })`, or `createCookieWalletStorage({ keyPrefix })`                                     |
 | `initialState` prop                                    | unchanged: `<WalletManagerProvider config={config} initialState={snapshot}>`                                                            |
 | `createWalletStore(config)`                            | `createWalletManager(config, { initialState })`, then `manager.start()`                                                                 |
 | `onConnect(wallet)`                                    | `onConnect(wallet, { reconnected })`: also fires for silent restores                                                                    |
@@ -172,7 +176,28 @@ const storage: WalletPersistence = {
 
 `new WalletStorage({ keyPrefix, persistent, session })` is now
 `createWalletStorage({ keyPrefix, persistent, session })`. The storage keys
-are unchanged, so existing sessions and `readWalletSnapshot` keep working.
+are unchanged, so existing sessions keep working.
+
+Cookie persistence and the server read come from one call, so the prefix is
+set once:
+
+```ts
+// Before
+const storage = createWalletStorage({
+  keyPrefix: "my-app",
+  persistent: createCookieStorageDriver({ secure: true }),
+});
+const initialState = readWalletSnapshot(cookies, { keyPrefix: "my-app" });
+
+// After, in a module both the Server Component and the provider import
+const walletStorage = createCookieWalletStorage({ keyPrefix: "my-app", secure: true });
+const initialState = walletStorage.readInitialState(cookies);
+```
+
+`createCookieStorageDriver`, its `initialCookies` option, `readWalletSnapshot`
+and `EMPTY_SNAPSHOT` are removed. A snapshot's active id is now the stored one;
+the manager falls back to the first pool entry when it names none, as it does
+after a client-side load.
 
 ## Testing
 
@@ -182,6 +207,6 @@ replaced by `overrides` (replace members) and `omit` (leave optional members
 off). `getSigner()` resolves the new `signer` option, any `WalletSigner`, and
 rejects without one; the package registers no signer kind of its own.
 `createFakeConnectedWallet` takes the adapter options instead of an `adapter`,
-and `createFakePersistence(seed)` takes a `Partial<PersistedWalletState>`
-(`isUserDisconnected`, not `userDisconnected`) and records every save in
-`saves`. See [Testing](/testing).
+and `createFakePersistence({ wallets, active, isUserDisconnected })` takes
+connected wallets instead of a hand-built `PersistedWalletState` and records
+every save in `saves`. See [Testing](/testing).

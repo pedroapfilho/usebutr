@@ -64,14 +64,15 @@ manager.subscribe((state) => console.log(state.pool.size, state.activeConnectorI
 ## Persistence
 
 Connections persist to localStorage and sessionStorage by default, written
-after every change once start-up hydration has read what was there. Swap the
-drivers with `createWalletStorage({ persistent, session })` (for example
-`createCookieStorageDriver()` so a server can read them), or pass any
-`WalletPersistence`: an object with `load()` and `save(state)`.
+after every change once start-up hydration has read what was there. Change the
+key prefix or the drivers with `createWalletStorage({ keyPrefix, persistent,
+session })`, or pass any `WalletPersistence`: an object with `load()` and
+`save(state)`.
 
-To render connections on the server, read the cookies with
-`readWalletSnapshot(cookies)` and pass the snapshot as
-`createWalletManager(config, { initialState })`. Seeded wallets render at
+To render connections on the server, persist with
+`createCookieWalletStorage({ keyPrefix })` and pass its
+`readInitialState(cookies)` as `createWalletManager(config, { initialState })`.
+Both decode one key layout, so they cannot drift. Seeded wallets render at
 once and stay in `reconnectingIds` until their silent reconnect lands.
 
 ## Documentation

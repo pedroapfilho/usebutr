@@ -42,7 +42,6 @@ import type { ReactNode } from "react";
 // SVM-only: no @usebutr/evm or @usebutr/wallets in the bundle.
 const config: WalletManagerConfig = {
   sources: [discoverSvmAdapters],
-  storageKeyPrefix: "butr-solana-web3js-demo",
 };
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
@@ -54,7 +53,7 @@ export { WalletProvider };
 
 `demo-with-solana-framework-kit`, `demo-with-gill`, `demo-with-solana-kit`,
 `demo-with-solana-wallet-adapter`, and `demo-with-solana-web3js` all use this
-pattern, each with its own `storageKeyPrefix`.
+pattern.
 
 Every wallet in this app is an SVM wallet, so read it with
 `useSelectedWallet("svm")`: it is typed `ConnectedWallet<"svm">`, and its

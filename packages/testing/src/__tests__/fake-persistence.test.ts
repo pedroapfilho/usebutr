@@ -1,4 +1,3 @@
-import type { StoredPoolEntry } from "@usebutr/core";
 import { createWalletManager, fromAdapters } from "@usebutr/core";
 import { describe, expect, it } from "vitest";
 
@@ -11,14 +10,6 @@ const flush = () =>
     setTimeout(resolve, 0);
   });
 
-const storedEntryOf = (wallet: ReturnType<typeof createFakeConnectedWallet>): StoredPoolEntry => ({
-  account: wallet.account,
-  accounts: wallet.accounts,
-  chainPlatform: wallet.connector.chainPlatform,
-  connectorId: wallet.connector.id,
-  name: wallet.connector.name,
-});
-
 describe("createFakePersistence", () => {
   it("loads an empty state by default", async () => {
     expect(await createFakePersistence().load()).toEqual({
@@ -29,16 +20,25 @@ describe("createFakePersistence", () => {
     });
   });
 
-  it("loads the seed, validated as browser storage would", async () => {
-    const entry = storedEntryOf(createFakeConnectedWallet({ id: "metamask" }));
+  it("loads the seeded wallets as a previous session saved them", async () => {
+    const metamask = createFakeConnectedWallet({ id: "metamask", name: "MetaMask" });
+    const rabby = createFakeConnectedWallet({ id: "rabby" });
     const persistence = createFakePersistence({
-      activeConnectorId: "metamask",
-      pool: { metamask: entry, rogue: { ...entry, connectorId: "not-rogue" } },
+      active: rabby,
+      isUserDisconnected: true,
+      wallets: [metamask, rabby],
     });
 
     const loaded = await persistence.load();
-    expect(loaded.pool).toEqual({ metamask: entry });
-    expect(loaded.activeConnectorId).toBe("metamask");
+    expect(Object.keys(loaded.pool)).toEqual(["metamask", "rabby"]);
+    expect(loaded.pool.metamask).toMatchObject({
+      account: metamask.account,
+      chainPlatform: "evm",
+      connectorId: "metamask",
+      name: "MetaMask",
+    });
+    expect(loaded.activeConnectorId).toBe("rabby");
+    expect(loaded.isUserDisconnected).toBe(true);
   });
 
   it("records every save and loads the latest one", async () => {
@@ -58,7 +58,7 @@ describe("createFakePersistence", () => {
 
   it("restores a seeded connection through a manager and records what it saves", async () => {
     const wallet = createFakeConnectedWallet({ id: "metamask" });
-    const persistence = createFakePersistence({ pool: { metamask: storedEntryOf(wallet) } });
+    const persistence = createFakePersistence({ wallets: [wallet] });
     const manager = createWalletManager({
       sources: [fromAdapters([wallet.connector, createFakeAdapter({ id: "rabby" })])],
       storage: persistence,
@@ -66,6 +66,7 @@ describe("createFakePersistence", () => {
 
     manager.start();
     await flush();
+    expect(manager.getState().activeConnectorId).toBe("metamask");
     await manager.connect("rabby");
     await flush();
 

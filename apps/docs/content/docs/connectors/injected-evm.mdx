@@ -33,11 +33,11 @@ The adapter id is the wallet's reverse-DNS name (`io.metamask`, `io.rabby`).
 ## Injected fallback
 
 Some wallets expose only `window.ethereum` and never announce through
-EIP-6963. `discoverInjectedAdapter` waits 150 ms, then emits one
-`"Browser wallet"` adapter with the id `injected:legacy`. On its own it would
-list a wallet a second time next to its EIP-6963 adapter, so pair the two
-through `autoDiscovery(["evm"])`, which runs the fallback only when EIP-6963
-announced nothing. `autoDiscovery(["evm"], { fallbacks: false })` skips it.
+EIP-6963. `discoverInjectedAdapter` emits one `"Browser wallet"` adapter with
+the id `injected:legacy`. On its own it would list a wallet a second time next
+to its EIP-6963 adapter, so pair the two through `autoDiscovery(["evm"])`,
+which lists `window.ethereum` only when no EIP-6963 wallet announced within
+150 ms. `autoDiscovery(["evm"], { fallbacks: false })` skips it.
 
 ## What the adapter defines
 

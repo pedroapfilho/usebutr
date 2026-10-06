@@ -20,10 +20,6 @@ import { discoverSvmAdapters } from "@usebutr/svm";
 const config: WalletManagerConfig = { sources: [discoverSvmAdapters] };
 ```
 
-### `svmDiscoverer: PlatformDiscoverer`
-
-Wallet Standard only; Solana has no legacy injected path worth shimming.
-
 ## Adapter builder
 
 ### `buildSvmAdapter(wallet, registerDisconnector?): SvmAdapter | null`

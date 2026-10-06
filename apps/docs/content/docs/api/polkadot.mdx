@@ -23,16 +23,15 @@ const config: WalletManagerConfig = { sources: [discoverInjectedPolkadotAdapters
 in milliseconds, default `[250, 750]`; `[]` for a single synchronous scan) and
 `target?` (overrides `window`).
 
-### `discoverPolkadotWalletStandardAdapters(onAdapter): () => void`
+### `discoverPolkadotWalletStandardAdapters(onAdapter, loadModule?): () => void`
 
 Discovers wallets advertising a `polkadot:` chain through Wallet Standard.
-Requires `@wallet-standard/app`.
+Requires `@wallet-standard/app`; `loadModule` replaces that import (tests).
 
-### `polkadotDiscoverer: PlatformDiscoverer`
-
-injectedWeb3 as the primary channel, Wallet Standard as a fallback that runs
-only when the first injectedWeb3 scan found nothing. A wallet on both
-channels would otherwise list twice under unrelated ids.
+A wallet on both channels mints two unrelated ids, so passing both sources
+lists it twice. `autoDiscovery(["polkadot"])` from `@usebutr/wallets` lists it
+once, including an extension that injects late, and keeps Wallet Standard
+wallets that no injectedWeb3 extension matches.
 
 ## Adapter builders
 

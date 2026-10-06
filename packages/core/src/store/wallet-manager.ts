@@ -36,7 +36,8 @@ type WalletManager = Pick<StoreApi<WalletState>, "getInitialState" | "getState" 
   /** Disconnects every wallet and forgets every persisted connection. */
   disconnectAll: () => void;
   /** Opens the wallet's account picker, then refreshes the pool entry. A no-op
-   *  for wallets without `requestAccounts`. */
+   *  for wallets without `requestAccounts`. Rejects with a `NotConnected`
+   *  `ConnectionError` when the wallet then exposes no accounts. */
   requestAccounts: (connectorId: string) => Promise<void>;
   /** Selects an exposed account without changing its chain or the account
    *  list. Unknown wallets and accounts are ignored. */
@@ -98,6 +99,19 @@ const teardown = async (connector: WalletAdapter) => {
   } catch (error) {
     logWarn(`[butr] disconnect of ${connector.id} failed:`, error);
   }
+};
+
+/** The accounts `connector` exposes, active first. None means it is not
+ *  connected, whichever call asked. */
+const readAccounts = async (
+  connector: WalletAdapter,
+): Promise<Pick<ConnectedWallet, "account" | "accounts">> => {
+  const accounts = await connector.getAccounts();
+  const account = accounts.at(0);
+  if (account === undefined) {
+    throw new ConnectionError("NotConnected", `${connector.name} exposed no accounts`);
+  }
+  return { account, accounts };
 };
 
 /**
@@ -179,6 +193,43 @@ const createWalletManager = (
     },
   });
 
+  // Discovery caches an adapter and hands it back on the next connect, so a
+  // session the pool does not hold must not stay open on it.
+  const closeUnlessPooled = async (connector: WalletAdapter) => {
+    if (getState().pool.get(connector.id)?.connector !== connector) {
+      await teardown(connector);
+    }
+  };
+
+  /**
+   * The one way a session opens. A failure closes it unless the pool holds
+   * it, except a declined silent connect: that opened nothing, and closing
+   * would revoke the permission (EVM) or shared session (WalletConnect).
+   */
+  const openSession = async (
+    connector: WalletAdapter,
+    { silent }: { silent: boolean },
+  ): Promise<ConnectedWallet> => {
+    try {
+      await withTimeout(
+        silent ? connector.connect({ silent }) : connector.connect(),
+        silent ? RESTORE_TIMEOUT_MS : CONNECT_TIMEOUT_MS,
+      );
+    } catch (error) {
+      const failure = toConnectionError(error);
+      if (!silent || failure.kind === "Timeout") {
+        await closeUnlessPooled(connector);
+      }
+      throw failure;
+    }
+    try {
+      return { ...(await readAccounts(connector)), connector };
+    } catch (error) {
+      await closeUnlessPooled(connector);
+      throw toConnectionError(error);
+    }
+  };
+
   // Hydration: silent reconnect of every dormant entry whose adapter exists,
   // then of each late adapter the moment a source announces it.
   const restore = async (connectorId: string): Promise<RestoreResult | null> => {
@@ -187,19 +238,10 @@ const createWalletManager = (
       return null;
     }
     try {
-      await withTimeout(adapter.connect({ silent: true }), RESTORE_TIMEOUT_MS);
-      const accounts = await adapter.getAccounts();
-      const account = accounts.at(0);
-      if (account === undefined) {
-        throw new ConnectionError("NotConnected", `${adapter.name} exposed no accounts`);
-      }
-      const wallet: ConnectedWallet = { account, accounts, connector: adapter };
-      // Rejected when the user connected or disconnected it meanwhile. If they
-      // disconnected it, close the session the silent reconnect just reopened.
+      const wallet = await openSession(adapter, { silent: true });
+      // Rejected when the user connected or disconnected it meanwhile.
       if (!dispatch({ connectorId, entry: wallet, type: "ENTRY_RESTORED" })) {
-        if (!getState().pool.has(connectorId)) {
-          await teardown(adapter);
-        }
+        await closeUnlessPooled(adapter);
         return null;
       }
       safely("onConnect", config.onConnect, wallet, { reconnected: true });
@@ -290,32 +332,21 @@ const createWalletManager = (
             safely("onSlowConnect", config.onSlowConnect, connectorId);
           }, config.slowConnectThresholdMs ?? DEFAULT_SLOW_CONNECT_THRESHOLD_MS)
         : undefined;
-      const connector = findAdapter(connectorId);
       try {
+        const connector = findAdapter(connectorId);
         if (connector === undefined) {
           throw new ConnectionError(
             "WalletNotFound",
             `No wallet adapter is registered as "${connectorId}"`,
           );
         }
-        await withTimeout(connector.connect(), CONNECT_TIMEOUT_MS);
-        const accounts = await connector.getAccounts();
-        const account = accounts.at(0);
-        if (account === undefined) {
-          throw new ConnectionError("NotConnected", `${connector.name} exposed no accounts`);
-        }
-        const wallet: ConnectedWallet = { account, accounts, connector };
+        const wallet = await openSession(connector, { silent: false });
         dispatch({ connectorId, entry: wallet, type: "CONNECT_SUCCEEDED" });
         safely("onConnect", config.onConnect, wallet, { reconnected: false });
         return wallet;
       } catch (error) {
         const failure = toConnectionError(error);
         dispatch({ connectorId, error: failure, type: "CONNECT_FAILED" });
-        // Leave an already-live session alone: a failed re-connect of a
-        // connected wallet must not disconnect it.
-        if (connector !== undefined && getState().pool.get(connectorId)?.connector !== connector) {
-          await teardown(connector);
-        }
         safely("onConnectError", config.onConnectError, failure, connectorId);
         throw failure;
       } finally {
@@ -350,7 +381,7 @@ const createWalletManager = (
         return;
       }
       await connector.requestAccounts();
-      const accounts = await connector.getAccounts();
+      const { accounts } = await readAccounts(connector);
       dispatch({ accounts, connectorId, type: "ACCOUNTS_CHANGED" });
     },
 

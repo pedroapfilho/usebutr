@@ -167,6 +167,7 @@ describe("hydration", () => {
 
     expect(manager.getState().pool.size).toBe(0);
     expect(manager.getState().dormant.has("metamask")).toBe(true);
+    expect(metamask.disconnect).not.toHaveBeenCalled();
     expect(lastSave(storage)?.pool.metamask).toEqual(storedEntry(metamask));
     const [outcome] = onHydrated.mock.lastCall ?? [];
     expect(outcome).toMatchObject({ pendingIds: [], restoredIds: [] });
@@ -176,7 +177,7 @@ describe("hydration", () => {
     expect(outcome?.dropped[0]?.reason.kind).toBe("WalletLocked");
   });
 
-  it("drops a silent reconnect that exposes no accounts as NotConnected", async () => {
+  it("drops a silent reconnect that exposes no accounts as NotConnected and closes it", async () => {
     const onHydrated = vi.fn<Callbacks["onHydrated"]>();
     const metamask = evmAdapter("metamask", { accounts: [] });
     await startManager({
@@ -186,6 +187,7 @@ describe("hydration", () => {
     });
 
     expect(onHydrated.mock.lastCall?.[0]?.dropped[0]?.reason.kind).toBe("NotConnected");
+    expect(metamask.disconnect).toHaveBeenCalledOnce();
   });
 
   it("logs dropped reconnects when no onHydrated is given", async () => {
@@ -219,6 +221,39 @@ describe("hydration", () => {
 
     expect(manager.getState().isHydrated).toBe(true);
     expect(onHydrated.mock.lastCall?.[0]?.dropped[0]?.reason.kind).toBe("Timeout");
+  });
+
+  it("closes the session of a silent reconnect that times out", async () => {
+    vi.useFakeTimers();
+    const metamask = evmAdapter("metamask", { connect: () => new Promise(() => {}) });
+    const manager = createWalletManager({
+      sources: [staticSource(metamask)],
+      storage: createMemoryPersistence({ pool: poolOf(metamask) }),
+    });
+    manager.start();
+
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    expect(metamask.disconnect).toHaveBeenCalledOnce();
+    expect(manager.getState().pool.size).toBe(0);
+  });
+
+  it("leaves the user's session open when the silent reconnect it overtook times out", async () => {
+    vi.useFakeTimers();
+    const metamask = evmAdapter("metamask", {
+      connect: (options) => (options?.silent === true ? new Promise(() => {}) : Promise.resolve()),
+    });
+    const manager = createWalletManager({
+      sources: [staticSource(metamask)],
+      storage: createMemoryPersistence({ pool: poolOf(metamask) }),
+    });
+    manager.start();
+
+    const wallet = await manager.connect("metamask");
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    expect(metamask.disconnect).not.toHaveBeenCalled();
+    expect(manager.getState().pool.get("metamask")).toBe(wallet);
   });
 
   it("does not silently reconnect a wallet the user connected before storage loaded", async () => {

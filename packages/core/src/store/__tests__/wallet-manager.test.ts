@@ -470,6 +470,24 @@ describe("createWalletManager", () => {
       expect(manager.getState().pool.get("metamask")?.account).toBe(second);
     });
 
+    it("requestAccounts rejects NotConnected when the wallet then exposes none", async () => {
+      let exposed: ReadonlyArray<Account> = [first];
+      const adapter = evmAdapter("metamask", {
+        getAccounts: () => Promise.resolve(exposed),
+        requestAccounts: () => {
+          exposed = [];
+          return Promise.resolve();
+        },
+      });
+      const { manager } = await startManager({ adapters: [adapter] });
+      const wallet = await manager.connect("metamask");
+
+      await expect(manager.requestAccounts("metamask")).rejects.toMatchObject({
+        kind: "NotConnected",
+      });
+      expect(manager.getState().pool.get("metamask")).toBe(wallet);
+    });
+
     it("requestAccounts is a no-op for a wallet without it", async () => {
       const adapter = evmAdapter("metamask");
       const { manager } = await startManager({ adapters: [adapter] });

@@ -10,11 +10,11 @@ import {
   rejectionOf,
   walletOf,
 } from "../../__tests__/helpers";
-import { toStoredEntry } from "../../store/reducer";
 import type { PersistedWalletState, StorageDriver } from "../persistence";
+import { toStoredPoolEntry } from "../wallet-state-codec";
 import { createWalletStorage } from "../wallet-storage";
 
-const metamask = toStoredEntry("metamask", walletOf(evmAdapter("metamask")));
+const metamask = toStoredPoolEntry(walletOf(evmAdapter("metamask")));
 
 const connectedState: PersistedWalletState = {
   activeConnectorId: "metamask",

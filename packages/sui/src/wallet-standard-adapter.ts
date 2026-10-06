@@ -123,6 +123,6 @@ const buildSuiAdapter = (
 const discoverSuiAdapters = (
   onAdapter: (adapter: WalletAdapter) => void,
   loadModule?: WalletStandardModuleLoader,
-): (() => void) => discoverWalletStandard(onAdapter, buildSuiAdapter, loadModule);
+): (() => void) => discoverWalletStandard([{ build: buildSuiAdapter, onAdapter }], { loadModule });
 
 export { buildSuiAdapter, discoverSuiAdapters };

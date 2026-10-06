@@ -64,8 +64,10 @@ describe("discoverWalletStandard", () => {
   it("warns once when @wallet-standard/app is not installed", async () => {
     const warn = vi.spyOn(console, "warn").mockReturnValue(undefined);
     const onAdapter = vi.fn<() => void>();
-    const unsubscribeA = discoverWalletStandard(onAdapter, () => null, loadMissingModule);
-    const unsubscribeB = discoverWalletStandard(onAdapter, () => null, loadMissingModule);
+    const onReady = vi.fn<() => void>();
+    const routes = [{ build: () => null, onAdapter }];
+    const unsubscribeA = discoverWalletStandard(routes, { loadModule: loadMissingModule, onReady });
+    const unsubscribeB = discoverWalletStandard(routes, { loadModule: loadMissingModule, onReady });
 
     await vi.waitFor(() => {
       expect(warn).toHaveBeenCalled();
@@ -75,6 +77,9 @@ describe("discoverWalletStandard", () => {
     expect(String(warn.mock.calls[0]?.[0])).toContain("@wallet-standard/app");
     expect(warn.mock.calls[0]?.[1]).toBeInstanceOf(Error);
     expect(onAdapter).not.toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(onReady).toHaveBeenCalledTimes(2);
+    });
 
     unsubscribeA();
     unsubscribeB();
@@ -104,7 +109,9 @@ describe("discoverWalletStandard", () => {
       return adapter(id);
     };
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
-    const unsubscribe = discoverWalletStandard(onAdapter, build, source.loadModule);
+    const unsubscribe = discoverWalletStandard([{ build, onAdapter }], {
+      loadModule: source.loadModule,
+    });
 
     await vi.waitFor(() => {
       expect(onAdapter).toHaveBeenCalledTimes(1);
@@ -136,7 +143,11 @@ describe("discoverWalletStandard", () => {
         resolveModule = resolve;
       });
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
-    const unsubscribe = discoverWalletStandard(onAdapter, () => adapter("first"), loadModule);
+    const onReady = vi.fn<() => void>();
+    const unsubscribe = discoverWalletStandard([{ build: () => adapter("first"), onAdapter }], {
+      loadModule,
+      onReady,
+    });
 
     unsubscribe();
     resolveModule?.(await source.loadModule());
@@ -146,5 +157,43 @@ describe("discoverWalletStandard", () => {
     });
     expect(source.app.on).not.toHaveBeenCalled();
     expect(onAdapter).not.toHaveBeenCalled();
+    expect(onReady).not.toHaveBeenCalled();
+  });
+
+  it("hands every wallet to each route from one registry subscription", async () => {
+    const multi = wallet("multi");
+    const source = walletApp([multi]);
+    const svmAdapters = vi.fn<(adapter: WalletAdapter) => void>();
+    const suiAdapters = vi.fn<(adapter: WalletAdapter) => void>();
+    const disconnected: Array<string> = [];
+    const route = (prefix: string, onAdapter: (adapter: WalletAdapter) => void) => ({
+      build: (
+        candidate: WalletStandardWallet,
+        registerDisconnector: (emit: () => void) => void,
+      ) => {
+        registerDisconnector(() => {
+          disconnected.push(prefix);
+        });
+        return adapter(`${prefix}-${candidate.name}`);
+      },
+      onAdapter,
+    });
+    const onReady = vi.fn<() => void>();
+
+    const unsubscribe = discoverWalletStandard(
+      [route("svm", svmAdapters), route("sui", suiAdapters)],
+      { loadModule: source.loadModule, onReady },
+    );
+
+    await vi.waitFor(() => {
+      expect(onReady).toHaveBeenCalledOnce();
+    });
+    expect(svmAdapters.mock.calls.map(([registered]) => registered.id)).toEqual(["svm-multi"]);
+    expect(suiAdapters.mock.calls.map(([registered]) => registered.id)).toEqual(["sui-multi"]);
+    expect(source.app.on).toHaveBeenCalledTimes(2);
+
+    source.emit("unregister", multi);
+    expect(disconnected).toEqual(["svm", "sui"]);
+    unsubscribe();
   });
 });

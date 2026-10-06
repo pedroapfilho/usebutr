@@ -383,6 +383,9 @@ importers:
       '@usebutr/react':
         specifier: workspace:*
         version: link:../../packages/react
+      '@usebutr/wallets':
+        specifier: workspace:*
+        version: link:../../packages/wallets
       '@wallet-standard/app':
         specifier: ^1.1.1
         version: 1.1.1
@@ -1612,6 +1615,9 @@ importers:
       '@usebutr/svm':
         specifier: workspace:*
         version: link:../svm
+      '@usebutr/wallet-standard-shared':
+        specifier: workspace:*
+        version: link:../wallet-standard-shared
       '@wallet-standard/app':
         specifier: ^1.1.1
         version: 1.1.1

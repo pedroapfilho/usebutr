@@ -5,7 +5,6 @@ export { resolveChain } from "./chain";
 export type { ChainsByPlatform } from "./chains-by-platform";
 
 export type { Connector, ConnectorEvent } from "./connector";
-export type { PlatformDiscoverer } from "./discoverer";
 export type { ConnectionErrorKind } from "./errors";
 export { ConnectionError, toConnectionError } from "./errors";
 export type { HydrationOutcome, WalletManagerConfig } from "./manager";

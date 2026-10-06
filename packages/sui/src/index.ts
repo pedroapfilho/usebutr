@@ -11,5 +11,3 @@ export type {
 } from "./wallet-standard-types";
 
 export { buildSuiAdapter, discoverSuiAdapters } from "./wallet-standard-adapter";
-
-export { suiDiscoverer } from "./discoverer";

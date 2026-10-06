@@ -14,5 +14,3 @@ export type {
 } from "./wallet-standard-types";
 
 export { buildSvmAdapter, discoverSvmAdapters } from "./wallet-standard-adapter";
-
-export { svmDiscoverer } from "./discoverer";

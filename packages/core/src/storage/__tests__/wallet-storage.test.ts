@@ -10,7 +10,7 @@ import {
   rejectionOf,
   walletOf,
 } from "../../__tests__/helpers";
-import { toStoredEntry } from "../../store/reducer";
+import { toStoredEntry } from "../../store/persisted-state";
 import type { PersistedWalletState, StorageDriver } from "../persistence";
 import { createWalletStorage } from "../wallet-storage";
 

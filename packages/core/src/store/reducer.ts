@@ -1,40 +1,26 @@
 import type {
-  StoredPoolEntry,
   StoredPoolRecord,
   StoredSelectionRecord,
   WalletSnapshot,
 } from "../storage/persistence";
 import type { Account, ChainPlatform, ConnectedWallet, WalletAdapter } from "../types";
 import type { ConnectionError } from "../types/errors";
-import { isChainPlatform } from "../types/platform";
+import type { WalletState } from "../types/manager";
 import { accountsEqual } from "../wallet-equal";
 
-import { createShadowAdapter, isShadowAdapter } from "./shadow-adapter";
+import {
+  applyStoredSelection,
+  snapshotState,
+  storedEntries,
+  toStoredEntry,
+} from "./persisted-state";
+import { isShadowAdapter } from "./shadow-adapter";
 
-/** Status of the latest `connect` attempt, not of the connection itself;
- *  `useConnectionStatus` derives the latter. */
-type ConnectStatus = "idle" | "connecting" | "success" | "error";
-
-type WalletState = {
-  activeConnectorId: string | null;
-  /** Every adapter the sources announced, in announcement order. */
-  adapters: ReadonlyArray<WalletAdapter>;
-  connectingConnectorId: string | null;
-  connectionError: ConnectionError | null;
-  connectionStatus: ConnectStatus;
-  /**
-   * Persisted connections that are not live: awaiting their adapter, failed
-   * their silent reconnect, or ended by the wallet rather than the user.
-   * They stay persisted so the next load retries them.
-   */
-  dormant: ReadonlyMap<string, StoredPoolEntry>;
-  isHydrated: boolean;
-  isUserDisconnected: boolean;
-  pool: ReadonlyMap<string, ConnectedWallet>;
-  /** Pool ids whose connector is still a shadow seeded from `initialState`. */
-  reconnectingIds: ReadonlySet<string>;
-  /** Which pool entry serves each platform present in the pool. */
-  selection: ReadonlyMap<ChainPlatform, string>;
+/** The store's state: `WalletState` plus what only the reducer reads. */
+type StoreState = WalletState & {
+  /** The user connected or picked the active wallet or a selection. The
+   *  stored preferences predate that choice, so `HYDRATED` keeps it. */
+  userChose: boolean;
 };
 
 type WalletEvent =
@@ -60,7 +46,7 @@ type WalletEvent =
   | { connectorId: string; type: "ACTIVE_CHANGED" }
   | { chainPlatform: ChainPlatform; connectorId: string; type: "SELECTION_CHANGED" };
 
-const initialState: WalletState = {
+const initialState: StoreState = {
   activeConnectorId: null,
   adapters: [],
   connectingConnectorId: null,
@@ -72,16 +58,8 @@ const initialState: WalletState = {
   pool: new Map(),
   reconnectingIds: new Set(),
   selection: new Map(),
+  userChose: false,
 };
-
-const toStoredEntry = (connectorId: string, wallet: ConnectedWallet): StoredPoolEntry => ({
-  account: wallet.account,
-  accounts: wallet.accounts,
-  chainPlatform: wallet.connector.chainPlatform,
-  connectorId,
-  icon: wallet.connector.icon,
-  name: wallet.connector.name,
-});
 
 const withEntry = <K, V>(map: ReadonlyMap<K, V>, key: K, value: V): ReadonlyMap<K, V> =>
   new Map(map).set(key, value);
@@ -142,7 +120,7 @@ const reconcileSelection = (
  * no case re-derives a fallback. Returns `state` itself when it already
  * holds, which keeps zustand from notifying.
  */
-const reconcile = (state: WalletState): WalletState => {
+const reconcile = (state: StoreState): StoreState => {
   const { pool } = state;
   const reconnectingIds = reconcileReconnectingIds(state.reconnectingIds, pool);
   const dormant = keepEntries(state.dormant, (id) => !pool.has(id) || reconnectingIds.has(id));
@@ -163,24 +141,10 @@ const reconcile = (state: WalletState): WalletState => {
   return { ...state, activeConnectorId, dormant, reconnectingIds, selection };
 };
 
-const applyStoredSelection = (
-  selection: ReadonlyMap<ChainPlatform, string>,
-  stored: StoredSelectionRecord,
-  pool: ReadonlyMap<string, ConnectedWallet>,
-): ReadonlyMap<ChainPlatform, string> => {
-  let next = selection;
-  for (const [platform, id] of Object.entries(stored)) {
-    if (isChainPlatform(platform) && pool.get(id)?.connector.chainPlatform === platform) {
-      next = withEntry(next, platform, id);
-    }
-  }
-  return next;
-};
-
 const changeAccounts = (
-  state: WalletState,
+  state: StoreState,
   event: Extract<WalletEvent, { type: "ACCOUNTS_CHANGED" }>,
-): WalletState => {
+): StoreState => {
   const wallet = state.pool.get(event.connectorId);
   const first = event.accounts.at(0);
   if (wallet === undefined || first === undefined) {
@@ -194,7 +158,7 @@ const changeAccounts = (
   return { ...state, pool: withEntry(state.pool, event.connectorId, updated) };
 };
 
-const apply = (state: WalletState, event: WalletEvent): WalletState => {
+const apply = (state: StoreState, event: WalletEvent): StoreState => {
   switch (event.type) {
     case "ADAPTER_REGISTERED": {
       if (state.adapters.some((adapter) => adapter.id === event.adapter.id)) {
@@ -204,13 +168,11 @@ const apply = (state: WalletState, event: WalletEvent): WalletState => {
     }
 
     case "STORAGE_LOADED": {
-      const dormant = new Map(state.dormant);
-      for (const [id, entry] of Object.entries(event.entries)) {
-        if (entry !== undefined) {
-          dormant.set(id, entry);
-        }
-      }
-      return { ...state, dormant, isUserDisconnected: event.isUserDisconnected };
+      return {
+        ...state,
+        dormant: new Map([...state.dormant, ...storedEntries(event.entries)]),
+        isUserDisconnected: event.isUserDisconnected,
+      };
     }
 
     case "ENTRY_RESTORED": {
@@ -232,6 +194,9 @@ const apply = (state: WalletState, event: WalletEvent): WalletState => {
     }
 
     case "HYDRATED": {
+      if (state.userChose) {
+        return { ...state, isHydrated: true };
+      }
       const preferred = event.activeConnectorId;
       return {
         ...state,
@@ -269,6 +234,7 @@ const apply = (state: WalletState, event: WalletEvent): WalletState => {
         selection: state.pool.has(connectorId)
           ? state.selection
           : withEntry(state.selection, entry.connector.chainPlatform, connectorId),
+        userChose: true,
       };
     }
 
@@ -337,7 +303,7 @@ const apply = (state: WalletState, event: WalletEvent): WalletState => {
       if (state.activeConnectorId === event.connectorId || !state.pool.has(event.connectorId)) {
         return state;
       }
-      return { ...state, activeConnectorId: event.connectorId };
+      return { ...state, activeConnectorId: event.connectorId, userChose: true };
     }
 
     case "SELECTION_CHANGED": {
@@ -350,6 +316,7 @@ const apply = (state: WalletState, event: WalletEvent): WalletState => {
       return {
         ...state,
         selection: withEntry(state.selection, event.chainPlatform, event.connectorId),
+        userChose: true,
       };
     }
 
@@ -362,38 +329,17 @@ const apply = (state: WalletState, event: WalletEvent): WalletState => {
 };
 
 /** Pure: `(state, event) => state`. Side effects live in the manager. */
-const reducer = (state: WalletState, event: WalletEvent): WalletState => {
+const reducer = (state: StoreState, event: WalletEvent): StoreState => {
   const next = apply(state, event);
   return next === state ? state : reconcile(next);
 };
 
 /**
  * `isHydrated` is true from the first render on this path, so
- * `reconnectingIds` says whether a connection is verified. Seeded entries
- * are also dormant: persisted, not yet live.
+ * `reconnectingIds` says whether a connection is verified.
  */
-const stateFromSnapshot = (snapshot: WalletSnapshot): WalletState => {
-  const pool = new Map<string, ConnectedWallet>();
-  const dormant = new Map<string, StoredPoolEntry>();
-  for (const [connectorId, entry] of Object.entries(snapshot.pool)) {
-    if (entry !== undefined) {
-      pool.set(connectorId, {
-        account: entry.account,
-        accounts: entry.accounts,
-        connector: createShadowAdapter(entry),
-      });
-      dormant.set(connectorId, entry);
-    }
-  }
-  return reconcile({
-    ...initialState,
-    activeConnectorId: snapshot.activeConnectorId,
-    dormant,
-    isHydrated: true,
-    pool,
-    selection: applyStoredSelection(new Map(), snapshot.selection, pool),
-  });
-};
+const seededState = (snapshot: WalletSnapshot): StoreState =>
+  reconcile({ ...initialState, ...snapshotState(snapshot), isHydrated: true });
 
-export type { ConnectStatus, WalletEvent, WalletState };
-export { initialState, reconcile, reducer, stateFromSnapshot, toStoredEntry };
+export type { StoreState, WalletEvent };
+export { initialState, reconcile, reducer, seededState };

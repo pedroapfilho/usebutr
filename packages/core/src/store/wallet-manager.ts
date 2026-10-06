@@ -2,11 +2,7 @@ import type { StoreApi } from "zustand/vanilla";
 import { createStore } from "zustand/vanilla";
 
 import { logError, logWarn } from "../logger";
-import type {
-  PersistedWalletState,
-  StoredPoolRecord,
-  WalletSnapshot,
-} from "../storage/persistence";
+import type { WalletSnapshot } from "../storage/persistence";
 import { createWalletStorage } from "../storage/wallet-storage";
 import type {
   Account,
@@ -17,10 +13,12 @@ import type {
   WalletManagerConfig,
 } from "../types";
 import { ConnectionError, toConnectionError } from "../types/errors";
+import type { WalletState } from "../types/manager";
 
 import { createConnectorLifecycle } from "./connector-lifecycle";
-import type { WalletEvent, WalletState } from "./reducer";
-import { initialState, reducer, stateFromSnapshot, toStoredEntry } from "./reducer";
+import { EMPTY_PERSISTED, persistedStateChanged, toPersistedState } from "./persisted-state";
+import type { StoreState, WalletEvent } from "./reducer";
+import { initialState, reducer, seededState } from "./reducer";
 
 const CONNECT_TIMEOUT_MS = 90_000;
 // A silent reconnect needs no user, so it is short. Some wallets ignore
@@ -57,32 +55,8 @@ type RestoreResult =
   | { connectorId: string; ok: true }
   | { connectorId: string; error: ConnectionError; ok: false };
 
-const EMPTY_PERSISTED: PersistedWalletState = {
-  activeConnectorId: null,
-  isUserDisconnected: false,
-  pool: {},
-  selection: {},
-};
-
-const toPersistedState = (state: WalletState): PersistedWalletState => {
-  const pool: StoredPoolRecord = Object.fromEntries(state.dormant);
-  for (const [connectorId, wallet] of state.pool) {
-    pool[connectorId] = toStoredEntry(connectorId, wallet);
-  }
-  return {
-    activeConnectorId: state.activeConnectorId,
-    isUserDisconnected: state.isUserDisconnected,
-    pool,
-    selection: Object.fromEntries(state.selection),
-  };
-};
-
-const persistedSliceChanged = (state: WalletState, prev: WalletState): boolean =>
-  state.pool !== prev.pool ||
-  state.dormant !== prev.dormant ||
-  state.selection !== prev.selection ||
-  state.activeConnectorId !== prev.activeConnectorId ||
-  state.isUserDisconnected !== prev.isUserDisconnected;
+/** `"restoring"`: storage is loaded and its entries are reconnecting. */
+type HydrationPhase = "idle" | "loading" | "restoring" | "done";
 
 const toError = (cause: unknown): Error =>
   cause instanceof Error ? cause : new Error(String(cause));
@@ -136,13 +110,17 @@ const createWalletManager = (
   options: { initialState?: WalletSnapshot } = {},
 ): WalletManager => {
   const storage = config.storage ?? createWalletStorage({ keyPrefix: config.storageKeyPrefix });
-  const store = createStore<WalletState>()(() =>
-    options.initialState ? stateFromSnapshot(options.initialState) : initialState,
+  const store = createStore<StoreState>()(() =>
+    options.initialState ? seededState(options.initialState) : initialState,
   );
   const { getState } = store;
 
-  const dispatch = (event: WalletEvent) => {
-    store.setState((state) => reducer(state, event), true);
+  /** True when `event` changed the state, i.e. the reducer accepted it. */
+  const dispatch = (event: WalletEvent): boolean => {
+    const state = getState();
+    const next = reducer(state, event);
+    store.setState(next, true);
+    return next !== state;
   };
 
   const findAdapter = (connectorId: string) =>
@@ -156,30 +134,30 @@ const createWalletManager = (
     }
   };
 
+  let hydration: HydrationPhase = "idle";
+
   // Persistence: a pure function of state, written after every change once
-  // hydration has loaded what was there before. Saves are coalesced so an
-  // async driver never writes an older state after a newer one.
-  let persistEnabled = false;
-  let flushing = false;
-  let dirty = false;
+  // hydration is done. Saves are coalesced so an async driver never writes
+  // an older state after a newer one.
+  let saving: "idle" | "busy" | "stale" = "idle";
   const persist = async () => {
-    dirty = true;
-    if (flushing) {
+    if (saving !== "idle") {
+      saving = "stale";
       return;
     }
-    flushing = true;
-    while (dirty) {
-      dirty = false;
+    saving = "stale";
+    while (saving === "stale") {
+      saving = "busy";
       try {
         await storage.save(toPersistedState(getState()));
       } catch (error) {
         reportStorageError(error);
       }
     }
-    flushing = false;
+    saving = "idle";
   };
   store.subscribe((state, prev) => {
-    if (persistEnabled && persistedSliceChanged(state, prev)) {
+    if (hydration === "done" && persistedStateChanged(state, prev)) {
       void persist();
     }
   });
@@ -203,32 +181,11 @@ const createWalletManager = (
 
   // Hydration: silent reconnect of every dormant entry whose adapter exists,
   // then of each late adapter the moment a source announces it.
-  const attempted = new Set<string>();
-  let loaded = false;
-  let hydration: Promise<void> | null = null;
-  // Set once the user connects or picks a wallet: the stored active wallet
-  // and selection are older than that choice, so hydration must not apply
-  // them over it.
-  let userChose = false;
-
-  const choose = (event: WalletEvent) => {
-    const before = getState();
-    dispatch(event);
-    if (getState() !== before) {
-      userChose = true;
-    }
-  };
-
   const restore = async (connectorId: string): Promise<RestoreResult | null> => {
     const adapter = findAdapter(connectorId);
-    if (
-      adapter === undefined ||
-      attempted.has(connectorId) ||
-      !getState().dormant.has(connectorId)
-    ) {
+    if (adapter === undefined || !getState().dormant.has(connectorId)) {
       return null;
     }
-    attempted.add(connectorId);
     try {
       await withTimeout(adapter.connect({ silent: true }), RESTORE_TIMEOUT_MS);
       const accounts = await adapter.getAccounts();
@@ -237,12 +194,10 @@ const createWalletManager = (
         throw new ConnectionError("NotConnected", `${adapter.name} exposed no accounts`);
       }
       const wallet: ConnectedWallet = { account, accounts, connector: adapter };
-      const before = getState();
-      dispatch({ connectorId, entry: wallet, type: "ENTRY_RESTORED" });
-      if (getState() === before) {
-        // The user acted on this wallet mid-reconnect. If they disconnected
-        // it, close the session the silent reconnect just reopened.
-        if (!before.pool.has(connectorId)) {
+      // Rejected when the user connected or disconnected it meanwhile. If they
+      // disconnected it, close the session the silent reconnect just reopened.
+      if (!dispatch({ connectorId, entry: wallet, type: "ENTRY_RESTORED" })) {
+        if (!getState().pool.has(connectorId)) {
           await teardown(adapter);
         }
         return null;
@@ -263,6 +218,7 @@ const createWalletManager = (
   };
 
   const hydrate = async () => {
+    hydration = "loading";
     let persisted = EMPTY_PERSISTED;
     try {
       persisted = await storage.load();
@@ -274,21 +230,20 @@ const createWalletManager = (
       isUserDisconnected: persisted.isUserDisconnected,
       type: "STORAGE_LOADED",
     });
-    loaded = true;
+    hydration = "restoring";
 
     const ids = [...getState().dormant.keys()];
-    const restores = ids.map(restore);
-    // Read before awaiting: an adapter announced mid-pass is restored by
-    // `register`, and still belongs in the outcome as pending.
-    const pendingIds = ids.filter((id) => !attempted.has(id));
-    const settled = await Promise.all(restores);
+    // An adapter announced mid-pass is restored by `register`, and still
+    // belongs in the outcome as pending.
+    const pendingIds = ids.filter((id) => findAdapter(id) === undefined);
+    const settled = await Promise.all(ids.map(restore));
     const results = settled.filter((result) => result !== null);
     dispatch({
-      activeConnectorId: userChose ? null : persisted.activeConnectorId,
-      selection: userChose ? {} : persisted.selection,
+      activeConnectorId: persisted.activeConnectorId,
+      selection: persisted.selection,
       type: "HYDRATED",
     });
-    persistEnabled = true;
+    hydration = "done";
     void persist();
 
     const outcome: HydrationOutcome = {
@@ -308,9 +263,8 @@ const createWalletManager = (
   };
 
   const register = (adapter: WalletAdapter) => {
-    const before = getState();
-    dispatch({ adapter, type: "ADAPTER_REGISTERED" });
-    if (loaded && getState() !== before) {
+    const registered = dispatch({ adapter, type: "ADAPTER_REGISTERED" });
+    if (registered && (hydration === "restoring" || hydration === "done")) {
       void restoreLate(adapter.id);
     }
   };
@@ -351,7 +305,7 @@ const createWalletManager = (
           throw new ConnectionError("NotConnected", `${connector.name} exposed no accounts`);
         }
         const wallet: ConnectedWallet = { account, accounts, connector };
-        choose({ connectorId, entry: wallet, type: "CONNECT_SUCCEEDED" });
+        dispatch({ connectorId, entry: wallet, type: "CONNECT_SUCCEEDED" });
         safely("onConnect", config.onConnect, wallet, { reconnected: false });
         return wallet;
       } catch (error) {
@@ -410,11 +364,11 @@ const createWalletManager = (
     },
 
     setActive: (connectorId) => {
-      choose({ connectorId, type: "ACTIVE_CHANGED" });
+      dispatch({ connectorId, type: "ACTIVE_CHANGED" });
     },
 
     setSelection: (chainPlatform, connectorId) => {
-      choose({ chainPlatform, connectorId, type: "SELECTION_CHANGED" });
+      dispatch({ chainPlatform, connectorId, type: "SELECTION_CHANGED" });
     },
 
     start: () => {
@@ -425,7 +379,9 @@ const createWalletManager = (
           lifecycle.sync(state.pool);
         }
       });
-      hydration ??= hydrate();
+      if (hydration === "idle") {
+        void hydrate();
+      }
       return () => {
         for (const unsubscribe of unsubscribes) {
           try {

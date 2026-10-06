@@ -69,7 +69,7 @@ export type { WalletSource } from "./wallet-source";
 export { fromAdapters } from "./wallet-source";
 
 export type { ConnectStatus, WalletManager, WalletState } from "./store";
-export { createWalletManager, ShadowConnectorError } from "./store";
+export { createWalletManager, isShadowAdapter, ShadowConnectorError } from "./store";
 
 export type {
   BrowserStorageDrivers,

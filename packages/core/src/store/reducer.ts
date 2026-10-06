@@ -9,7 +9,7 @@ import type { ConnectionError } from "../types/errors";
 import { isChainPlatform } from "../types/platform";
 import { accountsEqual } from "../wallet-equal";
 
-import { createShadowAdapter } from "./shadow-adapter";
+import { createShadowAdapter, isShadowAdapter } from "./shadow-adapter";
 
 /** Status of the latest `connect` attempt, not of the connection itself;
  *  `useConnectionStatus` derives the latter. */
@@ -31,7 +31,7 @@ type WalletState = {
   isHydrated: boolean;
   isUserDisconnected: boolean;
   pool: ReadonlyMap<string, ConnectedWallet>;
-  /** Pool ids still backed by a shadow adapter seeded from `initialState`. */
+  /** Pool ids whose connector is still a shadow seeded from `initialState`. */
   reconnectingIds: ReadonlySet<string>;
   /** Which pool entry serves each platform present in the pool. */
   selection: ReadonlyMap<ChainPlatform, string>;
@@ -95,15 +95,6 @@ const withoutKey = <K, V>(map: ReadonlyMap<K, V>, key: K): ReadonlyMap<K, V> => 
   return next;
 };
 
-const withoutId = (set: ReadonlySet<string>, id: string): ReadonlySet<string> => {
-  if (!set.has(id)) {
-    return set;
-  }
-  const next = new Set(set);
-  next.delete(id);
-  return next;
-};
-
 const keepEntries = <K, V>(
   map: ReadonlyMap<K, V>,
   keep: (key: K, value: V) => boolean,
@@ -112,13 +103,21 @@ const keepEntries = <K, V>(
   return kept.length === map.size ? map : new Map(kept);
 };
 
-const keepIds = (set: ReadonlySet<string>, keep: (id: string) => boolean): ReadonlySet<string> => {
-  const kept = [...set].filter(keep);
-  return kept.length === set.size ? set : new Set(kept);
-};
-
 const sameEntries = <K, V>(a: ReadonlyMap<K, V>, b: ReadonlyMap<K, V>): boolean =>
   a.size === b.size && [...a].every(([key, value]) => b.get(key) === value);
+
+const reconcileReconnectingIds = (
+  reconnectingIds: ReadonlySet<string>,
+  pool: ReadonlyMap<string, ConnectedWallet>,
+): ReadonlySet<string> => {
+  const shadowIds = [...pool].flatMap(([id, wallet]) =>
+    isShadowAdapter(wallet.connector) ? [id] : [],
+  );
+  return shadowIds.length === reconnectingIds.size &&
+    shadowIds.every((id) => reconnectingIds.has(id))
+    ? reconnectingIds
+    : new Set(shadowIds);
+};
 
 const reconcileSelection = (
   selection: ReadonlyMap<ChainPlatform, string>,
@@ -145,7 +144,7 @@ const reconcileSelection = (
  */
 const reconcile = (state: WalletState): WalletState => {
   const { pool } = state;
-  const reconnectingIds = keepIds(state.reconnectingIds, (id) => pool.has(id));
+  const reconnectingIds = reconcileReconnectingIds(state.reconnectingIds, pool);
   const dormant = keepEntries(state.dormant, (id) => !pool.has(id) || reconnectingIds.has(id));
   const selection = reconcileSelection(state.selection, pool);
   const activeConnectorId =
@@ -220,11 +219,7 @@ const apply = (state: WalletState, event: WalletEvent): WalletState => {
       if (!state.dormant.has(event.connectorId)) {
         return state;
       }
-      return {
-        ...state,
-        pool: withEntry(state.pool, event.connectorId, event.entry),
-        reconnectingIds: withoutId(state.reconnectingIds, event.connectorId),
-      };
+      return { ...state, pool: withEntry(state.pool, event.connectorId, event.entry) };
     }
 
     case "RESTORE_FAILED": {
@@ -233,11 +228,7 @@ const apply = (state: WalletState, event: WalletEvent): WalletState => {
       if (!state.reconnectingIds.has(event.connectorId)) {
         return state;
       }
-      return {
-        ...state,
-        pool: withoutKey(state.pool, event.connectorId),
-        reconnectingIds: withoutId(state.reconnectingIds, event.connectorId),
-      };
+      return { ...state, pool: withoutKey(state.pool, event.connectorId) };
     }
 
     case "HYDRATED": {
@@ -273,7 +264,6 @@ const apply = (state: WalletState, event: WalletEvent): WalletState => {
           connectionStatus: "success" as const,
         }),
         pool: withEntry(state.pool, connectorId, entry),
-        reconnectingIds: withoutId(state.reconnectingIds, connectorId),
         // A reconnect of a wallet already in the pool must not steal the
         // platform from whichever wallet the user selected.
         selection: state.pool.has(connectorId)
@@ -401,7 +391,6 @@ const stateFromSnapshot = (snapshot: WalletSnapshot): WalletState => {
     dormant,
     isHydrated: true,
     pool,
-    reconnectingIds: new Set(pool.keys()),
     selection: applyStoredSelection(new Map(), snapshot.selection, pool),
   });
 };

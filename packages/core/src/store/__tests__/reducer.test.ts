@@ -28,9 +28,21 @@ describe("reconcile", () => {
     expect(reconcile(initialState)).toBe(initialState);
   });
 
-  it("prunes reconnecting ids that are not in the pool", () => {
-    const state = reconcile(stateWith({ reconnectingIds: new Set(["gone"]) }));
-    expect(state.reconnectingIds.size).toBe(0);
+  it("derives reconnecting ids from the shadows in the pool", () => {
+    const shadow = walletOf(createShadowAdapter(toStoredEntry("rabby", rabby)));
+    const state = reconcile(
+      stateWith({
+        pool: new Map([
+          ["metamask", metamask],
+          ["rabby", shadow],
+        ]),
+        reconnectingIds: new Set(["metamask", "gone"]),
+      }),
+    );
+    expect([...state.reconnectingIds]).toEqual(["rabby"]);
+    expect(reconcile({ ...state, activeConnectorId: null }).reconnectingIds).toBe(
+      state.reconnectingIds,
+    );
   });
 
   it("drops dormant entries that are live, keeps those still reconnecting or absent", () => {
@@ -48,7 +60,6 @@ describe("reconcile", () => {
           ["metamask", metamask],
           ["rabby", shadow],
         ]),
-        reconnectingIds: new Set(["rabby"]),
       }),
     );
     expect([...state.dormant.keys()]).toEqual(["rabby", "phantom"]);

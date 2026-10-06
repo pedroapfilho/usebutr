@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { evmAdapter, rejectionOf, walletOf } from "../../__tests__/helpers";
-import { toStoredEntry } from "../reducer";
-import { createShadowAdapter, ShadowConnectorError } from "../shadow-adapter";
+import { ETHEREUM, evmAdapter, rejectionOf } from "../../__tests__/helpers";
+import { buildAccount } from "../../types";
+import { createShadowAdapter, isShadowAdapter, ShadowConnectorError } from "../shadow-adapter";
 
+const account = buildAccount("0xmetamask", ETHEREUM);
 const entry = {
-  ...toStoredEntry("metamask", walletOf(evmAdapter("metamask"))),
+  account,
+  accounts: [account],
+  chainPlatform: "evm" as const,
+  connectorId: "metamask",
   icon: "data:image/svg+xml,mm",
   name: "MetaMask",
 };
@@ -45,4 +49,13 @@ describe("createShadowAdapter", () => {
       });
     },
   );
+});
+
+describe("isShadowAdapter", () => {
+  it("recognises the shadows it created and nothing else", () => {
+    const shadow = createShadowAdapter(entry);
+    expect(isShadowAdapter(shadow)).toBe(true);
+    expect(isShadowAdapter({ ...shadow })).toBe(false);
+    expect(isShadowAdapter(evmAdapter("metamask"))).toBe(false);
+  });
 });

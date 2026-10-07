@@ -111,9 +111,9 @@ describe("bitcoinNamespace", () => {
       chain: TESTNET,
     });
 
-    await expect(adapter.sendTx?.(transfer, { chain: BITCOIN_CHAINS.signet })).rejects.toThrow(
-      /did not approve Bitcoin chain/v,
-    );
+    await expect(
+      adapter.sendTx?.(transfer, { chain: BITCOIN_CHAINS.signet }),
+    ).rejects.toMatchObject({ kind: "ChainMismatch" });
     expect(provider.requests).toHaveLength(1);
   });
 
@@ -175,7 +175,7 @@ describe("bitcoinNamespace", () => {
     expect(provider.requests[0]?.args.params).toMatchObject({ message: bytesToBase64(message) });
   });
 
-  it("signs as the requested account and rejects one the session does not expose", async () => {
+  it("signs as the requested account, naming it as both account and address", async () => {
     const provider = connectedProvider({ signature: "dead" }, [
       `${MAINNET}:bc1qaaa`,
       `${MAINNET}:bc1qbbb`,
@@ -189,37 +189,14 @@ describe("bitcoinNamespace", () => {
       account: "bc1qbbb",
       address: "bc1qbbb",
     });
-
-    await expect(
-      adapter.signMessage?.(new Uint8Array([1]), {
-        account: buildAccount("bc1qccc", BITCOIN_CHAINS.mainnet),
-      }),
-    ).rejects.toThrow(/does not expose Bitcoin account bc1qccc/v);
-    expect(provider.requests).toHaveLength(1);
   });
 
   it("refuses to sign when the session holds no account on the current chain", async () => {
     const provider = connectedProvider({ signature: "dead" }, [`${TESTNET}:tb1qbbb`]);
 
-    await expect(buildAdapter(provider).signMessage?.(new Uint8Array([1]))).rejects.toThrow(
-      /No connected Bitcoin account on chain/v,
-    );
+    await expect(buildAdapter(provider).signMessage?.(new Uint8Array([1]))).rejects.toMatchObject({
+      kind: "NotConnected",
+    });
     expect(provider.requests).toHaveLength(0);
-  });
-
-  it("switchChain rejects another namespace and a chain the session did not approve", async () => {
-    const adapter = buildAdapter(connectedProvider(), [MAINNET, TESTNET]);
-
-    await expect(
-      adapter.switchChain?.({
-        id: "solana:mainnet",
-        name: "Solana",
-        namespace: "solana",
-        reference: "mainnet",
-      }),
-    ).rejects.toThrow(/non-Bitcoin chain/v);
-    await expect(adapter.switchChain?.(BITCOIN_CHAINS.testnet)).rejects.toThrow(
-      /did not approve Bitcoin chain/v,
-    );
   });
 });

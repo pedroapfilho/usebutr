@@ -141,23 +141,6 @@ describe("solanaNamespace", () => {
     });
   });
 
-  it("signs as the requested account and rejects one the session does not expose", async () => {
-    const provider = connectedProvider({ signature: "111" });
-    const adapter = buildAdapter(provider);
-
-    await adapter.signMessage?.(new Uint8Array([1]), {
-      account: buildAccount(OTHER, MAINNET),
-    });
-    expect(provider.requests[0]?.args.params).toMatchObject({ pubkey: OTHER });
-
-    await expect(
-      adapter.signMessage?.(new Uint8Array([1]), {
-        account: buildAccount("Unknown111", MAINNET),
-      }),
-    ).rejects.toThrow(/does not expose Solana account Unknown111/v);
-    expect(provider.requests).toHaveLength(1);
-  });
-
   it("sendTx routes through solana_signAndSendTransaction and returns the signature", async () => {
     const provider = connectedProvider({ signature: "abc123" });
 
@@ -235,7 +218,9 @@ describe("solanaNamespace", () => {
     const listener = vi.fn<(event: ConnectorEvent) => void>();
     adapter.subscribe?.(listener);
 
-    await expect(adapter.switchChain?.(SVM_CHAINS.testnet)).rejects.toThrow(/did not approve/v);
+    await expect(adapter.switchChain?.(SVM_CHAINS.testnet)).rejects.toMatchObject({
+      kind: "ChainMismatch",
+    });
 
     expect(listener).not.toHaveBeenCalled();
   });

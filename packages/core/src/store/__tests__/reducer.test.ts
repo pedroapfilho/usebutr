@@ -1,22 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { evmAdapter, svmAdapter, walletOf } from "../../__tests__/helpers";
-import type { StoredPoolEntry } from "../../storage/persistence";
+import { toStoredPoolEntry } from "../../storage/wallet-state-codec";
 import type { ConnectedWallet } from "../../types";
 import type { StoreState } from "../reducer";
 import { initialState, reconcile } from "../reducer";
 import { createShadowAdapter } from "../shadow-adapter";
 
-const entryOf = (wallet: ConnectedWallet): StoredPoolEntry => ({
-  account: wallet.account,
-  accounts: wallet.accounts,
-  chainPlatform: wallet.connector.chainPlatform,
-  connectorId: wallet.connector.id,
-  name: wallet.connector.name,
-});
-
 const shadowOf = (wallet: ConnectedWallet): ConnectedWallet =>
-  walletOf(createShadowAdapter(entryOf(wallet)), wallet.accounts);
+  walletOf(createShadowAdapter(toStoredPoolEntry(wallet)), wallet.accounts);
 
 const metamask = walletOf(evmAdapter("metamask"));
 const rabby = walletOf(evmAdapter("rabby"));
@@ -24,9 +16,9 @@ const phantom = walletOf(svmAdapter("phantom"));
 const rabbyShadow = shadowOf(rabby);
 const phantomShadow = shadowOf(phantom);
 const dormantEntries = new Map([
-  ["metamask", entryOf(metamask)],
-  ["rabby", entryOf(rabby)],
-  ["phantom", entryOf(phantom)],
+  ["metamask", toStoredPoolEntry(metamask)],
+  ["rabby", toStoredPoolEntry(rabby)],
+  ["phantom", toStoredPoolEntry(phantom)],
 ]);
 
 const poolOf = (...wallets: ReadonlyArray<ConnectedWallet>) =>

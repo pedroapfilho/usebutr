@@ -7,6 +7,7 @@ import type {
   StoredSelectionRecord,
   WalletSnapshot,
 } from "../storage/persistence";
+import { toStoredPoolEntry } from "../storage/wallet-state-codec";
 import type { ChainPlatform, ConnectedWallet } from "../types";
 import type { WalletState } from "../types/manager";
 import { isChainPlatform } from "../types/platform";
@@ -19,15 +20,6 @@ const EMPTY_PERSISTED: PersistedWalletState = {
   pool: {},
   selection: {},
 };
-
-const toStoredEntry = (connectorId: string, wallet: ConnectedWallet): StoredPoolEntry => ({
-  account: wallet.account,
-  accounts: wallet.accounts,
-  chainPlatform: wallet.connector.chainPlatform,
-  connectorId,
-  icon: wallet.connector.icon,
-  name: wallet.connector.name,
-});
 
 const storedEntries = (record: StoredPoolRecord): Array<[string, StoredPoolEntry]> =>
   Object.entries(record).flatMap(([connectorId, entry]) =>
@@ -52,7 +44,7 @@ const toPersistedState = ({
 }: ReturnType<typeof persistedSlice>): PersistedWalletState => {
   const stored: StoredPoolRecord = Object.fromEntries(dormant);
   for (const [connectorId, wallet] of pool) {
-    stored[connectorId] = toStoredEntry(connectorId, wallet);
+    stored[connectorId] = toStoredPoolEntry(wallet);
   }
   return {
     activeConnectorId,
@@ -113,5 +105,4 @@ export {
   snapshotState,
   storedEntries,
   toPersistedState,
-  toStoredEntry,
 };

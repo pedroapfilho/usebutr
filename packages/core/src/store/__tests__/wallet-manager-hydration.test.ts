@@ -11,23 +11,14 @@ import {
   svmAdapter,
   walletOf,
 } from "../../__tests__/helpers";
-import type { PersistedWalletState, StoredPoolEntry } from "../../storage/persistence";
+import type { PersistedWalletState } from "../../storage/persistence";
+import { toStoredPoolEntry } from "../../storage/wallet-state-codec";
 import type { WalletAdapter, WalletManagerConfig } from "../../types";
 import { ConnectionError } from "../../types";
 import { ShadowConnectorError } from "../shadow-adapter";
 import { createWalletManager } from "../wallet-manager";
 
-const storedEntry = (adapter: WalletAdapter): StoredPoolEntry => {
-  const { account, accounts } = walletOf(adapter);
-  return {
-    account,
-    accounts,
-    chainPlatform: adapter.chainPlatform,
-    connectorId: adapter.id,
-    icon: adapter.icon,
-    name: adapter.name,
-  };
-};
+const storedEntry = (adapter: WalletAdapter) => toStoredPoolEntry(walletOf(adapter));
 
 const poolOf = (...adapters: ReadonlyArray<WalletAdapter>) =>
   Object.fromEntries(adapters.map((adapter) => [adapter.id, storedEntry(adapter)]));

@@ -3,17 +3,13 @@ import type {
   StoredSelectionRecord,
   WalletSnapshot,
 } from "../storage/persistence";
+import { toStoredPoolEntry } from "../storage/wallet-state-codec";
 import type { Account, ChainPlatform, ConnectedWallet, WalletAdapter } from "../types";
 import type { ConnectionError } from "../types/errors";
 import type { WalletState } from "../types/manager";
 import { accountsEqual } from "../wallet-equal";
 
-import {
-  applyStoredSelection,
-  snapshotState,
-  storedEntries,
-  toStoredEntry,
-} from "./persisted-state";
+import { applyStoredSelection, snapshotState, storedEntries } from "./persisted-state";
 import { isShadowAdapter } from "./shadow-adapter";
 
 /** The store's state: `WalletState` plus what only the reducer reads. */
@@ -286,7 +282,7 @@ const apply = (state: StoreState, event: WalletEvent): StoreState => {
       }
       // The wallet ended the session (locked, removed): keep it persisted so
       // the next load can retry it.
-      const stored = toStoredEntry(event.connectorId, wallet);
+      const stored = toStoredPoolEntry(wallet);
       return { ...state, dormant: withEntry(state.dormant, event.connectorId, stored), pool };
     }
 

@@ -56,9 +56,11 @@ wallet on that platform has:
 | `bitcoin`  | `sendTx`, `signMessage`, `signTransaction`, `subscribe`                                                       |
 | `polkadot` | `signMessage`, `subscribe`                                                                                    |
 
-It follows the contract: it rejects an `account` it does not expose and a
-`chain` from another namespace, switches an EVM wallet before sending to
-another chain, and resolves distinct hashes and signatures. `getSigner()`
+It passes the [adapter contract suite](#adapter-contract-suite): an `account`
+it does not expose rejects with `AccountNotExposed`, a `chain` from another
+namespace or outside the platform's registry with `ChainMismatch`, an EVM
+wallet switches before sending to another chain, and hashes and signatures
+are distinct. `getSigner()`
 resolves the `signer` option and rejects without one: the package registers no
 signer kind, so your exhaustive `switch (signer.kind)` never grows a test-only
 case. Pass `balance` (base units) to set the native balance, which also adds
@@ -70,6 +72,8 @@ case. Pass `balance` (base units) to set the native balance, which also adds
 - `signer`: the `WalletSigner` that `getSigner()` resolves.
 - `emit(event)`: deliver a `ConnectorEvent` to the manager;
   `listenerCount()` shows whether it is still subscribed.
+- `requests()`: every signing or sending request the wallet accepted, with
+  the address it acted as and, for methods that take one, the chain.
 
 ### `createFakeConnectedWallet(options?)`
 
@@ -82,6 +86,33 @@ plus the accounts it exposes. Takes the adapter options plus `addresses` and
 A `WalletPersistence` over the real `createWalletStorage` with in-memory
 drivers. `seed` is what the first `load()` finds; `saves` lists every state
 the manager saved.
+
+### Adapter contract suite
+
+`@usebutr/testing/contract` exports `describeAdapterContract`, the Vitest suite
+every butr adapter runs: chain routing for its move policy, account matching,
+`ConnectionError` kinds, empty-account and event semantics. Call it at the top
+level of a test file with an adapter built over your own fake wallet. Needs
+`vitest` as a dev dependency.
+
+```ts
+import { EVM_CHAINS } from "@usebutr/core";
+import { describeAdapterContract } from "@usebutr/testing/contract";
+
+describeAdapterContract({
+  addresses: ["0x5290…9EE7", "0x8617…070D"],
+  chain: EVM_CHAINS.ethereum,
+  connect: async (addresses) => {
+    const wallet = createMyFakeWallet(addresses);
+    return { adapter: buildMyAdapter(wallet), lastCall: () => wallet.lastRequest() };
+  },
+  move: "switch",
+  name: "My wallet",
+  reachable: EVM_CHAINS.polygon,
+  transactions: { sendTx: (adapter, options) => adapter.sendTx?.({}, options) },
+  unreachable: EVM_CHAINS.base,
+});
+```
 
 ## Documentation
 

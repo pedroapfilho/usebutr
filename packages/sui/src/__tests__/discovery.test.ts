@@ -6,7 +6,6 @@ import type {
 } from "@usebutr/wallet-standard-shared";
 import { describe, expect, it, vi } from "vitest";
 
-import { suiDiscoverer } from "../discoverer";
 import { discoverSuiAdapters } from "../wallet-standard-adapter";
 
 const connectFeature: StandardConnectFeature = {
@@ -27,13 +26,6 @@ const loaderFor =
   (wallets: ReadonlyArray<WalletStandardWallet>): WalletStandardModuleLoader =>
   () =>
     Promise.resolve({ getWallets: () => ({ get: () => wallets, on: () => () => {} }) });
-
-describe("suiDiscoverer", () => {
-  it("exposes Wallet Standard discovery with no legacy fallback", () => {
-    expect(suiDiscoverer.subscribe).toBe(discoverSuiAdapters);
-    expect(suiDiscoverer.fallback).toBeUndefined();
-  });
-});
 
 describe("discoverSuiAdapters", () => {
   it("announces only wallets that speak Sui", async () => {

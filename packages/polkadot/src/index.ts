@@ -12,6 +12,4 @@ export {
   discoverPolkadotWalletStandardAdapters,
 } from "./wallet-standard-adapter";
 
-export { polkadotDiscoverer } from "./discoverer";
-
 import "./signer-augmentation";

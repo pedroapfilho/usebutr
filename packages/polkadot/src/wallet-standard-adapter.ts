@@ -6,7 +6,10 @@ import {
   getFeature,
   slugify,
 } from "@usebutr/wallet-standard-shared";
-import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
+import type {
+  WalletStandardModuleLoader,
+  WalletStandardWallet,
+} from "@usebutr/wallet-standard-shared";
 
 import type { PolkadotSignMessageFeature } from "./wallet-standard-types";
 
@@ -54,12 +57,13 @@ const buildPolkadotWalletStandardAdapter = (
   };
 };
 
-/**
- * The fallback channel; see `polkadotDiscoverer`. Requires the optional
- * `@wallet-standard/app` peer dep and no-ops without it.
- */
+/** Requires the optional `@wallet-standard/app` peer dep and no-ops without it. */
 const discoverPolkadotWalletStandardAdapters = (
   onAdapter: (adapter: WalletAdapter) => void,
-): (() => void) => discoverWalletStandard(onAdapter, buildPolkadotWalletStandardAdapter);
+  loadModule?: WalletStandardModuleLoader,
+): (() => void) =>
+  discoverWalletStandard([{ build: buildPolkadotWalletStandardAdapter, onAdapter }], {
+    loadModule,
+  });
 
 export { buildPolkadotWalletStandardAdapter, discoverPolkadotWalletStandardAdapters };

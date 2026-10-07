@@ -5,8 +5,6 @@ import { buildSatsConnectAdapter } from "./sats-connect";
 import type { UnisatProvider } from "./unisat";
 import { buildUnisatAdapter } from "./unisat";
 
-const DEFAULT_SETTLE_MS = 150;
-
 type InjectedHost = {
   btc?: UnisatProvider;
   okxwallet?: { bitcoin?: UnisatProvider };
@@ -25,12 +23,6 @@ declare global {
 }
 
 type InjectedBitcoinDiscoveryOptions = {
-  /** Suppresses emission when Wallet Standard discovery has already
-   *  registered a Bitcoin adapter for the same browser session. */
-  hasAnyWalletStandardAdapter?: () => boolean;
-  /** Settle deadline in ms before the fallback fires. Same default and
-   *  intent as the EVM injected fallback. */
-  settleMs?: number;
   /** Override the global host (tests, iframes). */
   target?: InjectedHost | null;
 };
@@ -66,50 +58,41 @@ const probeProviders = (host: InjectedHost): Array<BitcoinAdapter> => {
     adapters.push(buildSatsConnectAdapter("injected:bitcoin:xverse", "Xverse", xverse));
   }
 
-  if (host.btc && !seen.has(host.btc)) {
-    seen.add(host.btc);
-    adapters.push(
-      buildUnisatAdapter("injected:bitcoin:legacy", "Browser Bitcoin wallet", host.btc),
-    );
-  }
-
   return adapters;
 };
 
 /**
  * Last-resort path for wallets that don't announce via Wallet Standard:
- * `window.unisat`, OKX, Xverse, `window.btc`. The `settleMs` wait lets
- * Wallet Standard announce first, else a wallet on both channels lists twice.
+ * `window.unisat`, OKX and Xverse. On its own it lists a wallet present on
+ * both channels twice; `autoDiscovery` lists each one once.
  */
 const discoverInjectedBitcoinAdapter = (
   onAdapter: (adapter: WalletAdapter) => void,
   options: InjectedBitcoinDiscoveryOptions = {},
 ): (() => void) => {
-  const settleMs = options.settleMs ?? DEFAULT_SETTLE_MS;
-  let cancelled = false;
-  const timer = setTimeout(() => {
-    if (cancelled) {
-      return;
-    }
-    if (options.hasAnyWalletStandardAdapter?.() === true) {
-      return;
-    }
-    const host = readHost(options.target);
-    if (host === null) {
-      return;
-    }
-    const adapters = probeProviders(host);
-    for (const adapter of adapters) {
-      onAdapter(adapter);
-    }
-  }, settleMs);
+  const host = readHost(options.target);
+  for (const adapter of host === null ? [] : probeProviders(host)) {
+    onAdapter(adapter);
+  }
+  return () => {};
+};
 
-  return () => {
-    cancelled = true;
-    clearTimeout(timer);
-  };
+/**
+ * `window.btc` names no wallet, so `autoDiscovery` lists it only when no other
+ * Bitcoin wallet was found. Skipped when it aliases `window.unisat` or OKX.
+ */
+const discoverLegacyBitcoinAdapter = (
+  onAdapter: (adapter: WalletAdapter) => void,
+  options: InjectedBitcoinDiscoveryOptions = {},
+): (() => void) => {
+  const host = readHost(options.target);
+  const btc = host?.btc;
+  if (btc !== undefined && btc !== host?.unisat && btc !== host?.okxwallet?.bitcoin) {
+    onAdapter(buildUnisatAdapter("injected:bitcoin:legacy", "Browser Bitcoin wallet", btc));
+  }
+  return () => {};
 };
 
 export type { InjectedBitcoinDiscoveryOptions };
 export { GENERIC_BITCOIN_ICON } from "./icon";
-export { discoverInjectedBitcoinAdapter };
+export { discoverInjectedBitcoinAdapter, discoverLegacyBitcoinAdapter };

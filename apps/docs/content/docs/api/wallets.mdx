@@ -1,6 +1,6 @@
 ---
 title: "@usebutr/wallets"
-description: "autoDiscovery(): one wallet source for every platform, and the composed discovery behind it."
+description: "autoDiscovery(): one wallet source for every platform, listing each wallet once."
 ---
 
 ## `autoDiscovery(platforms?, options?): WalletSource`
@@ -8,8 +8,7 @@ description: "autoDiscovery(): one wallet source for every platform, and the com
 The one-call source for `WalletManagerConfig.sources`. It composes EVM
 (EIP-6963 plus the `window.ethereum` fallback), Solana and Sui (Wallet
 Standard), Bitcoin (Wallet Standard plus the injected fallbacks) and Polkadot
-(`injectedWeb3` plus the Wallet Standard fallback), deduplicated by adapter
-id.
+(`injectedWeb3` plus the Wallet Standard fallback), and lists each wallet once.
 
 ```tsx
 import type { WalletManagerConfig } from "@usebutr/core";
@@ -23,23 +22,34 @@ export const Providers = ({ children }: { children: React.ReactNode }) => (
 );
 ```
 
-| Argument            | Type                           | Default                                                                                                                                        |
-| ------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `platforms`         | `ReadonlyArray<ChainPlatform>` | Every platform. `autoDiscovery(["evm", "svm"])` discovers only those; an empty list warns and finds nothing.                                   |
-| `options.fallbacks` | `boolean`                      | `true`. `false` skips each platform's secondary channel: `window.ethereum`, the injected Bitcoin wallets, and Polkadot's Wallet Standard path. |
+| Argument             | Type                           | Default                                                                                                                                        |
+| -------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `platforms`          | `ReadonlyArray<ChainPlatform>` | Every platform. `autoDiscovery(["evm", "svm"])` discovers only those; an empty list warns and finds nothing.                                   |
+| `options.fallbacks`  | `boolean`                      | `true`. `false` skips each platform's secondary channel: `window.ethereum`, the injected Bitcoin wallets, and Polkadot's Wallet Standard path. |
+| `options.loadModule` | `WalletStandardModuleLoader`   | The dynamic import of `@wallet-standard/app`. Pass a fake registry in tests.                                                                   |
 
 ```ts
 autoDiscovery(undefined, { fallbacks: false }); // every platform, standards only
 ```
 
+## How wallets list once
+
+Every platform shares one Wallet Standard subscription. Primary channels list
+a wallet as soon as it announces. Fallback channels wait until Wallet Standard
+has loaded and read the wallets already registered, then 150 ms more, and list
+a wallet unless a channel already listed one with the same platform and name.
+Names match without case, punctuation, a parenthesised suffix or the word
+"wallet", so `OKX Wallet (Bitcoin)` matches `OKX Wallet`. A primary wallet that
+announces after its fallback listed is dropped.
+
+- A Bitcoin Wallet Standard wallet hides only its own injected entry: Xverse
+  on both channels lists once, and Unisat still lists next to Phantom.
+- `window.ethereum` and `window.btc` name no wallet, so each lists only when
+  its platform found nothing else.
+
 A single-platform app can pass that package's `discover*Adapters` export
-instead and keep the other platforms out of its bundle.
-
-## `discoverWalletAdapters(onAdapter, options?): () => void`
-
-The composed discovery `autoDiscovery` wraps: calls `onAdapter` once per
-adapter id and returns the unsubscribe. `DiscoverOptions` is
-`{ fallbacks?: boolean; platforms?: ReadonlyArray<ChainPlatform> }`.
+instead and keep the other platforms out of its bundle. Combining a primary
+and a fallback source by hand lists a wallet on both channels twice.
 
 Importing the package loads every platform package, so `WalletSigner`
 carries their signer kinds (`eip1193`, `wallet-standard`, `unisat`,
@@ -49,6 +59,6 @@ else. Chain registries (`CHAINS_BY_PLATFORM`, `EVM_CHAINS`, …) live in
 
 ## Types
 
-`DiscoverOptions`.
+`AutoDiscoveryOptions`.
 
 **Source:** `packages/wallets/src/index.ts`.

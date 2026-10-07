@@ -64,12 +64,13 @@ Browser wallets announce themselves through one of three mechanisms:
   `window.injectedWeb3`; a Wallet Standard `polkadot:*` fallback covers
   wallets the primary channel missed.
 
-Each `@usebutr/<platform>` package exports one or two discoverers:
+Each `@usebutr/<platform>` package exports its discovery sources:
 
 - `discoverEvmAdapters` + `discoverInjectedAdapter` (`@usebutr/evm`)
 - `discoverSvmAdapters` (`@usebutr/svm`)
 - `discoverSuiAdapters` (`@usebutr/sui`)
-- `discoverBitcoinAdapters` + `discoverInjectedBitcoinAdapter` (`@usebutr/bitcoin`)
+- `discoverBitcoinAdapters` + `discoverInjectedBitcoinAdapter` +
+  `discoverLegacyBitcoinAdapter` (`@usebutr/bitcoin`)
 - `discoverInjectedPolkadotAdapters` + `discoverPolkadotWalletStandardAdapters`
   (`@usebutr/polkadot`)
 
@@ -81,10 +82,11 @@ A source is a function that announces adapters and returns its unsubscribe:
 type WalletSource = (onAdapter: (adapter: WalletAdapter) => void) => () => void;
 ```
 
-Every discoverer above already has that shape, so it goes into
+Every source above already has that shape, so it goes into
 `config.sources` as-is. `autoDiscovery()` from `@usebutr/wallets` returns one
-source for all five platforms, with the injected fallbacks staying quiet once a
-standard announcement covered the wallet. `fromAdapters(adapters)` from
+source for all five platforms. It shares one Wallet Standard subscription
+across them and lists each wallet once: a fallback waits for the settle
+window and drops a wallet a standard channel already announced. `fromAdapters(adapters)` from
 `@usebutr/core` turns built adapters (WalletConnect, Ledger, your own) into a
 source, so they show up in `useDiscoveredWallets()` like any discovered wallet.
 
@@ -244,12 +246,11 @@ Adding a sixth `ChainPlatform` is a fixed-shape change:
    and the storage validators derive from it), add the platform's `*Wallet`
    type to the `WalletAdapter` union, and add its chain registry to
    `CHAINS_BY_PLATFORM`.
-2. **Implement** `@usebutr/<platform>`: a `discover*Adapters` source, a
-   `build*Adapter` that defines only the methods the wallet supports, and a
-   `PlatformDiscoverer`.
-3. **Register** it in `@usebutr/wallets`. Its discoverer map is typed
-   `Record<ChainPlatform, PlatformDiscoverer>`, as is `CHAINS_BY_PLATFORM`, so
-   TypeScript flags each missing entry the moment the union grows.
+2. **Implement** `@usebutr/<platform>`: a `discover*Adapters` source and a
+   `build*Adapter` that defines only the methods the wallet supports.
+3. **Register** its channels in `@usebutr/wallets`. The channel map is typed
+   `Record<ChainPlatform, …>`, as is `CHAINS_BY_PLATFORM`, so TypeScript flags
+   each missing entry the moment the union grows.
 4. **(Optional)** Add a WalletConnect namespace under
    `packages/walletconnect/src/namespaces/<platform>.ts` and a Ledger app under
    `packages/ledger/src/apps/<platform>.ts`.

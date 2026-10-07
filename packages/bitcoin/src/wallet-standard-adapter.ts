@@ -12,7 +12,10 @@ import {
   getFeature,
   slugify,
 } from "@usebutr/wallet-standard-shared";
-import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
+import type {
+  WalletStandardModuleLoader,
+  WalletStandardWallet,
+} from "@usebutr/wallet-standard-shared";
 
 import type {
   BitcoinSendTransferFeature,
@@ -95,7 +98,10 @@ const buildBitcoinAdapter = (
 };
 
 /** Requires the optional `@wallet-standard/app` peer dep. */
-const discoverBitcoinAdapters = (onAdapter: (adapter: WalletAdapter) => void): (() => void) =>
-  discoverWalletStandard(onAdapter, buildBitcoinAdapter);
+const discoverBitcoinAdapters = (
+  onAdapter: (adapter: WalletAdapter) => void,
+  loadModule?: WalletStandardModuleLoader,
+): (() => void) =>
+  discoverWalletStandard([{ build: buildBitcoinAdapter, onAdapter }], { loadModule });
 
 export { buildBitcoinAdapter, discoverBitcoinAdapters };

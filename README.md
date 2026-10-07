@@ -245,31 +245,16 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
 
 ```tsx
 // apps/demo-with-bitcoin/src/wallet-provider.tsx
-import { discoverBitcoinAdapters, discoverInjectedBitcoinAdapter } from "@usebutr/bitcoin";
-import type { WalletSource } from "@usebutr/core";
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 
-const bitcoinDiscovery: WalletSource = {
-  subscribe: (onAdapter) => {
-    const seen = new Set<string>();
-    const emit = (a) => {
-      if (seen.has(a.id)) return;
-      seen.add(a.id);
-      onAdapter(a);
-    };
-    const offStandard = discoverBitcoinAdapters(emit);
-    const offInjected = discoverInjectedBitcoinAdapter(emit, {
-      hasAnyWalletStandardAdapter: () => seen.size > 0,
-    });
-    return () => {
-      offStandard();
-      offInjected();
-    };
-  },
+const config: WalletManagerConfig = {
+  sources: [autoDiscovery(["bitcoin"])],
 };
 
 export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={bitcoinDiscovery}>{children}</WalletManagerProvider>
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 ```
 

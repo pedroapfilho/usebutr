@@ -18,7 +18,6 @@ export type {
   EvmTransactionValue,
   EvmWallet,
   HydrationOutcome,
-  PlatformDiscoverer,
   PolkadotAdapter,
   PolkadotWallet,
   SignedMessage,

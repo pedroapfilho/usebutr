@@ -68,6 +68,19 @@ type WalletStandardAdapterBuilder = (
   registerDisconnector: (emit: () => void) => void,
 ) => WalletAdapter | null;
 
+/** One platform's builder and where its adapters go. */
+type WalletStandardRoute = {
+  build: WalletStandardAdapterBuilder;
+  onAdapter: (adapter: WalletAdapter) => void;
+};
+
+type WalletStandardDiscoveryOptions = {
+  loadModule?: WalletStandardModuleLoader;
+  /** Runs once the registry's current wallets are routed, or once the module
+   *  failed to load. Never runs after unsubscribe. */
+  onReady?: () => void;
+};
+
 const loadWalletStandardModule = async (): Promise<WalletStandardAppModule> => {
   const imported = await import("@wallet-standard/app");
   if (!("getWallets" in imported) || typeof imported.getWallets !== "function") {
@@ -86,14 +99,12 @@ const loadWalletStandardModule = async (): Promise<WalletStandardAppModule> => {
 };
 
 /**
- * `@wallet-standard/app` is an optional peer dep: a failed import quietly
- * disables discovery. Disconnectors are keyed by wallet identity rather
- * than adapter id because `register` / `unregister` emit the same object.
+ * One registry subscription feeding every route; a failed import of the optional
+ * `@wallet-standard/app` disables discovery. Disconnectors are keyed by wallet.
  */
 const discoverWalletStandard = (
-  onAdapter: (adapter: WalletAdapter) => void,
-  build: WalletStandardAdapterBuilder,
-  loadModule: WalletStandardModuleLoader = loadWalletStandardModule,
+  routes: ReadonlyArray<WalletStandardRoute>,
+  { loadModule = loadWalletStandardModule, onReady }: WalletStandardDiscoveryOptions = {},
 ): (() => void) => {
   // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
   let cancelled = false as boolean;
@@ -111,6 +122,9 @@ const discoverWalletStandard = (
           error,
         );
       }
+      if (!cancelled) {
+        onReady?.();
+      }
       return;
     }
     if (cancelled) {
@@ -118,42 +132,45 @@ const discoverWalletStandard = (
     }
 
     const seenIds = new Set<string>();
-    const disconnectors = new Map<WalletStandardWallet, () => void>();
+    const disconnectors = new Map<WalletStandardWallet, Array<() => void>>();
 
-    const tryAdd = (wallet: WalletStandardWallet) => {
-      const adapter = build(wallet, (emit) => {
-        disconnectors.set(wallet, emit);
-      });
-      if (!adapter || seenIds.has(adapter.id)) {
-        return;
+    const add = (wallet: WalletStandardWallet) => {
+      const registerDisconnector = (emit: () => void) => {
+        disconnectors.set(wallet, [...(disconnectors.get(wallet) ?? []), emit]);
+      };
+      for (const { build, onAdapter } of routes) {
+        const adapter = build(wallet, registerDisconnector);
+        if (adapter === null || seenIds.has(adapter.id)) {
+          continue;
+        }
+        seenIds.add(adapter.id);
+        onAdapter(adapter);
       }
-      seenIds.add(adapter.id);
-      onAdapter(adapter);
     };
 
     const app = mod.getWallets();
     for (const wallet of app.get()) {
-      tryAdd(wallet);
+      add(wallet);
     }
 
     const offRegister = app.on("register", (...wallets) => {
       for (const wallet of wallets) {
-        tryAdd(wallet);
+        add(wallet);
       }
     });
     const offUnregister = app.on("unregister", (...wallets) => {
       for (const wallet of wallets) {
-        const emit = disconnectors.get(wallet);
-        if (emit) {
+        for (const emit of disconnectors.get(wallet) ?? []) {
           emit();
-          disconnectors.delete(wallet);
         }
+        disconnectors.delete(wallet);
       }
     });
     internalUnsub = () => {
       offRegister();
       offUnregister();
     };
+    onReady?.();
   })();
 
   return () => {
@@ -163,5 +180,5 @@ const discoverWalletStandard = (
   };
 };
 
-export type { WalletStandardAdapterBuilder };
+export type { WalletStandardAdapterBuilder, WalletStandardRoute };
 export { discoverWalletStandard, mapWallet };

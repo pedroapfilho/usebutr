@@ -1,5 +1,5 @@
 import type { EvmAdapter, WalletSource } from "@usebutr/core";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { Eip1193Provider } from "../eip1193";
 import { discoverInjectedAdapter } from "../injected";
@@ -13,87 +13,40 @@ const fakeProvider: Eip1193Provider = {
 };
 
 describe("discoverInjectedAdapter", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it("is a wallet source as-is", () => {
     const source: WalletSource = discoverInjectedAdapter;
     expect(source).toBe(discoverInjectedAdapter);
   });
 
-  it("emits a generic adapter after the settle window when window.ethereum exists", () => {
+  it("emits a generic adapter on subscribe when window.ethereum exists", () => {
     const callback = vi.fn<(adapter: EvmAdapter) => void>();
-    const unsub = discoverInjectedAdapter(callback, {
-      settleMs: 50,
-      target: { ethereum: fakeProvider },
-    });
+    const unsubscribe = discoverInjectedAdapter(callback, { target: { ethereum: fakeProvider } });
 
-    expect(callback).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(50);
-    expect(callback).toHaveBeenCalledTimes(1);
-
+    expect(callback).toHaveBeenCalledOnce();
     const [adapter] = callback.mock.calls[0] ?? [];
     expect(adapter?.id).toBe("injected:legacy");
     expect(adapter?.name).toBe("Browser wallet");
     expect(adapter?.chainPlatform).toBe("evm");
-
-    unsub();
-  });
-
-  it("skips emission when hasAnyEip6963Adapter() is true at settle time", () => {
-    const callback = vi.fn<(adapter: EvmAdapter) => void>();
-    let seenEip6963 = false;
-    const unsub = discoverInjectedAdapter(callback, {
-      hasAnyEip6963Adapter: () => seenEip6963,
-      settleMs: 50,
-      target: { ethereum: fakeProvider },
-    });
-
-    seenEip6963 = true;
-    vi.advanceTimersByTime(50);
-
-    expect(callback).not.toHaveBeenCalled();
-    unsub();
+    expect(() => {
+      unsubscribe();
+    }).not.toThrow();
   });
 
   it("skips emission when window.ethereum is undefined", () => {
     const callback = vi.fn<(adapter: EvmAdapter) => void>();
-    const unsub = discoverInjectedAdapter(callback, {
-      settleMs: 50,
-      target: {},
-    });
-
-    vi.advanceTimersByTime(50);
+    discoverInjectedAdapter(callback, { target: {} });
     expect(callback).not.toHaveBeenCalled();
-    unsub();
   });
 
   it("skips emission when ethereum lacks a request method (sanity check)", () => {
     const callback = vi.fn<(adapter: EvmAdapter) => void>();
-    const unsub = discoverInjectedAdapter(callback, {
-      settleMs: 50,
-      target: { ethereum: { on() {}, removeListener() {} } },
-    });
-
-    vi.advanceTimersByTime(50);
+    discoverInjectedAdapter(callback, { target: { ethereum: { on() {}, removeListener() {} } } });
     expect(callback).not.toHaveBeenCalled();
-    unsub();
   });
 
-  it("cancels the pending emit when unsubscribed before the settle window elapses", () => {
+  it("skips emission when the host is explicitly absent", () => {
     const callback = vi.fn<(adapter: EvmAdapter) => void>();
-    const unsub = discoverInjectedAdapter(callback, {
-      settleMs: 50,
-      target: { ethereum: fakeProvider },
-    });
-
-    unsub();
-    vi.advanceTimersByTime(100);
-
+    discoverInjectedAdapter(callback, { target: null });
     expect(callback).not.toHaveBeenCalled();
   });
 });

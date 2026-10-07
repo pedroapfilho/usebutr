@@ -132,6 +132,6 @@ const buildSvmAdapter = (
 const discoverSvmAdapters = (
   onAdapter: (adapter: WalletAdapter) => void,
   loadModule?: WalletStandardModuleLoader,
-): (() => void) => discoverWalletStandard(onAdapter, buildSvmAdapter, loadModule);
+): (() => void) => discoverWalletStandard([{ build: buildSvmAdapter, onAdapter }], { loadModule });
 
 export { buildSvmAdapter, discoverSvmAdapters };

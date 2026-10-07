@@ -21,6 +21,4 @@ export {
 export type { InjectedDiscoveryOptions } from "./injected";
 export { GENERIC_INJECTED_ICON, discoverInjectedAdapter, isEip1193Provider } from "./injected";
 
-export { evmDiscoverer } from "./discoverer";
-
 import "./signer-augmentation";

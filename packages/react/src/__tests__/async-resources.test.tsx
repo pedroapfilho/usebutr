@@ -2,14 +2,14 @@ import "./signer-registry";
 
 import { act, waitFor } from "@testing-library/react";
 import type { Balance, BalanceOptions, WalletAdapter, WalletSigner } from "@usebutr/core";
-import { buildAccount, EVM_CHAINS } from "@usebutr/core";
+import { buildAccount, EVM_CHAINS, toStoredPoolEntry } from "@usebutr/core";
 import { createFakeAdapter, createFakeConnectedWallet } from "@usebutr/testing";
 import { describe, expect, it, vi } from "vitest";
 
 import { useBalance, useSigner } from "../hooks/async-resources";
 import { useWallet } from "../hooks/state";
 
-import { renderWithManager, settle, storedEntryOf } from "./render";
+import { renderWithManager, settle } from "./render";
 
 const first = buildAccount("0xfirst", EVM_CHAINS.ethereum);
 const second = buildAccount("0xsecond", EVM_CHAINS.ethereum);
@@ -46,7 +46,7 @@ describe("useSigner", () => {
     const { result } = renderWithManager(() => useSigner(useWallet()), {
       initialState: {
         activeConnectorId: "metamask",
-        pool: { metamask: storedEntryOf(wallet) },
+        pool: { metamask: toStoredPoolEntry(wallet) },
         selection: {},
       },
     });
@@ -60,7 +60,7 @@ describe("useSigner", () => {
       adapters: [createFakeAdapter({ id: "metamask", signer })],
       initialState: {
         activeConnectorId: "metamask",
-        pool: { metamask: storedEntryOf(wallet) },
+        pool: { metamask: toStoredPoolEntry(wallet) },
         selection: {},
       },
     });
@@ -108,7 +108,7 @@ describe("useBalance", () => {
     const { result } = renderWithManager(() => useBalance(useWallet()), {
       initialState: {
         activeConnectorId: "metamask",
-        pool: { metamask: storedEntryOf(wallet) },
+        pool: { metamask: toStoredPoolEntry(wallet) },
         selection: {},
       },
     });

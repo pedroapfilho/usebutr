@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import type { WalletManagerConfig, WalletSource } from "@usebutr/core";
+import { toStoredPoolEntry } from "@usebutr/core";
 import {
   createFakeAdapter,
   createFakeConnectedWallet,
@@ -13,7 +14,7 @@ import { describe, expect, it, vi } from "vitest";
 import { useWalletManager, WalletManagerProvider } from "../context";
 import { useWallet } from "../hooks/state";
 
-import { renderWithManager, settle, staticSource, storedEntryOf } from "./render";
+import { renderWithManager, settle, staticSource } from "./render";
 
 const WalletName = () => {
   const wallet = useWallet();
@@ -58,7 +59,7 @@ describe("WalletManagerProvider", () => {
     const wallet = createFakeConnectedWallet({ addresses: ["0xseeded"], id: "metamask" });
     const initialState = {
       activeConnectorId: "metamask",
-      pool: { metamask: storedEntryOf(wallet) },
+      pool: { metamask: toStoredPoolEntry(wallet) },
       selection: {},
     };
 

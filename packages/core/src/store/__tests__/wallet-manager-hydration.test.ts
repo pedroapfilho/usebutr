@@ -391,12 +391,15 @@ describe("initialState seeding", () => {
     selection: { evm: "metamask" },
   };
 
-  it("makes the first seeded wallet active when the snapshot names none", () => {
+  it.each([
+    ["names none", null],
+    ["names a wallet it does not hold", "uninstalled"],
+  ])("makes the first seeded wallet active when the snapshot %s", (_, activeConnectorId) => {
     const phantom = svmAdapter("phantom");
     const rabby = evmAdapter("rabby");
     const manager = createWalletManager(
       { storage: createMemoryPersistence() },
-      { initialState: { activeConnectorId: null, pool: poolOf(phantom, rabby), selection: {} } },
+      { initialState: { activeConnectorId, pool: poolOf(phantom, rabby), selection: {} } },
     );
 
     const state = manager.getState();

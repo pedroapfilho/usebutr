@@ -6,7 +6,6 @@ import type { ReactNode } from "react";
 
 const config: WalletManagerConfig = {
   sources: [discoverEvmAdapters, discoverSvmAdapters],
-  storageKeyPrefix: "butr-wormhole-demo",
 };
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (

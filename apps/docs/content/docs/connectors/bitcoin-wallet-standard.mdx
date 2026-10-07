@@ -22,7 +22,6 @@ import { autoDiscovery } from "@usebutr/wallets";
 
 const config: WalletManagerConfig = {
   sources: [autoDiscovery(["bitcoin"])],
-  storageKeyPrefix: "my-app",
 };
 
 export const Providers = ({ children }: { children: React.ReactNode }) => (

@@ -1,7 +1,5 @@
 import type { StorageDriver } from "./persistence";
 
-type InitialCookies = Iterable<[string, string]> | Readonly<Record<string, string>>;
-
 type CookieDriverOptions = {
   /**
    * Cookie `domain` attribute. Omit to scope to the current host.
@@ -9,12 +7,6 @@ type CookieDriverOptions = {
    * across subdomains.
    */
   domain?: string;
-  /**
-   * Server-side cookie snapshot (Next.js' `cookies()`, a parsed
-   * `req.headers.cookie`, …) read only when `document` is unavailable,
-   * so the SSR pass sees the state the client will hydrate with.
-   */
-  initialCookies?: InitialCookies;
   /**
    * Lifetime in seconds. Defaults to 30 days.
    */
@@ -43,9 +35,6 @@ const decode = (value: string): string => decodeURIComponent(value);
 
 const readCookies = (): Map<string, string> => {
   const out = new Map<string, string>();
-  if (typeof document === "undefined") {
-    return out;
-  }
   const cookieString = document.cookie;
   if (!cookieString) {
     return out;
@@ -93,56 +82,24 @@ const buildCookieString = (
   return parts.join("; ");
 };
 
-const toCookieMap = (input: InitialCookies | undefined): Map<string, string> | null => {
-  if (!input) {
-    return null;
-  }
-  if (Symbol.iterator in input) {
-    return new Map(input);
-  }
-  return new Map(Object.entries(input));
-};
-
 /**
- * Server-side writes are no-ops: `Set-Cookie` needs the framework's
- * response object. Cookies ride every request, so use this driver for
- * the `persistent` slot only and leave `session` on `sessionStorage`.
+ * Reads and writes `document.cookie` on each call, never at creation, so a
+ * module that builds it can be evaluated during a server render. Cookies ride
+ * every request, so it backs the persistent slot only.
  */
-const createCookieStorageDriver = (options: CookieDriverOptions = {}): StorageDriver => {
-  const seeded = toCookieMap(options.initialCookies);
+const createCookieStorageDriver = (options: CookieDriverOptions = {}): StorageDriver => ({
+  getItem(key) {
+    return readCookies().get(key) ?? null;
+  },
+  removeItem(key) {
+    // eslint-disable-next-line unicorn/no-document-cookie -- cookie storage driver is the document.cookie abstraction by design
+    document.cookie = buildCookieString(key, "", options, true);
+  },
+  setItem(key, value) {
+    // eslint-disable-next-line unicorn/no-document-cookie -- cookie storage driver is the document.cookie abstraction by design
+    document.cookie = buildCookieString(key, value, options);
+  },
+});
 
-  if (typeof document === "undefined") {
-    if (!seeded) {
-      return {
-        getItem() {
-          return null;
-        },
-        removeItem() {},
-        setItem() {},
-      };
-    }
-    return {
-      getItem(key) {
-        return seeded.get(key) ?? null;
-      },
-      removeItem() {},
-      setItem() {},
-    };
-  }
-  return {
-    getItem(key) {
-      return readCookies().get(key) ?? null;
-    },
-    removeItem(key) {
-      // eslint-disable-next-line unicorn/no-document-cookie -- cookie storage driver is the document.cookie abstraction by design
-      document.cookie = buildCookieString(key, "", options, true);
-    },
-    setItem(key, value) {
-      // eslint-disable-next-line unicorn/no-document-cookie -- cookie storage driver is the document.cookie abstraction by design
-      document.cookie = buildCookieString(key, value, options);
-    },
-  };
-};
-
-export type { CookieDriverOptions, InitialCookies };
+export type { CookieDriverOptions };
 export { createCookieStorageDriver };

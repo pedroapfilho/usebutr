@@ -15,8 +15,8 @@ every later render, and so are callbacks that close over component state.
 
 Put `autoDiscovery()` from `@usebutr/wallets` in `sources`. It discovers EVM
 (EIP-6963), SVM, Sui, and Bitcoin (Wallet Standard), and Polkadot
-(injectedWeb3) wallets. State persists to `localStorage` under
-`storageKeyPrefix`.
+(injectedWeb3) wallets. State persists to `localStorage` and `sessionStorage`
+under the `butr` key prefix.
 
 ```tsx title="src/wallet-provider.tsx"
 import type { WalletManagerConfig } from "@usebutr/core";
@@ -26,7 +26,6 @@ import type { ReactNode } from "react";
 
 const config: WalletManagerConfig = {
   sources: [autoDiscovery()],
-  storageKeyPrefix: "butr-demo",
 };
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
@@ -92,7 +91,6 @@ const config: WalletManagerConfig = {
     ),
     fromAdapters(createLedgerAdapter({ id: "ledger-evm", platform: "evm" })),
   ],
-  storageKeyPrefix: "my-app",
 };
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
@@ -114,7 +112,6 @@ for their options.
 | Field                                                                                          | Default                           | Purpose                                                |
 | ---------------------------------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------ |
 | `sources`                                                                                      | `[]`                              | where adapters come from                               |
-| `storageKeyPrefix`                                                                             | `"butr"`                          | namespaces the default storage keys                    |
 | `storage`                                                                                      | `localStorage` + `sessionStorage` | a custom [`WalletPersistence`](/guides/custom-storage) |
 | `onConnect`, `onConnectError`, `onDisconnect`, `onHydrated`, `onSlowConnect`, `onStorageError` | —                                 | [lifecycle callbacks](/guides/lifecycle-callbacks)     |
 | `slowConnectThresholdMs`                                                                       | `5000`                            | when `onSlowConnect` fires                             |

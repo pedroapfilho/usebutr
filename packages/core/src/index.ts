@@ -73,12 +73,11 @@ export { createWalletManager, isShadowAdapter, ShadowConnectorError } from "./st
 
 export type {
   BrowserStorageDrivers,
-  CookieDriverOptions,
   CookieSource,
-  InitialCookies,
+  CookieWalletStorage,
+  CookieWalletStorageOptions,
   MaybePromise,
   PersistedWalletState,
-  SnapshotOptions,
   StorageDriver,
   StoredPoolEntry,
   StoredPoolRecord,
@@ -89,11 +88,10 @@ export type {
 } from "./storage";
 export {
   createBrowserStorageDriver,
-  createCookieStorageDriver,
+  createCookieWalletStorage,
   createMemoryStorageDriver,
   createWalletStorage,
-  EMPTY_SNAPSHOT,
-  readWalletSnapshot,
+  toStoredPoolEntry,
 } from "./storage";
 
 export { groupByPlatform } from "./group-by-platform";

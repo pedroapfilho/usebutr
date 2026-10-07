@@ -46,8 +46,7 @@ const WalletProvider = ({ children }: { children: ReactNode }) => (
 export { WalletProvider };
 ```
 
-With `storage` set, `storageKeyPrefix` is ignored: the prefix belongs to
-`createWalletStorage`.
+The key prefix belongs to `createWalletStorage`.
 
 <Callout type="warn">
   `demo-expo-web` targets the **web** bundle (`expo start --web`), where browser wallet discovery

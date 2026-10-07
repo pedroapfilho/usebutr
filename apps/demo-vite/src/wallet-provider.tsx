@@ -7,7 +7,6 @@ import { extraSources } from "./extra-connectors";
 
 const config: WalletManagerConfig = {
   sources: [autoDiscovery(), ...extraSources],
-  storageKeyPrefix: "butr-demo",
 };
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (

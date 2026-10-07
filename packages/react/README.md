@@ -57,8 +57,9 @@ export const App = () => (
 
 `WalletManagerProvider` creates one manager per mount and starts it in an
 effect, so nothing runs during a server render. To render persisted
-connections from the first paint, pass `initialState={readWalletSnapshot(cookies)}`
-from a Server Component, with a cookie-backed storage driver on the client.
+connections from the first paint, persist with `createCookieWalletStorage` and
+pass `initialState={walletStorage.readInitialState(cookies)}` from a Server
+Component.
 
 ## Hooks
 

@@ -635,18 +635,17 @@ describe("persistence", () => {
     expect(Object.keys(lastSave(storage)?.pool ?? {})).toEqual(["metamask"]);
   });
 
-  it("defaults to browser storage under the given key prefix", async () => {
+  it("defaults to browser storage under the butr prefix", async () => {
     const manager = createWalletManager({
       sources: [staticSource(evmAdapter("metamask"))],
-      storageKeyPrefix: "app",
     });
     manager.start();
     await flush();
     await manager.connect("metamask");
     await flush();
 
-    expect(localStorage.getItem("app-active")).toBe("metamask");
-    expect(JSON.parse(localStorage.getItem("app-pool") ?? "{}")).toHaveProperty("metamask");
+    expect(localStorage.getItem("butr-active")).toBe("metamask");
+    expect(JSON.parse(localStorage.getItem("butr-pool") ?? "{}")).toHaveProperty("metamask");
     localStorage.clear();
   });
 });

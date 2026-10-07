@@ -53,7 +53,6 @@ Read once, when the manager is created. Define it at module scope.
 | ------------------------ | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `sources`                | `ReadonlyArray<WalletSource>`                   | `autoDiscovery()`, any `discover*Adapters` export, or `fromAdapters(…)`. The first adapter announced for an id wins. |
 | `storage`                | `WalletPersistence`                             | Replaces the default localStorage + sessionStorage persistence.                                                      |
-| `storageKeyPrefix`       | `string`                                        | Key prefix for the default persistence. Ignored when `storage` is set.                                               |
 | `onConnect`              | `(wallet, { reconnected }) => void`             | A user `connect` (`reconnected: false`) or a silent restore (`true`).                                                |
 | `onConnectError`         | `(error: ConnectionError, connectorId) => void` | Every failed attempt.                                                                                                |
 | `onDisconnect`           | `(wallet, { byUser }) => void`                  | `byUser` is false when the wallet ended the session.                                                                 |
@@ -333,24 +332,34 @@ so an implementation never merges or diffs. See
   over localStorage and sessionStorage, falling back to memory where they do
   not exist.
 - `createMemoryStorageDriver(): StorageDriver`: in-memory.
-- `createCookieStorageDriver(options?: CookieDriverOptions): StorageDriver`:
-  options are `domain`, `initialCookies` (`InitialCookies`, read on the server),
-  `maxAgeSeconds` (default 30 days), `path` (default `/`), `sameSite` (default
-  `"lax"`) and `secure` (default `true`).
 
 `StorageDriver` is `{ getItem; removeItem; setItem }`, each returning a
 `MaybePromise`.
 
-### Server snapshots
+### Cookie persistence
 
-- `readWalletSnapshot(cookies: CookieSource, options?: SnapshotOptions): WalletSnapshot`
-  reads what the browser last persisted from a cookie list, map or record.
-  Pass the same `keyPrefix` as `storageKeyPrefix`. See
-  [SSR without a flash](/guides/ssr-no-flash).
-- `EMPTY_SNAPSHOT`: a frozen snapshot with no connections.
+`createCookieWalletStorage(options?: CookieWalletStorageOptions): CookieWalletStorage`
+keeps the pool, selection and active id in cookies and the disconnect intent in
+sessionStorage. Options are `keyPrefix` (default `"butr"`), `domain`,
+`maxAgeSeconds` (default 30 days), `path` (default `/`), `sameSite` (default
+`"lax"`) and `secure` (default `true`). Creating it touches no browser global,
+so a module shared by a Server Component and the client provider can build it.
+
+`CookieWalletStorage` is a `WalletPersistence` plus
+`readInitialState(cookies: CookieSource): WalletSnapshot`, which decodes what
+the browser last saved from a cookie list, `[name, value]` pairs or a record,
+with the same decoder `load` uses. See
+[SSR without a flash](/guides/ssr-no-flash).
+
+### Stored state
+
 - `WalletSnapshot`: `{ activeConnectorId; pool: StoredPoolRecord; selection: StoredSelectionRecord }`.
-  `StoredPoolEntry` is what a connection needs to render before its adapter
+  `activeConnectorId` is the stored id; the manager falls back to the first
+  pool entry when it names none.
+- `StoredPoolEntry` is what a connection needs to render before its adapter
   exists: `account`, `accounts`, `chainPlatform`, `connectorId`, `icon?`, `name`.
+- `toStoredPoolEntry(wallet: ConnectedWallet): StoredPoolEntry` builds one from
+  a connected wallet.
 
 ## Sign-in
 

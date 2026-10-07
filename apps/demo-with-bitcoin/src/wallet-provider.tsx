@@ -25,7 +25,6 @@ const discoverBitcoin: WalletSource = (onAdapter) => {
 
 const config: WalletManagerConfig = {
   sources: [discoverBitcoin],
-  storageKeyPrefix: "butr-bitcoin-demo",
 };
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (

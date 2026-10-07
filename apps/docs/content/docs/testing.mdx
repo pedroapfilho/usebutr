@@ -161,9 +161,16 @@ const multi = createFakeConnectedWallet({
 
 A `WalletPersistence` over the production `createWalletStorage` with
 in-memory drivers, so `load()` decodes and validates exactly as it does in the
-browser. `seed` (a `Partial<PersistedWalletState>`) is what the first
-`load()` finds, as if a previous session had saved it. `saves` lists every
-state the manager handed to `save`, oldest first.
+browser. The seed is what the first `load()` finds, as if a previous session
+had saved it:
+
+| Field                | Default      | Notes                                            |
+| -------------------- | ------------ | ------------------------------------------------ |
+| `wallets`            | `[]`         | Connected wallets the previous session saved.    |
+| `active`             | first wallet | The wallet the previous session left active.     |
+| `isUserDisconnected` | `false`      | A manual disconnect earlier in the same session. |
+
+`saves` lists every state the manager handed to `save`, oldest first.
 
 Seed it to test hydration: the manager silently reconnects the stored wallet
 once its fake adapter is announced.
@@ -173,19 +180,7 @@ import { createWalletManager, fromAdapters } from "@usebutr/core";
 import { createFakeConnectedWallet, createFakePersistence } from "@usebutr/testing";
 
 const wallet = createFakeConnectedWallet({ id: "io.metamask", name: "MetaMask" });
-const storage = createFakePersistence({
-  activeConnectorId: "io.metamask",
-  pool: {
-    "io.metamask": {
-      account: wallet.account,
-      accounts: wallet.accounts,
-      chainPlatform: "evm",
-      connectorId: "io.metamask",
-      name: "MetaMask",
-    },
-  },
-  selection: { evm: "io.metamask" },
-});
+const storage = createFakePersistence({ wallets: [wallet] });
 
 const manager = createWalletManager({
   onHydrated: ({ restoredIds }) => {

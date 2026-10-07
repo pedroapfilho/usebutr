@@ -139,8 +139,9 @@ user disconnect, cleared by the next connect attempt.
 
 Storage keys are prefixed (`{prefix}-pool`, `{prefix}-selection`,
 `{prefix}-active`, `{prefix}-user-disconnected`) with the default prefix
-`butr`. Set a distinct `storageKeyPrefix` per app sharing an origin, and pass
-the same prefix to `readWalletSnapshot`.
+`butr`. Give each app sharing an origin its own prefix through
+`storage: createWalletStorage({ keyPrefix })`, or
+`createCookieWalletStorage({ keyPrefix })` when the server reads the state.
 
 ## Signature verification fails on Solana
 
@@ -153,4 +154,5 @@ Polkadot injected signing wraps it in `<Bytes>…</Bytes>`. See
 
 You're rendering before hydration finishes. Gate the first render on
 `useIsHydrated()`, or seed the provider with `initialState` from
-`readWalletSnapshot`; see [SSR without a flash](/guides/ssr-no-flash).
+`createCookieWalletStorage`'s `readInitialState`; see
+[SSR without a flash](/guides/ssr-no-flash).

@@ -14,12 +14,20 @@ import {
 import type { PersistedWalletState, StoredPoolEntry } from "../../storage/persistence";
 import type { WalletAdapter, WalletManagerConfig } from "../../types";
 import { ConnectionError } from "../../types";
-import { toStoredEntry } from "../reducer";
 import { ShadowConnectorError } from "../shadow-adapter";
 import { createWalletManager } from "../wallet-manager";
 
-const storedEntry = (adapter: WalletAdapter): StoredPoolEntry =>
-  toStoredEntry(adapter.id, walletOf(adapter));
+const storedEntry = (adapter: WalletAdapter): StoredPoolEntry => {
+  const { account, accounts } = walletOf(adapter);
+  return {
+    account,
+    accounts,
+    chainPlatform: adapter.chainPlatform,
+    connectorId: adapter.id,
+    icon: adapter.icon,
+    name: adapter.name,
+  };
+};
 
 const poolOf = (...adapters: ReadonlyArray<WalletAdapter>) =>
   Object.fromEntries(adapters.map((adapter) => [adapter.id, storedEntry(adapter)]));
@@ -89,6 +97,39 @@ describe("hydration", () => {
     expect(manager.getState().selection.get("evm")).toBe("rabby");
   });
 
+  it("ignores a stored active wallet or selection that is not live or not on that platform", async () => {
+    const metamask = evmAdapter("metamask");
+    const phantom = svmAdapter("phantom");
+    const { manager } = await startManager({
+      persisted: {
+        activeConnectorId: "gone",
+        pool: poolOf(metamask, phantom),
+        selection: { evm: "phantom", svm: "gone" },
+      },
+      sources: [staticSource(metamask, phantom)],
+    });
+
+    const state = manager.getState();
+    expect(state.activeConnectorId).toBe("metamask");
+    expect(state.selection).toEqual(
+      new Map([
+        ["evm", "metamask"],
+        ["svm", "phantom"],
+      ]),
+    );
+  });
+
+  it("takes the stored disconnect intent until the user connects again", async () => {
+    const { manager } = await startManager({
+      persisted: { isUserDisconnected: true },
+      sources: [staticSource(evmAdapter("metamask"))],
+    });
+    expect(manager.getState().isUserDisconnected).toBe(true);
+
+    await manager.connect("metamask");
+    expect(manager.getState().isUserDisconnected).toBe(false);
+  });
+
   it("does not let a stored preference override a choice made during hydration", async () => {
     const gate = createGate();
     const metamask = evmAdapter("metamask", {
@@ -126,6 +167,7 @@ describe("hydration", () => {
 
     expect(manager.getState().pool.size).toBe(0);
     expect(manager.getState().dormant.has("metamask")).toBe(true);
+    expect(metamask.disconnect).not.toHaveBeenCalled();
     expect(lastSave(storage)?.pool.metamask).toEqual(storedEntry(metamask));
     const [outcome] = onHydrated.mock.lastCall ?? [];
     expect(outcome).toMatchObject({ pendingIds: [], restoredIds: [] });
@@ -135,9 +177,9 @@ describe("hydration", () => {
     expect(outcome?.dropped[0]?.reason.kind).toBe("WalletLocked");
   });
 
-  it("drops a silent reconnect that exposes no accounts as NotConnected", async () => {
+  it("drops a silent reconnect that exposes no accounts as NotConnected and closes it", async () => {
     const onHydrated = vi.fn<Callbacks["onHydrated"]>();
-    const metamask = evmAdapter("metamask", { getAccounts: () => Promise.resolve([]) });
+    const metamask = evmAdapter("metamask", { accounts: [] });
     await startManager({
       config: { onHydrated },
       persisted: { pool: poolOf(metamask) },
@@ -145,6 +187,7 @@ describe("hydration", () => {
     });
 
     expect(onHydrated.mock.lastCall?.[0]?.dropped[0]?.reason.kind).toBe("NotConnected");
+    expect(metamask.disconnect).toHaveBeenCalledOnce();
   });
 
   it("logs dropped reconnects when no onHydrated is given", async () => {
@@ -178,6 +221,66 @@ describe("hydration", () => {
 
     expect(manager.getState().isHydrated).toBe(true);
     expect(onHydrated.mock.lastCall?.[0]?.dropped[0]?.reason.kind).toBe("Timeout");
+  });
+
+  it("closes the session of a silent reconnect that times out", async () => {
+    vi.useFakeTimers();
+    const metamask = evmAdapter("metamask", { connect: () => new Promise(() => {}) });
+    const manager = createWalletManager({
+      sources: [staticSource(metamask)],
+      storage: createMemoryPersistence({ pool: poolOf(metamask) }),
+    });
+    manager.start();
+
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    expect(metamask.disconnect).toHaveBeenCalledOnce();
+    expect(manager.getState().pool.size).toBe(0);
+  });
+
+  it("leaves the user's session open when the silent reconnect it overtook times out", async () => {
+    vi.useFakeTimers();
+    const metamask = evmAdapter("metamask", {
+      connect: (options) => (options?.silent === true ? new Promise(() => {}) : Promise.resolve()),
+    });
+    const manager = createWalletManager({
+      sources: [staticSource(metamask)],
+      storage: createMemoryPersistence({ pool: poolOf(metamask) }),
+    });
+    manager.start();
+
+    const wallet = await manager.connect("metamask");
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    expect(metamask.disconnect).not.toHaveBeenCalled();
+    expect(manager.getState().pool.get("metamask")).toBe(wallet);
+  });
+
+  it("does not silently reconnect a wallet the user connected before storage loaded", async () => {
+    const onHydrated = vi.fn<Callbacks["onHydrated"]>();
+    const metamask = evmAdapter("metamask");
+    const storage = createMemoryPersistence();
+    const load = Promise.withResolvers<PersistedWalletState>();
+    storage.load.mockReturnValueOnce(load.promise);
+    const manager = createWalletManager({ onHydrated, sources: [staticSource(metamask)], storage });
+    manager.start();
+
+    await manager.connect("metamask");
+    load.resolve({
+      activeConnectorId: "metamask",
+      isUserDisconnected: false,
+      pool: poolOf(metamask),
+      selection: {},
+    });
+    await flush();
+
+    expect(metamask.connect).toHaveBeenCalledExactlyOnceWith();
+    expect(manager.getState().dormant.size).toBe(0);
+    expect(onHydrated).toHaveBeenCalledExactlyOnceWith({
+      dropped: [],
+      pendingIds: [],
+      restoredIds: [],
+    });
   });
 
   it("restores a pending wallet the moment its adapter is announced", async () => {
@@ -297,6 +400,26 @@ describe("initialState seeding", () => {
     selection: { evm: "metamask" },
   };
 
+  it("makes the first seeded wallet active when the snapshot names none", () => {
+    const phantom = svmAdapter("phantom");
+    const rabby = evmAdapter("rabby");
+    const manager = createWalletManager(
+      { storage: createMemoryPersistence() },
+      { initialState: { activeConnectorId: null, pool: poolOf(phantom, rabby), selection: {} } },
+    );
+
+    const state = manager.getState();
+    expect(state.activeConnectorId).toBe("phantom");
+    expect([...state.reconnectingIds]).toEqual(["phantom", "rabby"]);
+    expect([...state.dormant.keys()]).toEqual(["phantom", "rabby"]);
+    expect(state.selection).toEqual(
+      new Map([
+        ["svm", "phantom"],
+        ["evm", "rabby"],
+      ]),
+    );
+  });
+
   it("renders seeded wallets as reconnecting shadows before start", async () => {
     const storage = createMemoryPersistence();
     const manager = createWalletManager({ storage }, { initialState: snapshot });
@@ -342,6 +465,52 @@ describe("initialState seeding", () => {
     expect(state.reconnectingIds.size).toBe(0);
     expect(state.activeConnectorId).toBeNull();
     expect(lastSave(storage)?.pool.metamask?.name).toBe("MetaMask");
+  });
+
+  it("replaces a shadow with the wallet the user connects before its reconnect lands", async () => {
+    const gate = createGate();
+    const live = evmAdapter("metamask", {
+      connect: (options) => (options?.silent === true ? gate.promise : Promise.resolve()),
+    });
+    const manager = createWalletManager(
+      { sources: [staticSource(live)], storage: createMemoryPersistence() },
+      { initialState: snapshot },
+    );
+    manager.start();
+
+    const wallet = await manager.connect("metamask");
+    expect(manager.getState().reconnectingIds.size).toBe(0);
+    gate.open();
+    await flush();
+
+    expect(manager.getState().pool.get("metamask")).toBe(wallet);
+    expect(live.disconnect).not.toHaveBeenCalled();
+  });
+
+  it("keeps the user's choice of active wallet and selection over the stored ones", async () => {
+    const rabby = evmAdapter("rabby");
+    const stored = {
+      activeConnectorId: "metamask",
+      pool: poolOf(metamask, rabby),
+      selection: { evm: "metamask" },
+    };
+    const manager = createWalletManager(
+      {
+        sources: [staticSource(metamask, rabby)],
+        storage: createMemoryPersistence(stored),
+      },
+      { initialState: stored },
+    );
+    manager.start();
+
+    manager.setActive("rabby");
+    manager.setSelection("evm", "rabby");
+    await flush();
+
+    const state = manager.getState();
+    expect(state.reconnectingIds.size).toBe(0);
+    expect(state.activeConnectorId).toBe("rabby");
+    expect(state.selection.get("evm")).toBe("rabby");
   });
 
   it("keeps a shadow reconnecting until its adapter is announced", async () => {

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { evmAdapter, walletOf } from "../../__tests__/helpers";
-import { toStoredEntry } from "../../store/reducer";
+import { toStoredEntry } from "../../store/persisted-state";
 import { decodePool, decodeSelection, storageKeys } from "../validation";
 
 const metamask = toStoredEntry("metamask", walletOf(evmAdapter("metamask")));

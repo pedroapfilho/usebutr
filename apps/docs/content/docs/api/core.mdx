@@ -45,6 +45,10 @@ A read-only zustand store plus actions. Every action is a stable reference.
 | `setSelection(chainPlatform, connectorId)` | Picks which pool entry serves a platform.                                                                                             |
 | `clearConnectionError()`                   | Clears `connectionError` and returns `connectionStatus` to `"idle"`.                                                                  |
 
+A failed `connect` closes the session it opened, unless the wallet was
+already connected. `requestAccounts` rejects with a `NotConnected`
+`ConnectionError` when the wallet exposes no accounts afterwards.
+
 ### `WalletManagerConfig`
 
 Read once, when the manager is created. Define it at module scope.
@@ -69,13 +73,20 @@ Read once, when the manager is created. Define it at module scope.
 | `pool`                  | `ReadonlyMap<string, ConnectedWallet>` | Live connections, keyed by connector id.                                                                                |
 | `selection`             | `ReadonlyMap<ChainPlatform, string>`   | Which pool entry serves each platform present in the pool.                                                              |
 | `activeConnectorId`     | `string \| null`                       | In the pool, or `null` when the pool is empty.                                                                          |
-| `reconnectingIds`       | `ReadonlySet<string>`                  | Pool entries still backed by a shadow adapter seeded from `initialState`.                                               |
+| `reconnectingIds`       | `ReadonlySet<string>`                  | Pool entries whose connector is a shadow adapter seeded from `initialState`. Derived from the pool.                     |
 | `dormant`               | `ReadonlyMap<string, StoredPoolEntry>` | Persisted connections that are not live: awaiting their adapter, failed their silent reconnect, or ended by the wallet. |
 | `connectionStatus`      | `ConnectStatus`                        | `"idle" \| "connecting" \| "success" \| "error"`: the latest `connect` attempt.                                         |
 | `connectingConnectorId` | `string \| null`                       | The wallet the in-flight attempt is for.                                                                                |
 | `connectionError`       | `ConnectionError \| null`              | The latest attempt's failure.                                                                                           |
 | `isHydrated`            | `boolean`                              | True after the start-up hydration pass, and from the start when seeded.                                                 |
 | `isUserDisconnected`    | `boolean`                              | Session-scoped: set by a user disconnect, cleared by the next connect.                                                  |
+
+### `isShadowAdapter(adapter): boolean`
+
+True when `adapter` is the shadow standing in for a wallet seeded from
+`initialState`. `reconnectingIds` holds exactly the pool ids whose connector it
+is true for, so `isShadowAdapter(wallet.connector)` answers the same question
+for a wallet you already hold.
 
 ### `HydrationOutcome`
 
@@ -350,7 +361,7 @@ with the same decoder `load` uses. See
 
 - `WalletSnapshot`: `{ activeConnectorId; pool: StoredPoolRecord; selection: StoredSelectionRecord }`.
   `activeConnectorId` is the stored id; the manager falls back to the first
-  pool entry when it names none.
+  pool entry when it names none or a wallet the pool does not hold.
 - `StoredPoolEntry` is what a connection needs to render before its adapter
   exists: `account`, `accounts`, `chainPlatform`, `connectorId`, `icon?`, `name`.
 - `toStoredPoolEntry(wallet: ConnectedWallet): StoredPoolEntry` builds one from

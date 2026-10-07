@@ -22,6 +22,12 @@ state once and silently reconnects every stored wallet: Wallet Standard's
 to prompt fails the restore instead. Each silent reconnect gets 15 seconds, so a
 wallet that ignores `silent` and pops a dialog cannot hold the pass open.
 
+A failed silent reconnect closes the session it opened when it timed out or
+when the wallet connected but exposed no accounts. One the wallet declines is
+left alone: it opened nothing, and closing it would revoke the permission (EVM)
+or the shared session (WalletConnect) the next load needs. A user `connect`
+closes the session on every failure, unless the wallet was already connected.
+
 The catch: wallet adapters announce themselves _asynchronously_ (EIP-6963
 dispatches events; the Wallet Standard module is lazily imported). So a stored
 wallet's adapter may not exist yet when the pass runs. Such an entry waits,
@@ -94,10 +100,12 @@ shell you could have painted immediately.
 ## Synchronous seeding (SSR)
 
 Pass `initialState` and the manager starts with `isHydrated: true`, the pool
-populated, and every seeded wallet id in `reconnectingIds`. The primary hooks
-(`useWallet`, `useConnectedWallets`, `useAccounts`) return values from render
-zero on both server and client, so a server-rendered page can paint the user's
-address with no flash.
+populated, and every seeded wallet id in `reconnectingIds`. That set is derived
+from the pool: an id is in it exactly while its connector is a shadow adapter,
+and `isShadowAdapter(wallet.connector)` answers the same for one wallet. The
+primary hooks (`useWallet`, `useConnectedWallets`, `useAccounts`) return values
+from render zero on both server and client, so a server-rendered page can paint
+the user's address with no flash.
 
 Persist to cookies with `createCookieWalletStorage` and read the snapshot on
 the server with its `readInitialState`, which decodes the cookies with the same
@@ -125,8 +133,8 @@ const RootLayout = async ({ children }: { children: ReactNode }) => {
 ```
 
 The snapshot's active id is the one the browser stored. If it names no pool
-entry, the manager falls back to the first one, exactly as it does after a
-client-side load.
+entry, or one the pool does not hold, the manager falls back to the first
+entry, exactly as it does after a client-side load.
 
 The seeded entries are backed by placeholder adapters until the real wallet
 announces itself, so they carry data but cannot act. Three things follow:

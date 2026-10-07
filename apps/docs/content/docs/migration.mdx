@@ -117,7 +117,7 @@ if (wallet.connector.signMessage) {
 | `switchAccount(address)`                                             | removed: no adapter implemented it                                                                                       |
 | `ConnectorEvent` `{ type: "accountChanged", account, accounts }`     | `{ type: "accountsChanged", accounts }`, active first                                                                    |
 | `TransactionInput`                                                   | per platform: `EvmTransactionRequest`, `Uint8Array` (SVM), `SuiTransactionInput`, `BitcoinTransfer`                      |
-| `isShadowAdapter(adapter)`                                           | `useIsReconnecting(id)` or `state.reconnectingIds.has(id)`                                                               |
+| `isShadowAdapter(adapter)`                                           | unchanged; `useIsReconnecting(id)` and `state.reconnectingIds.has(id)` answer the same question by id                    |
 | `resolveEip6963Capabilities`, `resolveWalletStandardCapabilities`, … | removed                                                                                                                  |
 | `isSolanaSignMessageFeature` and other feature guards                | `getFeature<SolanaSignMessageFeature>(wallet, "solana:signMessage", "signMessage")`                                      |
 
@@ -196,8 +196,8 @@ const initialState = walletStorage.readInitialState(cookies);
 
 `createCookieStorageDriver`, its `initialCookies` option, `readWalletSnapshot`
 and `EMPTY_SNAPSHOT` are removed. A snapshot's active id is now the stored one;
-the manager falls back to the first pool entry when it names none, as it does
-after a client-side load.
+the manager falls back to the first pool entry when it names none or a wallet
+the pool does not hold, as it does after a client-side load.
 
 ## Testing
 

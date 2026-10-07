@@ -21,6 +21,8 @@ type PersistedWalletState = {
 Each pool entry stores what a server render or a placeholder needs to show the
 wallet before its adapter exists: `account`, `accounts`, `chainPlatform`,
 `connectorId`, `name`, and `icon`. Never the adapter itself.
+`toStoredPoolEntry(wallet)` builds one from a connected wallet; the manager
+uses no other mapping.
 
 The pool is the union of two sets:
 
@@ -49,8 +51,8 @@ for your own auto-connect logic: `useWalletState((state) => state.isUserDisconne
 
 ## When it is written
 
-Nothing is written until hydration has loaded what was there before, so a
-fresh manager can never overwrite the previous session with an empty one. After
+Nothing is written until the restore pass has finished, so a fresh manager can
+never overwrite the previous session with an empty or partial one. After
 that, every change to the pool, the dormant entries, the selection, the active
 id, or the disconnect intent triggers one `save` with the whole value. Saves
 are coalesced: while one is in flight, later changes collapse into a single
@@ -87,8 +89,10 @@ Without `config.storage`, the manager uses `createWalletStorage` over
 
 The default prefix is `butr`. A key whose value did not change is not
 rewritten, which keeps a cookie-backed store from re-sending every cookie on
-each save. Every key is decoded and validated the same way wherever it is read:
-a corrupt entry is dropped with a warning and overwritten by the next save.
+each save. One codec owns the key layout, the encoding and the decoding, and
+both `load` and the server reader go through it: a corrupt entry is dropped
+with a warning and overwritten by the next save. The active id decodes as
+stored; resolving one the pool does not hold is the manager's job.
 
 Build one yourself to change the prefix or the drivers:
 

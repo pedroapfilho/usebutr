@@ -48,6 +48,13 @@ const recordSchema = z.record(z.string(), z.unknown());
 
 const DEFAULT_KEY_PREFIX = "butr";
 
+const EMPTY_PERSISTED: PersistedWalletState = {
+  activeConnectorId: null,
+  isUserDisconnected: false,
+  pool: {},
+  selection: {},
+};
+
 const LABEL = "[butr]";
 
 const parseRecord = (raw: string | null | undefined, what: string) => {
@@ -145,14 +152,9 @@ const createWalletStateCodec = (keyPrefix?: string) => {
     decodeSnapshot,
     encode,
     /** Every key the state occupies, with the slot that holds it. */
-    layout: encode({
-      activeConnectorId: null,
-      isUserDisconnected: false,
-      pool: {},
-      selection: {},
-    }).map(({ key, slot }) => ({ key, slot })),
+    layout: encode(EMPTY_PERSISTED).map(({ key, slot }) => ({ key, slot })),
   };
 };
 
 export type { StorageSlot };
-export { createWalletStateCodec, toStoredPoolEntry };
+export { createWalletStateCodec, EMPTY_PERSISTED, toStoredPoolEntry };

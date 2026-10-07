@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { EMPTY_PERSISTED, evmAdapter, walletOf } from "../../__tests__/helpers";
+import { evmAdapter, walletOf } from "../../__tests__/helpers";
 import type { PersistedWalletState } from "../persistence";
-import { createWalletStateCodec, toStoredPoolEntry } from "../wallet-state-codec";
+import { createWalletStateCodec, EMPTY_PERSISTED, toStoredPoolEntry } from "../wallet-state-codec";
 
 const metamask = toStoredPoolEntry(walletOf(evmAdapter("metamask")));
 

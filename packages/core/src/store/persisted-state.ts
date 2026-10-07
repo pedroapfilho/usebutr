@@ -14,13 +14,6 @@ import { isChainPlatform } from "../types/platform";
 
 import { createShadowAdapter } from "./shadow-adapter";
 
-const EMPTY_PERSISTED: PersistedWalletState = {
-  activeConnectorId: null,
-  isUserDisconnected: false,
-  pool: {},
-  selection: {},
-};
-
 const storedEntries = (record: StoredPoolRecord): Array<[string, StoredPoolEntry]> =>
   Object.entries(record).flatMap(([connectorId, entry]) =>
     entry === undefined ? [] : [[connectorId, entry]],
@@ -100,7 +93,6 @@ const snapshotState = (
 
 export {
   applyStoredSelection,
-  EMPTY_PERSISTED,
   persistedStateChanged,
   snapshotState,
   storedEntries,

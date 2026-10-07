@@ -3,6 +3,7 @@ import { createStore } from "zustand/vanilla";
 
 import { logError, logWarn } from "../logger";
 import type { WalletSnapshot } from "../storage/persistence";
+import { EMPTY_PERSISTED } from "../storage/wallet-state-codec";
 import { createWalletStorage } from "../storage/wallet-storage";
 import type {
   Account,
@@ -16,7 +17,7 @@ import { ConnectionError, toConnectionError } from "../types/errors";
 import type { WalletState } from "../types/manager";
 
 import { createConnectorLifecycle } from "./connector-lifecycle";
-import { EMPTY_PERSISTED, persistedStateChanged, toPersistedState } from "./persisted-state";
+import { persistedStateChanged, toPersistedState } from "./persisted-state";
 import type { StoreState, WalletEvent } from "./reducer";
 import { initialState, reducer, seededState } from "./reducer";
 

@@ -4,14 +4,13 @@ import {
   createAsyncDriver,
   createGate,
   createSyncDriver,
-  EMPTY_PERSISTED,
   evmAdapter,
   flush,
   rejectionOf,
   walletOf,
 } from "../../__tests__/helpers";
 import type { PersistedWalletState, StorageDriver } from "../persistence";
-import { toStoredPoolEntry } from "../wallet-state-codec";
+import { EMPTY_PERSISTED, toStoredPoolEntry } from "../wallet-state-codec";
 import { createWalletStorage } from "../wallet-storage";
 
 const metamask = toStoredPoolEntry(walletOf(evmAdapter("metamask")));

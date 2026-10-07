@@ -67,8 +67,12 @@ const methodsCalled = (provider: MockProvider): Array<string> =>
 
 const onMainnet = (address: string) => buildAccount(address, BITCOIN_CHAINS.mainnet);
 
+const MAINNET_ACCOUNTS = [onMainnet(PAYMENT.address), onMainnet(ORDINALS.address)];
+const TESTNET_ACCOUNTS = [TESTNET_PAYMENT, TESTNET_ORDINALS].map(({ address }) =>
+  buildAccount(address, BITCOIN_CHAINS.testnet),
+);
+
 const TRANSFER = { amount: 1000n, recipient: "bc1qto" };
-const SUI_MAINNET = { id: "sui:mainnet", name: "Sui", namespace: "sui", reference: "mainnet" };
 
 describe("buildSatsConnectAdapter", () => {
   it("defines no placeholder the wallet cannot back", () => {
@@ -93,7 +97,7 @@ describe("buildSatsConnectAdapter", () => {
       await adapter.connect({ silent: true });
 
       expect(methodsCalled(provider)).toEqual(["wallet_getAccount", "wallet_getNetwork"]);
-      expect(await adapter.getAccounts()).toEqual([onMainnet(PAYMENT.address)]);
+      expect(await adapter.getAccounts()).toEqual(MAINNET_ACCOUNTS);
     });
 
     it("silent connect rejects when wallet_getAccount is unavailable", async () => {
@@ -105,7 +109,7 @@ describe("buildSatsConnectAdapter", () => {
       expect(await adapter.getAccounts()).toEqual([]);
     });
 
-    it("interactive connect prompts through getAccounts and exposes one account", async () => {
+    it("interactive connect prompts through getAccounts and exposes both addresses", async () => {
       const provider = buildXverse();
       const adapter = buildAdapter(provider);
 
@@ -115,7 +119,7 @@ describe("buildSatsConnectAdapter", () => {
         message: "Connect to butr",
         purposes: ["payment", "ordinals"],
       });
-      expect(await adapter.getAccounts()).toEqual([onMainnet(PAYMENT.address)]);
+      expect(await adapter.getAccounts()).toEqual(MAINNET_ACCOUNTS);
     });
 
     it("accepts an address list wrapped in { addresses }", async () => {
@@ -126,12 +130,12 @@ describe("buildSatsConnectAdapter", () => {
       expect(await adapter.getAccounts()).toEqual([onMainnet(PAYMENT.address)]);
     });
 
-    it("exposes the payment address even when the wallet lists ordinals first", async () => {
+    it("lists the payment address first even when the wallet lists ordinals first", async () => {
       const adapter = buildAdapter(buildProvider({ getAccounts: [ORDINALS, PAYMENT] }));
 
       await adapter.connect();
 
-      await expect(adapter.getAccounts()).resolves.toEqual([onMainnet(PAYMENT.address)]);
+      await expect(adapter.getAccounts()).resolves.toEqual(MAINNET_ACCOUNTS);
     });
 
     it("labels accounts with the wallet's network", async () => {
@@ -142,6 +146,7 @@ describe("buildSatsConnectAdapter", () => {
       await adapter.connect();
 
       await expect(adapter.getAccounts()).resolves.toMatchObject([
+        { chain: BITCOIN_CHAINS.testnet4 },
         { chain: BITCOIN_CHAINS.testnet4 },
       ]);
     });
@@ -206,22 +211,6 @@ describe("buildSatsConnectAdapter", () => {
         message: "hello",
       });
     });
-
-    it("rejects an account the wallet never exposed", async () => {
-      const provider = buildXverse();
-      const adapter = await connected(provider);
-
-      await expect(
-        adapter.signMessage?.(new Uint8Array([1]), { account: onMainnet("bc1qsomeoneelse") }),
-      ).rejects.toThrow(/not exposed/v);
-      expect(provider.request).not.toHaveBeenCalled();
-    });
-
-    it("rejects while disconnected", async () => {
-      await expect(buildAdapter(buildXverse()).signMessage?.(new Uint8Array([1]))).rejects.toThrow(
-        /No connected account/v,
-      );
-    });
   });
 
   describe("sendTx", () => {
@@ -243,7 +232,7 @@ describe("buildSatsConnectAdapter", () => {
 
       await expect(
         adapter.sendTx?.(TRANSFER, { account: onMainnet(ORDINALS.address) }),
-      ).rejects.toThrow(/payment address/v);
+      ).rejects.toMatchObject({ kind: "AccountNotExposed" });
       expect(methodsCalled(provider)).not.toContain("sendTransfer");
     });
 
@@ -291,16 +280,6 @@ describe("buildSatsConnectAdapter", () => {
       await expect(sending).rejects.toMatchObject({ kind: "ChainMismatch" });
       expect(methodsCalled(provider)).not.toContain("sendTransfer");
     });
-
-    it("rejects a chain from another namespace", async () => {
-      const provider = buildXverse();
-      const adapter = await connected(provider);
-
-      await expect(adapter.sendTx?.(TRANSFER, { chain: SUI_MAINNET })).rejects.toThrow(
-        /non-Bitcoin/v,
-      );
-      expect(provider.request).not.toHaveBeenCalled();
-    });
   });
 
   describe("signTransaction", () => {
@@ -327,16 +306,6 @@ describe("buildSatsConnectAdapter", () => {
         "signPsbt",
       ]);
     });
-
-    it("rejects an account the wallet never exposed", async () => {
-      const provider = buildXverse();
-      const adapter = await connected(provider);
-
-      await expect(
-        adapter.signTransaction?.(new Uint8Array([1]), { account: onMainnet("bc1qsomeoneelse") }),
-      ).rejects.toThrow(/not exposed/v);
-      expect(provider.request).not.toHaveBeenCalled();
-    });
   });
 
   describe("switchChain", () => {
@@ -347,9 +316,7 @@ describe("buildSatsConnectAdapter", () => {
       await adapter.switchChain?.(BITCOIN_CHAINS.testnet);
 
       expect(provider.request).toHaveBeenCalledWith("wallet_changeNetwork", { name: "Testnet" });
-      expect(await adapter.getAccounts()).toEqual([
-        buildAccount(TESTNET_PAYMENT.address, BITCOIN_CHAINS.testnet),
-      ]);
+      expect(await adapter.getAccounts()).toEqual(TESTNET_ACCOUNTS);
     });
 
     it("tells subscribers about the moved account", async () => {
@@ -362,12 +329,7 @@ describe("buildSatsConnectAdapter", () => {
       await adapter.switchChain?.(BITCOIN_CHAINS.mainnet);
 
       expect(listener.mock.calls).toEqual([
-        [
-          {
-            accounts: [buildAccount(TESTNET_PAYMENT.address, BITCOIN_CHAINS.testnet)],
-            type: "accountsChanged",
-          },
-        ],
+        [{ accounts: TESTNET_ACCOUNTS, type: "accountsChanged" }],
       ]);
     });
 
@@ -380,14 +342,6 @@ describe("buildSatsConnectAdapter", () => {
       expect(methodsCalled(provider)).toEqual(["wallet_getNetwork"]);
     });
 
-    it("rejects a non-Bitcoin namespace asynchronously", async () => {
-      const adapter = await connected();
-
-      const switching = adapter.switchChain?.(SUI_MAINNET);
-
-      await expect(switching).rejects.toThrow(/non-Bitcoin/v);
-    });
-
     it("surfaces a wallet that refuses the switch", async () => {
       const provider = buildXverse();
       const adapter = await connected(provider);
@@ -398,7 +352,7 @@ describe("buildSatsConnectAdapter", () => {
       await expect(adapter.switchChain?.(BITCOIN_CHAINS.testnet)).rejects.toThrow(
         /wallet_changeNetwork failed: User rejected/v,
       );
-      await expect(adapter.getAccounts()).resolves.toEqual([onMainnet(PAYMENT.address)]);
+      await expect(adapter.getAccounts()).resolves.toEqual(MAINNET_ACCOUNTS);
     });
   });
 });

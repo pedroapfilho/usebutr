@@ -12,12 +12,12 @@ import {
   base64ToBytes,
   buildAccount,
   bytesToHex,
+  createSwitchingChainTarget,
   hexToBytes,
   logWarn,
   resolveChain,
 } from "@usebutr/core";
 
-import { assertBitcoinChain, chainMismatch } from "./chain";
 import { GENERIC_BITCOIN_ICON } from "./icon";
 
 type UnisatNetwork = "livenet" | "mainnet" | "signet" | "testnet";
@@ -111,39 +111,33 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     return addresses.map((address) => buildAccount(address, chain));
   };
 
+  const target = createSwitchingChainTarget({
+    canSwitch: (to) => switchNetwork !== undefined && SWITCH_NETWORKS.has(to.id),
+    current: async () => {
+      chain = await readChain();
+      return chain.id;
+    },
+    namespace: "bip122",
+    switchTo: async (to) => {
+      const network = SWITCH_NETWORKS.get(to.id);
+      if (switchNetwork !== undefined && network !== undefined) {
+        await switchNetwork(network);
+        chain = resolveChain(to.id, BITCOIN_CHAINS_LIST);
+      }
+    },
+    wallet: name,
+  });
+
   // UniSat takes no sender: it always signs with its active account.
   const assertActive = async (account?: Account): Promise<void> => {
-    if (account === undefined) {
-      return;
-    }
-    const [active] = await provider.getAccounts();
-    if (account.walletAddress !== active) {
-      throw new Error(
-        `Wallet ${name} signs only with its active account, and ${account.walletAddress} is not it`,
-      );
-    }
-  };
-
-  const moveTo = async (target: ChainBase): Promise<void> => {
-    assertBitcoinChain(target);
-    chain = await readChain();
-    if (chain.id === target.id) {
-      return;
-    }
-    const network = SWITCH_NETWORKS.get(target.id);
-    if (switchNetwork === undefined || network === undefined) {
-      throw chainMismatch(name, chain, target);
-    }
-    await switchNetwork(network);
-    chain = resolveChain(target.id, BITCOIN_CHAINS_LIST);
+    const accounts = await provider.getAccounts();
+    target.account(accounts.slice(0, 1), account);
   };
 
   // A Bitcoin address encodes its network, so the wallet moves first and
   // the account is matched on the network it will sign on.
   const prepare = async (options?: TransactionOptions): Promise<void> => {
-    if (options?.chain !== undefined) {
-      await moveTo(options.chain);
-    }
+    await target.chain(options?.chain);
     await assertActive(options?.account);
   };
 
@@ -190,11 +184,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     ...(on !== undefined && {
       subscribe: (listener: (event: ConnectorEvent) => void) => {
         const emit = (accounts: ReadonlyArray<Account>) => {
-          listener(
-            accounts.length === 0
-              ? { type: "disconnected" }
-              : { accounts, type: "accountsChanged" },
-          );
+          listener({ accounts, type: "accountsChanged" });
         };
         const onAccountsChanged = (...args: ReadonlyArray<UnisatEventValue>) => {
           emit(toStringArray(args[0]).map((address) => buildAccount(address, chain)));
@@ -219,7 +209,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
       },
     }),
 
-    ...(switchNetwork !== undefined && { switchChain: moveTo }),
+    ...(switchNetwork !== undefined && { switchChain: target.chain }),
   };
 };
 

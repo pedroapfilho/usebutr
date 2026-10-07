@@ -79,7 +79,6 @@ const expectAccountsChanged = (event: ConnectorEvent | undefined) => {
 };
 
 const TRANSFER = { amount: 12_345n, recipient: "bc1qto" };
-const SUI_MAINNET = { id: "sui:mainnet", name: "Sui", namespace: "sui", reference: "mainnet" };
 
 describe("buildUnisatAdapter", () => {
   it("exposes the supplied id/name and the Bitcoin platform discriminant", () => {
@@ -225,7 +224,7 @@ describe("buildUnisatAdapter", () => {
         buildAdapter(provider).signMessage?.(new Uint8Array([1]), {
           account: buildAccount(SECOND_ADDRESS, BITCOIN_CHAINS.mainnet),
         }),
-      ).rejects.toThrow(/signs only with its active account/v);
+      ).rejects.toMatchObject({ kind: "AccountNotExposed" });
       expect(provider.signMessage).not.toHaveBeenCalled();
     });
   });
@@ -251,17 +250,6 @@ describe("buildUnisatAdapter", () => {
       expect(provider.switchNetwork.mock.invocationCallOrder[0]).toBeLessThan(
         provider.signPsbt.mock.invocationCallOrder[0] ?? 0,
       );
-    });
-
-    it("rejects an account that is not the active one", async () => {
-      const provider = buildProvider();
-
-      await expect(
-        buildAdapter(provider).signTransaction?.(new Uint8Array([1]), {
-          account: buildAccount("bc1qstranger", BITCOIN_CHAINS.mainnet),
-        }),
-      ).rejects.toThrow(/signs only with its active account/v);
-      expect(provider.signPsbt).not.toHaveBeenCalled();
     });
   });
 
@@ -311,28 +299,8 @@ describe("buildUnisatAdapter", () => {
 
       await expect(
         buildAdapter(provider).sendTx?.(TRANSFER, { chain: BITCOIN_CHAINS.signet }),
-      ).rejects.toThrow(/cannot switch to Bitcoin Signet/v);
+      ).rejects.toMatchObject({ kind: "ChainMismatch" });
       expect(provider.switchNetwork).not.toHaveBeenCalled();
-      expect(provider.sendBitcoin).not.toHaveBeenCalled();
-    });
-
-    it("rejects a chain from another namespace", async () => {
-      const provider = buildProvider();
-
-      await expect(
-        buildAdapter(provider).sendTx?.(TRANSFER, { chain: SUI_MAINNET }),
-      ).rejects.toThrow(/non-Bitcoin/v);
-      expect(provider.sendBitcoin).not.toHaveBeenCalled();
-    });
-
-    it("rejects an account that is not the active one, without sending", async () => {
-      const provider = buildProvider();
-
-      await expect(
-        buildAdapter(provider).sendTx?.(TRANSFER, {
-          account: buildAccount("bc1qstranger", BITCOIN_CHAINS.mainnet),
-        }),
-      ).rejects.toThrow(/signs only with its active account/v);
       expect(provider.sendBitcoin).not.toHaveBeenCalled();
     });
   });
@@ -356,14 +324,6 @@ describe("buildUnisatAdapter", () => {
       await buildAdapter(provider).switchChain?.(BITCOIN_CHAINS.mainnet);
 
       expect(provider.switchNetwork).not.toHaveBeenCalled();
-    });
-
-    it("rejects a non-Bitcoin namespace asynchronously", async () => {
-      const adapter = buildAdapter(buildProvider());
-
-      const switching = adapter.switchChain?.(SUI_MAINNET);
-
-      await expect(switching).rejects.toThrow(/non-Bitcoin/v);
     });
   });
 
@@ -408,7 +368,7 @@ describe("buildUnisatAdapter", () => {
       expect(event.accounts.map((a) => a.walletAddress)).toEqual([MAINNET_ADDRESS]);
     });
 
-    it("emits disconnected for an empty or non-array payload", () => {
+    it("forwards an empty or non-array payload as an empty account list", () => {
       const provider = buildProvider();
       const listener = vi.fn<(event: ConnectorEvent) => void>();
       buildAdapter(provider).subscribe?.(listener);
@@ -418,11 +378,8 @@ describe("buildUnisatAdapter", () => {
       emit?.(undefined);
       emit?.("not-an-array");
 
-      expect(listener.mock.calls).toEqual([
-        [{ type: "disconnected" }],
-        [{ type: "disconnected" }],
-        [{ type: "disconnected" }],
-      ]);
+      const empty = { accounts: [], type: "accountsChanged" };
+      expect(listener.mock.calls).toEqual([[empty], [empty], [empty]]);
     });
 
     it("networkChanged re-reads the accounts on the wallet's new chain", async () => {

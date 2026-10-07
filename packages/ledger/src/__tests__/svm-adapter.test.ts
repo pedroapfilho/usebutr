@@ -1,5 +1,7 @@
 import type { SvmAdapter } from "@usebutr/core";
 import { base64ToBytes, buildAccount, bytesToBase58, SVM_CHAINS } from "@usebutr/core";
+import type { ObservedCall } from "@usebutr/testing/contract";
+import { describeAdapterContract } from "@usebutr/testing/contract";
 import { describe, expect, it } from "vitest";
 
 import { createLedgerAdapter } from "../adapter";
@@ -29,6 +31,7 @@ const keyAt = (index: number): Uint8Array => new Uint8Array(32).fill(index + 1);
 
 type SolanaHooks = {
   onGetAddress?: (path: string) => void;
+  onSignOffchainMessage?: (path: string) => void;
   onSignTransaction?: (path: string, message: Uint8Array) => void;
 };
 
@@ -38,7 +41,8 @@ const buildFakeSolanaCtor = (hooks: SolanaHooks = {}): SolanaAppConstructor =>
       hooks.onGetAddress?.(path);
       return Promise.resolve({ address: keyAt(indexOfPath(path)) });
     }
-    signOffchainMessage(): Promise<{ signature: Uint8Array }> {
+    signOffchainMessage(path: string): Promise<{ signature: Uint8Array }> {
+      hooks.onSignOffchainMessage?.(path);
       return Promise.resolve({ signature: new Uint8Array(64).fill(0xab) });
     }
     signTransaction(path: string, message: Uint8Array): Promise<{ signature: Uint8Array }> {
@@ -168,21 +172,6 @@ describe("createSvmLedgerAdapter", () => {
     );
   });
 
-  it("signTransaction() rejects an account or chain the adapter does not cover", async () => {
-    const adapter = await connectedSvm();
-    const tx = base64ToBytes(LEGACY_UNSIGNED);
-
-    await expect(
-      adapter.signTransaction?.(tx, { account: buildAccount("outsider", SVM_CHAINS.mainnet) }),
-    ).rejects.toThrow(/does not expose/v);
-    await expect(adapter.signTransaction?.(tx, { chain: SVM_CHAINS.devnet })).rejects.toMatchObject(
-      { kind: "ChainMismatch" },
-    );
-    await expect(adapter.signTransaction?.(tx, { chain: SVM_CHAINS.mainnet })).resolves.toEqual(
-      base64ToBytes(LEGACY_SIGNED),
-    );
-  });
-
   it("getSigner() resolves the device app tagged ledger-svm", async () => {
     const adapter = await connectedSvm();
 
@@ -198,4 +187,33 @@ describe("createSvmLedgerAdapter", () => {
 
     expect(adapter.chainPlatform).toBe("svm");
   });
+});
+
+describeAdapterContract<SvmAdapter>({
+  addresses: [bytesToBase58(keyAt(0)), bytesToBase58(keyAt(1))],
+  chain: SVM_CHAINS.mainnet,
+  connect: async (addresses) => {
+    const calls: Array<ObservedCall> = [];
+    const record = (path: string) => {
+      const key = keyAt(indexOfPath(path));
+      calls.push({ address: bytesToBase58(key), chain: SVM_CHAINS.mainnet.id });
+    };
+    const adapter = await createSvmLedgerAdapter({
+      accountCount: addresses.length,
+      platform: "svm",
+      solana: buildFakeSolanaCtor({ onSignOffchainMessage: record, onSignTransaction: record }),
+      transport: buildFakeTransport().factory,
+    });
+    if (addresses.length > 0) {
+      await adapter.connect();
+    }
+    return { adapter, lastCall: () => calls.at(-1) };
+  },
+  move: "fixed",
+  name: "Ledger Solana",
+  transactions: {
+    signTransaction: (adapter, options) =>
+      adapter.signTransaction?.(base64ToBytes(LEGACY_UNSIGNED), options),
+  },
+  unreachable: SVM_CHAINS.devnet,
 });

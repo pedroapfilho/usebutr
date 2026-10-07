@@ -1,5 +1,7 @@
 import type { EvmAdapter } from "@usebutr/core";
 import { buildAccount, ConnectionError, EVM_CHAINS, SVM_CHAINS } from "@usebutr/core";
+import type { ObservedCall } from "@usebutr/testing/contract";
+import { describeAdapterContract } from "@usebutr/testing/contract";
 import { describe, expect, it } from "vitest";
 
 import { createLedgerAdapter } from "../adapter";
@@ -129,7 +131,7 @@ describe("createEvmLedgerAdapter", () => {
         eth: buildFakeEthCtor(),
         platform: "evm",
       }),
-    ).rejects.toThrow(/outside the "eip155" namespace/v);
+    ).rejects.toMatchObject({ kind: "ChainMismatch" });
   });
 
   it("rejects a silent connect instead of prompting", async () => {
@@ -253,7 +255,7 @@ describe("createEvmLedgerAdapter", () => {
     expect(signed).toEqual(["44'/60'/0'/0/2"]);
   });
 
-  it("signMessage() rejects an account the session does not expose", async () => {
+  it("signMessage() matches an address case-insensitively, as EIP-55 casing is a checksum", async () => {
     const signed: Array<string> = [];
     const adapter = await connectedEvm({
       accountCount: 2,
@@ -263,12 +265,11 @@ describe("createEvmLedgerAdapter", () => {
         },
       },
     });
-    const outsider = buildAccount(FAKE_ADDRESSES[2], EVM_CHAINS.ethereum);
+    const lowercase = buildAccount(FAKE_ADDRESSES[1].toLowerCase(), EVM_CHAINS.ethereum);
 
-    await expect(adapter.signMessage?.(hello, { account: outsider })).rejects.toThrow(
-      /does not expose/v,
-    );
-    expect(signed).toEqual([]);
+    await adapter.signMessage?.(hello, { account: lowercase });
+
+    expect(signed).toEqual(["44'/60'/0'/0/1"]);
   });
 
   it("getSigner() resolves the device app tagged ledger-evm", async () => {
@@ -316,4 +317,29 @@ describe("createLedgerAdapter", () => {
 
     expect(adapter.chainPlatform).toBe("evm");
   });
+});
+
+describeAdapterContract<EvmAdapter>({
+  addresses: [FAKE_ADDRESSES[0], FAKE_ADDRESSES[1]],
+  chain: EVM_CHAINS.ethereum,
+  connect: async (addresses) => {
+    const calls: Array<ObservedCall> = [];
+    const adapter = await createEvmLedgerAdapter({
+      accountCount: addresses.length,
+      eth: buildFakeEthCtor({
+        onSign: (path) => {
+          calls.push({ address: FAKE_ADDRESSES[indexOfPath(path)] });
+        },
+      }),
+      platform: "evm",
+      transport: buildFakeTransport().factory,
+    });
+    if (addresses.length > 0) {
+      await adapter.connect();
+    }
+    return { adapter, lastCall: () => calls.at(-1) };
+  },
+  move: "fixed",
+  name: "Ledger EVM",
+  unreachable: EVM_CHAINS.polygon,
 });

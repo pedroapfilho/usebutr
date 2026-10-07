@@ -2,12 +2,13 @@ import type {
   Account,
   AccountOptions,
   ChainBase,
-  ConnectorEvent,
   PolkadotAdapter,
   SignedMessage,
 } from "@usebutr/core";
 import {
   buildAccount,
+  createAccountTarget,
+  createConnectorEmitter,
   logWarn,
   POLKADOT_CHAINS,
   POLKADOT_CHAINS_LIST,
@@ -68,26 +69,16 @@ const buildInjectedPolkadotAdapter = (
   provider: InjectedWindowProvider,
 ): PolkadotAdapter => {
   let session: InjectedSession | null = null;
-  const listeners = new Set<(event: ConnectorEvent) => void>();
-
-  const emit = (event: ConnectorEvent): void => {
-    for (const listener of listeners) {
-      listener(event);
-    }
-  };
+  const emitter = createConnectorEmitter();
+  const target = createAccountTarget({ namespace: "polkadot", wallet: displayName });
 
   const closeSession = (): void => {
     session?.unsubscribe?.();
     session = null;
   };
 
-  const handleWalletAccounts = (accounts: ReadonlyArray<InjectedAccount>): void => {
-    if (accounts.length === 0) {
-      closeSession();
-      emit({ type: "disconnected" });
-      return;
-    }
-    emit({ accounts: accounts.map(toAccount), type: "accountsChanged" });
+  const forwardAccounts = (accounts: ReadonlyArray<InjectedAccount>): void => {
+    emitter.emit({ accounts: accounts.map(toAccount), type: "accountsChanged" });
   };
 
   const openSession = (injected: Injected): void => {
@@ -95,57 +86,21 @@ const buildInjectedPolkadotAdapter = (
     const opened: InjectedSession = { injected, unsubscribe: null };
     session = opened;
     try {
-      const unsubscribe = injected.accounts.subscribe?.(handleWalletAccounts);
-      if (unsubscribe === undefined) {
-        return;
-      }
-      // Wallets may fire the callback synchronously; an empty first payload
-      // closes the session before this assignment, so never revive it.
-      if (session === opened) {
-        opened.unsubscribe = unsubscribe;
-      } else {
-        unsubscribe();
-      }
+      opened.unsubscribe = injected.accounts.subscribe?.(forwardAccounts) ?? null;
     } catch (error) {
       logWarn(`[butr/polkadot] ${displayName} accounts.subscribe threw:`, error);
     }
-  };
-
-  const requireInjected = (): Injected => {
-    if (session === null) {
-      throw new Error(`Wallet ${displayName} is not connected`);
-    }
-    return session.injected;
-  };
-
-  const subscribe = (listener: (event: ConnectorEvent) => void) => {
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-    };
   };
 
   const signMessage = async (
     message: Uint8Array,
     options?: AccountOptions,
   ): Promise<SignedMessage> => {
-    const injected = requireInjected();
+    const { injected } = target.connected(session);
     if (injected.signer.signRaw === undefined) {
       throw new Error(`Wallet ${displayName} does not expose signRaw`);
     }
-    const exposed = await injected.accounts.get();
-    const requested = options?.account;
-    const match =
-      requested === undefined
-        ? exposed[0]
-        : exposed.find((a) => a.address === requested.walletAddress);
-    if (match === undefined) {
-      throw new Error(
-        requested === undefined
-          ? `Wallet ${displayName} has no connected account`
-          : `Wallet ${displayName} does not expose account ${requested.walletAddress}`,
-      );
-    }
+    const match = target.account(await injected.accounts.get(), options?.account);
     const wrapped = wrapBytes(message);
     const result = await injected.signer.signRaw({
       address: match.address,
@@ -184,7 +139,7 @@ const buildInjectedPolkadotAdapter = (
     },
 
     async getSigner() {
-      const extension = requireInjected();
+      const extension = target.connected(session).injected;
       await Promise.resolve();
       return { extension, extensionName, kind: "polkadot-injected" };
     },
@@ -201,7 +156,7 @@ const buildInjectedPolkadotAdapter = (
     },
 
     get subscribe() {
-      return (session?.unsubscribe ?? null) === null ? undefined : subscribe;
+      return (session?.unsubscribe ?? null) === null ? undefined : emitter.subscribe;
     },
   };
 };

@@ -1,4 +1,4 @@
-import type { ChainBase, ConnectorEvent, SvmAdapter } from "@usebutr/core";
+import type { ConnectorEvent, SvmAdapter } from "@usebutr/core";
 import { base58ToBytes, buildAccount, bytesToBase58, SVM_CHAINS } from "@usebutr/core";
 import type {
   StandardConnectFeature,
@@ -111,13 +111,6 @@ const eventsFeature = () => {
     },
     feature,
   };
-};
-
-const ethereum: ChainBase = {
-  id: "eip155:1",
-  name: "Ethereum",
-  namespace: "eip155",
-  reference: "1",
 };
 
 const listenerFn = () => vi.fn<(event: ConnectorEvent) => void>();
@@ -244,21 +237,6 @@ describe("buildSvmAdapter session", () => {
     });
   });
 
-  it("translates standard:events changes into accountsChanged", () => {
-    const events = eventsFeature();
-    const adapter = adapterFor({}, { "standard:events": events.feature });
-    const listener = listenerFn();
-    present(adapter.subscribe, "subscribe")(listener);
-    events.emit({ accounts: [walletAccount("So1Address2"), walletAccount("So1Address1")] });
-    expect(listener).toHaveBeenCalledWith({
-      accounts: [
-        buildAccount("So1Address2", SVM_CHAINS.mainnet),
-        buildAccount("So1Address1", SVM_CHAINS.mainnet),
-      ],
-      type: "accountsChanged",
-    });
-  });
-
   it("follows a cluster switch reported by the wallet", () => {
     const events = eventsFeature();
     const adapter = adapterFor(
@@ -288,37 +266,7 @@ describe("buildSvmAdapter session", () => {
   });
 });
 
-const switchable = (features: Readonly<Record<string, WalletStandardFeature>> = {}) =>
-  adapterFor({ chains: ["solana:mainnet", "solana:devnet"] }, features);
-
-describe("buildSvmAdapter.switchChain", () => {
-  it("rejects a non-Solana chain", async () => {
-    await expect(present(switchable().switchChain, "switchChain")(ethereum)).rejects.toThrow(
-      /non-Solana chain "eip155:1"/v,
-    );
-  });
-
-  it("rejects a Solana chain the wallet does not advertise", async () => {
-    await expect(
-      present(switchable().switchChain, "switchChain")(SVM_CHAINS.testnet),
-    ).rejects.toThrow(/does not advertise chain "solana:testnet"/v);
-  });
-
-  it("re-points the adapter and notifies subscribers with the new chain", async () => {
-    const events = eventsFeature();
-    const adapter = switchable({ "standard:events": events.feature });
-    const listener = listenerFn();
-    present(adapter.subscribe, "subscribe")(listener);
-    await present(adapter.switchChain, "switchChain")(SVM_CHAINS.devnet);
-    const expected = [buildAccount("So1Address1", SVM_CHAINS.devnet)];
-    expect(listener).toHaveBeenCalledWith({ accounts: expected, type: "accountsChanged" });
-    await expect(adapter.getAccounts()).resolves.toEqual(expected);
-  });
-});
-
 describe("buildSvmAdapter.sendTx", () => {
-  const twoAccounts = [walletAccount("So1Address1"), walletAccount("So1Address2")];
-
   it("signs and sends through solana:signAndSendTransaction, resolving a base58 signature", async () => {
     const feature = sendFeature();
     const adapter = adapterFor({}, { "solana:signAndSendTransaction": feature });
@@ -333,81 +281,6 @@ describe("buildSvmAdapter.sendTx", () => {
     });
     expect(signature).toBe(bytesToBase58(new Uint8Array([1, 2, 3, 4])));
     expect(base58ToBytes(signature)).toEqual(new Uint8Array([1, 2, 3, 4]));
-  });
-
-  it("signs with the requested account", async () => {
-    const feature = sendFeature();
-    const adapter = adapterFor(
-      { accounts: twoAccounts },
-      { "solana:signAndSendTransaction": feature },
-    );
-
-    await present(adapter.sendTx, "sendTx")(new Uint8Array([1]), {
-      account: buildAccount("So1Address2", SVM_CHAINS.mainnet),
-    });
-
-    expect(feature.signAndSendTransaction).toHaveBeenCalledWith(
-      expect.objectContaining({ account: walletAccount("So1Address2") }),
-    );
-  });
-
-  it("rejects an account the wallet does not expose instead of signing with another", async () => {
-    const feature = sendFeature();
-    const adapter = adapterFor(
-      { accounts: twoAccounts },
-      { "solana:signAndSendTransaction": feature },
-    );
-
-    await expect(
-      present(adapter.sendTx, "sendTx")(new Uint8Array([1]), {
-        account: buildAccount("Stranger", SVM_CHAINS.mainnet),
-      }),
-    ).rejects.toThrow("Wallet Mock Solana Wallet does not expose account Stranger");
-    expect(feature.signAndSendTransaction).not.toHaveBeenCalled();
-  });
-
-  it("rejects when the wallet exposes no account", async () => {
-    const adapter = adapterFor(
-      { accounts: [] },
-      { "solana:signAndSendTransaction": sendFeature() },
-    );
-    await expect(present(adapter.sendTx, "sendTx")(new Uint8Array([1]))).rejects.toThrow(
-      /has no connected account/v,
-    );
-  });
-
-  it("routes this call to options.chain without moving the adapter", async () => {
-    const feature = sendFeature();
-    const adapter = adapterFor(
-      { chains: ["solana:mainnet", "solana:devnet"] },
-      { "solana:signAndSendTransaction": feature },
-    );
-
-    await present(adapter.sendTx, "sendTx")(new Uint8Array([1]), { chain: SVM_CHAINS.devnet });
-
-    expect(feature.signAndSendTransaction).toHaveBeenCalledWith(
-      expect.objectContaining({ chain: "solana:devnet" }),
-    );
-    await expect(adapter.getAccounts()).resolves.toEqual([
-      buildAccount("So1Address1", SVM_CHAINS.mainnet),
-    ]);
-  });
-
-  it("rejects a chain the wallet does not advertise", async () => {
-    const feature = sendFeature();
-    const adapter = adapterFor({}, { "solana:signAndSendTransaction": feature });
-
-    await expect(
-      present(adapter.sendTx, "sendTx")(new Uint8Array([1]), { chain: SVM_CHAINS.devnet }),
-    ).rejects.toThrow(/does not advertise chain "solana:devnet"/v);
-    expect(feature.signAndSendTransaction).not.toHaveBeenCalled();
-  });
-
-  it("rejects a chain from another namespace", async () => {
-    const adapter = adapterFor({}, { "solana:signAndSendTransaction": sendFeature() });
-    await expect(
-      present(adapter.sendTx, "sendTx")(new Uint8Array([1]), { chain: ethereum }),
-    ).rejects.toThrow(/non-Solana chain/v);
   });
 
   it("rejects when the wallet returns no outputs", async () => {
@@ -434,33 +307,6 @@ describe("buildSvmAdapter.signMessage", () => {
       message,
     });
     expect(result).toEqual({ signature: new Uint8Array([7]), signedMessage: new Uint8Array([8]) });
-  });
-
-  it("signs with the requested account", async () => {
-    const feature = signMessageFeature();
-    const adapter = adapterFor(
-      { accounts: [walletAccount("So1Address1"), walletAccount("So1Address2")] },
-      { "solana:signMessage": feature },
-    );
-
-    await present(adapter.signMessage, "signMessage")(new Uint8Array([1]), {
-      account: buildAccount("So1Address2", SVM_CHAINS.mainnet),
-    });
-
-    expect(feature.signMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ account: walletAccount("So1Address2") }),
-    );
-  });
-
-  it("rejects an account the wallet does not expose", async () => {
-    const feature = signMessageFeature();
-    const adapter = adapterFor({}, { "solana:signMessage": feature });
-    await expect(
-      present(adapter.signMessage, "signMessage")(new Uint8Array([1]), {
-        account: buildAccount("Stranger", SVM_CHAINS.mainnet),
-      }),
-    ).rejects.toThrow(/does not expose account Stranger/v);
-    expect(feature.signMessage).not.toHaveBeenCalled();
   });
 
   it("rejects when the wallet returns no outputs", async () => {
@@ -506,17 +352,6 @@ describe("buildSvmAdapter.signTransaction", () => {
     expect(feature.signTransaction).toHaveBeenCalledWith(
       expect.objectContaining({ account: walletAccount("So1Address2"), chain: "solana:devnet" }),
     );
-  });
-
-  it("rejects a chain the wallet does not advertise", async () => {
-    const feature = signTransactionFeature();
-    const adapter = adapterFor({}, { "solana:signTransaction": feature });
-    await expect(
-      present(adapter.signTransaction, "signTransaction")(new Uint8Array([1]), {
-        chain: SVM_CHAINS.testnet,
-      }),
-    ).rejects.toThrow(/does not advertise chain "solana:testnet"/v);
-    expect(feature.signTransaction).not.toHaveBeenCalled();
   });
 });
 

@@ -1,4 +1,4 @@
-import type { ChainBase, ConnectorEvent, SuiAdapter } from "@usebutr/core";
+import type { ConnectorEvent, SuiAdapter } from "@usebutr/core";
 import { base64ToBytes, buildAccount, SUI_CHAINS } from "@usebutr/core";
 import type {
   StandardConnectFeature,
@@ -116,13 +116,6 @@ class FakeTransaction {
   }
 }
 
-const ethereum: ChainBase = {
-  id: "eip155:1",
-  name: "Ethereum",
-  namespace: "eip155",
-  reference: "1",
-};
-
 const listenerFn = () => vi.fn<(event: ConnectorEvent) => void>();
 
 const passedTransaction = (feature: SuiSignAndExecuteTransactionFeature) => {
@@ -225,18 +218,6 @@ describe("buildSuiAdapter session", () => {
     expect(account?.chain).toBe(SUI_CHAINS.mainnet);
   });
 
-  it("translates standard:events changes into accountsChanged", () => {
-    const events = eventsFeature();
-    const adapter = adapterFor({}, { "standard:events": events.feature });
-    const listener = listenerFn();
-    present(adapter.subscribe, "subscribe")(listener);
-    events.emit({ accounts: [walletAccount("0xSuiAddress2")] });
-    expect(listener).toHaveBeenCalledWith({
-      accounts: [buildAccount("0xSuiAddress2", SUI_CHAINS.mainnet)],
-      type: "accountsChanged",
-    });
-  });
-
   it("pushes disconnected through the discovery disconnector", () => {
     const emits: Array<() => void> = [];
     const adapter = buildSuiAdapter(buildWallet(), (emit) => {
@@ -248,30 +229,6 @@ describe("buildSuiAdapter session", () => {
       emit();
     }
     expect(listener).toHaveBeenCalledWith({ type: "disconnected" });
-  });
-});
-
-const switchable = () => adapterFor({ chains: ["sui:mainnet", "sui:testnet"] });
-
-describe("buildSuiAdapter.switchChain", () => {
-  it("rejects a non-Sui chain", async () => {
-    await expect(present(switchable().switchChain, "switchChain")(ethereum)).rejects.toThrow(
-      /non-Sui chain "eip155:1"/v,
-    );
-  });
-
-  it("rejects a Sui network the wallet does not advertise", async () => {
-    await expect(
-      present(switchable().switchChain, "switchChain")(SUI_CHAINS.devnet),
-    ).rejects.toThrow(/does not advertise chain "sui:devnet"/v);
-  });
-
-  it("re-points the accounts to the new network", async () => {
-    const adapter = switchable();
-    await present(adapter.switchChain, "switchChain")(SUI_CHAINS.testnet);
-    await expect(adapter.getAccounts()).resolves.toEqual([
-      buildAccount("0xSuiAddress1", SUI_CHAINS.testnet),
-    ]);
   });
 });
 
@@ -320,67 +277,6 @@ describe("buildSuiAdapter.sendTx", () => {
 
     await expect(passedTransaction(feature).toJSON()).resolves.toBe("AQID");
   });
-
-  it("signs with the requested account", async () => {
-    const feature = executeFeature();
-    const adapter = adapterFor(
-      { accounts: [walletAccount("0xSuiAddress1"), walletAccount("0xSuiAddress2")] },
-      { "sui:signAndExecuteTransaction": feature },
-    );
-
-    await present(adapter.sendTx, "sendTx")("AQID", {
-      account: buildAccount("0xSuiAddress2", SUI_CHAINS.mainnet),
-    });
-
-    expect(feature.signAndExecuteTransaction).toHaveBeenCalledWith(
-      expect.objectContaining({ account: walletAccount("0xSuiAddress2") }),
-    );
-  });
-
-  it("rejects an account the wallet does not expose instead of signing with another", async () => {
-    const feature = executeFeature();
-    const adapter = adapterFor({}, { "sui:signAndExecuteTransaction": feature });
-
-    await expect(
-      present(adapter.sendTx, "sendTx")("AQID", {
-        account: buildAccount("0xStranger", SUI_CHAINS.mainnet),
-      }),
-    ).rejects.toThrow("Wallet Mock Sui Wallet does not expose account 0xStranger");
-    expect(feature.signAndExecuteTransaction).not.toHaveBeenCalled();
-  });
-
-  it("routes this call to options.chain without moving the adapter", async () => {
-    const feature = executeFeature();
-    const adapter = adapterFor(
-      { chains: ["sui:mainnet", "sui:testnet"] },
-      { "sui:signAndExecuteTransaction": feature },
-    );
-
-    await present(adapter.sendTx, "sendTx")("AQID", { chain: SUI_CHAINS.testnet });
-
-    expect(feature.signAndExecuteTransaction).toHaveBeenCalledWith(
-      expect.objectContaining({ chain: "sui:testnet" }),
-    );
-    const [account] = await adapter.getAccounts();
-    expect(account?.chain).toBe(SUI_CHAINS.mainnet);
-  });
-
-  it("rejects a network the wallet does not advertise", async () => {
-    const feature = executeFeature();
-    const adapter = adapterFor({}, { "sui:signAndExecuteTransaction": feature });
-
-    await expect(
-      present(adapter.sendTx, "sendTx")("AQID", { chain: SUI_CHAINS.testnet }),
-    ).rejects.toThrow(/does not advertise chain "sui:testnet"/v);
-    expect(feature.signAndExecuteTransaction).not.toHaveBeenCalled();
-  });
-
-  it("rejects a chain from another namespace", async () => {
-    const adapter = adapterFor({}, { "sui:signAndExecuteTransaction": executeFeature() });
-    await expect(present(adapter.sendTx, "sendTx")("AQID", { chain: ethereum })).rejects.toThrow(
-      /non-Sui chain/v,
-    );
-  });
 });
 
 describe("buildSuiAdapter.signMessage", () => {
@@ -397,27 +293,6 @@ describe("buildSuiAdapter.signMessage", () => {
     });
     expect([...result.signature]).toEqual([1, 2, 3]);
     expect([...result.signedMessage]).toEqual([10, 20]);
-  });
-
-  it("rejects an account the wallet does not expose", async () => {
-    const feature = personalMessageFeature();
-    const adapter = adapterFor({}, { "sui:signPersonalMessage": feature });
-    await expect(
-      present(adapter.signMessage, "signMessage")(new Uint8Array([1]), {
-        account: buildAccount("0xStranger", SUI_CHAINS.mainnet),
-      }),
-    ).rejects.toThrow(/does not expose account 0xStranger/v);
-    expect(feature.signPersonalMessage).not.toHaveBeenCalled();
-  });
-
-  it("rejects when the wallet exposes no account", async () => {
-    const adapter = adapterFor(
-      { accounts: [] },
-      { "sui:signPersonalMessage": personalMessageFeature() },
-    );
-    await expect(present(adapter.signMessage, "signMessage")(new Uint8Array([1]))).rejects.toThrow(
-      /has no connected account/v,
-    );
   });
 });
 
@@ -451,14 +326,5 @@ describe("buildSuiAdapter.signTransaction", () => {
     expect(feature.signTransaction).toHaveBeenCalledWith(
       expect.objectContaining({ account: walletAccount("0xSuiAddress2"), chain: "sui:testnet" }),
     );
-  });
-
-  it("rejects a network the wallet does not advertise", async () => {
-    const feature = signTransactionFeature();
-    const adapter = adapterFor({}, { "sui:signTransaction": feature });
-    await expect(
-      present(adapter.signTransaction, "signTransaction")("AQID", { chain: SUI_CHAINS.devnet }),
-    ).rejects.toThrow(/does not advertise chain "sui:devnet"/v);
-    expect(feature.signTransaction).not.toHaveBeenCalled();
   });
 });

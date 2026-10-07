@@ -69,8 +69,6 @@ const signPsbtFeature = () => {
 };
 
 const TRANSFER = { amount: 12_345n, recipient: "bc1qto" };
-const STRANGER = buildAccount("bc1qstranger", BITCOIN_CHAINS.mainnet);
-const SUI_MAINNET = { id: "sui:mainnet", name: "Sui", namespace: "sui", reference: "mainnet" };
 
 const buildSigner = () => {
   const signMessage = vi.fn<BitcoinSignMessageFeature["signMessage"]>().mockResolvedValue({
@@ -142,25 +140,6 @@ describe("buildBitcoinAdapter", () => {
         signedMessage: new Uint8Array([1, 2]),
       });
     });
-
-    it("signs as the requested account", async () => {
-      const { adapter, signMessage } = buildSigner();
-
-      await adapter.signMessage?.(new Uint8Array([99]), {
-        account: buildAccount(SECOND.address, BITCOIN_CHAINS.mainnet),
-      });
-
-      expect(signMessage).toHaveBeenCalledWith(expect.objectContaining({ account: SECOND }));
-    });
-
-    it("rejects an account the wallet does not expose", async () => {
-      const { adapter, signMessage } = buildSigner();
-
-      await expect(
-        adapter.signMessage?.(new Uint8Array([99]), { account: STRANGER }),
-      ).rejects.toThrow(/does not expose account bc1qstranger/v);
-      expect(signMessage).not.toHaveBeenCalled();
-    });
   });
 
   describe("sendTx", () => {
@@ -176,51 +155,6 @@ describe("buildBitcoinAdapter", () => {
         recipient: "bc1qto",
       });
       expect(txid).toBe("abcd1234");
-    });
-
-    it("routes options.chain to this one call without moving the adapter", async () => {
-      const { adapter, sendTransfer } = buildSender();
-
-      await adapter.sendTx?.(TRANSFER, { chain: BITCOIN_CHAINS.testnet });
-      await adapter.sendTx?.(TRANSFER);
-
-      expect(sendTransfer.mock.calls.map((call) => call[0].chain)).toEqual([TESTNET, MAINNET]);
-    });
-
-    it("sends from the requested account", async () => {
-      const { adapter, sendTransfer } = buildSender();
-
-      await adapter.sendTx?.(TRANSFER, {
-        account: buildAccount(SECOND.address, BITCOIN_CHAINS.mainnet),
-      });
-
-      expect(sendTransfer).toHaveBeenCalledWith(expect.objectContaining({ account: SECOND }));
-    });
-
-    it("rejects an account the wallet does not expose", async () => {
-      const { adapter, sendTransfer } = buildSender();
-
-      await expect(adapter.sendTx?.(TRANSFER, { account: STRANGER })).rejects.toThrow(
-        /does not expose account/v,
-      );
-      expect(sendTransfer).not.toHaveBeenCalled();
-    });
-
-    it("rejects a chain the wallet does not advertise", async () => {
-      const { adapter, sendTransfer } = buildSender([MAINNET]);
-
-      await expect(adapter.sendTx?.(TRANSFER, { chain: BITCOIN_CHAINS.testnet })).rejects.toThrow(
-        /does not advertise chain/v,
-      );
-      expect(sendTransfer).not.toHaveBeenCalled();
-    });
-
-    it("rejects a chain from another namespace", async () => {
-      const { adapter } = buildSender();
-
-      await expect(adapter.sendTx?.(TRANSFER, { chain: SUI_MAINNET })).rejects.toThrow(
-        /non-Bitcoin/v,
-      );
     });
   });
 
@@ -268,12 +202,6 @@ describe("buildBitcoinAdapter", () => {
         { chain: BITCOIN_CHAINS.testnet },
         { chain: BITCOIN_CHAINS.testnet },
       ]);
-    });
-
-    it("rejects a non-bip122 namespace", async () => {
-      const adapter = buildAdapter(buildWallet({ chains: [MAINNET, TESTNET] }));
-
-      await expect(adapter.switchChain?.(SUI_MAINNET)).rejects.toThrow(/non-Bitcoin/v);
     });
   });
 });

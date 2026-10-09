@@ -149,7 +149,7 @@ const createWalletStandardCore = ({
   };
 
   const advertisedInNamespace = new Set(
-    wallet.chains.filter((c) => c.startsWith(prefix)).map(toRegistryId),
+    wallet.chains.flatMap((c) => (c.startsWith(prefix) ? [toRegistryId(c)] : [])),
   );
 
   const base: WalletStandardConnector = {

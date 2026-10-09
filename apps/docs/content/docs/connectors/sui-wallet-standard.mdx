@@ -48,7 +48,9 @@ Each method exists only when the wallet advertises the matching feature:
 | `subscribe`       | always, when discovered         | Account and chain changes, and the wallet unregistering.                                |
 
 A transaction is a `@mysten/sui` `Transaction` (anything with `toJSON()`), its
-JSON string, or BCS bytes. There is no `getBalance` or
+JSON string, BCS bytes, or their base64. The wallet receives one string
+through `toJSON()`, the same one WalletConnect sends; see
+[Sui inputs](/guides/transactions#sui-inputs). There is no `getBalance` or
 `getTransactionReceipt`: read state with your own `SuiClient`.
 
 ```ts

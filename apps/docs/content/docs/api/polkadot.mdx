@@ -75,9 +75,10 @@ injected adapter that is not connected, `getSigner()` rejects. Wallet Standard
 adapters resolve `{ kind: "wallet-standard", wallet }`. See the
 [PAPI integration](/integrations/polkadot).
 
-Injected message signing wraps the bytes in `<Bytes>…</Bytes>` before
-`signRaw`; verify against the returned `signedMessage`, which contains the
-wrapper.
+Both transports wrap the message in `<Bytes>…</Bytes>` and hand the wallet
+those bytes: injected through `signRaw`, Wallet Standard through
+`polkadot:signMessage`. `signedMessage` is the wrapped bytes, or what a
+Wallet Standard wallet reports it signed; verify against it.
 
 ## Types
 

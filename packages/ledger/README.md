@@ -42,7 +42,7 @@ A Ledger signs; your chain client owns RPC and broadcast. There is no `sendTx`, 
 
 - EVM: `signMessage` (EIP-191 `r || s || v`).
 - SVM: `signMessage` and `signTransaction`, which resolves the whole signed transaction (legacy or v0).
-- Sui: `signTransaction` on BCS transaction bytes.
+- Sui: `signTransaction` on BCS transaction bytes or their base64; a `Transaction` or its JSON rejects.
 - Bitcoin: `signMessage` (BIP-137 compact signature) and `signTransaction` on PSBT bytes.
 
 Pass `{ account }` to sign as another exposed account; an account the device did not expose rejects. For anything else, `getSigner()` hands back the device app:

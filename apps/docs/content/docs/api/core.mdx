@@ -330,8 +330,10 @@ app that imports neither `@usebutr/evm` nor `@usebutr/wallets` has no
 
 ## Chains and accounts
 
-- `ChainBase`: `{ id; name; namespace; reference }`, CAIP-2 shaped. `name` is
-  the chain's name, never the wallet's.
+- `ChainBase`: `{ aliases?; id; name; namespace; reference }`, CAIP-2 shaped.
+  `name` is the chain's name, never the wallet's. `aliases` lists other ids
+  wallets name the chain by: each `SVM_CHAINS` entry lists its genesis-hash
+  id first, and mainnet also `solana:mainnet-beta`.
 - `ChainPlatform`: `"evm" | "svm" | "sui" | "bitcoin" | "polkadot"`.
   `CHAIN_PLATFORMS` is the same list at runtime; `isChainPlatform(value)`
   narrows a string.
@@ -339,8 +341,10 @@ app that imports neither `@usebutr/evm` nor `@usebutr/wallets` has no
 - `Account`: `{ chain: ChainBase; id: string; walletAddress: string }`.
 - `buildAccount(address, chain): Account` builds the `<chain id>:<address>`
   id the manager compares accounts by. Hand-rolled adapters must use it.
-- `resolveChain(id, known?): ChainBase` looks a CAIP-2 id up in a registry,
-  and names a chain outside it by its id.
+- `resolveChain(id, known?): ChainBase` looks a CAIP-2 id or alias up in a
+  registry, and names a chain outside it by its id. Every transport builds
+  accounts through it, so one cluster yields one `ChainBase` and one
+  `Account.id` on all of them.
 
 ### Registries
 

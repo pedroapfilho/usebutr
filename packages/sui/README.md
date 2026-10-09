@@ -29,7 +29,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => (
 );
 ```
 
-Each adapter defines `sendTx` (`sui:signAndExecuteTransaction`, resolves the digest), `signMessage` (`sui:signPersonalMessage`) and `signTransaction` (resolves `{ bytes, signature }` for `executeTransactionBlock`) only when the wallet advertises the matching feature, and `switchChain` only when it advertises more than one Sui network. Transactions are a `@mysten/sui` `Transaction`, its JSON string, or BCS bytes. Wallet Standard carries the chain per call, so `options.chain` routes one transaction without moving the wallet. Balances and receipts need your own `SuiClient`. Check a method's presence before calling it:
+Each adapter defines `sendTx` (`sui:signAndExecuteTransaction`, resolves the digest), `signMessage` (`sui:signPersonalMessage`) and `signTransaction` (resolves `{ bytes, signature }` for `executeTransactionBlock`) only when the wallet advertises the matching feature, and `switchChain` only when it advertises more than one Sui network. Transactions are a `@mysten/sui` `Transaction`, its JSON string, BCS bytes, or their base64. Wallet Standard carries the chain per call, so `options.chain` routes one transaction without moving the wallet. Balances and receipts need your own `SuiClient`. Check a method's presence before calling it:
 
 ```ts
 import type { ConnectedWallet, SuiTransactionInput } from "@usebutr/core";
@@ -47,6 +47,12 @@ export const send = async (wallet: ConnectedWallet<"sui">, transaction: SuiTrans
 ```
 
 An `account` the wallet does not expose, or a chain it does not advertise, rejects. `getSigner()` resolves `{ kind: "wallet-standard", wallet }`: reach any other feature with `getFeature` from `@usebutr/wallet-standard-shared` and the feature types this package exports. Chain registries (`SUI_CHAINS`, `SUI_CHAINS_LIST`) come from `@usebutr/core`.
+
+`@usebutr/sui/transaction` exports `prepareSuiTransaction(tx)`, which reads
+any `SuiTransactionInput` into the string wallets read with `Transaction.from`
+and, when the input carried them, its BCS bytes, plus
+`serializeEd25519Signature(signature, publicKey)`. Wallet Standard,
+WalletConnect and Ledger share it; the entry point loads no discovery code.
 
 ## Documentation
 

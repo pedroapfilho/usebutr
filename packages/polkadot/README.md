@@ -48,8 +48,10 @@ if (signer.kind === "polkadot-injected") {
 Wallet Standard wallets resolve `{ kind: "wallet-standard", wallet }` instead.
 `signMessage` is defined when the wallet can sign bytes: on Wallet Standard
 when it advertises `polkadot:signMessage`, on injectedWeb3 once `connect()`
-has enabled an extension that exposes `signRaw`. Pass `{ account }` to sign
-as another exposed account; an account the wallet does not expose rejects.
+has enabled an extension that exposes `signRaw`. Both hand the wallet the
+message wrapped in `<Bytes>…</Bytes>` and resolve those bytes as
+`signedMessage`. Pass `{ account }` to sign as another exposed account; an
+account the wallet does not expose rejects.
 
 Chains come from `POLKADOT_CHAINS` in `@usebutr/core`. injectedWeb3
 extensions have no network to switch, so those adapters have no

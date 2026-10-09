@@ -13,7 +13,6 @@ batteries-included `@usebutr/wallets` package.
 `config` whose `sources` say where adapters come from. `autoDiscovery()` from
 `@usebutr/wallets` discovers EVM (EIP-6963), Solana / Sui / Bitcoin (Wallet
 Standard), and Polkadot (`injectedWeb3`) wallets in one source.
-`storageKeyPrefix` namespaces the storage keys.
 
 The provider reads `config` once, at mount, so define it at module scope:
 
@@ -25,7 +24,6 @@ import type { ReactNode } from "react";
 
 const config: WalletManagerConfig = {
   sources: [autoDiscovery()],
-  storageKeyPrefix: "butr-demo",
 };
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (

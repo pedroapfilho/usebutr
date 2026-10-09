@@ -40,9 +40,7 @@ import { autoDiscovery } from "@usebutr/wallets";
 const discovery = autoDiscovery();
 
 export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={discovery} storageKeyPrefix="my-app">
-    {children}
-  </WalletManagerProvider>
+  <WalletManagerProvider discovery={discovery}>{children}</WalletManagerProvider>
 );
 ```
 
@@ -176,9 +174,7 @@ import { autoDiscovery } from "@usebutr/wallets";
 const discovery = autoDiscovery();
 
 export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={discovery} storageKeyPrefix="butr-demo">
-    {children}
-  </WalletManagerProvider>
+  <WalletManagerProvider discovery={discovery}>{children}</WalletManagerProvider>
 );
 ```
 
@@ -200,9 +196,7 @@ import { WalletManagerProvider } from "@usebutr/react";
 const evmDiscovery = createWalletSource(discoverEvmAdapters);
 
 export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={evmDiscovery} storageKeyPrefix="my-app">
-    {children}
-  </WalletManagerProvider>
+  <WalletManagerProvider discovery={evmDiscovery}>{children}</WalletManagerProvider>
 );
 ```
 
@@ -222,9 +216,7 @@ import { discoverSvmAdapters } from "@usebutr/svm";
 const svmDiscovery = createWalletSource(discoverSvmAdapters);
 
 export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={svmDiscovery} storageKeyPrefix="my-svm-app">
-    {children}
-  </WalletManagerProvider>
+  <WalletManagerProvider discovery={svmDiscovery}>{children}</WalletManagerProvider>
 );
 ```
 
@@ -242,9 +234,7 @@ import { discoverSuiAdapters } from "@usebutr/sui";
 const suiDiscovery = createWalletSource(discoverSuiAdapters);
 
 export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={suiDiscovery} storageKeyPrefix="my-sui-app">
-    {children}
-  </WalletManagerProvider>
+  <WalletManagerProvider discovery={suiDiscovery}>{children}</WalletManagerProvider>
 );
 ```
 
@@ -255,33 +245,16 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
 
 ```tsx
 // apps/demo-with-bitcoin/src/wallet-provider.tsx
-import { discoverBitcoinAdapters, discoverInjectedBitcoinAdapter } from "@usebutr/bitcoin";
-import type { WalletSource } from "@usebutr/core";
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
 
-const bitcoinDiscovery: WalletSource = {
-  subscribe: (onAdapter) => {
-    const seen = new Set<string>();
-    const emit = (a) => {
-      if (seen.has(a.id)) return;
-      seen.add(a.id);
-      onAdapter(a);
-    };
-    const offStandard = discoverBitcoinAdapters(emit);
-    const offInjected = discoverInjectedBitcoinAdapter(emit, {
-      hasAnyWalletStandardAdapter: () => seen.size > 0,
-    });
-    return () => {
-      offStandard();
-      offInjected();
-    };
-  },
+const config: WalletManagerConfig = {
+  sources: [autoDiscovery(["bitcoin"])],
 };
 
 export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={bitcoinDiscovery} storageKeyPrefix="my-btc-app">
-    {children}
-  </WalletManagerProvider>
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 ```
 
@@ -445,7 +418,7 @@ const storage = new WalletStorage({
 });
 
 export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={autoDiscovery()} storage={storage} storageKeyPrefix="butr-demo">
+  <WalletManagerProvider discovery={autoDiscovery()} storage={storage}>
     {children}
   </WalletManagerProvider>
 );

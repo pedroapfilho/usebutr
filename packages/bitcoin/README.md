@@ -30,9 +30,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => (
 
 `discoverInjectedBitcoinAdapter` covers wallets that never announce through
 Wallet Standard (`window.unisat`, `window.okxwallet.bitcoin`, Xverse's
-sats-connect provider, `window.btc`). `bitcoinDiscoverer` pairs both channels
-so the injected one stays quiet once Wallet Standard found a Bitcoin wallet;
-`autoDiscovery(["bitcoin"])` from `@usebutr/wallets` wires it for you.
+sats-connect provider) and `discoverLegacyBitcoinAdapter` covers `window.btc`.
+`autoDiscovery(["bitcoin"])` from `@usebutr/wallets` pairs them with Wallet
+Standard and lists each wallet once.
 
 ## Transactions
 

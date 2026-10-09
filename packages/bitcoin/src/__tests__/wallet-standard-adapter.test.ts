@@ -279,14 +279,17 @@ describe("buildBitcoinAdapter", () => {
 });
 
 describe("discoverBitcoinAdapters", () => {
-  it("returns a teardown handle", () => {
+  it("announces only wallets that speak Bitcoin", async () => {
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
+    const wallets = [buildWallet(), buildWallet({ chains: ["solana:mainnet"], name: "Solflare" })];
+    const unsubscribe = discoverBitcoinAdapters(onAdapter, () =>
+      Promise.resolve({ getWallets: () => ({ get: () => wallets, on: () => () => {} }) }),
+    );
 
-    const unsubscribe = discoverBitcoinAdapters(onAdapter);
-
-    expect(typeof unsubscribe).toBe("function");
-    expect(() => {
-      unsubscribe();
-    }).not.toThrow();
+    await vi.waitFor(() => {
+      expect(onAdapter).toHaveBeenCalledOnce();
+    });
+    expect(onAdapter.mock.calls[0]?.[0].chainPlatform).toBe("bitcoin");
+    unsubscribe();
   });
 });

@@ -1,8 +1,35 @@
-import type { WalletPersistence } from "../storage/persistence";
+import type { StoredPoolEntry, WalletPersistence } from "../storage/persistence";
 import type { WalletSource } from "../wallet-source";
 
 import type { ConnectionError } from "./errors";
-import type { ConnectedWallet } from "./wallet";
+import type { ChainPlatform } from "./platform";
+import type { ConnectedWallet, WalletAdapter } from "./wallet";
+
+/** Status of the latest `connect` attempt, not of the connection itself;
+ *  `useConnectionStatus` derives the latter. */
+type ConnectStatus = "idle" | "connecting" | "success" | "error";
+
+type WalletState = {
+  activeConnectorId: string | null;
+  /** Every adapter the sources announced, in announcement order. */
+  adapters: ReadonlyArray<WalletAdapter>;
+  connectingConnectorId: string | null;
+  connectionError: ConnectionError | null;
+  connectionStatus: ConnectStatus;
+  /**
+   * Persisted connections that are not live: awaiting their adapter, failed
+   * their silent reconnect, or ended by the wallet rather than the user.
+   * They stay persisted so the next load retries them.
+   */
+  dormant: ReadonlyMap<string, StoredPoolEntry>;
+  isHydrated: boolean;
+  isUserDisconnected: boolean;
+  pool: ReadonlyMap<string, ConnectedWallet>;
+  /** Pool ids whose connector is still a shadow seeded from `initialState`. */
+  reconnectingIds: ReadonlySet<string>;
+  /** Which pool entry serves each platform present in the pool. */
+  selection: ReadonlyMap<ChainPlatform, string>;
+};
 
 /**
  * `pendingIds` are not failures: their adapters have not been announced yet,
@@ -45,9 +72,6 @@ type WalletManagerConfig = {
   sources?: ReadonlyArray<WalletSource>;
   /** Replaces the default localStorage + sessionStorage persistence. */
   storage?: WalletPersistence;
-  /** Key prefix for the default persistence. Ignored when `storage` is set;
-   *  pass the same value to `readWalletSnapshot`. */
-  storageKeyPrefix?: string;
 };
 
-export type { HydrationOutcome, WalletManagerConfig };
+export type { ConnectStatus, HydrationOutcome, WalletManagerConfig, WalletState };

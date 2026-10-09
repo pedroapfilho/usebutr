@@ -6,10 +6,10 @@ description: butr restores the previous session either asynchronously on mount, 
 butr has two hydration modes, and which one you get depends on whether you pass
 `initialState` to the provider:
 
-| Mode                   | How you opt in                                        | First render sees                              |
-| ---------------------- | ----------------------------------------------------- | ---------------------------------------------- |
-| Asynchronous (default) | nothing                                               | an empty pool, until the restore pass finishes |
-| Synchronous seeding    | `initialState` from [`readWalletSnapshot`](/api/core) | the persisted pool, on both server and client  |
+| Mode                   | How you opt in                                                         | First render sees                              |
+| ---------------------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
+| Asynchronous (default) | nothing                                                                | an empty pool, until the restore pass finishes |
+| Synchronous seeding    | `initialState` from [`readInitialState`](/api/core#cookie-persistence) | the persisted pool, on both server and client  |
 
 Everything below describes the asynchronous default. Jump to
 [synchronous seeding](#synchronous-seeding-ssr) for the other one.
@@ -21,6 +21,12 @@ state once and silently reconnects every stored wallet: Wallet Standard's
 `silent` connect, an `eth_accounts` read on EIP-1193. A wallet that would have
 to prompt fails the restore instead. Each silent reconnect gets 15 seconds, so a
 wallet that ignores `silent` and pops a dialog cannot hold the pass open.
+
+A failed silent reconnect closes the session it opened when it timed out or
+when the wallet connected but exposed no accounts. One the wallet declines is
+left alone: it opened nothing, and closing it would revoke the permission (EVM)
+or the shared session (WalletConnect) the next load needs. A user `connect`
+closes the session on every failure, unless the wallet was already connected.
 
 The catch: wallet adapters announce themselves _asynchronously_ (EIP-6963
 dispatches events; the Wallet Standard module is lazily imported). So a stored
@@ -94,31 +100,41 @@ shell you could have painted immediately.
 ## Synchronous seeding (SSR)
 
 Pass `initialState` and the manager starts with `isHydrated: true`, the pool
-populated, and every seeded wallet id in `reconnectingIds`. The primary hooks
-(`useWallet`, `useConnectedWallets`, `useAccounts`) return values from render
-zero on both server and client, so a server-rendered page can paint the user's
-address with no flash.
+populated, and every seeded wallet id in `reconnectingIds`. That set is derived
+from the pool: an id is in it exactly while its connector is a shadow adapter,
+and `isShadowAdapter(wallet.connector)` answers the same for one wallet. The
+primary hooks (`useWallet`, `useConnectedWallets`, `useAccounts`) return values
+from render zero on both server and client, so a server-rendered page can paint
+the user's address with no flash.
 
-Read the snapshot on the server with `readWalletSnapshot`, which parses butr's
-own cookies without needing an adapter (impossible on a server):
+Persist to cookies with `createCookieWalletStorage` and read the snapshot on
+the server with its `readInitialState`, which decodes the cookies with the same
+codec the client loads with, without needing an adapter (impossible on a
+server):
 
-```tsx
-// app/layout.tsx
-import { readWalletSnapshot } from "@usebutr/core";
+```ts title="wallet-storage.ts"
+import { createCookieWalletStorage } from "@usebutr/core";
+
+// A module without "use client", so the Server Component gets the object, not
+// a client reference. The client provider passes it as `config.storage`.
+export const walletStorage = createCookieWalletStorage({ keyPrefix: "my-app" });
+```
+
+```tsx title="app/layout.tsx"
 import { cookies } from "next/headers";
 
-// From a module without "use client": imported from a client module, the
-// constant would be a client reference, not the string.
-import { STORAGE_KEY_PREFIX } from "../wallet-keys";
+import { walletStorage } from "../wallet-storage";
 
 const RootLayout = async ({ children }: { children: ReactNode }) => {
-  const initialState = readWalletSnapshot((await cookies()).getAll(), {
-    keyPrefix: STORAGE_KEY_PREFIX,
-  });
+  const initialState = walletStorage.readInitialState((await cookies()).getAll());
 
   return <WalletProvider initialState={initialState}>{children}</WalletProvider>;
 };
 ```
+
+The snapshot's active id is the one the browser stored. If it names no pool
+entry, or one the pool does not hold, the manager falls back to the first
+entry, exactly as it does after a client-side load.
 
 The seeded entries are backed by placeholder adapters until the real wallet
 announces itself, so they carry data but cannot act. Three things follow:
@@ -139,7 +155,7 @@ keeps it persisted for the next load. If its adapter never announces (the
 extension was uninstalled), it stays reconnecting: there is no timeout for a
 wallet that has not appeared yet. `disconnect(id)` removes it.
 
-The full walkthrough, including the cookie storage driver, is in
+The full walkthrough, including the cookie options, is in
 [SSR without a flash](/guides/ssr-no-flash).
 
 ## Outside React

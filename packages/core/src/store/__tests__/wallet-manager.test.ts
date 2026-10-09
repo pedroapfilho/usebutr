@@ -231,6 +231,51 @@ describe("createWalletManager", () => {
       expect(onSlowConnect).toHaveBeenCalledExactlyOnceWith("slow");
     });
 
+    it("reports only the latest attempt, while an overtaken one still lands", async () => {
+      const landing = createGate();
+      const failing = Promise.withResolvers<undefined>();
+      const latest = createGate();
+      const { manager } = await startManager({
+        adapters: [
+          evmAdapter("metamask", { connect: () => landing.promise }),
+          evmAdapter("rabby", { connect: () => failing.promise }),
+          evmAdapter("coinbase", { connect: () => latest.promise }),
+        ],
+      });
+
+      const overtaken = manager.connect("metamask");
+      const failed = rejectionOf(manager.connect("rabby"));
+      const current = manager.connect("coinbase");
+      landing.open();
+      failing.reject(new Error("user rejected"));
+      await overtaken;
+      await failed;
+
+      expect(manager.getState().pool.has("metamask")).toBe(true);
+      expect(manager.getState()).toMatchObject({
+        connectingConnectorId: "coinbase",
+        connectionError: null,
+        connectionStatus: "connecting",
+      });
+      latest.open();
+      await current;
+      expect(manager.getState().connectionStatus).toBe("success");
+    });
+
+    it("keeps the platform's selection when a pooled wallet connects again", async () => {
+      const { manager } = await startManager({
+        adapters: [evmAdapter("metamask"), evmAdapter("rabby")],
+      });
+      await manager.connect("metamask");
+      await manager.connect("rabby");
+      manager.setSelection("evm", "metamask");
+
+      await manager.connect("rabby");
+
+      expect(manager.getState().selection.get("evm")).toBe("metamask");
+      expect(manager.getState().activeConnectorId).toBe("rabby");
+    });
+
     it("does not tear down a live wallet whose reconnect fails", async () => {
       const adapter = evmAdapter("metamask");
       const { manager } = await startManager({ adapters: [adapter] });
@@ -298,6 +343,8 @@ describe("createWalletManager", () => {
       expect(onDisconnect).toHaveBeenCalledExactlyOnceWith(wallet, { byUser: true });
       const state = manager.getState();
       expect([...state.pool.keys()]).toEqual(["rabby"]);
+      expect(state.activeConnectorId).toBe("rabby");
+      expect(state.selection.get("evm")).toBe("rabby");
       expect(state.dormant.has("metamask")).toBe(false);
       expect(state.isUserDisconnected).toBe(true);
       expect(adapter.listenerCount()).toBe(0);
@@ -404,6 +451,41 @@ describe("createWalletManager", () => {
       expect(requestAccounts).toHaveBeenCalledOnce();
       expect(manager.getState().pool.get("metamask")?.accounts).toEqual([first, second]);
       expect(manager.getState().pool.get("metamask")?.account).toBe(first);
+    });
+
+    it("requestAccounts falls back to the first account once the active one is gone", async () => {
+      let exposed: ReadonlyArray<Account> = [first];
+      const adapter = evmAdapter("metamask", {
+        getAccounts: () => Promise.resolve(exposed),
+        requestAccounts: () => {
+          exposed = [second];
+          return Promise.resolve();
+        },
+      });
+      const { manager } = await startManager({ adapters: [adapter] });
+      await manager.connect("metamask");
+
+      await manager.requestAccounts("metamask");
+
+      expect(manager.getState().pool.get("metamask")?.account).toBe(second);
+    });
+
+    it("requestAccounts rejects NotConnected when the wallet then exposes none", async () => {
+      let exposed: ReadonlyArray<Account> = [first];
+      const adapter = evmAdapter("metamask", {
+        getAccounts: () => Promise.resolve(exposed),
+        requestAccounts: () => {
+          exposed = [];
+          return Promise.resolve();
+        },
+      });
+      const { manager } = await startManager({ adapters: [adapter] });
+      const wallet = await manager.connect("metamask");
+
+      await expect(manager.requestAccounts("metamask")).rejects.toMatchObject({
+        kind: "NotConnected",
+      });
+      expect(manager.getState().pool.get("metamask")).toBe(wallet);
     });
 
     it("requestAccounts is a no-op for a wallet without it", async () => {

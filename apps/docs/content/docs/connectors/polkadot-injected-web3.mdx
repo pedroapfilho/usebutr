@@ -4,9 +4,10 @@ description: Discover Polkadot extensions without prompting, then bridge their s
 ---
 
 `@usebutr/polkadot` reads `window.injectedWeb3`. Inside `autoDiscovery()` it
-is the primary Polkadot channel; Wallet Standard `polkadot:*` discovery runs
-as a fallback only when the first injectedWeb3 scan found nothing, so a
-wallet on both channels lists once.
+is the primary Polkadot channel and Wallet Standard `polkadot:*` discovery is
+the fallback. A wallet on both channels lists once, including an extension
+that injects late, and a Wallet Standard wallet no extension matches still
+lists.
 
 ## Register it
 
@@ -17,7 +18,6 @@ import { WalletManagerProvider } from "@usebutr/react";
 
 const config: WalletManagerConfig = {
   sources: [discoverInjectedPolkadotAdapters],
-  storageKeyPrefix: "my-app",
 };
 
 export const Providers = ({ children }: { children: React.ReactNode }) => (
@@ -94,6 +94,6 @@ instead. The [PAPI integration](/integrations/polkadot) submits a complete
 Paseo transaction.
 
 <Callout type="info">
-  **Source:** `packages/polkadot/src` (`injected/`, `wallet-standard-adapter.ts`, `discoverer.ts`).
-  See the [API reference](/api/polkadot).
+  **Source:** `packages/polkadot/src` (`injected/`, `wallet-standard-adapter.ts`). See the [API
+  reference](/api/polkadot).
 </Callout>

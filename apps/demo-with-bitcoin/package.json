@@ -16,6 +16,7 @@
     "@usebutr/bitcoin": "workspace:*",
     "@usebutr/core": "workspace:*",
     "@usebutr/react": "workspace:*",
+    "@usebutr/wallets": "workspace:*",
     "@wallet-standard/app": "^1.1.1",
     "bitcoinjs-lib": "^7.0.2",
     "react": "^19.3.0",

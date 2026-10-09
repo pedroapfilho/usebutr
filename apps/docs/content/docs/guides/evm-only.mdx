@@ -33,7 +33,6 @@ import type { ReactNode } from "react";
 // EVM-only: no @usebutr/svm or @usebutr/wallets in the bundle.
 const config: WalletManagerConfig = {
   sources: [discoverEvmAdapters],
-  storageKeyPrefix: "butr-demo",
 };
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (
@@ -83,9 +82,9 @@ the standard where wallets announce themselves through window events instead of
 fighting over `window.ethereum`. Some regional or legacy wallets only expose a
 raw EIP-1193 `window.ethereum` and never announce; `discoverInjectedAdapter`
 (also from `@usebutr/evm`) is the last-resort fallback for those. Passed as a
-separate source, it adopts `window.ethereum` after a short settle window
-whether or not EIP-6963 found anything; `autoDiscovery(["evm"])` pairs the two
-so the fallback stays quiet once a standard wallet announced.
+separate source, it adopts `window.ethereum` whether or not EIP-6963 found
+anything, so a wallet on both lists twice; `autoDiscovery(["evm"])` pairs the
+two and lists `window.ethereum` only when no EIP-6963 wallet announced.
 
 Every EVM adapter defines `requestAccounts`, `switchChain`, `signMessage`,
 `sendTx`, `getBalance`, `getTransactionReceipt`, and `subscribe`, because

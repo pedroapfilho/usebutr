@@ -10,8 +10,9 @@ A connector is a `WalletAdapter`. Every one reaches the manager through
   for EIP-6963; `@usebutr/svm`, `@usebutr/sui` and `@usebutr/bitcoin` listen
   for the Wallet Standard; `@usebutr/bitcoin` also probes injected providers
   such as `window.unisat`; `@usebutr/polkadot` reads `window.injectedWeb3`.
-  `autoDiscovery()` from `@usebutr/wallets` composes all of them, and each
-  `discover*Adapters` export is a source on its own.
+  `autoDiscovery()` from `@usebutr/wallets` composes all of them and lists
+  each wallet once, and each `discover*Adapters` export is a source on its
+  own.
 - **Built**: WalletConnect and Ledger are not injected into the page. Their
   factories resolve adapters, and `fromAdapters` from `@usebutr/core` turns
   an adapter, a list of them, or a promise of either into a source.

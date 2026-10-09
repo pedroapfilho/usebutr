@@ -1,4 +1,4 @@
-import type { ConnectorEvent, PolkadotAdapter } from "@usebutr/core";
+import type { ConnectorEvent, PolkadotAdapter, WalletAdapter } from "@usebutr/core";
 import { buildAccount, POLKADOT_CHAINS } from "@usebutr/core";
 import type {
   StandardConnectFeature,
@@ -9,7 +9,10 @@ import type {
 } from "@usebutr/wallet-standard-shared";
 import { describe, expect, it, vi } from "vitest";
 
-import { buildPolkadotWalletStandardAdapter } from "../wallet-standard-adapter";
+import {
+  buildPolkadotWalletStandardAdapter,
+  discoverPolkadotWalletStandardAdapters,
+} from "../wallet-standard-adapter";
 import type { PolkadotSignMessageFeature } from "../wallet-standard-types";
 
 const ADDRESS = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
@@ -242,5 +245,21 @@ describe("buildPolkadotWalletStandardAdapter", () => {
       ).rejects.toThrow(/does not expose account/v);
       expect(signMessage).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("discoverPolkadotWalletStandardAdapters", () => {
+  it("announces only wallets that speak Polkadot", async () => {
+    const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
+    const wallets = [buildWallet(), buildWallet({ chains: ["solana:mainnet"], name: "Solflare" })];
+    const unsubscribe = discoverPolkadotWalletStandardAdapters(onAdapter, () =>
+      Promise.resolve({ getWallets: () => ({ get: () => wallets, on: () => () => {} }) }),
+    );
+
+    await vi.waitFor(() => {
+      expect(onAdapter).toHaveBeenCalledOnce();
+    });
+    expect(onAdapter.mock.calls[0]?.[0].id).toBe("wallet-standard:polkadot-mock-polkadot-wallet");
+    unsubscribe();
   });
 });

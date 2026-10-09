@@ -11,20 +11,7 @@ import { buildEvmAdapter } from "./eip6963-adapter";
 const GENERIC_INJECTED_ICON =
   "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjEgMTJWN0g1YTIgMiAwIDAgMSAwLTQgaDE0djQiLz48cGF0aCBkPSJNMyA1djE0YTIgMiAwIDAgMCAyIDJoMTZ2LTVNMjEgMTIgaC0zYTIgMiAwIDAgMC0yIDJ2MGEyIDIgMCAwIDAgMiAyaDN6Ii8+PC9zdmc+";
 
-const DEFAULT_SETTLE_MS = 150;
-
 type InjectedDiscoveryOptions = {
-  /**
-   * Consulted before emitting: an already-registered EIP-6963 adapter means
-   * the wallet is covered by the standards path and emitting would duplicate
-   * it. Omit to always emit.
-   */
-  hasAnyEip6963Adapter?: () => boolean;
-  /**
-   * Most wallets announce within the first frame; 150ms leaves room for slow
-   * announcements without stalling the picker.
-   */
-  settleMs?: number;
   /** Override the global `window` reference (tests, iframes). */
   target?: { ethereum?: Partial<Eip1193Provider> } | null;
 };
@@ -55,27 +42,16 @@ const readEthereum = (target: InjectedDiscoveryOptions["target"]): Eip1193Provid
 };
 
 /**
- * Last-resort path for the long tail of EVM wallets that expose only
- * `window.ethereum` and never announce via EIP-6963. The emitted adapter
- * carries `rdns: "injected:legacy"` so consumers can tell it apart.
+ * For EVM wallets that expose only `window.ethereum` and never announce via
+ * EIP-6963; the adapter id is `injected:legacy`. On its own it also lists a
+ * wallet that announced; `autoDiscovery` lists it only when none did.
  */
 const discoverInjectedAdapter = (
   onAdapter: (adapter: EvmAdapter) => void,
   options: InjectedDiscoveryOptions = {},
 ): (() => void) => {
-  const settleMs = options.settleMs ?? DEFAULT_SETTLE_MS;
-  let cancelled = false;
-  const timer = setTimeout(() => {
-    if (cancelled) {
-      return;
-    }
-    if (options.hasAnyEip6963Adapter?.() === true) {
-      return;
-    }
-    const provider = readEthereum(options.target);
-    if (provider === null) {
-      return;
-    }
+  const provider = readEthereum(options.target);
+  if (provider !== null) {
     const info: Eip6963ProviderInfo = {
       icon: GENERIC_INJECTED_ICON,
       name: "Browser wallet",
@@ -83,12 +59,8 @@ const discoverInjectedAdapter = (
       uuid: "injected:legacy",
     };
     onAdapter(buildEvmAdapter(info, provider));
-  }, settleMs);
-
-  return () => {
-    cancelled = true;
-    clearTimeout(timer);
-  };
+  }
+  return () => {};
 };
 
 export type { InjectedDiscoveryOptions };

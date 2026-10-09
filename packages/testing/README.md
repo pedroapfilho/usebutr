@@ -80,8 +80,8 @@ plus the accounts it exposes. Takes the adapter options plus `addresses` and
 ### `createFakePersistence(seed?)`
 
 A `WalletPersistence` over the real `createWalletStorage` with in-memory
-drivers. `seed` is what the first `load()` finds; `saves` lists every state
-the manager saved.
+drivers. The seed (`wallets`, the `active` one, `isUserDisconnected`) is what
+the first `load()` finds; `saves` lists every state the manager saved.
 
 ## Documentation
 

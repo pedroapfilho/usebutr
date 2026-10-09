@@ -20,6 +20,8 @@ class ShadowConnectorError extends Error {
   }
 }
 
+const shadows = new WeakSet<WalletAdapter>();
+
 /**
  * Stands in for a connection seeded from `initialState` so its identity
  * renders before discovery runs. It exposes no optional methods; the manager
@@ -28,7 +30,7 @@ class ShadowConnectorError extends Error {
 const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
   const reject = (method: string) => () =>
     Promise.reject(new ShadowConnectorError(method, entry.connectorId));
-  return {
+  const shadow: WalletAdapter = {
     chainPlatform: entry.chainPlatform,
     connect: reject("connect"),
     getAccounts: reject("getAccounts"),
@@ -37,6 +39,11 @@ const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
     id: entry.connectorId,
     name: entry.name,
   };
+  shadows.add(shadow);
+  return shadow;
 };
 
-export { createShadowAdapter, ShadowConnectorError };
+/** Whether `adapter` is a shadow still awaiting its silent reconnect. */
+const isShadowAdapter = (adapter: WalletAdapter): boolean => shadows.has(adapter);
+
+export { createShadowAdapter, isShadowAdapter, ShadowConnectorError };

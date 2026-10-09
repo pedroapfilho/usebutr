@@ -2,6 +2,7 @@ import { vi } from "vitest";
 
 import { EVM_CHAINS, SVM_CHAINS } from "../chains";
 import type { PersistedWalletState, StorageDriver } from "../storage/persistence";
+import { EMPTY_PERSISTED } from "../storage/wallet-state-codec";
 import type {
   Account,
   ConnectedWallet,
@@ -141,13 +142,6 @@ const createManualSource = () => {
   };
 };
 
-const EMPTY_PERSISTED: PersistedWalletState = {
-  activeConnectorId: null,
-  isUserDisconnected: false,
-  pool: {},
-  selection: {},
-};
-
 /** A plain in-memory `WalletPersistence` that records every save. */
 const createMemoryPersistence = (seed: Partial<PersistedWalletState> = {}) => {
   let current: PersistedWalletState = { ...EMPTY_PERSISTED, ...seed };
@@ -231,7 +225,6 @@ export {
   createManualSource,
   createMemoryPersistence,
   createSyncDriver,
-  EMPTY_PERSISTED,
   ETHEREUM,
   evmAdapter,
   flush,

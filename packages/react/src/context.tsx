@@ -11,8 +11,8 @@ type WalletManagerProviderProps = {
   config?: WalletManagerConfig;
   /**
    * Seeds the manager synchronously so hooks return values from render zero on
-   * server and client; typically `readWalletSnapshot(cookies, { keyPrefix })`
-   * from a Server Component. Omit it to hydrate on mount instead.
+   * server and client; typically `storage.readInitialState(cookies)` from a
+   * Server Component. Omit it to hydrate on mount instead.
    */
   initialState?: WalletSnapshot;
 };

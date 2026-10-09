@@ -166,13 +166,13 @@ describe("bitcoinNamespace", () => {
     expect(prefixed && bytesToHex(prefixed.signature)).toBe("cafebabe");
   });
 
-  it("signMessage sends non-utf-8 bytes base64-encoded", async () => {
-    const message = new Uint8Array([0xff, 0xfe]);
+  it("signMessage rejects non-utf-8 bytes, which the wallet would sign as other bytes", async () => {
     const provider = connectedProvider({ signature: "dead" });
 
-    await buildAdapter(provider).signMessage?.(message);
-
-    expect(provider.requests[0]?.args.params).toMatchObject({ message: bytesToBase64(message) });
+    await expect(
+      buildAdapter(provider).signMessage?.(new Uint8Array([0xff, 0xfe])),
+    ).rejects.toThrow(/WalletConnect \(BITCOIN\) signs text, and this message is not valid UTF-8/v);
+    expect(provider.requests).toHaveLength(0);
   });
 
   it("signs as the requested account, naming it as both account and address", async () => {

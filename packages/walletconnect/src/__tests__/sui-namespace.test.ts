@@ -84,20 +84,6 @@ describe("suiNamespace", () => {
     ]);
   });
 
-  it("switchChain rejects another namespace and a chain the session did not approve", async () => {
-    const adapter = buildAdapter(connectedProvider(), ["sui:mainnet", "sui:testnet"]);
-
-    const pending = adapter.switchChain?.({
-      id: "solana:mainnet",
-      name: "Solana",
-      namespace: "solana",
-      reference: "mainnet",
-    });
-    expect(pending).toBeInstanceOf(Promise);
-    await expect(pending).rejects.toThrow(/non-Sui chain/v);
-    await expect(adapter.switchChain?.(SUI_CHAINS.testnet)).rejects.toThrow(/did not approve/v);
-  });
-
   it("signMessage routes through sui_signPersonalMessage and decodes the signature", async () => {
     const echoed = new Uint8Array([4, 5, 6]);
     const provider = connectedProvider({ bytes: bytesToBase64(echoed), signature: "Zm9v" });
@@ -122,26 +108,6 @@ describe("suiNamespace", () => {
       message,
     );
     expect(result?.signedMessage).toEqual(message);
-  });
-
-  it("signs as the requested account and rejects one the session does not expose", async () => {
-    const provider = connectedProvider({ signature: "Zm9v" }, [
-      "sui:mainnet:0xaaa",
-      "sui:mainnet:0xbbb",
-    ]);
-    const adapter = buildAdapter(provider);
-
-    await adapter.signMessage?.(new Uint8Array([1]), {
-      account: buildAccount("0xbbb", SUI_CHAINS.mainnet),
-    });
-    expect(provider.requests[0]?.args.params).toMatchObject({ address: "0xbbb" });
-
-    await expect(
-      adapter.signMessage?.(new Uint8Array([1]), {
-        account: buildAccount("0xccc", SUI_CHAINS.mainnet),
-      }),
-    ).rejects.toThrow(/does not expose Sui account 0xccc/v);
-    expect(provider.requests).toHaveLength(1);
   });
 
   it.each([

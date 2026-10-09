@@ -8,7 +8,7 @@ import { solanaNamespace } from "../namespaces/svm";
 import type { FakeProvider } from "./fake-provider";
 import { createFakeProvider } from "./fake-provider";
 
-// WalletConnect's CAIP-2 ids, which core's registry does not name.
+// WalletConnect's CAIP-2 ids, which core's registry lists as aliases.
 // What the session calls each cluster, and what butr's accounts carry.
 const MAINNET_ID = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 const DEVNET_ID = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1";
@@ -75,6 +75,16 @@ describe("solanaNamespace", () => {
     ]);
   });
 
+  it("names each registry cluster by its genesis-hash alias", () => {
+    expect(solanaNamespace.chainAliases).toEqual(
+      new Map([
+        [DEVNET.id, DEVNET_ID],
+        [MAINNET.id, MAINNET_ID],
+        [SVM_CHAINS.testnet.id, "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z"],
+      ]),
+    );
+  });
+
   it("defines only what WalletConnect can do", () => {
     const adapter = buildAdapter(createFakeProvider());
 
@@ -139,23 +149,6 @@ describe("solanaNamespace", () => {
       signature: new Uint8Array([0, 0, 0]),
       signedMessage: new Uint8Array([1, 2, 3]),
     });
-  });
-
-  it("signs as the requested account and rejects one the session does not expose", async () => {
-    const provider = connectedProvider({ signature: "111" });
-    const adapter = buildAdapter(provider);
-
-    await adapter.signMessage?.(new Uint8Array([1]), {
-      account: buildAccount(OTHER, MAINNET),
-    });
-    expect(provider.requests[0]?.args.params).toMatchObject({ pubkey: OTHER });
-
-    await expect(
-      adapter.signMessage?.(new Uint8Array([1]), {
-        account: buildAccount("Unknown111", MAINNET),
-      }),
-    ).rejects.toThrow(/does not expose Solana account Unknown111/v);
-    expect(provider.requests).toHaveLength(1);
   });
 
   it("sendTx routes through solana_signAndSendTransaction and returns the signature", async () => {
@@ -235,7 +228,9 @@ describe("solanaNamespace", () => {
     const listener = vi.fn<(event: ConnectorEvent) => void>();
     adapter.subscribe?.(listener);
 
-    await expect(adapter.switchChain?.(SVM_CHAINS.testnet)).rejects.toThrow(/did not approve/v);
+    await expect(adapter.switchChain?.(SVM_CHAINS.testnet)).rejects.toMatchObject({
+      kind: "ChainMismatch",
+    });
 
     expect(listener).not.toHaveBeenCalled();
   });

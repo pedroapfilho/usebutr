@@ -27,7 +27,15 @@ const message = new TextEncoder().encode("hello");
 
 const members = (adapter: FakeAdapter<ChainPlatform>) => Object.keys(adapter).toSorted();
 
-const REQUIRED = ["chainPlatform", "connect", "disconnect", "emit", "getAccounts", "getSigner"];
+const REQUIRED = [
+  "chainPlatform",
+  "connect",
+  "disconnect",
+  "emit",
+  "getAccounts",
+  "getSigner",
+  "requests",
+];
 const IDENTITY = ["icon", "id", "listenerCount", "name"];
 
 describe("createFakeAdapter", () => {
@@ -156,7 +164,7 @@ describe("createFakeAdapter", () => {
       const adapter = createFakeAdapter({ accounts: [first] });
       const attempt = adapter.signMessage?.(message, { account: second });
       expect(attempt).toBeInstanceOf(Promise);
-      return expect(attempt).rejects.toThrow(`does not expose ${second.walletAddress}`);
+      return expect(attempt).rejects.toMatchObject({ kind: "AccountNotExposed" });
     });
   });
 
@@ -180,17 +188,18 @@ describe("createFakeAdapter", () => {
       expect(account?.chain).toBe(SVM_CHAINS.mainnet);
     });
 
-    it("rejects a chain from another namespace", async () => {
-      await expect(createFakeAdapter().switchChain?.(SUI_CHAINS.mainnet)).rejects.toThrow(
-        "not a eip155 chain",
+    it("rejects a chain from another namespace with ChainMismatch", async () => {
+      const mismatch = { kind: "ChainMismatch" };
+      await expect(createFakeAdapter().switchChain?.(SUI_CHAINS.mainnet)).rejects.toMatchObject(
+        mismatch,
       );
-      await expect(createFakeAdapter().sendTx?.({}, { chain: SVM_CHAINS.mainnet })).rejects.toThrow(
-        "not a eip155 chain",
-      );
+      await expect(
+        createFakeAdapter().sendTx?.({}, { chain: SVM_CHAINS.mainnet }),
+      ).rejects.toMatchObject(mismatch);
       const sui = createFakeAdapter({ chainPlatform: "sui" });
-      await expect(sui.signTransaction?.("{}", { chain: EVM_CHAINS.ethereum })).rejects.toThrow(
-        "not a sui chain",
-      );
+      await expect(
+        sui.signTransaction?.("{}", { chain: EVM_CHAINS.ethereum }),
+      ).rejects.toMatchObject(mismatch);
     });
   });
 

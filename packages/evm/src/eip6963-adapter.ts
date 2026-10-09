@@ -2,6 +2,7 @@ import type { Account, ChainBase, EvmAdapter, EvmTransactionValue } from "@usebu
 import {
   buildAccount,
   bytesToHexPrefixed,
+  createSwitchingChainTarget,
   EVM_CHAINS_LIST,
   hexToBytes,
   resolveChain,
@@ -74,9 +75,24 @@ const readAccounts = async (
   return addresses.map((address) => buildAccount(address, chain));
 };
 
-/** EIP-1474 / JSON-RPC codes wallets use for an unimplemented method.
- *  Coinbase wraps its own -32604 inside a -32603 `data.originalError`. */
+/** EIP-1474 / JSON-RPC codes wallets use for an unimplemented method. */
 const METHOD_NOT_SUPPORTED_CODES = new Set<unknown>([4200, -32_601, -32_603, -32_604]);
+
+/** EIP-3326: the wallet does not know the chain `wallet_switchEthereumChain` names. */
+const UNRECOGNIZED_CHAIN_CODE = 4902;
+
+/** The error's own code and the one Coinbase wraps in `data.originalError`. */
+const errorCodes = (cause: unknown): Array<unknown> => {
+  const outer = typeof cause === "object" && cause !== null ? cause : {};
+  const data = "data" in outer ? outer.data : undefined;
+  const inner =
+    typeof data === "object" && data !== null && "originalError" in data
+      ? data.originalError
+      : undefined;
+  return [outer, inner].flatMap((value) =>
+    typeof value === "object" && value !== null && "code" in value ? [value.code] : [],
+  );
+};
 
 /**
  * `disconnect` calls `wallet_revokePermissions`, which many wallets don't
@@ -84,39 +100,27 @@ const METHOD_NOT_SUPPORTED_CODES = new Set<unknown>([4200, -32_601, -32_603, -32
  * `getBalance()` labels the native balance `"ETH"` on every EVM chain.
  */
 const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): EvmAdapter => {
-  /** The address to act as, in the wallet's own casing. Hex addresses are
-   *  case-insensitive (EIP-55 casing is only a checksum), so they compare
-   *  lowercased. */
-  const resolveAddress = async (account?: Account): Promise<string> => {
-    const exposed = await requestStringArray(provider, { method: "eth_accounts" });
-    if (account === undefined) {
-      const active = exposed.at(0);
-      if (active === undefined) {
-        throw new Error(`Wallet ${info.name} has no connected account`);
-      }
-      return active;
-    }
-    const wanted = account.walletAddress.toLowerCase();
-    const match = exposed.find((address) => address.toLowerCase() === wanted);
-    if (match === undefined) {
-      throw new Error(`Wallet ${info.name} does not expose account ${account.walletAddress}`);
-    }
-    return match;
-  };
+  const target = createSwitchingChainTarget({
+    canSwitch: (chain) => /^\d+$/v.test(chain.reference),
+    current: async () => {
+      const chainIdHex = await requestString(provider, { method: "eth_chainId" });
+      return chainIdHex === null
+        ? undefined
+        : `${EVM_NAMESPACE}:${chainIdHexToDecimal(chainIdHex)}`;
+    },
+    namespace: EVM_NAMESPACE,
+    switchTo: async (chain) => {
+      await provider.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: chainIdDecimalToHex(chain.reference) }],
+      });
+    },
+    unknownChain: (error) => errorCodes(error).includes(UNRECOGNIZED_CHAIN_CODE),
+    wallet: info.name,
+  });
 
-  const switchChain = async (chain: ChainBase): Promise<void> => {
-    if (chain.namespace !== EVM_NAMESPACE || !/^\d+$/v.test(chain.reference)) {
-      throw new Error(
-        `EVM adapter received non-EVM chain "${chain.id}". Pass a chain with namespace "${EVM_NAMESPACE}" and a numeric reference.`,
-      );
-    }
-    const target = chainIdDecimalToHex(chain.reference);
-    const current = await requestString(provider, { method: "eth_chainId" });
-    if (current?.toLowerCase() === target) {
-      return;
-    }
-    await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: target }] });
-  };
+  const resolveAddress = async (account?: Account): Promise<string> =>
+    target.account(await requestStringArray(provider, { method: "eth_accounts" }), account);
 
   return {
     chainPlatform: "evm",
@@ -175,19 +179,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
           params: [{ eth_accounts: {} }],
         });
       } catch (error) {
-        const outer = typeof error === "object" && error !== null ? error : {};
-        const data = "data" in outer ? outer.data : undefined;
-        const inner =
-          typeof data === "object" && data !== null && "originalError" in data
-            ? data.originalError
-            : undefined;
-        const unsupported =
-          ("code" in outer && METHOD_NOT_SUPPORTED_CODES.has(outer.code)) ||
-          (typeof inner === "object" &&
-            inner !== null &&
-            "code" in inner &&
-            METHOD_NOT_SUPPORTED_CODES.has(inner.code));
-        if (!unsupported) {
+        if (!errorCodes(error).some((code) => METHOD_NOT_SUPPORTED_CODES.has(code))) {
           throw error;
         }
         await provider.request({ method: "eth_requestAccounts" });
@@ -199,9 +191,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     // resolved account, replacing any `from` inside `tx`.
     async sendTx(tx, options) {
       const from = await resolveAddress(options?.account);
-      if (options?.chain !== undefined) {
-        await switchChain(options.chain);
-      }
+      await target.chain(options?.chain);
       const hash = await requestString(provider, {
         method: "eth_sendTransaction",
         params: [encodeValue({ ...tx, from })],
@@ -239,7 +229,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       const onAccountsChanged: Eip1193Listener = (...args) => {
         const addresses = toStringArray(args[0]);
         if (addresses.length === 0) {
-          listener({ type: "disconnected" });
+          listener({ accounts: [], type: "accountsChanged" });
           return;
         }
         void synchronize({ addresses });
@@ -274,7 +264,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       };
     },
 
-    switchChain,
+    switchChain: target.chain,
   };
 };
 

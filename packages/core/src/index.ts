@@ -64,6 +64,17 @@ export {
   SVM_CHAINS_LIST,
 } from "./chains";
 
+export type { AccountTarget, ChainTarget } from "./chain-target";
+export {
+  createAccountTarget,
+  createFixedChainTarget,
+  createRoutedChainTarget,
+  createSwitchingChainTarget,
+} from "./chain-target";
+
+export type { ConnectorEmitter } from "./connector-emitter";
+export { createConnectorEmitter } from "./connector-emitter";
+
 export type { WalletSource } from "./wallet-source";
 export { fromAdapters } from "./wallet-source";
 

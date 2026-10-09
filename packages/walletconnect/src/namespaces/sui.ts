@@ -1,5 +1,6 @@
-import type { SuiAdapter, SuiTransactionInput } from "@usebutr/core";
+import type { SuiAdapter } from "@usebutr/core";
 import { SUI_CHAINS_LIST, base64ToBytes, bytesToBase64 } from "@usebutr/core";
+import { prepareSuiTransaction } from "@usebutr/sui/transaction";
 
 import { createCaipAdapterCore } from "./caip";
 import type { WalletConnectNamespaceBuilder } from "./types";
@@ -17,20 +18,6 @@ const DEFAULT_METHODS: ReadonlyArray<string> = [
 ];
 
 const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged", "disconnect"];
-
-/** The WC `transaction` param is one string: base64 BCS bytes, or a
- *  `Transaction`'s JSON, both of which the wallet's `Transaction.from`
- *  reads. */
-const serializeTransaction = async (tx: SuiTransactionInput): Promise<string> => {
-  if (typeof tx === "string") {
-    return tx;
-  }
-  if (tx instanceof Uint8Array) {
-    return bytesToBase64(tx);
-  }
-  const json = await tx.toJSON();
-  return json;
-};
 
 /**
  * Wallets drift on the Sui WC response keys (`transactionBytes` vs
@@ -55,10 +42,10 @@ const suiNamespace: WalletConnectNamespaceBuilder<SuiAdapter> = {
 
       async sendTx(tx, options) {
         const { address, chainId } = resolveTarget(options);
-        const transaction = await serializeTransaction(tx);
+        const { serialized } = await prepareSuiTransaction(tx);
         const result = await request(
           "sui_signAndExecuteTransaction",
-          { address, transaction },
+          { address, transaction: serialized },
           chainId,
         );
         return readResultString(result, "digest", "sui_signAndExecuteTransaction");
@@ -81,8 +68,12 @@ const suiNamespace: WalletConnectNamespaceBuilder<SuiAdapter> = {
 
       async signTransaction(tx, options) {
         const { address, chainId } = resolveTarget(options);
-        const transaction = await serializeTransaction(tx);
-        const result = await request("sui_signTransaction", { address, transaction }, chainId);
+        const { bytes, serialized } = await prepareSuiTransaction(tx);
+        const result = await request(
+          "sui_signTransaction",
+          { address, transaction: serialized },
+          chainId,
+        );
         const signature = readResultString(result, "signature", "sui_signTransaction");
         const echoed =
           readStringField(result, "transactionBytes") ??
@@ -91,9 +82,9 @@ const suiNamespace: WalletConnectNamespaceBuilder<SuiAdapter> = {
           return { bytes: base64ToBytes(echoed), signature: base64ToBytes(signature) };
         }
         // Some wallets echo no bytes. The signature covers the bytes we
-        // submitted, which are only known here when they were bytes.
-        if (tx instanceof Uint8Array) {
-          return { bytes: tx, signature: base64ToBytes(signature) };
+        // submitted, which are only known here when the input carried them.
+        if (bytes !== undefined) {
+          return { bytes, signature: base64ToBytes(signature) };
         }
         throw new Error("sui_signTransaction returned no transaction bytes");
       },

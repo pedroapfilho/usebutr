@@ -188,11 +188,12 @@ type TransactionReceipt = { status: "Error" | "Pending" | "Success" };
 type Balance = { decimals: number; formatted: string; symbol: string; value: bigint };
 ```
 
-An `account` the wallet does not expose rejects; omit it to use the active
-account. A `chain` targets one transaction: Wallet Standard and WalletConnect
-route it per call, an EVM wallet switches its network first, and a transport
-that can do neither rejects when it is not the current chain. `SignInInput`
-and `SignInValue` type the Sign In With Solana fields.
+An `account` the wallet does not expose rejects with `AccountNotExposed`;
+omit it to use the active account. A `chain` targets one transaction: Wallet
+Standard and WalletConnect route it per call, an EVM wallet switches its
+network first, and a transport that can do neither rejects with
+`ChainMismatch` when it is not the current chain. `SignInInput` and
+`SignInValue` type the Sign In With Solana fields.
 
 ### `ConnectedWallet<P>`
 
@@ -225,8 +226,80 @@ type ConnectorEvent =
   { accounts: ReadonlyArray<Account>; type: "accountsChanged" } | { type: "disconnected" };
 ```
 
-`accounts` is every account the wallet still exposes, active first. A chain
-switch arrives as a changed `account.chain`.
+`accounts` is every account the wallet still exposes, active first, as the
+wallet reported it. A chain switch arrives as a changed `account.chain`, and an
+empty list means disconnected. `disconnected` is for signals that end the
+session itself, such as a Wallet Standard unregister or a deleted WalletConnect
+session.
+
+### Chain targets
+
+Every built-in adapter resolves the chain and the account of a call through a
+chain target, so the same rules raise the same `ConnectionError` kinds
+everywhere. Pick the factory that matches how the transport reaches another
+chain:
+
+| Factory                      | Transports                                      | A call naming another chain                             |
+| ---------------------------- | ----------------------------------------------- | ------------------------------------------------------- |
+| `createRoutedChainTarget`    | Wallet Standard, WalletConnect SVM, Sui, BTC    | Routed for that call when `advertised()` lists it.      |
+| `createSwitchingChainTarget` | Injected EVM, WalletConnect EVM, UniSat, Xverse | Moves the wallet with `switchTo` when `canSwitch` lets. |
+| `createFixedChainTarget`     | Ledger                                          | Rejected.                                               |
+| `createAccountTarget`        | Polkadot injectedWeb3                           | Not applicable: no call takes a chain.                  |
+
+Every factory takes `{ namespace, wallet }`: the CAIP-2 namespace and the
+wallet's name for messages. The routed one adds `advertised()` and `current()`,
+both CAIP-2 ids. The switching one adds `canSwitch(chain)`, `current()`
+resolving the wallet's network, `switchTo(chain)` and an optional
+`unknownChain(error)` that marks a `switchTo` rejection as an unknown chain
+(EIP-3326 `4902`). The fixed one adds the `chain` it signs for.
+
+Each target has these members, and each throws a `ConnectionError` of a kind
+below when its rule fails:
+
+- `account(exposed, requested?)` returns the exposed entry to act as, an
+  address or a record with an `address`: `requested` when the wallet exposes
+  it, else the first. `eip155` addresses compare case-insensitively, since
+  EIP-55 casing is only a checksum; every other namespace compares exactly.
+- `connected(session)` returns the transport's session, or throws when it has
+  none.
+- `chain(requested?)`, except on `createAccountTarget`: the CAIP-2 id the call
+  goes to, or, for a switching target, a promise that settles once the
+  wallet is on `requested`.
+
+| Kind                | Raised for                                                                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ChainMismatch`     | A chain from another namespace, one the wallet does not advertise or the session did not approve, one `canSwitch` refuses or `unknownChain` marks, or a fixed target's other chains. |
+| `AccountNotExposed` | A `requested` account the wallet does not expose.                                                                                                                                    |
+| `NotConnected`      | An empty `exposed` list, or no session.                                                                                                                                              |
+
+A user declining a switch rejects with the wallet's own error; pass it through
+`toConnectionError`.
+
+```ts
+import type { TransactionOptions } from "@usebutr/core";
+import { createRoutedChainTarget } from "@usebutr/core";
+
+const target = createRoutedChainTarget({
+  advertised: () => wallet.chains,
+  current: () => currentChainId,
+  namespace: "solana",
+  wallet: wallet.name,
+});
+
+const sendTx = async (tx: Uint8Array, options?: TransactionOptions) => {
+  const chain = target.chain(options?.chain);
+  const account = target.account(wallet.accounts, options?.account);
+  return send(tx, account, chain);
+};
+```
+
+### `createConnectorEmitter(): ConnectorEmitter`
+
+`{ emit(event), listenerCount(), subscribe(listener) }`, the listener set
+behind an adapter's `subscribe`. `subscribe` has the shape of
+`Connector.subscribe`, so an adapter can hand it out as is. Emit the wallet's
+account list as `accountsChanged`, an empty one included, and `disconnected`
+only for a signal that ends the session.
 
 ## Signers
 
@@ -262,8 +335,10 @@ app that imports neither `@usebutr/evm` nor `@usebutr/wallets` has no
 
 ## Chains and accounts
 
-- `ChainBase`: `{ id; name; namespace; reference }`, CAIP-2 shaped. `name` is
-  the chain's name, never the wallet's.
+- `ChainBase`: `{ aliases?; id; name; namespace; reference }`, CAIP-2 shaped.
+  `name` is the chain's name, never the wallet's. `aliases` lists other ids
+  wallets name the chain by: each `SVM_CHAINS` entry lists its genesis-hash
+  id first, and mainnet also `solana:mainnet-beta`.
 - `ChainPlatform`: `"evm" | "svm" | "sui" | "bitcoin" | "polkadot"`.
   `CHAIN_PLATFORMS` is the same list at runtime; `isChainPlatform(value)`
   narrows a string.
@@ -271,8 +346,10 @@ app that imports neither `@usebutr/evm` nor `@usebutr/wallets` has no
 - `Account`: `{ chain: ChainBase; id: string; walletAddress: string }`.
 - `buildAccount(address, chain): Account` builds the `<chain id>:<address>`
   id the manager compares accounts by. Hand-rolled adapters must use it.
-- `resolveChain(id, known?): ChainBase` looks a CAIP-2 id up in a registry,
-  and names a chain outside it by its id.
+- `resolveChain(id, known?): ChainBase` looks a CAIP-2 id or alias up in a
+  registry, and names a chain outside it by its id. Every transport builds
+  accounts through it, so one cluster yields one `ChainBase` and one
+  `Account.id` on all of them.
 
 ### Registries
 
@@ -294,8 +371,8 @@ imports none of these bundles none of them.
 
 `kind: ConnectionErrorKind`, `message`, and a standard `cause` holding the
 original value. `ConnectionErrorKind` is `"UserRejected" | "RequestPending" |
-"WalletLocked" | "ChainMismatch" | "NotConnected" | "Timeout" |
-"WalletNotFound" | "Unknown"`. See [errors](/concepts/errors).
+"WalletLocked" | "ChainMismatch" | "AccountNotExposed" | "NotConnected" |
+"Timeout" | "WalletNotFound" | "Unknown"`. See [errors](/concepts/errors).
 
 ### `toConnectionError(raw: unknown): ConnectionError`
 

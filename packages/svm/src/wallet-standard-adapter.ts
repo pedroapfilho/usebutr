@@ -1,5 +1,5 @@
 import type { SvmAdapter, WalletAdapter } from "@usebutr/core";
-import { buildAccount, bytesToBase58, SVM_CHAINS_LIST } from "@usebutr/core";
+import { buildAccount, bytesToBase58, SVM_CHAINS, SVM_CHAINS_LIST } from "@usebutr/core";
 import {
   createWalletStandardCore,
   discoverWalletStandard,
@@ -44,7 +44,7 @@ const buildSvmAdapter = (
     id: slugify("svm", wallet.name),
     label: "Solana",
     namespace: "solana",
-    preferredChainIds: ["solana:mainnet", "solana:mainnet-beta"],
+    preferredChainIds: [SVM_CHAINS.mainnet.id],
     registerDisconnector,
     trackChainChanges: true,
     wallet,

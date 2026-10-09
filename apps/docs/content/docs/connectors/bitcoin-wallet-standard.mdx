@@ -59,6 +59,10 @@ twice.
 - `signTransaction` takes PSBT bytes (`psbt.toBuffer()`) and resolves the
   signed PSBT, for you to finalise and broadcast through your own Esplora or
   Electrum client.
+- `signMessage` resolves the input bytes as `signedMessage`. Wallet Standard
+  wallets sign the bytes as they are. Unisat, OKX, `window.btc` and Xverse
+  take text, so bytes that are not valid UTF-8 reject before the wallet is
+  asked; see [message signing](/api/bitcoin#message-signing).
 - There is no `getBalance` or `getTransactionReceipt`: butr ships no Bitcoin
   RPC.
 

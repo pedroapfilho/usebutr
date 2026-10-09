@@ -4,6 +4,7 @@
  * messages. `cause` keeps the original value.
  */
 type ConnectionErrorKind =
+  | "AccountNotExposed"
   | "ChainMismatch"
   | "NotConnected"
   | "RequestPending"

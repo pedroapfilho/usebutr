@@ -49,10 +49,31 @@ the wallet advertises its feature:
 | `signMessage`     | `bitcoin:signMessage`  | `{ signature, signedMessage }`. |
 | `signTransaction` | `bitcoin:signPsbt`     | The signed PSBT bytes.          |
 
-`sendTx` takes a `BitcoinTransfer` (`{ amount, recipient }`, satoshis);
+`signMessage` hands the wallet the message bytes as they are. `sendTx` takes a
+`BitcoinTransfer` (`{ amount, recipient }`, satoshis);
 `signTransaction` takes PSBT bytes. The
 [Bitcoin connector](/connectors/bitcoin-wallet-standard) covers the injected
 adapters, which switch or refuse a network instead of routing it per call.
+
+## Message signing
+
+### `bitcoinMessageText(message, wallet): string`
+
+Import from `@usebutr/bitcoin/message`. Text-only wallets sign the UTF-8
+encoding of a string, so this decodes the message bytes strictly, keeping a
+byte-order mark, and throws for bytes that are not valid UTF-8 rather than
+let the wallet sign other bytes. `wallet` names the wallet in the error.
+
+| Transport                 | Wallet receives      | Non-UTF-8 bytes |
+| ------------------------- | -------------------- | --------------- |
+| Wallet Standard           | the bytes            | signed          |
+| Ledger                    | the bytes, as hex    | signed          |
+| Unisat, OKX, `window.btc` | `bitcoinMessageText` | rejected        |
+| Xverse (sats-connect)     | `bitcoinMessageText` | rejected        |
+| WalletConnect             | `bitcoinMessageText` | rejected        |
+
+Every transport resolves `signedMessage` as the input bytes, which is what
+the signature covers.
 
 ## Signers
 
@@ -77,4 +98,4 @@ Importing the package registers the injected kinds:
 The Bitcoin chain registry (`BITCOIN_CHAINS`, `BITCOIN_CHAINS_LIST`) lives in
 `@usebutr/core`.
 
-**Source:** `packages/bitcoin/src/index.ts`.
+**Source:** `packages/bitcoin/src/index.ts`, `packages/bitcoin/src/message.ts`.

@@ -48,8 +48,8 @@ ship, so no Polkadot adapter has `sendTx`, `signTransaction`, `getBalance` or
 | `disconnect`  | ✓                                                               | With `standard:disconnect`                  |
 
 Check `signMessage` on the connected wallet, not on the discovered adapter:
-before `connect()` it is not there yet. Injected signing wraps the bytes in
-`<Bytes>…</Bytes>` before `signRaw`; verify against the returned
+before `connect()` it is not there yet. Both transports wrap the bytes in
+`<Bytes>…</Bytes>` before the wallet signs them; verify against the returned
 `signedMessage`, which contains the wrapper. `{ account }` must be an account
 the extension exposes. An empty account notification ends the session and
 disconnects the wallet.

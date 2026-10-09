@@ -63,7 +63,8 @@ the table the factory dispatches through. Polkadot has no namespace yet.
 `caipPrefix`, `chainPlatform`, `defaultChains`, `defaultEvents`,
 `defaultMethods`, and `chainAliases?`: butr chain ids mapped to the ids
 sessions use where they differ. `solanaNamespace` maps `SVM_CHAINS` ids to
-genesis-hash ids, so callers pass `SVM_CHAINS` as on any other transport. `buildAdapter` takes `{ chains, icon, id, name, provider, session? }`;
+the genesis-hash id each entry lists first in `aliases`, so callers pass
+`SVM_CHAINS` as on any other transport. `buildAdapter` takes `{ chains, icon, id, name, provider, session? }`;
 without a shared `session` the adapter pairs for its own namespace only.
 
 | Builder            | `caipPrefix` | `defaultChains`                           | `defaultMethods`                                                                                                                                   |

@@ -10,6 +10,7 @@ regexing message strings.
 
 ```ts
 type ConnectionErrorKind =
+  | "AccountNotExposed"
   | "ChainMismatch"
   | "NotConnected"
   | "RequestPending"
@@ -38,6 +39,10 @@ you can still inspect the wallet's raw error. It is a real `Error`, so
 - `onConnectError(error, connectorId)` receives it for every failed attempt.
 - `onHydrated` reports each failed silent reconnect with a `ConnectionError`
   as its `reason`.
+- Adapter methods you call yourself (`signMessage`, `sendTx`,
+  `signTransaction`, `switchChain`, `getBalance`) reject with it when the call
+  names a chain the transport cannot reach or an account the wallet does not
+  expose, before the wallet is asked anything.
 
 ```tsx
 import { useConnect } from "@usebutr/react";
@@ -60,22 +65,25 @@ const ConnectError = () => {
 
 ## What each kind means
 
-| Kind             | Raised when                                                                                                                                        |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `UserRejected`   | EIP-1193 code `4001`, or a message containing "user rejected" / "user denied"                                                                      |
-| `RequestPending` | EIP-1193 code `-32002`: the wallet already has a prompt open                                                                                       |
-| `WalletLocked`   | a message containing "locked"                                                                                                                      |
-| `ChainMismatch`  | a message about a chain "mismatch" or "unsupported" chain; also thrown by Ledger and injected Bitcoin adapters asked for a chain they cannot reach |
-| `NotConnected`   | EIP-1193 codes `4100` / `4900` / `4901`, a "not connected" message, or a wallet that connected but exposed no accounts                             |
-| `Timeout`        | a connect that did not settle within 90 seconds, or a silent reconnect within 15                                                                   |
-| `WalletNotFound` | `connect(id)` for an id no source announced                                                                                                        |
-| `Unknown`        | anything else                                                                                                                                      |
+| Kind                | Raised when                                                                                                                                                                                                                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UserRejected`      | EIP-1193 code `4001`, or a message containing "user rejected" / "user denied"                                                                                                                                                                                                                     |
+| `RequestPending`    | EIP-1193 code `-32002`: the wallet already has a prompt open                                                                                                                                                                                                                                      |
+| `WalletLocked`      | a message containing "locked"                                                                                                                                                                                                                                                                     |
+| `ChainMismatch`     | an adapter call names a chain its transport cannot reach: another namespace, a chain the wallet does not advertise or the session did not approve, a network the wallet cannot switch to, or any chain but a Ledger adapter's own; also a message about a chain "mismatch" or "unsupported" chain |
+| `AccountNotExposed` | an adapter call names an `account` the wallet does not expose                                                                                                                                                                                                                                     |
+| `NotConnected`      | EIP-1193 codes `4100` / `4900` / `4901`, a "not connected" message, a wallet that connected but exposed no accounts, or an adapter call while it exposes none                                                                                                                                     |
+| `Timeout`           | a connect that did not settle within 90 seconds, or a silent reconnect within 15                                                                                                                                                                                                                  |
+| `WalletNotFound`    | `connect(id)` for an id no source announced                                                                                                                                                                                                                                                       |
+| `Unknown`           | anything else                                                                                                                                                                                                                                                                                     |
 
 ## Normalising your own calls
 
 The manager normalises what it catches. Adapter methods you call yourself
-(`signMessage`, `sendTx`, `switchChain`) reject with whatever the wallet
-threw. Pass that through `toConnectionError` to get the same classification:
+raise `ChainMismatch`, `AccountNotExposed` and `NotConnected` as
+`ConnectionError`s, but once the wallet is asked, they reject with whatever it
+threw: a declined prompt, a locked wallet, an RPC failure. Pass that through
+`toConnectionError` to get the same classification:
 
 ```ts
 import { toConnectionError } from "@usebutr/core";
@@ -98,4 +106,5 @@ classified kind, and turns a non-`Error` value into `Unknown`.
   does no retrying; you decide whether to retry based on `kind`.
 </Callout>
 
-**Source:** `packages/core/src/types/errors.ts`, `packages/core/src/store/wallet-manager.ts`.
+**Source:** `packages/core/src/types/errors.ts`, `packages/core/src/chain-target.ts`,
+`packages/core/src/store/wallet-manager.ts`.

@@ -85,7 +85,10 @@ describe("createSignInFlow", () => {
 
     const result = await signIn(wallet);
 
-    expect(walletSignIn).toHaveBeenCalledExactlyOnceWith({ nonce: "n-1" });
+    expect(walletSignIn).toHaveBeenCalledExactlyOnceWith({
+      address: wallet.account.walletAddress,
+      nonce: "n-1",
+    });
     expect(echo).not.toHaveBeenCalled();
     expect(result).toMatchObject({
       account: siwsOutput.account,
@@ -95,6 +98,18 @@ describe("createSignInFlow", () => {
     });
     expect(result.message).toBeUndefined();
     expect(verify).toHaveBeenCalledWith(result);
+  });
+
+  it("asks SIWS to sign as the account the nonce was fetched for", async () => {
+    const other = buildAccount("So1other", SOLANA);
+    const walletSignIn = vi.fn((_input?: SignInInput) => Promise.resolve(siwsOutput));
+    const wallet = walletOf(svmAdapter("phantom", { signIn: walletSignIn }));
+    const { getNonce, signIn } = flow();
+
+    await signIn(wallet, other);
+
+    expect(getNonce).toHaveBeenCalledExactlyOnceWith({ account: other, wallet });
+    expect(walletSignIn).toHaveBeenCalledExactlyOnceWith({ address: "So1other", nonce: "n-1" });
   });
 
   it("signs in through SIWS even when the wallet has no signMessage", async () => {

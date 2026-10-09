@@ -1,5 +1,18 @@
-import type { ChainBase, Connector, TransactionOptions, WalletSigner } from "@usebutr/core";
-import { buildAccount, ConnectionError, hexToBytes, logWarn, resolveChain } from "@usebutr/core";
+import type {
+  ChainBase,
+  ChainTarget,
+  Connector,
+  TransactionOptions,
+  WalletSigner,
+} from "@usebutr/core";
+import {
+  buildAccount,
+  createFixedChainTarget,
+  hexToBytes,
+  logWarn,
+  resolveChain,
+  toConnectionError,
+} from "@usebutr/core";
 
 /** Generic Ledger device glyph, shared by every app adapter. */
 const LEDGER_DEFAULT_ICON =
@@ -56,9 +69,8 @@ type LedgerAdapterCore<TApp> = {
   base: Pick<Connector, "connect" | "disconnect" | "getAccounts" | "icon" | "id" | "name"> & {
     getSigner: () => Promise<WalletSigner>;
   };
-  /** The device app, derivation path and address a call signs with. Throws
-   *  when disconnected, for an account this session does not expose, and
-   *  for a chain other than the adapter's own. */
+  /** The device app, derivation path and address a call signs with.
+   *  Rejections are the chain target's. */
   resolve: (options?: TransactionOptions) => { address: string; app: TApp; path: string };
 };
 
@@ -134,19 +146,20 @@ const createLedgerAdapterCore = <TApp>(
   spec: LedgerAppSpec<TApp>,
 ): Promise<LedgerAdapterCore<TApp>> => {
   const chain = resolveChain(options.chainId ?? spec.defaultChain.id, spec.chains);
-  if (chain.namespace !== spec.defaultChain.namespace) {
-    return Promise.reject(
-      new Error(
-        `[butr/ledger] chain "${chain.id}" is outside the "${spec.defaultChain.namespace}" namespace`,
-      ),
-    );
+  const name = options.name ?? "Ledger";
+  let target: ChainTarget<string>;
+  try {
+    target = createFixedChainTarget({
+      chain,
+      namespace: spec.defaultChain.namespace,
+      wallet: name,
+    });
+  } catch (error) {
+    return Promise.reject(toConnectionError(error));
   }
   const accountCount = Math.max(1, options.accountCount ?? 1);
   const prefix = options.derivationPathPrefix ?? spec.defaultPathPrefix;
   const pathAt = (index: number) => `${prefix}/${index}${spec.hardenedIndex ? "'" : ""}`;
-  const name = options.name ?? "Ledger";
-  const notConnected = () =>
-    new ConnectionError("NotConnected", `[butr/ledger] ${name} is not connected`);
 
   let session: LedgerSession<TApp> | null = null;
   let connecting: { generation: number; promise: Promise<void> } | null = null;
@@ -215,33 +228,20 @@ const createLedgerAdapterCore = <TApp>(
       },
       getAccounts: () =>
         Promise.resolve(session?.addresses.map((address) => buildAccount(address, chain)) ?? []),
-      getSigner: () =>
-        session === null
-          ? Promise.reject(notConnected())
-          : Promise.resolve(spec.signer(session.app)),
+      async getSigner() {
+        const { app } = target.connected(session);
+        await Promise.resolve();
+        return spec.signer(app);
+      },
       icon: options.icon ?? LEDGER_DEFAULT_ICON,
       id: options.id ?? "ledger",
       name,
     },
     resolve: (callOptions) => {
-      if (session === null) {
-        throw notConnected();
-      }
-      const target = callOptions?.chain;
-      if (target !== undefined && target.id !== chain.id) {
-        throw new ConnectionError(
-          "ChainMismatch",
-          `[butr/ledger] ${name} signs for ${chain.id}, not ${target.id}: build an adapter per chain`,
-        );
-      }
-      const address = callOptions?.account?.walletAddress ?? session.addresses.at(0) ?? "";
-      const index = session.addresses.indexOf(address);
-      if (index === -1) {
-        throw new Error(
-          `[butr/ledger] ${name} does not expose ${address}: it reads ${accountCount} path(s) under ${prefix}`,
-        );
-      }
-      return { address, app: session.app, path: pathAt(index) };
+      const { addresses, app } = target.connected(session);
+      target.chain(callOptions?.chain);
+      const address = target.account(addresses, callOptions?.account);
+      return { address, app, path: pathAt(addresses.indexOf(address)) };
     },
   });
 };

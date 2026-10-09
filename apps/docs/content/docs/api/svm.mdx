@@ -37,8 +37,11 @@ wallet advertises its feature:
 | `signIn`          | `solana:signIn`                 | `SignInOutput`.                 |
 
 `disconnect` needs `standard:disconnect`, and `switchChain` more than one
-advertised Solana cluster. There is no `getBalance` or
-`getTransactionReceipt`: they need an RPC client, which butr does not ship.
+advertised Solana cluster. A cluster the wallet advertises under one of its
+`SVM_CHAINS` aliases, such as `solana:mainnet-beta`, resolves to that entry,
+and calls naming the entry reach the wallet under the id it advertised.
+There is no `getBalance` or `getTransactionReceipt`: they need an RPC client,
+which butr does not ship.
 See the [Solana connector](/connectors/solana-wallet-standard).
 
 ## Signer

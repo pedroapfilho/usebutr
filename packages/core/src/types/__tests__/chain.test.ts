@@ -20,6 +20,13 @@ describe("resolveChain", () => {
     expect(resolveChain("eip155:8453", EVM_CHAINS_LIST)).toBe(EVM_CHAINS.base);
   });
 
+  it.each(["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "solana:mainnet-beta", "solana:mainnet"])(
+    "resolves %s to the one Solana mainnet entry",
+    (id) => {
+      expect(resolveChain(id, CHAINS_BY_PLATFORM.svm)).toBe(SVM_CHAINS.mainnet);
+    },
+  );
+
   it("names a chain outside the registry by its CAIP-2 id", () => {
     expect(resolveChain("eip155:31337", EVM_CHAINS_LIST)).toEqual({
       id: "eip155:31337",
@@ -60,7 +67,16 @@ describe("chain registries", () => {
     for (const chain of Object.values(CHAINS_BY_PLATFORM).flat()) {
       expect(chain.id).toBe(`${chain.namespace}:${chain.reference}`);
       expect(chain.name).not.toBe(chain.id);
+      for (const alias of chain.aliases ?? []) {
+        expect(alias.startsWith(`${chain.namespace}:`)).toBe(true);
+      }
     }
+  });
+
+  it("give every id and alias to exactly one chain", () => {
+    const chains = Object.values(CHAINS_BY_PLATFORM).flat();
+    const ids = [...chains.map((chain) => chain.id), ...chains.flatMap((c) => c.aliases ?? [])];
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
 

@@ -1,4 +1,9 @@
-export type { FakeAdapter, FakeAdapterControls, FakeAdapterOptions } from "./fake-adapter";
+export type {
+  FakeAdapter,
+  FakeAdapterControls,
+  FakeAdapterOptions,
+  FakeRequest,
+} from "./fake-adapter";
 export { createFakeAdapter } from "./fake-adapter";
 
 export type { FakeConnectedWallet, FakeConnectedWalletOptions } from "./fake-connected-wallet";

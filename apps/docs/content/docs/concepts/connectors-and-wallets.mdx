@@ -35,9 +35,12 @@ type ConnectorEvent =
 ```
 
 `subscribe` is how wallet-side events reach butr: an account switch or a chain
-switch arrives as `accountsChanged` with the new list, active first, and an
-empty list or `disconnected` ends the session. You never wire
-`accountsChanged` / `chainChanged` yourself.
+switch arrives as `accountsChanged` with the new list, active first. Adapters
+forward the wallet's list as is, so `accountsChanged` with an empty list means
+disconnected. `disconnected` is for signals that end the session itself: a
+Wallet Standard wallet unregistering, a WalletConnect session deleted by the
+wallet, an EIP-1193 `disconnect`. You never wire `accountsChanged` /
+`chainChanged` yourself.
 
 ## Wallet: what your app calls
 
@@ -66,9 +69,12 @@ The platform types add their own members and fix `Tx`:
 | `PolkadotWallet` | none                    | no `sendTx`: extrinsics go through `getSigner()` and polkadot-api |
 
 `account` must be one the wallet exposes; omit it to use the active account.
-An unknown account rejects rather than silently signing with another. `chain`
-targets one transaction; see [Send a transaction](/guides/transactions) for how
-each transport routes it.
+An unknown account rejects with `AccountNotExposed` rather than silently
+signing with another, and a wallet that exposes none rejects with
+`NotConnected`. `chain` targets one transaction, and a chain the transport
+cannot reach rejects with `ChainMismatch`; see
+[chains and accounts](/connectors#chains-and-accounts) for how each transport
+routes it.
 
 <Callout type="warn">
   `signMessage` returns **both** `signature` and `signedMessage`. Solana Wallet Standard wallets may
@@ -101,7 +107,11 @@ rejected promise is logged and contributes nothing. Every adapter from every sou
 MetaMask with no extra metadata. The first adapter announced for an id wins.
 
 This is why "how do I add wallet X" always has the same shape: injected,
-WalletConnect, Ledger, or a hand-written adapter all arrive as a source.
+WalletConnect, Ledger, or a hand-written adapter all arrive as a source. A
+hand-written adapter takes its chain and account rules from the
+[chain targets](/api/core#chain-targets) in `@usebutr/core`, and the
+[adapter contract suite](/testing#adapter-contract-suite) checks it behaves
+like the built-in ones.
 
 ## ConnectedWallet
 

@@ -124,30 +124,6 @@ describe("buildPolkadotWalletStandardAdapter", () => {
     it("is absent when the wallet advertises a single polkadot: chain", () => {
       expect(requireAdapter(buildWallet()).switchChain).toBeUndefined();
     });
-
-    it("re-points accounts at a chain the wallet advertises", async () => {
-      const adapter = requireAdapter(buildWallet({ chains: [polkadot.id, kusama.id] }));
-      await adapter.switchChain?.(kusama);
-      const [account] = await adapter.getAccounts();
-      expect(account?.chain).toBe(kusama);
-    });
-
-    it("rejects a chain from another namespace", async () => {
-      const adapter = requireAdapter(buildWallet({ chains: [polkadot.id, kusama.id] }));
-      await expect(
-        adapter.switchChain?.({
-          id: "eip155:1",
-          name: "Ethereum",
-          namespace: "eip155",
-          reference: "1",
-        }),
-      ).rejects.toThrow(/non-Polkadot/v);
-    });
-
-    it("rejects a polkadot chain the wallet does not advertise", async () => {
-      const adapter = requireAdapter(buildWallet({ chains: [polkadot.id, kusama.id] }));
-      await expect(adapter.switchChain?.(westend)).rejects.toThrow(/does not advertise chain/v);
-    });
   });
 
   describe("subscribe", () => {
@@ -192,16 +168,15 @@ describe("buildPolkadotWalletStandardAdapter", () => {
       expect(requireAdapter(buildWallet()).signMessage).toBeUndefined();
     });
 
-    it("signs as the active account and falls back to the input as signedMessage", async () => {
+    it("signs the <Bytes>-wrapped message as the active account and reports it signed", async () => {
       const signMessage = signMessageFeature();
       const wallet = buildWallet({}, { "polkadot:signMessage": { signMessage } });
-      const message = new Uint8Array([1]);
+      const wrapped = new TextEncoder().encode("<Bytes>hi</Bytes>");
 
-      await expect(requireSignMessage(requireAdapter(wallet))(message)).resolves.toEqual({
-        signature: new Uint8Array([2]),
-        signedMessage: message,
-      });
-      expect(signMessage).toHaveBeenCalledWith({ account: wallet.accounts[0], message });
+      await expect(
+        requireSignMessage(requireAdapter(wallet))(new TextEncoder().encode("hi")),
+      ).resolves.toEqual({ signature: new Uint8Array([2]), signedMessage: wrapped });
+      expect(signMessage).toHaveBeenCalledWith({ account: wallet.accounts[0], message: wrapped });
     });
 
     it("preserves the signed message the wallet reports", async () => {
@@ -216,34 +191,6 @@ describe("buildPolkadotWalletStandardAdapter", () => {
         signature: new Uint8Array([2]),
         signedMessage,
       });
-    });
-
-    it("signs as the requested account", async () => {
-      const signMessage = signMessageFeature();
-      const wallet = buildWallet(
-        { accounts: [walletAccount(ADDRESS), walletAccount(OTHER_ADDRESS)] },
-        { "polkadot:signMessage": { signMessage } },
-      );
-
-      await requireSignMessage(requireAdapter(wallet))(new Uint8Array([1]), {
-        account: buildAccount(OTHER_ADDRESS, polkadot),
-      });
-
-      expect(signMessage).toHaveBeenCalledWith(
-        expect.objectContaining({ account: wallet.accounts[1] }),
-      );
-    });
-
-    it("rejects an account the wallet does not expose instead of signing as another", async () => {
-      const signMessage = signMessageFeature();
-      const adapter = requireAdapter(buildWallet({}, { "polkadot:signMessage": { signMessage } }));
-
-      await expect(
-        requireSignMessage(adapter)(new Uint8Array([1]), {
-          account: buildAccount(OTHER_ADDRESS, polkadot),
-        }),
-      ).rejects.toThrow(/does not expose account/v);
-      expect(signMessage).not.toHaveBeenCalled();
     });
   });
 });

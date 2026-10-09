@@ -1221,6 +1221,9 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../config-typescript
+      '@usebutr/testing':
+        specifier: workspace:*
+        version: link:../testing
       '@wallet-standard/app':
         specifier: ^1.1.1
         version: 1.1.1
@@ -1308,6 +1311,9 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../config-typescript
+      '@usebutr/testing':
+        specifier: workspace:*
+        version: link:../testing
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -1320,6 +1326,9 @@ importers:
       '@usebutr/core':
         specifier: workspace:*
         version: link:../core
+      '@usebutr/sui':
+        specifier: workspace:*
+        version: link:../sui
       '@usebutr/svm':
         specifier: workspace:*
         version: link:../svm
@@ -1345,6 +1354,9 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../config-typescript
+      '@usebutr/testing':
+        specifier: workspace:*
+        version: link:../testing
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -1367,6 +1379,9 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../config-typescript
+      '@usebutr/testing':
+        specifier: workspace:*
+        version: link:../testing
       '@wallet-standard/app':
         specifier: ^1.1.1
         version: 1.1.1
@@ -1469,6 +1484,9 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../config-typescript
+      '@usebutr/testing':
+        specifier: workspace:*
+        version: link:../testing
       '@wallet-standard/app':
         specifier: ^1.1.1
         version: 1.1.1
@@ -1494,6 +1512,9 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../config-typescript
+      '@usebutr/testing':
+        specifier: workspace:*
+        version: link:../testing
       '@wallet-standard/app':
         specifier: ^1.1.1
         version: 1.1.1
@@ -1559,12 +1580,18 @@ importers:
 
   packages/walletconnect:
     dependencies:
+      '@usebutr/bitcoin':
+        specifier: workspace:*
+        version: link:../bitcoin
       '@usebutr/core':
         specifier: workspace:*
         version: link:../core
       '@usebutr/evm':
         specifier: workspace:*
         version: link:../evm
+      '@usebutr/sui':
+        specifier: workspace:*
+        version: link:../sui
       '@usebutr/svm':
         specifier: workspace:*
         version: link:../svm
@@ -1578,6 +1605,12 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../config-typescript
+      '@usebutr/ledger':
+        specifier: workspace:*
+        version: link:../ledger
+      '@usebutr/testing':
+        specifier: workspace:*
+        version: link:../testing
       '@walletconnect/universal-provider':
         specifier: ^2.25.0
         version: 2.25.0(@react-native-async-storage/async-storage@1.24.0(react-native@0.86.3(@babel/core@8.0.1)(@types/react@19.3.0)(bufferutil@4.1.0)(react@19.3.0)(utf-8-validate@5.0.10)))(bufferutil@4.1.0)(db0@0.3.4)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@4.6.5)

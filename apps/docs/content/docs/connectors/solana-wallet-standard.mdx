@@ -72,8 +72,10 @@ const send = async (serializedTx: Uint8Array) => {
 Wallet Standard carries the chain in every call, so `options.chain` routes one
 transaction without moving the wallet. The chain must be one the wallet
 advertises, or the call rejects. The initial chain is Solana mainnet when
-advertised, else the wallet's first Solana chain. `account` must be one the
-wallet exposes; an unknown one rejects.
+advertised, else the wallet's first Solana chain. A wallet that advertises
+mainnet as `solana:mainnet-beta` gets accounts on `SVM_CHAINS.mainnet`, and a
+call naming `SVM_CHAINS.mainnet` reaches it as `solana:mainnet-beta`.
+`account` must be one the wallet exposes; an unknown one rejects.
 
 ## Signer
 

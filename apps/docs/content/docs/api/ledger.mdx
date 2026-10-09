@@ -79,12 +79,12 @@ A Ledger signs; your chain client reads state and broadcasts. No adapter has
 `sendTx`, `getBalance`, `getTransactionReceipt`, `subscribe`,
 `requestAccounts` or `switchChain`.
 
-| Platform  | `signMessage`             | `signTransaction`                                        |
-| --------- | ------------------------- | -------------------------------------------------------- |
-| `evm`     | EIP-191, `r ‖ s ‖ v`      | none: use the signer's `app.signTransaction`             |
-| `svm`     | Off-chain message         | Serialized transaction, legacy or v0; resolves it signed |
-| `sui`     | none                      | BCS transaction bytes; resolves `{ bytes, signature }`   |
-| `bitcoin` | BIP-137 compact signature | PSBT bytes; resolves the signed PSBT                     |
+| Platform  | `signMessage`                            | `signTransaction`                                          |
+| --------- | ---------------------------------------- | ---------------------------------------------------------- |
+| `evm`     | EIP-191, `r ‖ s ‖ v`                     | none: use the signer's `app.signTransaction`               |
+| `svm`     | Off-chain message                        | Serialized transaction, legacy or v0; resolves it signed   |
+| `sui`     | none                                     | BCS bytes or their base64; resolves `{ bytes, signature }` |
+| `bitcoin` | BIP-137 compact signature over the bytes | PSBT bytes; resolves the signed PSBT                       |
 
 ## Signers
 

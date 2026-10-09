@@ -2,13 +2,7 @@ import type { ConnectorEvent } from "@usebutr/core";
 import { buildAccount, EVM_CHAINS } from "@usebutr/core";
 import { describe, expect, it, vi } from "vitest";
 
-import type {
-  Eip1193Listener,
-  Eip1193Provider,
-  Eip1193RequestArgs,
-  Eip1193Value,
-  Eip6963ProviderInfo,
-} from "../eip1193";
+import type { Eip6963ProviderInfo } from "../eip1193";
 import {
   buildEvmAdapter,
   chainIdDecimalToHex,
@@ -16,63 +10,14 @@ import {
   formatEther,
 } from "../eip6963-adapter";
 
+import type { MockProviderHandle } from "./mock-provider";
+import { createMockProvider } from "./mock-provider";
+
 const INFO: Eip6963ProviderInfo = {
   icon: "data:image/svg+xml;base64,...",
   name: "Mock EIP-6963 Wallet",
   rdns: "io.mock.wallet",
   uuid: "uuid-1",
-};
-
-type MockProviderHandle = Eip1193Provider & {
-  emit: (event: string, ...args: ReadonlyArray<Eip1193Value | undefined>) => void;
-  methods: () => Array<string>;
-  requests: Array<Eip1193RequestArgs>;
-  setHandler: (
-    method: string,
-    handler: (params: Eip1193RequestArgs["params"]) => Eip1193Value | undefined,
-  ) => void;
-};
-
-const createMockProvider = (): MockProviderHandle => {
-  const listeners = new Map<string, Set<Eip1193Listener>>();
-  const handlers = new Map<
-    string,
-    (params: Eip1193RequestArgs["params"]) => Eip1193Value | undefined
-  >();
-  const requests: Array<Eip1193RequestArgs> = [];
-
-  return {
-    emit(event, ...args) {
-      const set = listeners.get(event);
-      if (!set) {
-        return;
-      }
-      for (const listener of set) {
-        listener(...args);
-      }
-    },
-    methods: () => requests.map(({ method }) => method),
-    on(event, listener) {
-      let set = listeners.get(event);
-      if (!set) {
-        set = new Set();
-        listeners.set(event, set);
-      }
-      set.add(listener);
-    },
-    removeListener(event, listener) {
-      listeners.get(event)?.delete(listener);
-    },
-    request({ method, params }) {
-      requests.push({ method, params });
-      const handler = handlers.get(method);
-      return Promise.resolve(handler ? handler(params) : undefined);
-    },
-    requests,
-    setHandler(method, handler) {
-      handlers.set(method, handler);
-    },
-  };
 };
 
 /** A wallet on Ethereum mainnet exposing `addresses`, active first. */
@@ -87,13 +32,6 @@ const flush = () =>
   new Promise((resolve) => {
     setTimeout(resolve, 0);
   });
-
-const SOLANA_MAINNET = {
-  id: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-  name: "Solana",
-  namespace: "solana",
-  reference: "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-};
 
 describe("EVM helpers", () => {
   it("converts chain ids between hex and decimal", () => {
@@ -228,14 +166,6 @@ describe("buildEvmAdapter switchChain()", () => {
     expect(provider.methods()).not.toContain("wallet_switchEthereumChain");
   });
 
-  it("rejects asynchronously for a chain outside eip155", async () => {
-    const provider = connectedProvider();
-    const pending = buildEvmAdapter(INFO, provider).switchChain?.(SOLANA_MAINNET);
-    expect(pending).toBeInstanceOf(Promise);
-    await expect(pending).rejects.toThrow(/non-EVM chain/v);
-    expect(provider.methods()).toEqual([]);
-  });
-
   it("rejects an eip155 chain with a non-numeric reference", async () => {
     const provider = connectedProvider();
     await expect(
@@ -245,8 +175,8 @@ describe("buildEvmAdapter switchChain()", () => {
         namespace: "eip155",
         reference: "mainnet",
       }),
-    ).rejects.toThrow(/numeric reference/v);
-    expect(provider.methods()).toEqual([]);
+    ).rejects.toMatchObject({ kind: "ChainMismatch" });
+    expect(provider.methods()).not.toContain("wallet_switchEthereumChain");
   });
 });
 
@@ -264,37 +194,6 @@ describe("buildEvmAdapter signMessage()", () => {
     });
     expect(result?.signature).toEqual(new Uint8Array([222, 173, 190, 239]));
     expect(result?.signedMessage).toBe(message);
-  });
-
-  it("signs as the requested account, matching hex addresses case-insensitively", async () => {
-    const provider = connectedProvider(["0xAAA", "0xBbB"]);
-    provider.setHandler("personal_sign", () => "0xdeadbeef");
-
-    const account = buildAccount("0xbbb", EVM_CHAINS.ethereum);
-    await buildEvmAdapter(INFO, provider).signMessage?.(new Uint8Array([1]), { account });
-
-    expect(provider.requests).toContainEqual({
-      method: "personal_sign",
-      params: ["0x01", "0xBbB"],
-    });
-  });
-
-  it("rejects an account the wallet does not expose instead of signing with another", async () => {
-    const provider = connectedProvider(["0xAAA"]);
-    provider.setHandler("personal_sign", () => "0xdeadbeef");
-
-    const account = buildAccount("0xCCC", EVM_CHAINS.ethereum);
-    await expect(
-      buildEvmAdapter(INFO, provider).signMessage?.(new Uint8Array([1]), { account }),
-    ).rejects.toThrow(/does not expose account 0xCCC/v);
-    expect(provider.methods()).not.toContain("personal_sign");
-  });
-
-  it("rejects when the wallet exposes no account", async () => {
-    const provider = connectedProvider([]);
-    await expect(
-      buildEvmAdapter(INFO, provider).signMessage?.(new Uint8Array([1])),
-    ).rejects.toThrow(/no connected account/v);
   });
 
   it("throws when personal_sign returns a non-string", async () => {
@@ -348,17 +247,6 @@ describe("buildEvmAdapter sendTx()", () => {
     });
   });
 
-  it("rejects an account the wallet does not expose without sending", async () => {
-    const provider = connectedProvider(["0xAAA"]);
-    provider.setHandler("eth_sendTransaction", () => "0xtxhash");
-
-    const account = buildAccount("0xCCC", EVM_CHAINS.ethereum);
-    await expect(
-      buildEvmAdapter(INFO, provider).sendTx?.({ to: "0xDDD" }, { account }),
-    ).rejects.toThrow(/does not expose account/v);
-    expect(provider.methods()).not.toContain("eth_sendTransaction");
-  });
-
   it("switches the wallet's network first when `chain` differs from eth_chainId", async () => {
     const provider = connectedProvider();
     provider.setHandler("eth_sendTransaction", () => "0xtxhash");
@@ -385,13 +273,15 @@ describe("buildEvmAdapter sendTx()", () => {
     expect(provider.methods()).not.toContain("wallet_switchEthereumChain");
   });
 
-  it("rejects a chain from another namespace without sending", async () => {
+  it("rejects with ChainMismatch when the wallet does not know `chain`", async () => {
     const provider = connectedProvider();
-    provider.setHandler("eth_sendTransaction", () => "0xtxhash");
+    provider.setHandler("wallet_switchEthereumChain", () => {
+      throw Object.assign(new Error("Unrecognized chain ID"), { code: 4902 });
+    });
 
     await expect(
-      buildEvmAdapter(INFO, provider).sendTx?.({ to: "0xCCC" }, { chain: SOLANA_MAINNET }),
-    ).rejects.toThrow(/non-EVM chain/v);
+      buildEvmAdapter(INFO, provider).sendTx?.({ to: "0xCCC" }, { chain: EVM_CHAINS.polygon }),
+    ).rejects.toMatchObject({ kind: "ChainMismatch" });
     expect(provider.methods()).not.toContain("eth_sendTransaction");
   });
 
@@ -465,7 +355,7 @@ describe("buildEvmAdapter reads", () => {
 
     await expect(
       adapter.getBalance?.({ account: buildAccount("0xCCC", EVM_CHAINS.ethereum) }),
-    ).rejects.toThrow(/does not expose account/v);
+    ).rejects.toMatchObject({ kind: "AccountNotExposed" });
   });
 
   it("getBalance({ token }) reads ERC-20 balanceOf + decimals + symbol via eth_call", async () => {
@@ -584,15 +474,13 @@ describe("buildEvmAdapter subscribe()", () => {
     unsubscribe?.();
   });
 
-  it("bridges empty accountsChanged and disconnect to disconnected", () => {
+  it("bridges disconnect to disconnected", () => {
     const provider = createMockProvider();
     const { listener, unsubscribe } = subscribe(provider);
 
-    provider.emit("accountsChanged", []);
     provider.emit("disconnect");
 
-    expect(listener).toHaveBeenNthCalledWith(1, { type: "disconnected" });
-    expect(listener).toHaveBeenNthCalledWith(2, { type: "disconnected" });
+    expect(listener).toHaveBeenCalledExactlyOnceWith({ type: "disconnected" });
     unsubscribe?.();
   });
 

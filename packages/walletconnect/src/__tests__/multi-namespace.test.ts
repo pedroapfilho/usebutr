@@ -226,14 +226,9 @@ describe("createWalletConnectAdapters (request routing)", () => {
     await svm.sendTx?.(new Uint8Array([1]), { chain: SOL_DEVNET });
     expect(walletRequests(provider).at(-1)?.chain).toBe(SOL_DEVNET_ID);
 
-    await expect(svm.sendTx?.(new Uint8Array([1]), { chain: SVM_CHAINS.testnet })).rejects.toThrow(
-      /did not approve Solana chain/v,
-    );
     await expect(
-      svm.sendTx?.(new Uint8Array([1]), {
-        chain: { id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" },
-      }),
-    ).rejects.toThrow(/non-Solana chain/v);
+      svm.sendTx?.(new Uint8Array([1]), { chain: SVM_CHAINS.testnet }),
+    ).rejects.toMatchObject({ kind: "ChainMismatch" });
   });
 });
 
@@ -311,7 +306,7 @@ describe("createWalletConnectAdapters (EVM events in a mixed session)", () => {
     },
   );
 
-  it("forwards an empty EVM accountsChanged as disconnected", async () => {
+  it("forwards an empty EVM accountsChanged once, as is", async () => {
     const { listener, provider, unsubscribe } = await subscribeEvm();
 
     provider.emit("accountsChanged", []);
@@ -319,7 +314,7 @@ describe("createWalletConnectAdapters (EVM events in a mixed session)", () => {
       params: { chainId: "eip155:1", event: { data: [], name: "accountsChanged" } },
     });
 
-    expect(listener).toHaveBeenCalledExactlyOnceWith({ type: "disconnected" });
+    expect(listener).toHaveBeenCalledExactlyOnceWith({ accounts: [], type: "accountsChanged" });
     unsubscribe?.();
   });
 

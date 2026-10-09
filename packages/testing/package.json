@@ -1,7 +1,7 @@
 {
   "name": "@usebutr/testing",
   "version": "2.0.1",
-  "description": "Test helpers for butr: fake adapters, fake persistence, mock storage.",
+  "description": "Test helpers for butr: fake adapters, fake persistence, mock storage, and the adapter contract suite.",
   "keywords": [
     "butr",
     "dapp",
@@ -34,6 +34,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./contract": {
+      "types": "./dist/adapter-contract.d.ts",
+      "default": "./dist/adapter-contract.js"
     }
   },
   "publishConfig": {
@@ -56,5 +60,13 @@
     "@repo/typescript-config": "workspace:*",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
+  },
+  "peerDependencies": {
+    "vitest": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
   }
 }

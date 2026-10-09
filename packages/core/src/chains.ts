@@ -23,15 +23,25 @@ const EVM_CHAINS = {
   sepolia: { id: "eip155:11155111", name: "Sepolia", namespace: "eip155", reference: "11155111" },
 } as const satisfies Record<string, ChainBase>;
 
+/** Ids are the cluster names Wallet Standard uses. Each cluster's first alias
+ *  is its CAIP-30 genesis-hash id, the one WalletConnect sessions use. */
 const SVM_CHAINS = {
-  devnet: { id: "solana:devnet", name: "Solana Devnet", namespace: "solana", reference: "devnet" },
+  devnet: {
+    aliases: ["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"],
+    id: "solana:devnet",
+    name: "Solana Devnet",
+    namespace: "solana",
+    reference: "devnet",
+  },
   mainnet: {
+    aliases: ["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "solana:mainnet-beta"],
     id: "solana:mainnet",
     name: "Solana Mainnet",
     namespace: "solana",
     reference: "mainnet",
   },
   testnet: {
+    aliases: ["solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z"],
     id: "solana:testnet",
     name: "Solana Testnet",
     namespace: "solana",

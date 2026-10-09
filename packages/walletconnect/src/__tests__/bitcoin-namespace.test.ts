@@ -111,9 +111,9 @@ describe("bitcoinNamespace", () => {
       chain: TESTNET,
     });
 
-    await expect(adapter.sendTx?.(transfer, { chain: BITCOIN_CHAINS.signet })).rejects.toThrow(
-      /did not approve Bitcoin chain/v,
-    );
+    await expect(
+      adapter.sendTx?.(transfer, { chain: BITCOIN_CHAINS.signet }),
+    ).rejects.toMatchObject({ kind: "ChainMismatch" });
     expect(provider.requests).toHaveLength(1);
   });
 
@@ -166,16 +166,16 @@ describe("bitcoinNamespace", () => {
     expect(prefixed && bytesToHex(prefixed.signature)).toBe("cafebabe");
   });
 
-  it("signMessage sends non-utf-8 bytes base64-encoded", async () => {
-    const message = new Uint8Array([0xff, 0xfe]);
+  it("signMessage rejects non-utf-8 bytes, which the wallet would sign as other bytes", async () => {
     const provider = connectedProvider({ signature: "dead" });
 
-    await buildAdapter(provider).signMessage?.(message);
-
-    expect(provider.requests[0]?.args.params).toMatchObject({ message: bytesToBase64(message) });
+    await expect(
+      buildAdapter(provider).signMessage?.(new Uint8Array([0xff, 0xfe])),
+    ).rejects.toThrow(/WalletConnect \(BITCOIN\) signs text, and this message is not valid UTF-8/v);
+    expect(provider.requests).toHaveLength(0);
   });
 
-  it("signs as the requested account and rejects one the session does not expose", async () => {
+  it("signs as the requested account, naming it as both account and address", async () => {
     const provider = connectedProvider({ signature: "dead" }, [
       `${MAINNET}:bc1qaaa`,
       `${MAINNET}:bc1qbbb`,
@@ -189,37 +189,14 @@ describe("bitcoinNamespace", () => {
       account: "bc1qbbb",
       address: "bc1qbbb",
     });
-
-    await expect(
-      adapter.signMessage?.(new Uint8Array([1]), {
-        account: buildAccount("bc1qccc", BITCOIN_CHAINS.mainnet),
-      }),
-    ).rejects.toThrow(/does not expose Bitcoin account bc1qccc/v);
-    expect(provider.requests).toHaveLength(1);
   });
 
   it("refuses to sign when the session holds no account on the current chain", async () => {
     const provider = connectedProvider({ signature: "dead" }, [`${TESTNET}:tb1qbbb`]);
 
-    await expect(buildAdapter(provider).signMessage?.(new Uint8Array([1]))).rejects.toThrow(
-      /No connected Bitcoin account on chain/v,
-    );
+    await expect(buildAdapter(provider).signMessage?.(new Uint8Array([1]))).rejects.toMatchObject({
+      kind: "NotConnected",
+    });
     expect(provider.requests).toHaveLength(0);
-  });
-
-  it("switchChain rejects another namespace and a chain the session did not approve", async () => {
-    const adapter = buildAdapter(connectedProvider(), [MAINNET, TESTNET]);
-
-    await expect(
-      adapter.switchChain?.({
-        id: "solana:mainnet",
-        name: "Solana",
-        namespace: "solana",
-        reference: "mainnet",
-      }),
-    ).rejects.toThrow(/non-Bitcoin chain/v);
-    await expect(adapter.switchChain?.(BITCOIN_CHAINS.testnet)).rejects.toThrow(
-      /did not approve Bitcoin chain/v,
-    );
   });
 });

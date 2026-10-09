@@ -23,7 +23,10 @@ import {
   bytesToBase58,
   bytesToHex,
   bytesToHexPrefixed,
-  ConnectionError,
+  CHAINS_BY_PLATFORM,
+  createConnectorEmitter,
+  createRoutedChainTarget,
+  createSwitchingChainTarget,
 } from "@usebutr/core";
 
 import {
@@ -34,6 +37,15 @@ import {
   NATIVE_ASSETS,
 } from "./fake-values";
 
+/** A signing or sending request the fake wallet accepted. */
+type FakeRequest = {
+  /** The address it acted as. */
+  address: string;
+  /** The CAIP-2 chain it landed on, for methods that take `chain`. */
+  chain?: string;
+  method: "sendTx" | "signIn" | "signMessage" | "signTransaction";
+};
+
 type FakeAdapterControls = {
   /** Delivers `event` to every `subscribe` listener, as the wallet would.
    *  `getAccounts` follows it: a new list replaces the exposed accounts, and
@@ -41,6 +53,8 @@ type FakeAdapterControls = {
   emit: (event: ConnectorEvent) => void;
   /** Live `subscribe` listeners; zero once the manager has detached. */
   listenerCount: () => number;
+  /** Every request the wallet accepted, oldest first. */
+  requests: () => ReadonlyArray<FakeRequest>;
 };
 
 type FakeAdapter<P extends ChainPlatform> = WalletAdapterFor<P> & FakeAdapterControls;
@@ -89,47 +103,46 @@ const settle = <T>(body: () => T | PromiseLike<T>): Promise<T> =>
 
 /**
  * State and checks every platform shares: which accounts the wallet exposes,
- * the listeners, and the contract's rejections (not connected, an account it
- * does not expose, a chain from another namespace).
+ * the listeners, the requests it accepted, and the chain target behind the
+ * contract's rejections.
  */
 const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAdapterOptions<P>) => {
   const id = options.id ?? "fake";
   const name = options.name ?? "Fake Wallet";
-  const listeners = new Set<(event: ConnectorEvent) => void>();
+  const emitter = createConnectorEmitter();
+  const requests: Array<FakeRequest> = [];
   const nextBytes = createByteSource();
   let accounts: ReadonlyArray<Account> = options.accounts ?? [
     buildAccount(DEFAULT_ADDRESSES[platform], DEFAULT_CHAINS[platform]),
   ];
   let exposed = true;
 
-  const notify = (event: ConnectorEvent) => {
-    for (const listener of listeners) {
-      listener(event);
-    }
+  const currentChain = (): ChainBase => accounts[0]?.chain ?? DEFAULT_CHAINS[platform];
+
+  const targetInput = {
+    /** The registry's chains, and whatever chain the accounts are on. */
+    advertised: () => [...CHAINS_BY_PLATFORM[platform].map((chain) => chain.id), currentChain().id],
+    namespace: DEFAULT_CHAINS[platform].namespace,
+    wallet: name,
   };
+
+  const target = createRoutedChainTarget({
+    ...targetInput,
+    current: () => currentChain().id,
+  });
 
   /** The account to act as: the active one unless `account` names another
    *  exposed account. */
   const accountFor = (account?: Account): Account => {
-    const active = exposed ? accounts.at(0) : undefined;
-    if (active === undefined) {
-      throw new ConnectionError("NotConnected", `${name} is not connected`);
-    }
-    if (account === undefined) {
-      return active;
-    }
-    const match = accounts.find((candidate) => candidate.id === account.id);
-    if (match === undefined) {
-      throw new Error(`${name} does not expose ${account.walletAddress}`);
-    }
-    return match;
+    const entries = (exposed ? accounts : []).map((entry) => ({
+      account: entry,
+      address: entry.walletAddress,
+    }));
+    return target.account(entries, account).account;
   };
 
-  const assertNamespace = (chain: ChainBase | undefined) => {
-    const { namespace } = DEFAULT_CHAINS[platform];
-    if (chain !== undefined && chain.namespace !== namespace) {
-      throw new Error(`${name} cannot use ${chain.id}: not a ${namespace} chain`);
-    }
+  const record = (method: FakeRequest["method"], account: Account, chain?: string) => {
+    requests.push({ address: account.walletAddress, chain, method });
   };
 
   /** Moves every account to `chain`, as a wallet with one global network
@@ -137,11 +150,9 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
   const moveTo = (chain: ChainBase) => {
     accounts = accounts.map((account) => buildAccount(account.walletAddress, chain));
     if (exposed) {
-      notify({ accounts, type: "accountsChanged" });
+      emitter.emit({ accounts, type: "accountsChanged" });
     }
   };
-
-  const currentChain = (): ChainBase => accounts[0]?.chain ?? DEFAULT_CHAINS[platform];
 
   const balanceOf = (balanceOptions: BalanceOptions | undefined): Balance => {
     accountFor(balanceOptions?.account);
@@ -155,16 +166,16 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
 
   const signMessage = (message: Uint8Array, signOptions?: AccountOptions) =>
     settle((): SignedMessage => {
-      accountFor(signOptions?.account);
+      record("signMessage", accountFor(signOptions?.account));
       return { signature: nextBytes(64), signedMessage: message };
     });
 
   const getBalance = (balanceOptions?: BalanceOptions) => settle(() => balanceOf(balanceOptions));
 
-  /** Per-call routing: any chain in the namespace, as Wallet Standard does. */
-  const route = (txOptions: TransactionOptions | undefined) => {
-    accountFor(txOptions?.account);
-    assertNamespace(txOptions?.chain);
+  /** Per-call routing to an advertised chain, as Wallet Standard does. */
+  const route = (method: FakeRequest["method"], txOptions: TransactionOptions | undefined) => {
+    const account = accountFor(txOptions?.account);
+    record(method, account, target.chain(txOptions?.chain));
   };
 
   const base = {
@@ -184,12 +195,7 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
     icon: options.icon,
     id,
     name,
-    subscribe: (listener: (event: ConnectorEvent) => void) => {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
+    subscribe: emitter.subscribe,
   };
 
   const controls: FakeAdapterControls = {
@@ -200,9 +206,10 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
       } else {
         exposed = false;
       }
-      notify(event);
+      emitter.emit(event);
     },
-    listenerCount: () => listeners.size,
+    listenerCount: emitter.listenerCount,
+    requests: () => requests,
   };
 
   /** Applies `overrides` and `omit` last, so they win over every default. */
@@ -216,15 +223,16 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
 
   return {
     accountFor,
-    assertNamespace,
     base,
     currentChain,
     finish,
     getBalance,
     moveTo,
     nextBytes,
+    record,
     route,
     signMessage,
+    targetInput,
   };
 };
 
@@ -245,11 +253,16 @@ const siwsMessage = (input: SignInInput | undefined, account: Account): string =
  *  switches it first. */
 const buildEvm = (options: FakeAdapterOptions): FakeAdapter<"evm"> => {
   const wallet = createFakeWallet("evm", options);
-  const switchChain = (chain: ChainBase) =>
-    settle(() => {
-      wallet.assertNamespace(chain);
-      wallet.moveTo(chain);
-    });
+  const { advertised, ...input } = wallet.targetInput;
+  const target = createSwitchingChainTarget({
+    ...input,
+    canSwitch: (chain) => advertised().includes(chain.id),
+    current: () => Promise.resolve(wallet.currentChain().id),
+    switchTo: (chain) =>
+      settle(() => {
+        wallet.moveTo(chain);
+      }),
+  });
   const adapter: EvmAdapter = {
     ...wallet.base,
     chainPlatform: "evm",
@@ -260,14 +273,13 @@ const buildEvm = (options: FakeAdapterOptions): FakeAdapter<"evm"> => {
         wallet.accountFor();
       }),
     sendTx: async (_tx, txOptions) => {
-      wallet.accountFor(txOptions?.account);
-      if (txOptions?.chain !== undefined && txOptions.chain.id !== wallet.currentChain().id) {
-        await switchChain(txOptions.chain);
-      }
+      const account = wallet.accountFor(txOptions?.account);
+      await target.chain(txOptions?.chain);
+      wallet.record("sendTx", account, wallet.currentChain().id);
       return bytesToHexPrefixed(wallet.nextBytes(32));
     },
     signMessage: wallet.signMessage,
-    switchChain,
+    switchChain: target.chain,
   };
   return wallet.finish(adapter);
 };
@@ -281,12 +293,13 @@ const buildSvm = (options: FakeAdapterOptions<"svm">): FakeAdapter<"svm"> => {
     ...(options.balance !== undefined && { getBalance: wallet.getBalance }),
     sendTx: (_tx, txOptions) =>
       settle(() => {
-        wallet.route(txOptions);
+        wallet.route("sendTx", txOptions);
         return bytesToBase58(wallet.nextBytes(64));
       }),
     signIn: (input) =>
       settle(() => {
         const account = wallet.accountFor();
+        wallet.record("signIn", account);
         return {
           account,
           signature: wallet.nextBytes(64),
@@ -296,7 +309,7 @@ const buildSvm = (options: FakeAdapterOptions<"svm">): FakeAdapter<"svm"> => {
     signMessage: wallet.signMessage,
     signTransaction: (tx, txOptions) =>
       settle(() => {
-        wallet.route(txOptions);
+        wallet.route("signTransaction", txOptions);
         return tx;
       }),
   };
@@ -311,12 +324,12 @@ const buildSui = (options: FakeAdapterOptions<"sui">): FakeAdapter<"sui"> => {
     ...(options.balance !== undefined && { getBalance: wallet.getBalance }),
     sendTx: (_tx, txOptions) =>
       settle(() => {
-        wallet.route(txOptions);
+        wallet.route("sendTx", txOptions);
         return bytesToBase58(wallet.nextBytes(32));
       }),
     signMessage: wallet.signMessage,
     signTransaction: async (tx, txOptions) => {
-      wallet.route(txOptions);
+      wallet.route("signTransaction", txOptions);
       return { bytes: await suiBytes(tx), signature: wallet.nextBytes(64) };
     },
   };
@@ -331,7 +344,7 @@ const buildBitcoin = (options: FakeAdapterOptions<"bitcoin">): FakeAdapter<"bitc
     ...(options.balance !== undefined && { getBalance: wallet.getBalance }),
     sendTx: (transfer, txOptions) =>
       settle(() => {
-        wallet.route(txOptions);
+        wallet.route("sendTx", txOptions);
         if (transfer.amount <= 0n) {
           throw new Error(`${wallet.base.name} cannot send ${transfer.amount} satoshis`);
         }
@@ -340,7 +353,7 @@ const buildBitcoin = (options: FakeAdapterOptions<"bitcoin">): FakeAdapter<"bitc
     signMessage: wallet.signMessage,
     signTransaction: (psbt, txOptions) =>
       settle(() => {
-        wallet.route(txOptions);
+        wallet.route("signTransaction", txOptions);
         return psbt;
       }),
   };
@@ -410,5 +423,5 @@ function createFakeAdapter(options: AnyFakeAdapterOptions = {}): FakeAdapter<Cha
   }
 }
 
-export type { FakeAdapter, FakeAdapterControls, FakeAdapterOptions };
+export type { FakeAdapter, FakeAdapterControls, FakeAdapterOptions, FakeRequest };
 export { buildFakeAdapter, createFakeAdapter };

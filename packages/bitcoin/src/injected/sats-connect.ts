@@ -3,7 +3,6 @@ import type {
   BitcoinAdapter,
   BitcoinTransfer,
   ChainBase,
-  ConnectorEvent,
   TransactionOptions,
 } from "@usebutr/core";
 import {
@@ -12,11 +11,14 @@ import {
   base64ToBytes,
   buildAccount,
   bytesToBase64,
+  createConnectorEmitter,
+  createSwitchingChainTarget,
   resolveChain,
 } from "@usebutr/core";
 import { z } from "zod";
 
-import { assertBitcoinChain, chainMismatch } from "./chain";
+import { bitcoinMessageText } from "../message";
+
 import { GENERIC_BITCOIN_ICON } from "./icon";
 
 /** sats-connect (Xverse) shape; a JSON-RPC-ish `request(method, params)`. */
@@ -44,13 +46,9 @@ type SatsAddress = {
   purpose?: string;
 };
 
-type ConnectedSession = {
-  addresses: ReadonlyArray<SatsAddress>;
-  payment: string;
-  status: "connected";
-};
-
-type Session = ConnectedSession | { status: "disconnected" };
+/** The payment address first: the active account, and the only one
+ *  `sendTransfer` debits. */
+type Session = ReadonlyArray<string>;
 
 const ACCOUNT_PURPOSES = ["payment", "ordinals"];
 const CONNECT_MESSAGE = "Connect to butr";
@@ -90,16 +88,20 @@ const signPsbtResultSchema = z.object({ psbt: z.string() });
 // compiling with zod-compiler, which then needs zod in the app itself.
 const changeNetworkResultSchema = z.unknown();
 
-const pickPaymentAddress = (addresses: ReadonlyArray<SatsAddress>): SatsAddress | undefined =>
-  addresses.find((a) => a.purpose === "payment") ?? addresses[0];
+const paymentFirst = (addresses: ReadonlyArray<SatsAddress>): Session => {
+  const payment = addresses.find((a) => a.purpose === "payment") ?? addresses[0];
+  return payment === undefined
+    ? []
+    : [payment, ...addresses.filter((a) => a !== payment)].map((a) => a.address);
+};
 
 const networkFor = (chain: ChainBase): string | undefined =>
   Object.entries(NETWORK_CHAIN_IDS).find(([, chainId]) => chainId === chain.id)?.[0];
 
 /**
- * Only the payment address is an Account (`sendTransfer` always debits it); `signMessage` also
- * takes the ordinals address. The network is wallet-wide, so a call targeting another chain
- * moves it with `wallet_changeNetwork` first.
+ * The payment and ordinals addresses are both accounts, payment first; `sendTx` debits the
+ * payment address only. The network is wallet-wide, so a call targeting another chain moves it
+ * with `wallet_changeNetwork` first.
  */
 const buildSatsConnectAdapter = (
   id: string,
@@ -107,8 +109,8 @@ const buildSatsConnectAdapter = (
   provider: SatsConnectProvider,
 ): BitcoinAdapter => {
   let chain: ChainBase = BITCOIN_CHAINS.mainnet;
-  let session: Session = { status: "disconnected" };
-  const listeners = new Set<(event: ConnectorEvent) => void>();
+  let session: Session = [];
+  const emitter = createConnectorEmitter();
 
   const callRequest = async <Schema extends z.ZodType>(
     method: string,
@@ -126,12 +128,11 @@ const buildSatsConnectAdapter = (
     method: string,
     params: Readonly<Record<string, RpcValue>>,
   ): Promise<void> => {
-    const addresses = await callRequest(method, accountResultSchema, params);
-    const payment = pickPaymentAddress(addresses);
-    if (payment === undefined) {
+    const addresses = paymentFirst(await callRequest(method, accountResultSchema, params));
+    if (addresses.length === 0) {
       throw new Error(`Wallet ${name} returned no addresses from ${method}`);
     }
-    session = { addresses, payment: payment.address, status: "connected" };
+    session = addresses;
   };
 
   // `wallet_getAccount` reads already-granted permissions without showing
@@ -144,57 +145,34 @@ const buildSatsConnectAdapter = (
   };
 
   const exposedAccounts = (): ReadonlyArray<Account> =>
-    session.status === "connected" ? [buildAccount(session.payment, chain)] : [];
+    session.map((address) => buildAccount(address, chain));
 
-  const requireSession = (): ConnectedSession => {
-    if (session.status !== "connected") {
-      throw new Error("No connected account");
-    }
-    return session;
-  };
-
-  const resolveAddress = (account?: Account): string => {
-    const active = requireSession();
-    if (account === undefined) {
-      return active.payment;
-    }
-    const match = active.addresses.find((a) => a.address === account.walletAddress);
-    if (match === undefined) {
-      throw new Error(`Account ${account.walletAddress} is not exposed by ${name}`);
-    }
-    return match.address;
-  };
-
-  const moveTo = async (target: ChainBase): Promise<void> => {
-    assertBitcoinChain(target);
-    const current = await readChain();
-    if (current.id !== target.id) {
-      const network = networkFor(target);
-      if (network === undefined) {
-        throw chainMismatch(name, current, target);
+  const target = createSwitchingChainTarget({
+    canSwitch: (to) => networkFor(to) !== undefined,
+    current: async () => {
+      const current = await readChain();
+      return current.id;
+    },
+    namespace: "bip122",
+    switchTo: async (to) => {
+      const network = networkFor(to);
+      if (network !== undefined) {
+        await callRequest("wallet_changeNetwork", changeNetworkResultSchema, { name: network });
       }
-      await callRequest("wallet_changeNetwork", changeNetworkResultSchema, { name: network });
-    }
-    if (chain.id === target.id) {
+    },
+    wallet: name,
+  });
+
+  const moveTo = async (to?: ChainBase): Promise<void> => {
+    await target.chain(to);
+    if (to === undefined || chain.id === to.id) {
       return;
     }
     // A Bitcoin address encodes its network, so the session is re-read on
     // the new one before anything is labelled with it.
     await readSession();
-    chain = resolveChain(target.id, BITCOIN_CHAINS_LIST);
-    const accounts = exposedAccounts();
-    for (const listener of listeners) {
-      listener({ accounts, type: "accountsChanged" });
-    }
-  };
-
-  // The account is matched after the move: its address only exists on the
-  // network it was built for.
-  const prepare = async (options?: TransactionOptions): Promise<string> => {
-    if (options?.chain !== undefined) {
-      await moveTo(options.chain);
-    }
-    return resolveAddress(options?.account);
+    chain = resolveChain(to.id, BITCOIN_CHAINS_LIST);
+    emitter.emit({ accounts: exposedAccounts(), type: "accountsChanged" });
   };
 
   return {
@@ -215,7 +193,7 @@ const buildSatsConnectAdapter = (
     },
 
     disconnect: () => {
-      session = { status: "disconnected" };
+      session = [];
       return Promise.resolve();
     },
 
@@ -227,13 +205,11 @@ const buildSatsConnectAdapter = (
     id,
     name,
 
+    // The account is matched after the move: its address only exists on the
+    // network it was built for.
     async sendTx({ amount, recipient }: BitcoinTransfer, options?: TransactionOptions) {
-      const sender = await prepare(options);
-      if (sender !== requireSession().payment) {
-        throw new Error(
-          `Wallet ${name} always debits its payment address; ${sender} cannot be used as the sender.`,
-        );
-      }
+      await moveTo(options?.chain);
+      target.account(session.slice(0, 1), options?.account);
       const result = await callRequest("sendTransfer", sendTransferResultSchema, {
         recipients: [{ address: recipient, amount: Number(amount) }],
       });
@@ -241,16 +217,17 @@ const buildSatsConnectAdapter = (
     },
 
     async signMessage(message, options) {
-      const address = resolveAddress(options?.account);
+      const address = target.account(session, options?.account);
       const result = await callRequest("signMessage", signMessageResultSchema, {
         address,
-        message: new TextDecoder().decode(message),
+        message: bitcoinMessageText(message, name),
       });
       return { signature: base64ToBytes(result.signature), signedMessage: message };
     },
 
     async signTransaction(psbt, options) {
-      await prepare(options);
+      await moveTo(options?.chain);
+      target.account(session, options?.account);
       const result = await callRequest("signPsbt", signPsbtResultSchema, {
         psbt: bytesToBase64(psbt),
       });
@@ -259,12 +236,7 @@ const buildSatsConnectAdapter = (
 
     // Xverse's own wallet events are not bridged: this reports the network
     // moves butr makes, which re-address the payment account.
-    subscribe: (listener) => {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
+    subscribe: emitter.subscribe,
 
     switchChain: moveTo,
   };

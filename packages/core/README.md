@@ -53,13 +53,22 @@ manager.subscribe((state) => console.log(state.pool.size, state.activeConnectorI
   `setAccount`, `setActive`, `setSelection`, `clearConnectionError`. `connect`
   resolves the `ConnectedWallet` and rejects with a `ConnectionError` whose
   `kind` is `UserRejected`, `RequestPending`, `WalletLocked`, `ChainMismatch`,
-  `NotConnected`, `Timeout`, `WalletNotFound` or `Unknown`.
+  `AccountNotExposed`, `NotConnected`, `Timeout`, `WalletNotFound` or
+  `Unknown`.
 - **Signers.** `connector.getSigner()` resolves a tagged `WalletSigner`; narrow
   it with `switch (signer.kind)`. Each transport package registers its kind.
 - **Chains and accounts.** Every registry lives here (`EVM_CHAINS`,
   `SVM_CHAINS`, `SUI_CHAINS`, `BITCOIN_CHAINS`, `POLKADOT_CHAINS`, their
   `*_LIST`, `CHAINS_BY_PLATFORM`). Adapters build chains with
-  `resolveChain(id, list)` and accounts with `buildAccount(address, chain)`.
+  `resolveChain(id, list)`, which also maps a chain's `aliases`, and accounts
+  with `buildAccount(address, chain)`.
+- **Adapter building blocks.** Chain targets resolve the chain and account of
+  each call: `createRoutedChainTarget` (Wallet Standard, WalletConnect),
+  `createSwitchingChainTarget` (injected EVM, Unisat, Xverse),
+  `createFixedChainTarget` (Ledger) and `createAccountTarget` (Polkadot
+  injectedWeb3). `createConnectorEmitter` is the listener set behind an
+  adapter's `subscribe`. Run `describeAdapterContract` from
+  `@usebutr/testing/contract` against an adapter you build.
 
 ## Persistence
 

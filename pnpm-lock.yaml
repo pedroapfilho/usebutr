@@ -1323,6 +1323,9 @@ importers:
       '@usebutr/core':
         specifier: workspace:*
         version: link:../core
+      '@usebutr/sui':
+        specifier: workspace:*
+        version: link:../sui
       '@usebutr/svm':
         specifier: workspace:*
         version: link:../svm
@@ -1574,12 +1577,18 @@ importers:
 
   packages/walletconnect:
     dependencies:
+      '@usebutr/bitcoin':
+        specifier: workspace:*
+        version: link:../bitcoin
       '@usebutr/core':
         specifier: workspace:*
         version: link:../core
       '@usebutr/evm':
         specifier: workspace:*
         version: link:../evm
+      '@usebutr/sui':
+        specifier: workspace:*
+        version: link:../sui
       '@usebutr/svm':
         specifier: workspace:*
         version: link:../svm
@@ -1593,6 +1602,9 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../config-typescript
+      '@usebutr/ledger':
+        specifier: workspace:*
+        version: link:../ledger
       '@usebutr/testing':
         specifier: workspace:*
         version: link:../testing

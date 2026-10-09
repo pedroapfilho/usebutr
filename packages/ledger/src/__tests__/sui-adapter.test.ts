@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { createLedgerAdapter } from "../adapter";
 import type { SuiAppConstructor, SuiAppLike } from "../apps/sui";
-import { createSuiLedgerAdapter, serializeEd25519Signature } from "../apps/sui";
+import { createSuiLedgerAdapter } from "../apps/sui";
 
 import { buildFakeTransport, indexOfPath } from "./helpers";
 
@@ -108,18 +108,28 @@ describe("createSuiLedgerAdapter", () => {
     expect(signed?.signature.slice(65)).toEqual(publicKeyAt(2));
   });
 
-  it("signTransaction() rejects what the device cannot sign", async () => {
-    const adapter = await connectedSui();
+  it("signTransaction() signs base64 BCS bytes as the bytes they encode", async () => {
+    const received: Array<Uint8Array> = [];
+    const adapter = await connectedSui({
+      onSignTransaction: (_path, intentMessage) => {
+        received.push(intentMessage);
+      },
+    });
 
-    await expect(adapter.signTransaction?.("{}")).rejects.toThrow(/BCS transaction bytes/v);
+    const signed = await adapter.signTransaction?.("AQID");
+
+    expect(received).toEqual([Uint8Array.of(0, 0, 0, 1, 2, 3)]);
+    expect(signed?.bytes).toEqual(Uint8Array.of(1, 2, 3));
   });
 
-  it("rejects malformed Ledger signature material", () => {
-    expect(() => serializeEd25519Signature(new Uint8Array(63), publicKeyAt(0))).toThrow(
-      /63-byte signature/v,
-    );
-    expect(() => serializeEd25519Signature(SIGNATURE, new Uint8Array(31))).toThrow(
-      /31-byte public key/v,
+  it.each([
+    ["a Transaction's JSON", '{"version":2}'],
+    ["a Transaction", { toJSON: () => Promise.resolve('{"version":2}') }],
+  ])("signTransaction() rejects %s, which needs an RPC client to build", async (_label, tx) => {
+    const adapter = await connectedSui();
+
+    await expect(adapter.signTransaction?.(tx)).rejects.toThrow(
+      /takes built BCS bytes or their base64/v,
     );
   });
 

@@ -48,7 +48,7 @@ type HydrationOutcome = {
  */
 type WalletManagerConfig = {
   /** Fires whenever a wallet goes live: a user `connect` (`reconnected:
-   *  false`) or a silent restore of a persisted connection (`true`). */
+   *  false`) or a silent reconnect of a persisted connection (`true`). */
   onConnect?: (wallet: ConnectedWallet, context: { reconnected: boolean }) => void;
   /** Fires for every failed attempt, so observability hooks here instead of
    *  wrapping every `connect` call. */

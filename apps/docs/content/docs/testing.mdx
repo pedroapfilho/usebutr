@@ -170,11 +170,11 @@ in-memory drivers, so `load()` decodes and validates exactly as it does in the
 browser. The seed is what the first `load()` finds, as if a previous session
 had saved it:
 
-| Field                | Default      | Notes                                            |
-| -------------------- | ------------ | ------------------------------------------------ |
-| `wallets`            | `[]`         | Connected wallets the previous session saved.    |
-| `active`             | first wallet | The wallet the previous session left active.     |
-| `isUserDisconnected` | `false`      | A manual disconnect earlier in the same session. |
+| Field                | Default | Notes                                                                                                |
+| -------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| `wallets`            | `[]`    | Connected wallets the previous session saved.                                                        |
+| `active`             | none    | The wallet the previous session left active; without it the manager picks the first restored wallet. |
+| `isUserDisconnected` | `false` | A manual disconnect earlier in the same session.                                                     |
 
 `saves` lists every state the manager handed to `save`, oldest first.
 

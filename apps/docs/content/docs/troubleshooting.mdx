@@ -152,7 +152,8 @@ Storage keys are prefixed (`{prefix}-pool`, `{prefix}-selection`,
 
 Verify against the `signedMessage` returned by `signMessage`, not your input
 bytes; Solana Wallet Standard wallets may prefix or re-encode the message.
-Polkadot injected signing wraps it in `<Bytes>…</Bytes>`. See
+Polkadot signing wraps it in `<Bytes>…</Bytes>` on both injectedWeb3 and
+Wallet Standard. See
 [signing](/guides/signing).
 
 ## UI flashes "not connected" on every reload

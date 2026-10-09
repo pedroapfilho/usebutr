@@ -164,7 +164,7 @@ const Page = () => {
 };
 ```
 
-Until the live adapter arrives, a seeded wallet is backed by a placeholder that
+Until the live adapter arrives, a seeded wallet is backed by a shadow adapter that
 carries data but has none of the optional methods: `signMessage`, `sendTx`,
 and `switchChain` are absent. A presence check alone would hide those controls
 and then pop them in. Render them disabled while reconnecting instead, so the
@@ -282,7 +282,7 @@ prerendered before and you want to keep it that way, you can either:
   options (`domain`, `path`, `sameSite`, `maxAgeSeconds`).
 
 <Callout type="info">
-  **Source:** the SSR snapshot design in ADR 0002 and ADR 0005. See the [Next.js
-  guide](/getting-started/frameworks/nextjs) and [synchronous
+  **Source:** synchronous seeding in ADR 0003 and the persisted-state wire format in ADR 0005. See
+  the [Next.js guide](/getting-started/frameworks/nextjs) and [synchronous
   seeding](/concepts/hydration#synchronous-seeding-ssr).
 </Callout>

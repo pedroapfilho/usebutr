@@ -22,9 +22,10 @@ Standard](https://github.com/wallet-standard/wallet-standard); EVM goes through
 - **EVM**: `@usebutr/evm` adds the `eip6963:announceProvider` listener _before_
   dispatching `eip6963:requestProvider`, so wallets that announced early
   aren't missed. Providers are de-duplicated by `info.rdns`.
-- **Legacy fallback**: a raw `window.ethereum` is adopted only after a 150 ms
-  settle window in which no EIP-6963 wallet answered. It suppresses itself the
-  moment a compliant wallet is present, so it never double-lists.
+- **Legacy fallback**: inside `autoDiscovery`, a raw `window.ethereum` waits
+  until Wallet Standard has loaded plus a 150 ms settle window, and lists only
+  when no EVM wallet announced. `discoverInjectedAdapter` used as its own
+  source emits as soon as it is subscribed.
 
 ## What's covered
 
@@ -44,9 +45,10 @@ Standard](https://github.com/wallet-standard/wallet-standard); EVM goes through
 Eager hydration asks the wallet to restore already-authorized accounts
 **without prompting**: Wallet Standard's `silent` input, the `eth_accounts`
 read on EIP-1193. A wallet that can't reconnect silently fails the restore
-cleanly instead of popping a connect dialog on page load. Hardware (Ledger)
-and WalletConnect adapters, which are inherently interactive, reject a silent
-reconnect rather than show UI.
+cleanly instead of popping a connect dialog on page load. Ledger adapters,
+which are inherently interactive, always reject a silent reconnect.
+WalletConnect restores a session still live on the relay and rejects when
+there is none, rather than showing a pairing prompt.
 
 Connector errors are normalized once, centrally: EIP-1193 codes `4001`
 (user rejected), `-32002` (request pending), and `4100` / `4900` / `4901`

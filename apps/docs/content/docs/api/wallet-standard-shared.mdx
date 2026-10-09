@@ -104,12 +104,15 @@ export const buildAdapter = (wallet: WalletStandardWallet): SvmAdapter | null =>
 };
 ```
 
-### `discoverWalletStandard(onAdapter, build, loadModule?): () => void`
+### `discoverWalletStandard(routes, { loadModule?, onReady? }): () => void`
 
-Loads the registry, builds an adapter for each registered wallet with
-`build`, announces each id once, and bridges `unregister` into a
-`disconnected` event. A missing `@wallet-standard/app` logs one warning and
-disables this source. `WalletStandardAdapterBuilder` is
+Loads the registry once and feeds every route from that one subscription.
+Each `WalletStandardRoute` is `{ build, onAdapter }`: `build` turns a
+registered wallet into an adapter or `null`, and `onAdapter` receives each new
+id once. `unregister` becomes a `disconnected` event on that wallet's
+adapters. `onReady` runs once the wallets already registered are routed, or
+once the module failed to load. A missing `@wallet-standard/app` logs one
+warning and disables discovery. `WalletStandardAdapterBuilder` is
 `(wallet, registerDisconnector) => WalletAdapter | null`.
 
 ## Types
@@ -118,7 +121,7 @@ disables this source. `WalletStandardAdapterBuilder` is
 `StandardConnectFeature`, `StandardDisconnectFeature`, `StandardEventsFeature`,
 `StandardEventsListener`, `WalletsApp`, `WalletStandardAppModule`,
 `WalletStandardModuleLoader`, `WalletStandardCore`, `WalletStandardCoreInput`,
-`WalletStandardAdapterBuilder`.
+`WalletStandardAdapterBuilder`, `WalletStandardRoute`.
 
 See the [Solana](/api/svm), [Sui](/api/sui), [Bitcoin](/api/bitcoin), and
 [Polkadot](/api/polkadot) packages for complete adapters.

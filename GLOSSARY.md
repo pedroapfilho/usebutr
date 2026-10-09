@@ -68,6 +68,7 @@ The one error type adapters and the wallet manager reject with. Its `kind` is `U
 
 **Shadow adapter** (`isShadowAdapter`, `ShadowConnectorError`)
 A stand-in adapter built from a stored pool entry when the manager is seeded from an initial state. It renders the wallet's identity, has no optional methods, and rejects `connect`, `getAccounts` and `getSigner` with `ShadowConnectorError` until the silent reconnect swaps it for the live adapter or evicts it.
+Avoid: placeholder adapter.
 
 ## Discovery
 

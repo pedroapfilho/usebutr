@@ -136,10 +136,10 @@ The snapshot's active id is the one the browser stored. If it names no pool
 entry, or one the pool does not hold, the manager falls back to the first
 entry, exactly as it does after a client-side load.
 
-The seeded entries are backed by placeholder adapters until the real wallet
+The seeded entries are backed by shadow adapters until the real wallet
 announces itself, so they carry data but cannot act. Three things follow:
 
-- The placeholder has none of the optional methods, so `signMessage`,
+- The shadow adapter has none of the optional methods, so `signMessage`,
   `sendTx`, and `switchChain` are absent until the live adapter lands. Its
   `connect`, `getAccounts`, and `getSigner` reject with a
   `ShadowConnectorError`.
@@ -150,7 +150,7 @@ announces itself, so they carry data but cannot act. Three things follow:
   Gate any "sign" affordance on it.
 
 If a seeded wallet's silent reconnect fails, which a locked wallet will do, the
-manager drops it from the pool rather than leaving an unusable placeholder, and
+manager drops it from the pool rather than leaving an unusable shadow adapter, and
 keeps it persisted for the next load. If its adapter never announces (the
 extension was uninstalled), it stays reconnecting: there is no timeout for a
 wallet that has not appeared yet. `disconnect(id)` removes it.

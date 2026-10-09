@@ -114,9 +114,9 @@ const signOnSignet = async (wallet: ConnectedWallet<"bitcoin">, psbt: Uint8Array
 ```
 
 <Callout type="warn">
-  **Address formats vary by wallet.** Phantom exposes native SegWit only; Xverse exposes a payment
-  address as the account and signs with its ordinals address too. Read `account.walletAddress` and
-  detect the format from its prefix.
+  **Address formats vary by wallet.** Phantom exposes native SegWit only; Xverse exposes its payment
+  and ordinals addresses as two accounts, payment first, and `sendTx` debits the payment address.
+  Read `account.walletAddress` and detect the format from its prefix.
 </Callout>
 
 ## Signers

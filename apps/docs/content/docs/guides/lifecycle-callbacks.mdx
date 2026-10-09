@@ -29,7 +29,7 @@ const config: WalletManagerConfig = {
 
 | Callback         | Signature                                                              | Fires when                                                 |
 | ---------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `onConnect`      | `(wallet: ConnectedWallet, context: { reconnected: boolean }) => void` | a wallet goes live: a user connect, or a silent restore    |
+| `onConnect`      | `(wallet: ConnectedWallet, context: { reconnected: boolean }) => void` | a wallet goes live: a user connect, or a silent reconnect  |
 | `onConnectError` | `(error: ConnectionError, connectorId: string) => void`                | a connect attempt fails                                    |
 | `onDisconnect`   | `(wallet: ConnectedWallet, context: { byUser: boolean }) => void`      | a live wallet leaves the pool                              |
 | `onHydrated`     | `(outcome: HydrationOutcome) => void`                                  | once, after the start-up restore pass                      |
@@ -43,7 +43,7 @@ that first render.
 ## Notes
 
 - **`onConnect`** fires for `connect()` with `reconnected: false`, and for
-  every silent restore with `reconnected: true`, including a wallet restored
+  every silent reconnect with `reconnected: true`, including a wallet restored
   late because its adapter announced after the start-up pass. It is the one
   place to observe every wallet going live.
 - **`onConnectError`** receives the normalised

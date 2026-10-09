@@ -43,8 +43,8 @@ export { WalletProvider };
 ```
 
 `demo-with-viem`, `demo-with-wagmi`, `demo-next`, and `demo-tanstack-start` all
-use this pattern. To also catch wallets that only inject `window.ethereum`, add
-`discoverInjectedAdapter` as a second source; see
+use this pattern. To also catch wallets that only inject `window.ethereum`,
+use `autoDiscovery(["evm"])` from `@usebutr/wallets`; see
 [caveats](#capabilities-and-caveats).
 
 On Next.js the same module needs a `"use client"` directive at the top; see

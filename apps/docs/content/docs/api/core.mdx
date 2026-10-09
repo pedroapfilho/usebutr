@@ -57,7 +57,7 @@ Read once, when the manager is created. Define it at module scope.
 | ------------------------ | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `sources`                | `ReadonlyArray<WalletSource>`                   | `autoDiscovery()`, any `discover*Adapters` export, or `fromAdapters(…)`. The first adapter announced for an id wins. |
 | `storage`                | `WalletPersistence`                             | Replaces the default localStorage + sessionStorage persistence.                                                      |
-| `onConnect`              | `(wallet, { reconnected }) => void`             | A user `connect` (`reconnected: false`) or a silent restore (`true`).                                                |
+| `onConnect`              | `(wallet, { reconnected }) => void`             | A user `connect` (`reconnected: false`) or a silent reconnect (`true`).                                              |
 | `onConnectError`         | `(error: ConnectionError, connectorId) => void` | Every failed attempt.                                                                                                |
 | `onDisconnect`           | `(wallet, { byUser }) => void`                  | `byUser` is false when the wallet ended the session.                                                                 |
 | `onHydrated`             | `(outcome: HydrationOutcome) => void`           | Once, after the start-up hydration pass.                                                                             |
@@ -257,8 +257,9 @@ Each target has these members, and each throws a `ConnectionError` of a kind
 below when its rule fails:
 
 - `account(exposed, requested?)` returns the exposed entry to act as, an
-  address or a record with an `address`: `requested` when the wallet exposes
-  it, else the first. `eip155` addresses compare case-insensitively, since
+  address or a record with an `address`: `requested` when given, rejecting
+  with `AccountNotExposed` when the wallet does not expose it, else the active
+  (first) entry. `eip155` addresses compare case-insensitively, since
   EIP-55 casing is only a checksum; every other namespace compares exactly.
 - `connected(session)` returns the transport's session, or throws when it has
   none.

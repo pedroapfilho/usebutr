@@ -18,6 +18,8 @@ import {
   resolveChain,
 } from "@usebutr/core";
 
+import { bitcoinMessageText } from "../message";
+
 import { GENERIC_BITCOIN_ICON } from "./icon";
 
 type UnisatNetwork = "livenet" | "mainnet" | "signet" | "testnet";
@@ -164,8 +166,9 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     name,
 
     async signMessage(message, options) {
+      const text = bitcoinMessageText(message, name);
       await assertActive(options?.account);
-      const signature = await provider.signMessage(new TextDecoder().decode(message));
+      const signature = await provider.signMessage(text);
       return { signature: base64ToBytes(signature), signedMessage: message };
     },
 

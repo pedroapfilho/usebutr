@@ -17,6 +17,8 @@ import {
 } from "@usebutr/core";
 import { z } from "zod";
 
+import { bitcoinMessageText } from "../message";
+
 import { GENERIC_BITCOIN_ICON } from "./icon";
 
 /** sats-connect (Xverse) shape; a JSON-RPC-ish `request(method, params)`. */
@@ -218,7 +220,7 @@ const buildSatsConnectAdapter = (
       const address = target.account(session, options?.account);
       const result = await callRequest("signMessage", signMessageResultSchema, {
         address,
-        message: new TextDecoder().decode(message),
+        message: bitcoinMessageText(message, name),
       });
       return { signature: base64ToBytes(result.signature), signedMessage: message };
     },

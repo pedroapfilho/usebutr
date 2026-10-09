@@ -1,6 +1,6 @@
 ---
 title: Testing
-description: "@usebutr/testing: fake adapters, fake connected wallets and fake persistence, so unit tests never touch a real wallet or browser storage."
+description: "@usebutr/testing: fake adapters, fake connected wallets, fake persistence, and the contract suite every adapter runs."
 ---
 
 `@usebutr/testing` provides test doubles that behave like real wallets on
@@ -73,16 +73,18 @@ is a `FakeAdapter<"svm">`, an `SvmAdapter` plus the test controls.
 | `bitcoin`  | `disconnect`, `sendTx`, `signMessage`, `signTransaction`, `subscribe`                                                       |
 | `polkadot` | `disconnect`, `signMessage`, `subscribe`                                                                                    |
 
-It follows the adapter contract, so code under test meets the same failures
-it would in production:
+It passes the [adapter contract suite](#adapter-contract-suite), so code under
+test meets the same failures it would in production:
 
-- An `account` the fake does not expose rejects. After `disconnect()` or a
-  `disconnected` event, `getAccounts()` resolves `[]` and signing, sending
-  and balance calls reject with a `NotConnected` `ConnectionError` until the
+- An `account` the fake does not expose rejects with `AccountNotExposed`. EVM
+  addresses match case-insensitively. After `disconnect()`, a `disconnected`
+  event or an empty `accountsChanged`, `getAccounts()` resolves `[]` and
+  signing, sending and balance calls reject with `NotConnected` until the
   next `connect()`.
-- A `chain` from another namespace rejects. The EVM fake switches its
-  accounts to a new chain before `sendTx`, as a real EVM wallet does, and
-  tells its listeners.
+- A `chain` from another namespace, or outside the platform's registry,
+  rejects with `ChainMismatch`. The EVM fake switches its accounts to a new
+  chain before `sendTx`, as a real EVM wallet does, and tells its listeners;
+  the other fakes route the one call, as Wallet Standard does.
 - Hashes and signatures are distinct on every call, so two results never
   compare equal by accident. `signMessage` resolves your message as
   `signedMessage`.
@@ -124,9 +126,13 @@ const metamask = createFakeAdapter({ id: "io.metamask", signer });
 
 - `emit(event)` delivers a `ConnectorEvent` to the manager, as the wallet
   would. `getAccounts()` follows it: a new account list replaces the exposed
-  accounts, and `disconnected` exposes none until the next `connect()`.
+  accounts, and `disconnected` or an empty list exposes none until the next
+  `connect()`.
 - `listenerCount()` returns the live `subscribe` listeners: zero once the
   manager has detached.
+- `requests()` lists every signing or sending request the fake accepted,
+  oldest first, as `FakeRequest`: the `method`, the `address` it acted as,
+  and the `chain` for methods that take one.
 
 ## `createFakeConnectedWallet(options?): FakeConnectedWallet<P>`
 
@@ -197,13 +203,90 @@ const manager = createWalletManager({
 manager.start();
 ```
 
+## Adapter contract suite
+
+`@usebutr/testing/contract` exports `describeAdapterContract`, the Vitest suite
+every butr adapter package runs against its adapters. Adapter authors run it
+against their own adapter, over a fake of their wallet. It covers what every
+adapter does alike, whatever its transport:
+
+- `getAccounts` lists every exposed account, active first, on the current
+  chain, and resolves `[]` when the wallet exposes nothing.
+- A call acts as the active account, or as a requested exposed one. EVM
+  addresses match case-insensitively; every other namespace matches exactly.
+  An unexposed account rejects with `AccountNotExposed`, and a wallet that
+  exposes nothing with `NotConnected`, before the wallet is asked to sign.
+- A call without `chain` goes to the current chain. A chain from another
+  namespace, or one the transport cannot reach, rejects with `ChainMismatch`.
+  A reachable chain is routed for that one call or reached by switching the
+  wallet's network, per the fixture's `move`. `switchChain` follows the same
+  rules and tells subscribers.
+- `subscribe` forwards the wallet's account list as `accountsChanged`, active
+  first, and an empty list as `accountsChanged` with no accounts, never as
+  `disconnected`. Nothing arrives after unsubscribing.
+
+Install `vitest` alongside `@usebutr/testing`; the contract entry imports it.
+Call the suite at the top level of a test file, once per adapter:
+
+```ts
+import type { EvmAdapter } from "@usebutr/core";
+import { EVM_CHAINS } from "@usebutr/core";
+import type { ObservedCall } from "@usebutr/testing/contract";
+import { describeAdapterContract } from "@usebutr/testing/contract";
+
+import { buildMyAdapter } from "../adapter";
+import { createMyFakeWallet } from "./fake-wallet";
+
+describeAdapterContract<EvmAdapter>({
+  addresses: [
+    "0x52908400098527886E0F7030069857D2E4169EE7",
+    "0x8617E340B3D01FA5F11F306F4090FD50E238070D",
+  ],
+  chain: EVM_CHAINS.ethereum,
+  connect: async (addresses) => {
+    const calls: Array<ObservedCall> = [];
+    const wallet = createMyFakeWallet(addresses, (call) => calls.push(call));
+    return {
+      adapter: buildMyAdapter(wallet),
+      lastCall: () => calls.at(-1),
+      reportAccounts: (reported) => wallet.emitAccounts(reported),
+    };
+  },
+  move: "switch",
+  name: "My wallet",
+  reachable: EVM_CHAINS.polygon,
+  transactions: { sendTx: (adapter, options) => adapter.sendTx?.({}, options) },
+  unreachable: EVM_CHAINS.base,
+});
+```
+
+| Field          | Notes                                                                                                                                        |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`         | Prefixes every test title.                                                                                                                   |
+| `addresses`    | Two addresses the wallet can expose on `chain`, each with a letter, so a case-changed copy differs.                                          |
+| `chain`        | The chain the adapter is on once connected.                                                                                                  |
+| `connect`      | Builds an adapter whose wallet exposes `addresses`, active first, connected where the transport allows it. `[]` builds one exposing nothing. |
+| `move`         | `"route"` (Wallet Standard, WalletConnect), `"switch"` (injected EVM, UniSat, sats-connect) or `"fixed"` (Ledger).                           |
+| `reachable`    | A chain in the namespace the transport reaches. Omit for `"fixed"`.                                                                          |
+| `unreachable`  | A chain in the namespace the transport cannot reach.                                                                                         |
+| `transactions` | Every method the adapter defines that takes `chain`, as a call with a payload the fake accepts.                                              |
+| `activeOnly`   | The transport signs only as its active account (UniSat).                                                                                     |
+
+`connect` resolves a `ContractWallet`: the `adapter`, `lastCall()` returning the
+last signing or sending request the fake wallet received as an `ObservedCall`
+(`address`, `chain`), and `reportAccounts(addresses)` for transports whose
+wallet pushes account changes. A suite skips what the adapter does not define:
+no `switchChain`, no `signMessage`, or no `reportAccounts`.
+
 ## Types
 
-`FakeAdapter`, `FakeAdapterControls`, `FakeAdapterOptions`,
-`FakeConnectedWallet`, `FakeConnectedWalletOptions`, `FakePersistence`.
+`FakeAdapter`, `FakeAdapterControls`, `FakeAdapterOptions`, `FakeRequest`,
+`FakeConnectedWallet`, `FakeConnectedWalletOptions`, `FakePersistence`. From
+`@usebutr/testing/contract`: `AdapterContractFixture`, `ContractWallet`,
+`ObservedCall`, `TransactionCall`.
 
 <Callout type="info">
   **Source:** `packages/testing/src` (`fake-adapter.ts`, `fake-connected-wallet.ts`,
-  `fake-persistence.ts`) in the [butr
+  `fake-persistence.ts`, `adapter-contract.ts`) in the [butr
   repository](https://github.com/pedroapfilho/usebutr/tree/main/packages/testing).
 </Callout>

@@ -85,7 +85,7 @@ const createSignInFlow = (options: SignInFlowOptions): SignInFlow => {
       connector.signIn !== undefined
     ) {
       const nonce = await options.getNonce({ account: signingAccount, wallet });
-      const output = await connector.signIn({ nonce });
+      const output = await connector.signIn({ address: signingAccount.walletAddress, nonce });
       return {
         account: output.account,
         nonce,

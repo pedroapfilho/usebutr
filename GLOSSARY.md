@@ -146,7 +146,7 @@ The start-up pass of `start()`: load the persisted wallet state, keep its entrie
 
 **Silent reconnect** (`connect({ silent: true })`)
 A non-interactive `connect` of a dormant entry, during hydration or when its adapter announces later, bounded to 15 seconds. An adapter that cannot reconnect without prompting rejects. A declined silent reconnect leaves the wallet's permission in place; a timeout or an empty account list closes the session.
-Avoid: silent restore, auto-connect.
+Avoid: silent restore.
 
 **Disconnect intent** (`WalletState.isUserDisconnected`)
 Whether the user disconnected during this session. A user disconnect sets it, the next connect attempt clears it, and it persists in the session slot only.

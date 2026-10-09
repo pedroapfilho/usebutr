@@ -354,7 +354,7 @@ const RootLayout = async ({ children }: { children: ReactNode }) => {
 export default RootLayout;
 ```
 
-The client persists and the server reads through one storage, one key prefix and one decoder. Seeded wallets render at once with a shadow adapter and report `useIsReconnecting()` until their silent restore lands, so the tree needs no `useIsHydrated()` gate.
+The client persists and the server reads through one storage, one key prefix and one decoder. Seeded wallets render at once with a shadow adapter and report `useIsReconnecting()` until their silent reconnect lands, so the tree needs no `useIsHydrated()` gate.
 
 </details>
 
@@ -540,7 +540,7 @@ The most-used hooks from `@usebutr/react`. Full list and reference at [`docs.use
 | `useAccounts(id?)`             | A wallet's exposed accounts, active first; the active wallet's when `id` is omitted.                                            |
 | `useConnectionStatus()`        | `"connected"`, `"connecting"`, `"reconnecting"` or `"disconnected"` for the active wallet.                                      |
 | `useIsHydrated()`              | `true` once the start-up hydration pass ran; always `true` when seeded from `initialState`.                                     |
-| `useIsReconnecting(id?)`       | Whether a wallet seeded from `initialState` still waits for its silent restore.                                                 |
+| `useIsReconnecting(id?)`       | Whether a wallet seeded from `initialState` still waits for its silent reconnect.                                               |
 | `useSigner(wallet)`            | `{ status, data, error }`, where `data` is the wallet's `WalletSigner`; narrow it with `switch (data.kind)`.                    |
 | `useBalance(wallet, options?)` | `{ status, data, error }` for wallets whose adapter defines `getBalance`.                                                       |
 | `useWalletState(selector)`     | Any other slice of the manager's state, compared shallowly.                                                                     |

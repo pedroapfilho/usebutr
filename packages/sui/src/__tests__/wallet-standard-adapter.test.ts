@@ -243,21 +243,18 @@ describe("buildSuiAdapter.sendTx", () => {
     expect(feature.signAndExecuteTransaction).toHaveBeenCalledWith({
       account: walletAccount("0xSuiAddress1"),
       chain: "sui:mainnet",
-      transaction: tx,
+      transaction: { toJSON: expect.any(Function) },
     });
     expect(digest).toBe("DigEst123");
   });
 
-  it("hands a Transaction to the wallet as-is, so its toJSON keeps `this`", async () => {
+  it("hands the wallet a Transaction's JSON, read with its own `this`", async () => {
     const feature = executeFeature();
     const adapter = adapterFor({}, { "sui:signAndExecuteTransaction": feature });
-    const tx = new FakeTransaction();
 
-    await present(adapter.sendTx, "sendTx")(tx);
+    await present(adapter.sendTx, "sendTx")(new FakeTransaction());
 
-    const passed = passedTransaction(feature);
-    expect(passed).toBe(tx);
-    await expect(passed.toJSON()).resolves.toBe('{"version":2}');
+    await expect(passedTransaction(feature).toJSON()).resolves.toBe('{"version":2}');
   });
 
   it("wraps a string into the toJSON shape wallets accept", async () => {

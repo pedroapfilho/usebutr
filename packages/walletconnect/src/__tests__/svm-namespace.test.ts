@@ -8,7 +8,7 @@ import { solanaNamespace } from "../namespaces/svm";
 import type { FakeProvider } from "./fake-provider";
 import { createFakeProvider } from "./fake-provider";
 
-// WalletConnect's CAIP-2 ids, which core's registry does not name.
+// WalletConnect's CAIP-2 ids, which core's registry lists as aliases.
 // What the session calls each cluster, and what butr's accounts carry.
 const MAINNET_ID = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 const DEVNET_ID = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1";
@@ -73,6 +73,16 @@ describe("solanaNamespace", () => {
       "solana_signTransaction",
       "solana_signAndSendTransaction",
     ]);
+  });
+
+  it("names each registry cluster by its genesis-hash alias", () => {
+    expect(solanaNamespace.chainAliases).toEqual(
+      new Map([
+        [DEVNET.id, DEVNET_ID],
+        [MAINNET.id, MAINNET_ID],
+        [SVM_CHAINS.testnet.id, "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z"],
+      ]),
+    );
   });
 
   it("defines only what WalletConnect can do", () => {

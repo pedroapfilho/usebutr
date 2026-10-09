@@ -27,9 +27,10 @@ type WalletStandardCoreInput = {
   label: string;
   /** CAIP-2 namespace without its colon: `solana`, `sui`, `bip122`. */
   namespace: string;
-  /** Chain ids worth preferring over the first advertised one. Matched in
-   *  the wallet's own order, so a wallet listing `mainnet-beta` before
-   *  `mainnet` keeps the chain it advertised first. */
+  /** Registry chain ids worth preferring over the first advertised one; a
+   *  wallet naming one by an alias counts. Matched in the wallet's own
+   *  order, so a wallet listing devnet before mainnet keeps devnet when
+   *  both are preferred. */
   preferredChainIds: ReadonlyArray<string>;
   /** Called with a function that pushes a synthetic `disconnected` event to
    *  all current subscribers. Discovery invokes it on `unregister`. */
@@ -58,8 +59,9 @@ type WalletStandardCore = {
   /** The Wallet Standard account a call signs with: the one matching
    *  `account`, else the active one. Rejections are the chain target's. */
   resolveAccount: (account?: Account) => WalletStandardWalletAccount;
-  /** The chain id a call targets: `chain` when the wallet advertises it,
-   *  else the current one. Rejections are the chain target's. */
+  /** The chain id a call targets, as the wallet names it: `chain` when the
+   *  wallet advertises it under its id or an alias, else the current one.
+   *  Rejections are the chain target's. */
   resolveChainId: (chain?: ChainBase) => string;
 };
 
@@ -79,9 +81,14 @@ const createWalletStandardCore = ({
   wallet,
 }: WalletStandardCoreInput): WalletStandardCore | null => {
   const prefix = `${namespace}:`;
+  // Accounts and callers speak registry ids; the wallet hears its own.
+  const toRegistryId = (chainId: string) => resolveChain(chainId, chains).id;
+  const toWalletId = (chainId: string) =>
+    wallet.chains.find((c) => toRegistryId(c) === chainId) ?? chainId;
   const preferred = new Set(preferredChainIds);
   const pickChain = (advertised: ReadonlyArray<string>): string | undefined =>
-    advertised.find((c) => preferred.has(c)) ?? advertised.find((c) => c.startsWith(prefix));
+    advertised.find((c) => preferred.has(toRegistryId(c))) ??
+    advertised.find((c) => c.startsWith(prefix));
 
   const initialChainId = pickChain(wallet.chains);
   const connect = getFeature<StandardConnectFeature>(wallet, "standard:connect", "connect");
@@ -103,11 +110,13 @@ const createWalletStandardCore = ({
   };
 
   const target = createRoutedChainTarget({
-    advertised: () => wallet.chains,
-    current: () => currentChainId,
+    advertised: () => wallet.chains.map(toRegistryId),
+    current: () => toRegistryId(currentChainId),
     namespace,
     wallet: wallet.name,
   });
+  const routeChain = (chain?: ChainBase) =>
+    toWalletId(target.chain(chain === undefined ? undefined : resolveChain(chain.id, chains)));
 
   const emitter = createConnectorEmitter();
   const toEvent = (accounts: ReadonlyArray<WalletStandardWalletAccount>): ConnectorEvent => ({
@@ -139,7 +148,9 @@ const createWalletStandardCore = ({
     };
   };
 
-  const advertisedInNamespace = wallet.chains.filter((c) => c.startsWith(prefix));
+  const advertisedInNamespace = new Set(
+    wallet.chains.filter((c) => c.startsWith(prefix)).map(toRegistryId),
+  );
 
   const base: WalletStandardConnector = {
     async connect(options) {
@@ -165,9 +176,9 @@ const createWalletStandardCore = ({
     // Wallet Standard has no switch-network call: this re-points butr's view
     // (and every later call's `chain` input), which only means something
     // when the wallet advertises more than one chain.
-    ...(advertisedInNamespace.length > 1 && {
+    ...(advertisedInNamespace.size > 1 && {
       switchChain: async (chain: ChainBase) => {
-        currentChainId = target.chain(chain);
+        currentChainId = routeChain(chain);
         emitter.emit(toEvent(wallet.accounts));
         await Promise.resolve();
       },
@@ -178,7 +189,7 @@ const createWalletStandardCore = ({
     base,
     currentChain,
     resolveAccount: (account) => target.account(wallet.accounts, account),
-    resolveChainId: target.chain,
+    resolveChainId: routeChain,
   };
 };
 

@@ -176,22 +176,33 @@ describe("createWalletStandardCore chain resolution", () => {
 
   it("names a chain from the registry, never after the wallet", () => {
     const core = coreFor({ chains: ["solana:devnet"], name: "Phantom" });
-    expect(core.currentChain()).toEqual({
-      id: "solana:devnet",
-      name: "Solana Devnet",
-      namespace: "solana",
-      reference: "devnet",
-    });
+    expect(core.currentChain()).toBe(SVM_CHAINS.devnet);
+    expect(core.currentChain().name).toBe("Solana Devnet");
   });
 
   it("names a chain outside the registry by its CAIP-2 id", () => {
-    const core = coreFor({ chains: ["solana:mainnet-beta"] });
+    const core = coreFor({ chains: ["solana:localnet"] });
     expect(core.currentChain()).toEqual({
-      id: "solana:mainnet-beta",
-      name: "solana:mainnet-beta",
+      id: "solana:localnet",
+      name: "solana:localnet",
       namespace: "solana",
-      reference: "mainnet-beta",
+      reference: "localnet",
     });
+  });
+
+  it("names a chain advertised by an alias after its registry entry", async () => {
+    const core = coreFor({ chains: ["solana:devnet", "solana:mainnet-beta"] });
+    expect(core.currentChain()).toBe(SVM_CHAINS.mainnet);
+    await expect(core.base.getAccounts()).resolves.toEqual([
+      buildAccount("So1Address1", SVM_CHAINS.mainnet),
+    ]);
+  });
+
+  it("routes a registry chain to the alias the wallet advertises", () => {
+    const core = coreFor({ chains: ["solana:mainnet-beta", "solana:devnet"] });
+    expect(core.resolveChainId()).toBe("solana:mainnet-beta");
+    expect(core.resolveChainId(SVM_CHAINS.mainnet)).toBe("solana:mainnet-beta");
+    expect(core.resolveChainId(SVM_CHAINS.devnet)).toBe("solana:devnet");
   });
 });
 
@@ -300,6 +311,19 @@ describe("createWalletStandardCore switchChain", () => {
   it("is present when the wallet advertises several chains in the namespace", () => {
     const core = coreFor({ chains: ["solana:mainnet", "solana:devnet", "sui:mainnet"] });
     expect(core.base.switchChain).toBeTypeOf("function");
+  });
+
+  it("is absent when the wallet names one chain twice", () => {
+    const core = coreFor({ chains: ["solana:mainnet", "solana:mainnet-beta"] });
+    expect(core.base.switchChain).toBeUndefined();
+  });
+
+  it("switches to a chain the wallet advertises under an alias", async () => {
+    const core = coreFor({ chains: ["solana:devnet", "solana:mainnet-beta"] });
+    await switchChainOf(core)(SVM_CHAINS.devnet);
+    await switchChainOf(core)(SVM_CHAINS.mainnet);
+    expect(core.currentChain()).toBe(SVM_CHAINS.mainnet);
+    expect(core.resolveChainId()).toBe("solana:mainnet-beta");
   });
 
   it("re-points the current chain, and later reads, on success", async () => {

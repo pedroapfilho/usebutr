@@ -224,17 +224,13 @@ describe("buildSvmAdapter session", () => {
     await expect(adapterFor({ accounts: [] }).getAccounts()).resolves.toEqual([]);
   });
 
-  it("prefers solana:mainnet-beta, named by its id, over other clusters", async () => {
+  it("prefers mainnet advertised as solana:mainnet-beta, on the registry's chain", async () => {
     const adapter = adapterFor({
       chains: ["solana:devnet", "solana:mainnet-beta", "solana:testnet"],
     });
-    const [account] = await adapter.getAccounts();
-    expect(account?.chain).toEqual({
-      id: "solana:mainnet-beta",
-      name: "solana:mainnet-beta",
-      namespace: "solana",
-      reference: "mainnet-beta",
-    });
+    await expect(adapter.getAccounts()).resolves.toEqual([
+      buildAccount("So1Address1", SVM_CHAINS.mainnet),
+    ]);
   });
 
   it("follows a cluster switch reported by the wallet", () => {
@@ -281,6 +277,23 @@ describe("buildSvmAdapter.sendTx", () => {
     });
     expect(signature).toBe(bytesToBase58(new Uint8Array([1, 2, 3, 4])));
     expect(base58ToBytes(signature)).toEqual(new Uint8Array([1, 2, 3, 4]));
+  });
+
+  it("sends to mainnet under the alias a solana:mainnet-beta wallet advertises", async () => {
+    const feature = sendFeature();
+    const adapter = adapterFor(
+      { chains: ["solana:mainnet-beta"] },
+      { "solana:signAndSendTransaction": feature },
+    );
+    const tx = new Uint8Array([42]);
+
+    await present(adapter.sendTx, "sendTx")(tx, { chain: SVM_CHAINS.mainnet });
+
+    expect(feature.signAndSendTransaction).toHaveBeenCalledWith({
+      account: walletAccount("So1Address1"),
+      chain: "solana:mainnet-beta",
+      transaction: tx,
+    });
   });
 
   it("rejects when the wallet returns no outputs", async () => {

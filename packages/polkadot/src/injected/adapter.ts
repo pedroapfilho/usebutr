@@ -16,9 +16,11 @@ import {
   sanitizeIcon,
 } from "@usebutr/core";
 
+import { wrapBytes } from "../message";
+
 import { GENERIC_POLKADOT_ICON } from "./icon";
 import type { Injected, InjectedAccount, InjectedWindowProvider } from "./injected-web3";
-import { bytesToHex, hexToBytes, wrapBytes } from "./injected-web3";
+import { bytesToHex, hexToBytes } from "./injected-web3";
 
 const DAPP_NAME = "butr";
 

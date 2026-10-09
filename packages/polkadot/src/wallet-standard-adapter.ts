@@ -8,6 +8,7 @@ import {
 } from "@usebutr/wallet-standard-shared";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 
+import { wrapBytes } from "./message";
 import type { PolkadotSignMessageFeature } from "./wallet-standard-types";
 
 const buildPolkadotWalletStandardAdapter = (
@@ -44,11 +45,12 @@ const buildPolkadotWalletStandardAdapter = (
     chainPlatform: "polkadot",
     ...(signer !== undefined && {
       signMessage: async (message: Uint8Array, options?: AccountOptions) => {
+        const wrapped = wrapBytes(message);
         const output = await signer.signMessage({
           account: core.resolveAccount(options?.account),
-          message,
+          message: wrapped,
         });
-        return { signature: output.signature, signedMessage: output.signedMessage ?? message };
+        return { signature: output.signature, signedMessage: output.signedMessage ?? wrapped };
       },
     }),
   };

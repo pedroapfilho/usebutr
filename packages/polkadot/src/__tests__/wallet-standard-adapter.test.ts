@@ -165,16 +165,15 @@ describe("buildPolkadotWalletStandardAdapter", () => {
       expect(requireAdapter(buildWallet()).signMessage).toBeUndefined();
     });
 
-    it("signs as the active account and falls back to the input as signedMessage", async () => {
+    it("signs the <Bytes>-wrapped message as the active account and reports it signed", async () => {
       const signMessage = signMessageFeature();
       const wallet = buildWallet({}, { "polkadot:signMessage": { signMessage } });
-      const message = new Uint8Array([1]);
+      const wrapped = new TextEncoder().encode("<Bytes>hi</Bytes>");
 
-      await expect(requireSignMessage(requireAdapter(wallet))(message)).resolves.toEqual({
-        signature: new Uint8Array([2]),
-        signedMessage: message,
-      });
-      expect(signMessage).toHaveBeenCalledWith({ account: wallet.accounts[0], message });
+      await expect(
+        requireSignMessage(requireAdapter(wallet))(new TextEncoder().encode("hi")),
+      ).resolves.toEqual({ signature: new Uint8Array([2]), signedMessage: wrapped });
+      expect(signMessage).toHaveBeenCalledWith({ account: wallet.accounts[0], message: wrapped });
     });
 
     it("preserves the signed message the wallet reports", async () => {

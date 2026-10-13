@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 
 const config: WalletManagerConfig = {
   sources: [discoverSuiAdapters],
-  storageKeyPrefix: "butr-sui-demo",
 };
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (

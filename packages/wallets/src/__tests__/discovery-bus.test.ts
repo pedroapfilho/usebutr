@@ -1,112 +1,112 @@
-import type { ChainPlatform, PlatformDiscoverer, WalletAdapter } from "@usebutr/core";
+import type { ChainPlatform, WalletAdapter } from "@usebutr/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { runDiscoverers } from "../discovery-bus";
+import { SETTLE_MS, createDiscoveryBus } from "../discovery-bus";
 
 import { createAdapter } from "./helpers";
 
-type Fallback = NonNullable<PlatformDiscoverer["fallback"]>;
+const named = (id: string, name: string, platform: ChainPlatform = "bitcoin"): WalletAdapter => ({
+  ...createAdapter(id, platform),
+  name,
+});
 
-/** A discoverer that announces `ids` synchronously, with a spied fallback. */
-const fakeDiscoverer = (platform: ChainPlatform, ...ids: ReadonlyArray<string>) => {
-  const unsubscribe = vi.fn<() => void>();
-  const fallback = vi.fn<Fallback["subscribe"]>(() => () => {});
-  const discoverer: PlatformDiscoverer = {
-    fallback: { subscribe: fallback },
-    subscribe: (emit) => {
-      for (const id of ids) {
-        emit(createAdapter(id, platform));
-      }
-      return unsubscribe;
-    },
-  };
-  return { discoverer, fallback, unsubscribe };
+const setup = () => {
+  const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
+  const bus = createDiscoveryBus(onAdapter);
+  const listed = () => onAdapter.mock.calls.map(([adapter]) => adapter.id);
+  return { bus, listed };
 };
 
-const announced = (onAdapter: ReturnType<typeof vi.fn<(adapter: WalletAdapter) => void>>) =>
-  onAdapter.mock.calls.map(([adapter]) => adapter.id);
-
-describe("runDiscoverers", () => {
-  let warn: ReturnType<typeof vi.spyOn>;
-
+describe("createDiscoveryBus", () => {
   beforeEach(() => {
-    warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    warn.mockRestore();
+    vi.useRealTimers();
   });
 
-  it("dedupes adapters by id within and across discoverers", () => {
-    const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
-    const evm = fakeDiscoverer("evm", "a", "a", "b");
-    const other = fakeDiscoverer("evm", "b", "c");
+  it("lists primary adapters as announced, once per id", () => {
+    const { bus, listed } = setup();
 
-    runDiscoverers(
-      [
-        ["evm", evm.discoverer],
-        ["evm", other.discoverer],
-      ],
-      onAdapter,
-    );
+    bus.primary(createAdapter("a"));
+    bus.primary(createAdapter("a"));
+    bus.primary(createAdapter("b"));
 
-    expect(announced(onAdapter)).toEqual(["a", "b", "c"]);
+    expect(listed()).toEqual(["a", "b"]);
   });
 
-  it("runs fallbacks unless disabled", () => {
-    const evm = fakeDiscoverer("evm");
-    runDiscoverers([["evm", evm.discoverer]], () => {});
-    expect(evm.fallback).toHaveBeenCalledOnce();
+  it("holds fallbacks until the settle window after ready closes", () => {
+    const { bus, listed } = setup();
 
-    const quiet = fakeDiscoverer("evm");
-    runDiscoverers([["evm", quiet.discoverer]], () => {}, { fallbacks: false });
-    expect(quiet.fallback).not.toHaveBeenCalled();
+    bus.fallback(named("injected:unisat", "Unisat"));
+    vi.advanceTimersByTime(SETTLE_MS * 10);
+    expect(listed()).toEqual([]);
+
+    bus.ready();
+    vi.advanceTimersByTime(SETTLE_MS - 1);
+    expect(listed()).toEqual([]);
+    vi.advanceTimersByTime(1);
+    expect(listed()).toEqual(["injected:unisat"]);
+
+    bus.fallback(named("injected:okx", "OKX Wallet (Bitcoin)"));
+    expect(listed()).toEqual(["injected:unisat", "injected:okx"]);
   });
 
-  it("tells a fallback whether its own platform has spoken, not any platform", () => {
-    const svm = fakeDiscoverer("svm", "phantom-svm");
-    const evm = fakeDiscoverer("evm");
+  it("drops a fallback for a wallet a primary channel listed, and keeps unrelated ones", () => {
+    const { bus, listed } = setup();
 
-    runDiscoverers(
-      [
-        ["svm", svm.discoverer],
-        ["evm", evm.discoverer],
-      ],
-      () => {},
-    );
+    bus.primary(named("ws:okx", "OKX Wallet"));
+    bus.fallback(named("injected:okx", "OKX Wallet (Bitcoin)"));
+    bus.fallback(named("injected:unisat", "Unisat"));
+    bus.ready();
+    vi.advanceTimersByTime(SETTLE_MS);
 
-    const [[, options] = []] = evm.fallback.mock.calls;
-    expect(options?.hasAnyPrimaryAdapter()).toBe(false);
+    expect(listed()).toEqual(["ws:okx", "injected:unisat"]);
   });
 
-  it("tells a fallback when its own platform has spoken", () => {
-    const evm = fakeDiscoverer("evm", "io.metamask");
+  it("drops a primary adapter for a wallet a fallback already listed", () => {
+    const { bus, listed } = setup();
 
-    runDiscoverers([["evm", evm.discoverer]], () => {});
+    bus.ready();
+    vi.advanceTimersByTime(SETTLE_MS);
+    bus.fallback(named("injected:xverse", "Xverse"));
+    bus.primary(named("ws:xverse", "Xverse"));
 
-    const [[, options] = []] = evm.fallback.mock.calls;
-    expect(options?.hasAnyPrimaryAdapter()).toBe(true);
+    expect(listed()).toEqual(["injected:xverse"]);
   });
 
-  it("unsubscribes every channel once, even when one throws", () => {
-    const throwing = fakeDiscoverer("svm");
-    throwing.unsubscribe.mockImplementation(() => {
-      throw new Error("boom");
-    });
-    const healthy = fakeDiscoverer("sui");
-    const stop = runDiscoverers(
-      [
-        ["svm", throwing.discoverer],
-        ["sui", healthy.discoverer],
-      ],
-      () => {},
-    );
+  it("matches wallets within one platform only", () => {
+    const { bus, listed } = setup();
 
-    stop();
-    stop();
+    bus.primary(named("svm:phantom", "Phantom", "svm"));
+    bus.fallback(named("btc:phantom", "Phantom", "bitcoin"));
+    bus.ready();
+    vi.advanceTimersByTime(SETTLE_MS);
 
-    expect(throwing.unsubscribe).toHaveBeenCalledOnce();
-    expect(healthy.unsubscribe).toHaveBeenCalledOnce();
-    expect(warn).toHaveBeenCalledOnce();
+    expect(listed()).toEqual(["svm:phantom", "btc:phantom"]);
+  });
+
+  it("lists an anonymous fallback only when its platform listed nothing", () => {
+    const { bus, listed } = setup();
+
+    bus.primary(createAdapter("io.metamask", "evm"));
+    bus.anonymousFallback(createAdapter("injected:legacy", "evm"));
+    bus.anonymousFallback(named("injected:bitcoin:legacy", "Browser Bitcoin wallet"));
+    bus.ready();
+    vi.advanceTimersByTime(SETTLE_MS);
+
+    expect(listed()).toEqual(["io.metamask", "injected:bitcoin:legacy"]);
+  });
+
+  it("drops held fallbacks on stop", () => {
+    const { bus, listed } = setup();
+
+    bus.fallback(named("injected:unisat", "Unisat"));
+    bus.ready();
+    bus.stop();
+    vi.advanceTimersByTime(SETTLE_MS);
+
+    expect(listed()).toEqual([]);
   });
 });

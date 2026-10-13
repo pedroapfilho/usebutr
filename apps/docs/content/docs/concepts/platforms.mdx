@@ -19,18 +19,22 @@ EVM + Phantom SVM + Phantom BTC) appears as separate adapters with different
 
 ## ChainBase: the CAIP-2 shape
 
-butr only needs four fields per chain. It follows
+butr reads four fields per chain, plus optional aliases. It follows
 [CAIP-2](https://chainagnostic.org/CAIPs/caip-2) and never inspects beyond
 these.
 
 ```ts
 type ChainBase = {
+  aliases?: ReadonlyArray<string>; // other ids wallets use, e.g. "solana:mainnet-beta"
   id: string; // "eip155:1", "solana:mainnet"
   name: string; // "Ethereum", "Solana Mainnet"
   namespace: string; // "eip155", "solana"
   reference: string; // "1", "mainnet"
 };
 ```
+
+`resolveChain` maps each alias to its registry entry, so one Solana cluster
+yields one `ChainBase` and one `Account.id` on every transport.
 
 `name` is always the chain's name, never the wallet's. Adapters name a chain
 with `resolveChain(id, knownChains)`, which falls back to the CAIP-2 id as the
@@ -49,7 +53,7 @@ don't have to use them: any `ChainBase`-shaped object works.
 | `EVM_CHAINS`, `EVM_CHAINS_LIST`           | Ethereum, Sepolia, Arbitrum One, Optimism, Base, Polygon, BNB Smart Chain. |
 | `SVM_CHAINS`, `SVM_CHAINS_LIST`           | Solana mainnet / testnet / devnet.                                         |
 | `SUI_CHAINS`, `SUI_CHAINS_LIST`           | Sui mainnet / testnet / devnet / localnet.                                 |
-| `BITCOIN_CHAINS`, `BITCOIN_CHAINS_LIST`   | Bitcoin mainnet / testnet / signet.                                        |
+| `BITCOIN_CHAINS`, `BITCOIN_CHAINS_LIST`   | Bitcoin mainnet / testnet / testnet4 / signet.                             |
 | `POLKADOT_CHAINS`, `POLKADOT_CHAINS_LIST` | Polkadot, Kusama, Westend, Paseo.                                          |
 | `CHAINS_BY_PLATFORM`                      | Every `*_CHAINS_LIST`, keyed by platform.                                  |
 
@@ -66,8 +70,8 @@ only its own list, such as `EVM_CHAINS_LIST`.
 | Accounts exposed  | one or many (MetaMask multi-account)   | all at once                                  | all at once                                  | one or many (per address format)                                                 | all at once (SS58-encoded)                                             |
 | `requestAccounts` | `wallet_requestPermissions` picker     | absent: no picker                            | absent: no picker                            | absent: no picker                                                                | absent: the wallet lists every account                                 |
 | Chain switching   | real, via `wallet_switchEthereumChain` | re-points butr's view; `chain` routes a call | re-points butr's view; `chain` routes a call | Wallet Standard routes per call; injected wallets switch their network or reject | none on injectedWeb3; an account can pin its network via `genesisHash` |
-| Signature format  | EIP-191 `personal_sign`, input echoed  | Solana format, may re-encode `signedMessage` | `sui:signPersonalMessage`                    | Bitcoin Signed Message; not interchangeable                                      | `signRaw` over raw bytes                                               |
-| `sendTx` input    | `EvmTransactionRequest`                | serialized transaction bytes                 | `Transaction`, its JSON, or BCS bytes        | `BitcoinTransfer` (`{ amount, recipient }`, satoshis)                            | no `sendTx`: build extrinsics with polkadot-api                        |
+| Signature format  | EIP-191 `personal_sign`, input echoed  | Solana format, may re-encode `signedMessage` | `sui:signPersonalMessage`                    | Bitcoin Signed Message; not interchangeable                                      | `<Bytes>…</Bytes>`-wrapped bytes on both transports                    |
+| `sendTx` input    | `EvmTransactionRequest`                | serialized transaction bytes                 | `Transaction`, its JSON, BCS bytes or base64 | `BitcoinTransfer` (`{ amount, recipient }`, satoshis)                            | no `sendTx`: build extrinsics with polkadot-api                        |
 | Sign without send | —                                      | `signTransaction` → signed bytes             | `signTransaction` → `{ bytes, signature }`   | `signTransaction` on PSBT bytes → signed PSBT                                    | through `getSigner()`                                                  |
 
 **Source:** `packages/core/src/types/chain.ts`, `packages/core/src/types/platform.ts`,

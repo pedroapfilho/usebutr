@@ -1,17 +1,12 @@
 import { logWarn } from "../logger";
 
 import { createBrowserStorageDriver } from "./browser-storage-driver";
-import type {
-  PersistedWalletState,
-  StorageDriver,
-  StoredPoolRecord,
-  StoredSelectionRecord,
-  WalletPersistence,
-} from "./persistence";
-import { decodePool, decodeSelection, storageKeys } from "./validation";
+import type { StorageDriver, WalletPersistence } from "./persistence";
+import type { StorageSlot } from "./wallet-state-codec";
+import { createWalletStateCodec } from "./wallet-state-codec";
 
 type WalletStorageOptions = {
-  /** Defaults to `"butr"`, matching `readWalletSnapshot`. */
+  /** Namespaces every key, for several apps on one origin. Defaults to `"butr"`. */
   keyPrefix?: string;
   /** Survives app restart. Defaults to localStorage on web. */
   persistent?: StorageDriver;
@@ -19,25 +14,24 @@ type WalletStorageOptions = {
   session?: StorageDriver;
 };
 
-const isEmpty = (record: StoredPoolRecord | StoredSelectionRecord): boolean =>
-  Object.keys(record).length === 0;
-
 /**
  * Pool, selection and active id go to the persistent driver, the disconnect
  * intent to the session driver. Unchanged keys are not rewritten, so a
  * cookie-backed driver does not re-send every cookie on each save.
  */
 const createWalletStorage = (options: WalletStorageOptions = {}): WalletPersistence => {
-  const keys = storageKeys(options.keyPrefix);
+  const codec = createWalletStateCodec(options.keyPrefix);
   // Cheap: wraps the globals (or in-memory maps) without touching them.
   const browser = createBrowserStorageDriver();
-  const persistent = options.persistent ?? browser.persistent;
-  const session = options.session ?? browser.session;
+  const drivers: Record<StorageSlot, StorageDriver> = {
+    persistent: options.persistent ?? browser.persistent,
+    session: options.session ?? browser.session,
+  };
   const written = new Map<string, string | null>();
 
-  const read = async (driver: StorageDriver, key: string): Promise<string | null> => {
+  const read = async (key: string, slot: StorageSlot): Promise<string | null> => {
     try {
-      const value = await driver.getItem(key);
+      const value = await drivers[slot].getItem(key);
       written.set(key, value);
       return value;
     } catch (error) {
@@ -46,43 +40,31 @@ const createWalletStorage = (options: WalletStorageOptions = {}): WalletPersiste
     }
   };
 
-  const write = async (driver: StorageDriver, key: string, value: string | null) => {
+  const write = async (key: string, slot: StorageSlot, value: string | null) => {
     if (written.get(key) === value) {
       return;
     }
+    const driver = drivers[slot];
     await (value === null ? driver.removeItem(key) : driver.setItem(key, value));
     written.set(key, value);
   };
 
   return {
     load: async () => {
-      const [pool, selection, active, userDisconnected] = await Promise.all([
-        read(persistent, keys.pool),
-        read(persistent, keys.selection),
-        read(persistent, keys.active),
-        read(session, keys.userDisconnected),
-      ]);
-      return {
-        activeConnectorId: active === null || active === "" ? null : active,
-        isUserDisconnected: userDisconnected === "true",
-        pool: decodePool(pool),
-        selection: decodeSelection(selection),
-      };
+      const values = new Map(
+        await Promise.all(
+          codec.layout.map(async ({ key, slot }) => [key, await read(key, slot)] as const),
+        ),
+      );
+      return codec.decode((key) => values.get(key));
     },
 
-    save: async (state: PersistedWalletState) => {
+    save: async (state) => {
       // A failed key must not release the manager's save queue while other
       // writes from this snapshot can still overwrite the next snapshot.
-      const results = await Promise.allSettled([
-        write(persistent, keys.pool, isEmpty(state.pool) ? null : JSON.stringify(state.pool)),
-        write(
-          persistent,
-          keys.selection,
-          isEmpty(state.selection) ? null : JSON.stringify(state.selection),
-        ),
-        write(persistent, keys.active, state.activeConnectorId),
-        write(session, keys.userDisconnected, state.isUserDisconnected ? "true" : null),
-      ]);
+      const results = await Promise.allSettled(
+        codec.encode(state).map(({ key, slot, value }) => write(key, slot, value)),
+      );
       const failure = results.find((result) => result.status === "rejected");
       if (failure !== undefined) {
         throw failure.reason;

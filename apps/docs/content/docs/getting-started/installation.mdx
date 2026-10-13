@@ -58,8 +58,9 @@ npm install --save-dev @usebutr/testing
 ```
 
 `@usebutr/testing` provides `createFakeAdapter` and `createFakePersistence` so unit
-tests never touch a real wallet or `localStorage`. See the
-[Testing guide](/testing).
+tests never touch a real wallet or `localStorage`, and
+`@usebutr/testing/contract` exports `describeAdapterContract`, the suite every
+butr adapter runs. See the [Testing guide](/testing).
 
 ## Peer dependencies
 
@@ -73,6 +74,7 @@ tests never touch a real wallet or `localStorage`. See the
 | `@usebutr/polkadot`      | `@wallet-standard/app ^1.1.0`                                                              | Optional; `injectedWeb3` discovery works without it. |
 | `@usebutr/walletconnect` | `@walletconnect/universal-provider ^2`                                                     | Dynamically imported.                                |
 | `@usebutr/ledger`        | `@ledgerhq/hw-transport-webusb`, plus `@ledgerhq/hw-app-{eth,solana,sui,btc}` per platform | Each app is loaded on first connect.                 |
+| `@usebutr/testing`       | `vitest ^5`                                                                                | Optional; only `@usebutr/testing/contract` needs it. |
 
 `@usebutr/wallets` has no peers of its own: it ships `@wallet-standard/app` as a
 dependency.

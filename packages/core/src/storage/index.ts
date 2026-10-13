@@ -1,7 +1,12 @@
 export type { BrowserStorageDrivers } from "./browser-storage-driver";
 export { createBrowserStorageDriver, createMemoryStorageDriver } from "./browser-storage-driver";
-export type { CookieDriverOptions, InitialCookies } from "./cookie-storage-driver";
-export { createCookieStorageDriver } from "./cookie-storage-driver";
+
+export type {
+  CookieSource,
+  CookieWalletStorage,
+  CookieWalletStorageOptions,
+} from "./cookie-wallet-storage";
+export { createCookieWalletStorage } from "./cookie-wallet-storage";
 
 export type {
   MaybePromise,
@@ -14,8 +19,7 @@ export type {
   WalletSnapshot,
 } from "./persistence";
 
-export type { CookieSource, SnapshotOptions } from "./snapshot";
-export { EMPTY_SNAPSHOT, readWalletSnapshot } from "./snapshot";
+export { toStoredPoolEntry } from "./wallet-state-codec";
 
 export type { WalletStorageOptions } from "./wallet-storage";
 export { createWalletStorage } from "./wallet-storage";

@@ -1,3 +1,4 @@
+import { bitcoinMessageText } from "@usebutr/bitcoin/message";
 import type { BitcoinAdapter } from "@usebutr/core";
 import {
   BITCOIN_CHAINS,
@@ -64,15 +65,9 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder<BitcoinAdapter> = {
 
       async signMessage(message, options) {
         const { address, chainId } = resolveTarget({ account: options?.account });
-        let text: string;
-        try {
-          text = new TextDecoder("utf-8", { fatal: true }).decode(message);
-        } catch {
-          text = bytesToBase64(message);
-        }
         const result = await request(
           "signMessage",
-          { account: address, address, message: text },
+          { account: address, address, message: bitcoinMessageText(message, input.name) },
           chainId,
         );
         const signature = readResultString(result, "signature", "signMessage");

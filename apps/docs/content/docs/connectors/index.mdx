@@ -10,8 +10,9 @@ A connector is a `WalletAdapter`. Every one reaches the manager through
   for EIP-6963; `@usebutr/svm`, `@usebutr/sui` and `@usebutr/bitcoin` listen
   for the Wallet Standard; `@usebutr/bitcoin` also probes injected providers
   such as `window.unisat`; `@usebutr/polkadot` reads `window.injectedWeb3`.
-  `autoDiscovery()` from `@usebutr/wallets` composes all of them, and each
-  `discover*Adapters` export is a source on its own.
+  `autoDiscovery()` from `@usebutr/wallets` composes all of them and lists
+  each wallet once, and each `discover*Adapters` export is a source on its
+  own.
 - **Built**: WalletConnect and Ledger are not injected into the page. Their
   factories resolve adapters, and `fromAdapters` from `@usebutr/core` turns
   an adapter, a list of them, or a promise of either into a source.
@@ -97,5 +98,21 @@ can do:
 | Ledger                          | Rejects with `ChainMismatch`: build one adapter per chain.                           | None.                                                  |
 | Polkadot                        | Not applicable: no `sendTx`, and `signMessage` takes no chain.                       | Wallet Standard only, with 2+ chains advertised.       |
 
-An `account` the wallet does not expose rejects everywhere. No adapter falls
-back to its first account.
+Every adapter enforces these rules through the same
+[chain target](/api/core#chain-targets), so the rejections are the same
+`ConnectionError` kinds everywhere, raised before the wallet is asked:
+
+- A chain the transport cannot reach rejects with `ChainMismatch`: one from
+  another namespace, one the wallet does not advertise or the session did not
+  approve, a network the wallet cannot switch to, or any chain but a Ledger
+  adapter's own.
+- An `account` the wallet does not expose rejects with `AccountNotExposed`. No
+  adapter falls back to its first account. EVM addresses match
+  case-insensitively, since EIP-55 casing is only a checksum, and the call
+  uses the wallet's casing; every other namespace matches exactly.
+- A wallet that exposes no account rejects with `NotConnected`.
+
+Unisat and Xverse move the network before matching the account, because a
+Bitcoin address encodes its network. What the wallet itself throws once it
+is asked (a declined prompt, a locked wallet) passes through as it threw it;
+normalise it with [`toConnectionError`](/concepts/errors#normalising-your-own-calls).

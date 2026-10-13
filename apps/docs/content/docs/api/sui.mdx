@@ -19,10 +19,6 @@ import { discoverSuiAdapters } from "@usebutr/sui";
 const config: WalletManagerConfig = { sources: [discoverSuiAdapters] };
 ```
 
-### `suiDiscoverer: PlatformDiscoverer`
-
-Wallet Standard only; Sui standardised on it from launch.
-
 ## Adapter builder
 
 ### `buildSuiAdapter(wallet, registerDisconnector?): SuiAdapter | null`
@@ -37,10 +33,32 @@ wallet advertises its feature:
 | `signMessage`     | `sui:signPersonalMessage`       | `{ signature, signedMessage }`.                       |
 | `signTransaction` | `sui:signTransaction`           | `{ bytes, signature }` for `executeTransactionBlock`. |
 
-Transactions are a `@mysten/sui` `Transaction`, its JSON string, or BCS bytes
-(`SuiTransactionInput`). `switchChain` needs more than one advertised Sui
-network. There is no `getBalance` or `getTransactionReceipt`. See the
-[Sui connector](/connectors/sui-wallet-standard).
+Transactions are a `@mysten/sui` `Transaction`, its JSON string, BCS bytes, or
+their base64 (`SuiTransactionInput`); the wallet receives the string
+`prepareSuiTransaction` produces through `toJSON()`. `switchChain` needs more
+than one advertised Sui network. There is no `getBalance` or
+`getTransactionReceipt`. See the [Sui connector](/connectors/sui-wallet-standard).
+
+## Transaction input
+
+Import from `@usebutr/sui/transaction`. This entry point loads no wallet
+discovery code. Wallet Standard, WalletConnect and Ledger share it; see
+[Sui inputs](/guides/transactions#sui-inputs) for what each transport takes.
+
+### `prepareSuiTransaction(tx): Promise<SuiSigningPayload>`
+
+Reads a `SuiTransactionInput` the way `Transaction.from` does: a string
+starting with `{` is a `Transaction`'s JSON, any other string is base64 BCS
+bytes. Resolves `serialized`, the string every transport sends, and `bytes`,
+the BCS bytes when the input carried them (bytes or base64). A `Transaction`
+or its JSON has no `bytes` until it is built against an RPC client. A string
+that is neither JSON nor base64 rejects.
+
+### `serializeEd25519Signature(signature, publicKey): Uint8Array`
+
+Sui's serialized signature for an Ed25519 key: the scheme flag `0`, the
+64-byte signature and the 32-byte public key, as `executeTransactionBlock`
+takes it. Rejects any other length. Ledger uses it on the device's signature.
 
 ## Signer
 
@@ -56,8 +74,9 @@ feature types below.
 - `SuiSignTransactionFeature`, `SuiSignTransactionInput`, `SuiSignTransactionOutput`
 - `SuiSignAndExecuteTransactionFeature`, `SuiSignAndExecuteTransactionInput`,
   `SuiSignAndExecuteTransactionOutput`
+- `SuiSigningPayload`, from `@usebutr/sui/transaction`
 
 The Sui chain registry (`SUI_CHAINS`, `SUI_CHAINS_LIST`) lives in
 `@usebutr/core`.
 
-**Source:** `packages/sui/src/index.ts`.
+**Source:** `packages/sui/src/index.ts`, `packages/sui/src/transaction.ts`.

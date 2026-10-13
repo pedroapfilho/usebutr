@@ -51,7 +51,6 @@ const config: WalletManagerConfig = {
       }),
     ),
   ],
-  storageKeyPrefix: "my-app",
 };
 
 export const Providers = ({ children }: { children: React.ReactNode }) => (
@@ -85,10 +84,10 @@ addresses, active first.
 
 ## What each adapter defines
 
-|                   | EVM                    | Solana                                          | Sui                                          | Bitcoin                                |
-| ----------------- | ---------------------- | ----------------------------------------------- | -------------------------------------------- | -------------------------------------- |
-| `signMessage`     | ✓ EIP-191, `r ‖ s ‖ v` | ✓ off-chain message                             |                                              | ✓ BIP-137 compact signature            |
-| `signTransaction` |                        | ✓ legacy or v0; resolves the signed transaction | ✓ BCS bytes; resolves `{ bytes, signature }` | ✓ PSBT bytes; resolves the signed PSBT |
+|                   | EVM                    | Solana                                          | Sui                                                          | Bitcoin                                |
+| ----------------- | ---------------------- | ----------------------------------------------- | ------------------------------------------------------------ | -------------------------------------- |
+| `signMessage`     | ✓ EIP-191, `r ‖ s ‖ v` | ✓ off-chain message                             |                                                              | ✓ BIP-137 compact signature            |
+| `signTransaction` |                        | ✓ legacy or v0; resolves the signed transaction | ✓ BCS bytes or their base64; resolves `{ bytes, signature }` | ✓ PSBT bytes; resolves the signed PSBT |
 
 No Ledger adapter has `sendTx`, `getBalance`, `getTransactionReceipt`,
 `subscribe`, `requestAccounts` or `switchChain`. To submit a transaction, sign
@@ -110,6 +109,11 @@ const signEvmTransaction = async (wallet: ConnectedWallet<"evm">, unsignedTxHex:
 
 The Solana, Sui and Bitcoin adapters resolve `ledger-svm`, `ledger-sui` and
 `ledger-bitcoin`, each with its device `app`.
+
+The Sui app cannot build a `Transaction`, which needs an RPC client, so
+`signTransaction` rejects a `Transaction` or its JSON: pass
+`await tx.build({ client })`. Bitcoin `signMessage` hands the device the
+message bytes as hex, so any bytes sign, not only UTF-8 text.
 
 ## Chains and accounts
 

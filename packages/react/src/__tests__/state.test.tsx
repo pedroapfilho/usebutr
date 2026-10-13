@@ -1,6 +1,6 @@
 import { act } from "@testing-library/react";
 import type { ConnectedWallet } from "@usebutr/core";
-import { buildAccount, EVM_CHAINS } from "@usebutr/core";
+import { buildAccount, EVM_CHAINS, toStoredPoolEntry } from "@usebutr/core";
 import { createFakeAdapter, createFakeConnectedWallet } from "@usebutr/testing";
 import { describe, expect, expectTypeOf, it } from "vitest";
 
@@ -16,7 +16,7 @@ import {
   useWalletState,
 } from "../hooks/state";
 
-import { renderWithManager, settle, storedEntryOf } from "./render";
+import { renderWithManager, settle } from "./render";
 
 const first = buildAccount("0xfirst", EVM_CHAINS.ethereum);
 const second = buildAccount("0xsecond", EVM_CHAINS.ethereum);
@@ -211,7 +211,7 @@ describe("useConnectionStatus", () => {
         adapters: [wallet.connector],
         initialState: {
           activeConnectorId: "metamask",
-          pool: { metamask: storedEntryOf(wallet) },
+          pool: { metamask: toStoredPoolEntry(wallet) },
           selection: {},
         },
       },

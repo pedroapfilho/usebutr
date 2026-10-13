@@ -20,10 +20,6 @@ import { discoverSvmAdapters } from "@usebutr/svm";
 const config: WalletManagerConfig = { sources: [discoverSvmAdapters] };
 ```
 
-### `svmDiscoverer: PlatformDiscoverer`
-
-Wallet Standard only; Solana has no legacy injected path worth shimming.
-
 ## Adapter builder
 
 ### `buildSvmAdapter(wallet, registerDisconnector?): SvmAdapter | null`
@@ -41,8 +37,11 @@ wallet advertises its feature:
 | `signIn`          | `solana:signIn`                 | `SignInOutput`.                 |
 
 `disconnect` needs `standard:disconnect`, and `switchChain` more than one
-advertised Solana cluster. There is no `getBalance` or
-`getTransactionReceipt`: they need an RPC client, which butr does not ship.
+advertised Solana cluster. A cluster the wallet advertises under one of its
+`SVM_CHAINS` aliases, such as `solana:mainnet-beta`, resolves to that entry,
+and calls naming the entry reach the wallet under the id it advertised.
+There is no `getBalance` or `getTransactionReceipt`: they need an RPC client,
+which butr does not ship.
 See the [Solana connector](/connectors/solana-wallet-standard).
 
 ## Signer
@@ -87,6 +86,7 @@ Solana feature shapes, narrowed to the fields butr reads:
 - `SolanaSignTransactionFeature`, `SolanaSignTransactionInput`,
   `SolanaSignTransactionOutput`
 - `SolanaSignInFeature`, `SolanaSignInInput`, `SolanaSignInOutput`
+- `SolanaSigningPayload`, from `@usebutr/svm/transaction`
 
 The shared Wallet Standard types (`WalletStandardWallet`,
 `WalletStandardWalletAccount`, …) live in `@usebutr/wallet-standard-shared`.

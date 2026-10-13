@@ -1,13 +1,14 @@
 ---
 title: Custom storage
-description: Back persistence with cookies, memory, React Native AsyncStorage, or a WalletPersistence of your own.
+description: Back persistence with memory, React Native AsyncStorage, cookies, or a WalletPersistence of your own.
 ---
 
 The manager persists through `config.storage`, a `WalletPersistence`. There are
 two levels to customise it at:
 
 - **A storage driver** keeps butr's key layout and swaps where the strings go:
-  cookies, memory, AsyncStorage. Wrap it with `createWalletStorage`.
+  memory, AsyncStorage. Wrap it with `createWalletStorage`. For cookies, use
+  `createCookieWalletStorage`, which also reads the state on the server.
 - **A `WalletPersistence`** replaces the layout entirely: one key, a server,
   IndexedDB. Implement `load` and `save`.
 
@@ -31,31 +32,42 @@ and a `session` driver (the disconnect intent), defaulting to `localStorage` and
 
 ```ts
 import type { WalletManagerConfig } from "@usebutr/core";
-import {
-  createCookieStorageDriver, // cookies: domain, path, sameSite, secure, maxAgeSeconds
-  createMemoryStorageDriver, // in-memory, no persistence
-  createWalletStorage,
-} from "@usebutr/core";
+import { createMemoryStorageDriver, createWalletStorage } from "@usebutr/core";
 import { autoDiscovery } from "@usebutr/wallets";
 
 const config: WalletManagerConfig = {
   sources: [autoDiscovery()],
   storage: createWalletStorage({
     keyPrefix: "myapp",
-    persistent: createCookieStorageDriver({
-      domain: "example.com",
-      maxAgeSeconds: 604_800,
-      path: "/",
-      sameSite: "lax",
-      secure: true,
-    }),
-    session: createMemoryStorageDriver(),
+    session: createMemoryStorageDriver(), // in-memory, reset on every start
   }),
 };
 ```
 
-With `storage` set, `storageKeyPrefix` is ignored; the prefix goes to
-`createWalletStorage`, and `readWalletSnapshot` needs the same one.
+The key prefix belongs to `createWalletStorage`.
+
+## Cookies
+
+`createCookieWalletStorage` stores the pool, selection, and active id in
+cookies and returns, with the persistence, the `readInitialState` reader a
+server uses to seed `initialState`. Both use one key layout, so the prefix is
+set once:
+
+```ts
+import { createCookieWalletStorage } from "@usebutr/core";
+
+const walletStorage = createCookieWalletStorage({
+  domain: "example.com", // share across subdomains; omit for the current host
+  keyPrefix: "myapp",
+  maxAgeSeconds: 604_800, // defaults to 30 days
+  path: "/",
+  sameSite: "lax",
+  secure: true, // false for local development on http://
+});
+```
+
+The disconnect intent stays in `sessionStorage`. See
+[SSR without a flash](/guides/ssr-no-flash) for the server half.
 
 ## React Native / Expo (AsyncStorage)
 
@@ -140,8 +152,8 @@ const storage: WalletPersistence = {
   latest state.
 - A rejected `save` is reported through `onStorageError` and does not affect
   the in-memory state.
-- `readWalletSnapshot` parses butr's own key layout, so server rendering from
-  a custom layout means building the `WalletSnapshot` yourself.
+- `initialState` takes any `WalletSnapshot`, so server rendering from your own
+  layout means building that snapshot yourself.
 
 <Callout type="info">
   **Source:** `apps/demo-expo-web/src/async-storage-driver.ts`,

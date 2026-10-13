@@ -23,17 +23,12 @@ const config: WalletManagerConfig = { sources: [discoverEvmAdapters] };
 ### `discoverInjectedAdapter(onAdapter, options?): () => void`
 
 The last-resort path for wallets that expose only `window.ethereum` and never
-announce through EIP-6963. It waits `settleMs`, then emits one adapter with
-the id `injected:legacy`, unless `hasAnyEip6963Adapter()` says the standard
-path already found a wallet.
+announce through EIP-6963. When subscribed, it emits one adapter with the id
+`injected:legacy` if `window.ethereum` is an EIP-1193 provider. On its own it
+also lists a wallet that announced through EIP-6963; `autoDiscovery(["evm"])`
+from `@usebutr/wallets` lists it only when no EIP-6963 wallet announced.
 
-`InjectedDiscoveryOptions`: `hasAnyEip6963Adapter?: () => boolean`,
-`settleMs?: number` (default `150`), `target?` (overrides `window`).
-
-### `evmDiscoverer: PlatformDiscoverer`
-
-EIP-6963 as the primary channel, `discoverInjectedAdapter` as the fallback.
-`autoDiscovery()` from `@usebutr/wallets` composes it.
+`InjectedDiscoveryOptions`: `target?` (overrides `window`).
 
 Constants: `ANNOUNCE_EVENT` and `REQUEST_EVENT` (the EIP-6963 event names),
 `GENERIC_INJECTED_ICON` (the legacy adapter's icon).

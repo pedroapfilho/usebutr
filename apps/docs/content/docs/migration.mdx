@@ -1,9 +1,10 @@
 ---
 title: Migrate to the wallet manager
-description: Every rename and removal in the capability-by-presence release, with before and after code.
+description: Every rename and removal in the breaking releases, from the provider props to the current API, with before and after code.
 ---
 
-This release is breaking for every `@usebutr/*` package. It does four things:
+This page maps every removed or renamed API to its current replacement. The
+breaking releases did these things:
 
 - **An adapter method exists only when it works.** `capabilities` is gone;
   check the method instead.
@@ -13,9 +14,19 @@ This release is breaking for every `@usebutr/*` package. It does four things:
   React provider only binds it.
 - **Signers are a tagged union.** `getSigner()` resolves `{ kind, … }`, so no
   casts are needed.
+- **Storage owns its key prefix.** `storageKeyPrefix` is gone, and one
+  `createCookieWalletStorage` call gives both the cookie persistence and the
+  server reader that replaces `readWalletSnapshot`.
+- **`autoDiscovery` lists each wallet once.** It owns fallback deferral, and
+  the per-platform `*Discoverer` objects are gone.
+- **Adapters check the chain and account of a call before the wallet is
+  asked**, so the same refusal raises the same `ConnectionError` kind on every
+  transport.
 
 The reasoning is in
-[ADR 0004](https://github.com/pedroapfilho/usebutr/blob/main/docs/adr/0004-capability-by-presence-and-wallet-manager.md).
+[ADR 0004](https://github.com/pedroapfilho/usebutr/blob/main/docs/adr/0004-capability-by-presence-and-wallet-manager.md)
+and
+[ADR 0005](https://github.com/pedroapfilho/usebutr/blob/main/docs/adr/0005-one-wire-format-for-persisted-wallet-state.md).
 
 ## Provider and discovery
 
@@ -34,32 +45,38 @@ const discovery = autoDiscovery();
 
 // After
 import type { WalletManagerConfig } from "@usebutr/core";
-import { fromAdapters } from "@usebutr/core";
+import { createWalletStorage, fromAdapters } from "@usebutr/core";
 
 const config: WalletManagerConfig = {
   onConnect: track,
   sources: [autoDiscovery(), fromAdapters(createWalletConnectAdapters({ … }))],
-  storageKeyPrefix: "my-app",
+  storage: createWalletStorage({ keyPrefix: "my-app" }),
 };
 
 <WalletManagerProvider config={config}>{children}</WalletManagerProvider>;
 ```
 
-| Before                                                 | After                                                                                                                                   |
-| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `discovery={source}`                                   | `config.sources: [source]`                                                                                                              |
-| `connectors`, `createConnector`                        | `config.sources: [fromAdapters(adapter, adapters, or a promise of either)]`; those adapters now also appear in `useDiscoveredWallets()` |
-| `createWalletSource(discoverEvmAdapters)`              | `discoverEvmAdapters` as-is: a `WalletSource` is now the function                                                                       |
-| `autoDiscovery({ evm: true, svm: true })`              | `autoDiscovery(["evm", "svm"])`                                                                                                         |
-| `autoDiscovery({ injected: false, … })`                | `autoDiscovery(platforms, { fallbacks: false })`                                                                                        |
-| `initialState` prop                                    | unchanged: `<WalletManagerProvider config={config} initialState={snapshot}>`                                                            |
-| `createWalletStore(config)`                            | `createWalletManager(config, { initialState })`, then `manager.start()`                                                                 |
-| `onConnect(wallet)`                                    | `onConnect(wallet, { reconnected })`: also fires for silent restores                                                                    |
-| `onDisconnect(chainPlatform)`                          | `onDisconnect(wallet, { byUser })`                                                                                                      |
-| `onReset`                                              | removed: run your logic after calling `disconnectAll()`                                                                                 |
-| `onStorageError(error, context)`                       | `onStorageError(error)`                                                                                                                 |
-| `CHAINS`, `CHAINS_BY_PLATFORM` from `@usebutr/wallets` | `CHAINS_BY_PLATFORM`, `EVM_CHAINS`, `SVM_CHAINS`, … from `@usebutr/core`; per-platform packages no longer export chain registries       |
-| `buildChainsByPlatform`                                | removed: import only the `*_CHAINS_LIST` you need                                                                                       |
+| Before                                                                                                             | After                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `discovery={source}`                                                                                               | `config.sources: [source]`                                                                                                                 |
+| `connectors`, `createConnector`                                                                                    | `config.sources: [fromAdapters(adapter, adapters, or a promise of either)]`; those adapters now also appear in `useDiscoveredWallets()`    |
+| `createWalletSource(discoverEvmAdapters)`                                                                          | `discoverEvmAdapters` as-is: a `WalletSource` is now the function                                                                          |
+| `autoDiscovery({ evm: true, svm: true })`                                                                          | `autoDiscovery(["evm", "svm"])`                                                                                                            |
+| `autoDiscovery({ injected: false, … })`                                                                            | `autoDiscovery(platforms, { fallbacks: false })`                                                                                           |
+| `PlatformDiscoverer`, `evmDiscoverer`, `svmDiscoverer`, `suiDiscoverer`, `bitcoinDiscoverer`, `polkadotDiscoverer` | `autoDiscovery(platforms)`, or one package's `discover*Adapters` source                                                                    |
+| `discoverWalletAdapters(options)`, `DiscoverOptions`                                                               | `autoDiscovery(platforms, options)`                                                                                                        |
+| `settleMs`, `hasAnyEip6963Adapter`, `hasAnyWalletStandardAdapter`                                                  | removed: `autoDiscovery` defers the fallback channels; `discoverInjectedAdapter` and `discoverInjectedBitcoinAdapter` emit when subscribed |
+| `window.btc` through `discoverInjectedBitcoinAdapter`                                                              | `discoverLegacyBitcoinAdapter`                                                                                                             |
+| `discoverWalletStandard(onAdapter, build, loadModule)`                                                             | `discoverWalletStandard([{ build, onAdapter }], { loadModule, onReady })`                                                                  |
+| `storageKeyPrefix`                                                                                                 | `config.storage: createWalletStorage({ keyPrefix })`, or `createCookieWalletStorage({ keyPrefix })`                                        |
+| `initialState` prop                                                                                                | unchanged: `<WalletManagerProvider config={config} initialState={snapshot}>`                                                               |
+| `createWalletStore(config)`                                                                                        | `createWalletManager(config, { initialState })`, then `manager.start()`                                                                    |
+| `onConnect(wallet)`                                                                                                | `onConnect(wallet, { reconnected })`: also fires for silent reconnects                                                                     |
+| `onDisconnect(chainPlatform)`                                                                                      | `onDisconnect(wallet, { byUser })`                                                                                                         |
+| `onReset`                                                                                                          | removed: run your logic after calling `disconnectAll()`                                                                                    |
+| `onStorageError(error, context)`                                                                                   | `onStorageError(error)`                                                                                                                    |
+| `CHAINS`, `CHAINS_BY_PLATFORM` from `@usebutr/wallets`                                                             | `CHAINS_BY_PLATFORM`, `EVM_CHAINS`, `SVM_CHAINS`, … from `@usebutr/core`; per-platform packages no longer export chain registries          |
+| `buildChainsByPlatform`                                                                                            | removed: import only the `*_CHAINS_LIST` you need                                                                                          |
 
 `setAccount(id, account)` selects an account already exposed by the wallet.
 It preserves every account's chain and ignores unknown accounts. To change
@@ -101,25 +118,29 @@ if (wallet.connector.signMessage) {
 }
 ```
 
-| Before                                                               | After                                                                                                                    |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `capabilities.x`                                                     | `connector.x !== undefined`. `sendTransaction` → `sendTx`, `signIn` → `signIn`, `switchChain` → `switchChain`, and so on |
-| `getAccount()`                                                       | `(await getAccounts())[0]`: the active account is always first                                                           |
-| `sendTx(tx, account)`                                                | `sendTx(tx, { account })`                                                                                                |
-| `sendTxToChain(tx, chainId, account, onSwitched)`                    | `sendTx(tx, { account, chain })`, where `chain` is a `ChainBase` such as `EVM_CHAINS.base`                               |
-| `signMessage(msg, account)`                                          | `signMessage(msg, { account })`                                                                                          |
-| `signTransaction(tx, account)`                                       | `signTransaction(tx, { account, chain })`                                                                                |
-| `getBalance(mint)`                                                   | `getBalance({ token, account })`: EVM only; Wallet Standard chains need your own RPC client                              |
-| `switchAccount(address)`                                             | removed: no adapter implemented it                                                                                       |
-| `ConnectorEvent` `{ type: "accountChanged", account, accounts }`     | `{ type: "accountsChanged", accounts }`, active first                                                                    |
-| `TransactionInput`                                                   | per platform: `EvmTransactionRequest`, `Uint8Array` (SVM), `SuiTransactionInput`, `BitcoinTransfer`                      |
-| `isShadowAdapter(adapter)`                                           | `useIsReconnecting(id)` or `state.reconnectingIds.has(id)`                                                               |
-| `resolveEip6963Capabilities`, `resolveWalletStandardCapabilities`, … | removed                                                                                                                  |
-| `isSolanaSignMessageFeature` and other feature guards                | `getFeature<SolanaSignMessageFeature>(wallet, "solana:signMessage", "signMessage")`                                      |
+| Before                                                               | After                                                                                                                     |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `capabilities.x`                                                     | `connector.x !== undefined`. `sendTransaction` → `sendTx`, `signIn` → `signIn`, `switchChain` → `switchChain`, and so on  |
+| `getAccount()`                                                       | `(await getAccounts())[0]`: the active account is always first                                                            |
+| `sendTx(tx, account)`                                                | `sendTx(tx, { account })`                                                                                                 |
+| `sendTxToChain(tx, chainId, account, onSwitched)`                    | `sendTx(tx, { account, chain })`, where `chain` is a `ChainBase` such as `EVM_CHAINS.base`                                |
+| `signMessage(msg, account)`                                          | `signMessage(msg, { account })`                                                                                           |
+| `signTransaction(tx, account)`                                       | `signTransaction(tx, { account, chain })`                                                                                 |
+| `getBalance(mint)`                                                   | `getBalance({ token, account })`: EVM only; Wallet Standard chains need your own RPC client                               |
+| `switchAccount(address)`                                             | removed: no adapter implemented it                                                                                        |
+| `ConnectorEvent` `{ type: "accountChanged", account, accounts }`     | `{ type: "accountsChanged", accounts }`, active first                                                                     |
+| `TransactionInput`                                                   | per platform: `EvmTransactionRequest`, `Uint8Array` (SVM), `SuiTransactionInput`, `BitcoinTransfer`                       |
+| `isShadowAdapter(adapter)`                                           | exported from `@usebutr/core`; `useIsReconnecting(id)` and `state.reconnectingIds.has(id)` answer the same question by id |
+| `resolveEip6963Capabilities`, `resolveWalletStandardCapabilities`, … | removed                                                                                                                   |
+| `isSolanaSignMessageFeature` and other feature guards                | `getFeature<SolanaSignMessageFeature>(wallet, "solana:signMessage", "signMessage")`                                       |
+| `subscribe` emits `disconnected` for an empty account list           | `accountsChanged` with no accounts; the manager treats both as a disconnect                                               |
+| Solana account ids `solana:mainnet-beta:<address>`                   | `solana:mainnet:<address>`; `SVM_CHAINS.mainnet` reaches a wallet that names it `solana:mainnet-beta`                     |
+| Polkadot Wallet Standard `signMessage` signs the raw bytes           | signs them wrapped in `<Bytes>…</Bytes>`, as injectedWeb3 does; verify against `signedMessage`                            |
 
-An `account` the wallet does not expose now rejects instead of silently
-signing with the first account. `chain.name` is now always the chain's name,
-never the wallet's.
+An `account` the wallet does not expose now rejects with `AccountNotExposed`
+on every adapter instead of signing with the first account, and a chain the
+transport cannot reach rejects with `ChainMismatch` before the wallet is
+asked. `chain.name` is now always the chain's name, never the wallet's.
 
 ## Signers
 
@@ -152,8 +173,10 @@ if (signer.kind === "eip1193") {
 `message` plus a standard `cause`. `useConnect().connectAsync()` and
 `useWalletManager().connect()` reject with it directly; `useConnect().connect()`
 never rejects and puts it in `error`.
-`mapConnectionError(raw)` is `toConnectionError(raw)`. The new kind
-`WalletNotFound` covers an id no source announced.
+`mapConnectionError(raw)` is `toConnectionError(raw)`. Two kinds are new:
+`WalletNotFound` covers an id no source announced, and `AccountNotExposed` an
+account the wallet does not expose. A `switch` over `ConnectionErrorKind` needs
+a case for each.
 
 ## Custom persistence
 
@@ -172,7 +195,28 @@ const storage: WalletPersistence = {
 
 `new WalletStorage({ keyPrefix, persistent, session })` is now
 `createWalletStorage({ keyPrefix, persistent, session })`. The storage keys
-are unchanged, so existing sessions and `readWalletSnapshot` keep working.
+are unchanged, so existing sessions keep working.
+
+Cookie persistence and the server read come from one call, so the prefix is
+set once:
+
+```ts
+// Before
+const storage = createWalletStorage({
+  keyPrefix: "my-app",
+  persistent: createCookieStorageDriver({ secure: true }),
+});
+const initialState = readWalletSnapshot(cookies, { keyPrefix: "my-app" });
+
+// After, in a module both the Server Component and the provider import
+const walletStorage = createCookieWalletStorage({ keyPrefix: "my-app", secure: true });
+const initialState = walletStorage.readInitialState(cookies);
+```
+
+`createCookieStorageDriver`, its `initialCookies` option, `readWalletSnapshot`
+and `EMPTY_SNAPSHOT` are removed. A snapshot's active id is now the stored one;
+the manager falls back to the first pool entry when it names none or a wallet
+the pool does not hold, as it does after a client-side load.
 
 ## Testing
 
@@ -182,6 +226,10 @@ replaced by `overrides` (replace members) and `omit` (leave optional members
 off). `getSigner()` resolves the new `signer` option, any `WalletSigner`, and
 rejects without one; the package registers no signer kind of its own.
 `createFakeConnectedWallet` takes the adapter options instead of an `adapter`,
-and `createFakePersistence(seed)` takes a `Partial<PersistedWalletState>`
-(`isUserDisconnected`, not `userDisconnected`) and records every save in
-`saves`. See [Testing](/testing).
+and `createFakePersistence({ wallets, active, isUserDisconnected })` takes
+connected wallets instead of a hand-built `PersistedWalletState` and records
+every save in `saves`. The fake adapter runs on the same chain targets as the
+real ones, so an unexposed account rejects with `AccountNotExposed` and a
+chain outside the platform's registry with `ChainMismatch`.
+`@usebutr/testing/contract` adds `describeAdapterContract`, the suite every
+butr adapter runs. See [Testing](/testing).

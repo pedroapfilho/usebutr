@@ -34,6 +34,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./transaction": {
+      "types": "./dist/transaction.d.ts",
+      "default": "./dist/transaction.js"
     }
   },
   "publishConfig": {
@@ -55,6 +59,7 @@
   "devDependencies": {
     "@repo/config-vitest": "workspace:*",
     "@repo/typescript-config": "workspace:*",
+    "@usebutr/testing": "workspace:*",
     "@wallet-standard/app": "^1.1.1",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"

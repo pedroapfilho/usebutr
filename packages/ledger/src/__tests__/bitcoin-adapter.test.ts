@@ -1,5 +1,7 @@
 import type { BitcoinAdapter } from "@usebutr/core";
 import { BITCOIN_CHAINS, buildAccount } from "@usebutr/core";
+import type { ObservedCall } from "@usebutr/testing/contract";
+import { describeAdapterContract } from "@usebutr/testing/contract";
 import { describe, expect, it } from "vitest";
 
 import { createLedgerAdapter } from "../adapter";
@@ -153,26 +155,6 @@ describe("createBitcoinLedgerAdapter", () => {
     expect(accountPaths).toEqual(["84'/0'/0'"]);
   });
 
-  it("signTransaction() rejects an account or chain the adapter does not cover", async () => {
-    const accountPaths: Array<string> = [];
-    const adapter = await connectedBitcoin({
-      onSignPsbt: (path) => {
-        accountPaths.push(path);
-      },
-    });
-    const psbt = Uint8Array.of(1, 2, 3);
-
-    await expect(
-      adapter.signTransaction?.(psbt, {
-        account: buildAccount("bc1qnotreal", BITCOIN_CHAINS.mainnet),
-      }),
-    ).rejects.toThrow(/does not expose/v);
-    await expect(
-      adapter.signTransaction?.(psbt, { chain: BITCOIN_CHAINS.testnet }),
-    ).rejects.toMatchObject({ kind: "ChainMismatch" });
-    expect(accountPaths).toEqual([]);
-  });
-
   it("getSigner() resolves the device app tagged ledger-bitcoin", async () => {
     const adapter = await connectedBitcoin();
 
@@ -188,4 +170,36 @@ describe("createBitcoinLedgerAdapter", () => {
 
     expect(adapter.chainPlatform).toBe("bitcoin");
   });
+});
+
+describeAdapterContract<BitcoinAdapter>({
+  addresses: ["bc1qfakeaddr0", "bc1qfakeaddr1"],
+  chain: BITCOIN_CHAINS.mainnet,
+  connect: async (addresses) => {
+    const calls: Array<ObservedCall> = [];
+    const adapter = await createBitcoinLedgerAdapter({
+      accountCount: addresses.length,
+      btc: buildFakeBtcCtor({
+        onSignMessage: (path) => {
+          calls.push({ address: `bc1qfakeaddr${indexOfPath(path)}` });
+        },
+        onSignPsbt: () => {
+          calls.push({ chain: BITCOIN_CHAINS.mainnet.id });
+        },
+      }),
+      platform: "bitcoin",
+      transport: buildFakeTransport().factory,
+    });
+    if (addresses.length > 0) {
+      await adapter.connect();
+    }
+    return { adapter, lastCall: () => calls.at(-1) };
+  },
+  move: "fixed",
+  name: "Ledger Bitcoin",
+  transactions: {
+    signTransaction: (adapter, options) =>
+      adapter.signTransaction?.(Uint8Array.of(1, 2, 3), options),
+  },
+  unreachable: BITCOIN_CHAINS.testnet,
 });

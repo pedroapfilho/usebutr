@@ -16,7 +16,7 @@ graph TD
     eip6963["EIP-6963 (EVM)"]
     walletstandard["Wallet Standard (SVM / Sui / Bitcoin · Polkadot fallback)"]
     injectedweb3["injectedWeb3 (Polkadot primary)"]
-    injected["Injected fallback (window.ethereum / window.unisat / sats-connect)"]
+    injected["Injected fallback (window.ethereum / window.unisat / sats-connect / window.btc)"]
     built["fromAdapters (WalletConnect / Ledger / your own)"]
     source["WalletSource: (onAdapter) => unsubscribe"]
   end
@@ -64,12 +64,13 @@ Browser wallets announce themselves through one of three mechanisms:
   `window.injectedWeb3`; a Wallet Standard `polkadot:*` fallback covers
   wallets the primary channel missed.
 
-Each `@usebutr/<platform>` package exports one or two discoverers:
+Each `@usebutr/<platform>` package exports its discovery sources:
 
 - `discoverEvmAdapters` + `discoverInjectedAdapter` (`@usebutr/evm`)
 - `discoverSvmAdapters` (`@usebutr/svm`)
 - `discoverSuiAdapters` (`@usebutr/sui`)
-- `discoverBitcoinAdapters` + `discoverInjectedBitcoinAdapter` (`@usebutr/bitcoin`)
+- `discoverBitcoinAdapters` + `discoverInjectedBitcoinAdapter` +
+  `discoverLegacyBitcoinAdapter` (`@usebutr/bitcoin`)
 - `discoverInjectedPolkadotAdapters` + `discoverPolkadotWalletStandardAdapters`
   (`@usebutr/polkadot`)
 
@@ -81,10 +82,13 @@ A source is a function that announces adapters and returns its unsubscribe:
 type WalletSource = (onAdapter: (adapter: WalletAdapter) => void) => () => void;
 ```
 
-Every discoverer above already has that shape, so it goes into
+Every source above already has that shape, so it goes into
 `config.sources` as-is. `autoDiscovery()` from `@usebutr/wallets` returns one
-source for all five platforms, with the injected fallbacks staying quiet once a
-standard announcement covered the wallet. `fromAdapters(adapters)` from
+source for all five platforms. It shares one Wallet Standard subscription
+across them and lists each wallet once: a fallback channel waits for the
+settle window and lists unless a primary channel already listed the same
+wallet, and `window.ethereum` and `window.btc`, which name no wallet, list
+only when their platform found nothing. `fromAdapters(adapters)` from
 `@usebutr/core` turns built adapters (WalletConnect, Ledger, your own) into a
 source, so they show up in `useDiscoveredWallets()` like any discovered wallet.
 
@@ -150,16 +154,16 @@ manager.subscribe((state) => {
 
 Its state:
 
-| Field                                                          | Shape                                  | What it holds                                                                  |
-| -------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------ |
-| `adapters`                                                     | `ReadonlyArray<WalletAdapter>`         | every adapter the sources announced, in order                                  |
-| `pool`                                                         | `ReadonlyMap<string, ConnectedWallet>` | every connected wallet, keyed by adapter id                                    |
-| `dormant`                                                      | `ReadonlyMap<string, StoredPoolEntry>` | persisted connections that are not live                                        |
-| `selection`                                                    | `ReadonlyMap<ChainPlatform, string>`   | the chosen wallet per platform                                                 |
-| `activeConnectorId`                                            | `string \| null`                       | the wallet in front of the user                                                |
-| `reconnectingIds`                                              | `ReadonlySet<string>`                  | pool entries still backed by a placeholder seeded from `initialState`          |
-| `connectionStatus`, `connectingConnectorId`, `connectionError` | attempt state                          | the latest `connect` attempt: `"idle" \| "connecting" \| "success" \| "error"` |
-| `isHydrated`, `isUserDisconnected`                             | `boolean`                              | the start-up pass finished; the user disconnected this session                 |
+| Field                                                          | Shape                                  | What it holds                                                                     |
+| -------------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------- |
+| `adapters`                                                     | `ReadonlyArray<WalletAdapter>`         | every adapter the sources announced, in order                                     |
+| `pool`                                                         | `ReadonlyMap<string, ConnectedWallet>` | every connected wallet, keyed by adapter id                                       |
+| `dormant`                                                      | `ReadonlyMap<string, StoredPoolEntry>` | persisted connections that are not live                                           |
+| `selection`                                                    | `ReadonlyMap<ChainPlatform, string>`   | the chosen wallet per platform                                                    |
+| `activeConnectorId`                                            | `string \| null`                       | the wallet in front of the user                                                   |
+| `reconnectingIds`                                              | `ReadonlySet<string>`                  | pool entries whose connector is still a shadow adapter seeded from `initialState` |
+| `connectionStatus`, `connectingConnectorId`, `connectionError` | attempt state                          | the latest `connect` attempt: `"idle" \| "connecting" \| "success" \| "error"`    |
+| `isHydrated`, `isUserDisconnected`                             | `boolean`                              | the start-up pass finished; the user disconnected this session                    |
 
 `ConnectedWallet` is `{ account, accounts, connector }`. See
 [pool, selection, active](/concepts/pool-selection-active) for how those three
@@ -170,7 +174,8 @@ relate.
 Events only change what they are about. After every event one reconcile pass
 restores the invariants the rest of the library relies on:
 
-- a reconnecting id is always in the pool;
+- the reconnecting ids are exactly the pool entries whose connector is still
+  a shadow adapter;
 - a live connection is never also dormant;
 - every platform with a wallet in the pool has a selection pointing at one of
   that platform's wallets, and no selection points anywhere else;
@@ -244,12 +249,11 @@ Adding a sixth `ChainPlatform` is a fixed-shape change:
    and the storage validators derive from it), add the platform's `*Wallet`
    type to the `WalletAdapter` union, and add its chain registry to
    `CHAINS_BY_PLATFORM`.
-2. **Implement** `@usebutr/<platform>`: a `discover*Adapters` source, a
-   `build*Adapter` that defines only the methods the wallet supports, and a
-   `PlatformDiscoverer`.
-3. **Register** it in `@usebutr/wallets`. Its discoverer map is typed
-   `Record<ChainPlatform, PlatformDiscoverer>`, as is `CHAINS_BY_PLATFORM`, so
-   TypeScript flags each missing entry the moment the union grows.
+2. **Implement** `@usebutr/<platform>`: a `discover*Adapters` source and a
+   `build*Adapter` that defines only the methods the wallet supports.
+3. **Register** its channels in `@usebutr/wallets`. The channel map is typed
+   `Record<ChainPlatform, …>`, as is `CHAINS_BY_PLATFORM`, so TypeScript flags
+   each missing entry the moment the union grows.
 4. **(Optional)** Add a WalletConnect namespace under
    `packages/walletconnect/src/namespaces/<platform>.ts` and a Ledger app under
    `packages/ledger/src/apps/<platform>.ts`.

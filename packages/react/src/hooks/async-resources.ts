@@ -1,7 +1,6 @@
 import type { Account, Balance, ConnectedWallet, WalletSigner } from "@usebutr/core";
+import { isShadowAdapter } from "@usebutr/core";
 import { useEffect, useMemo, useReducer, useState } from "react";
-
-import { useIsReconnecting } from "./state";
 
 type AsyncState<T> =
   | { data: null; error: null; status: "idle" }
@@ -67,10 +66,12 @@ const useAsyncResource = <T>(fn: (() => Promise<T>) | null): AsyncState<T> => {
  * while it reconnects, since its shadow adapter rejects `getSigner`.
  */
 const useSigner = (wallet: ConnectedWallet | undefined): AsyncState<WalletSigner> => {
-  const reconnecting = useIsReconnecting(wallet?.connector.id ?? null);
   const fn = useMemo(
-    () => (wallet && !reconnecting ? () => wallet.connector.getSigner() : null),
-    [wallet, reconnecting],
+    () =>
+      wallet === undefined || isShadowAdapter(wallet.connector)
+        ? null
+        : () => wallet.connector.getSigner(),
+    [wallet],
   );
   return useAsyncResource(fn);
 };
@@ -95,11 +96,10 @@ const useBalance = (
   options: UseBalanceOptions = {},
 ): UseBalanceResult => {
   const { account, token } = options;
-  const reconnecting = useIsReconnecting(wallet?.connector.id ?? null);
   const [counter, refetch] = useReducer((n: number) => n + 1, 0);
   const fn = useMemo(() => {
     void counter;
-    if (wallet === undefined || reconnecting) {
+    if (wallet === undefined || isShadowAdapter(wallet.connector)) {
       return null;
     }
     // Bound, so an adapter written as a class keeps its `this`.
@@ -109,7 +109,7 @@ const useBalance = (
     }
     const target = account ?? wallet.account;
     return () => getBalance({ account: target, token });
-  }, [wallet, account, token, counter, reconnecting]);
+  }, [wallet, account, token, counter]);
   const state = useAsyncResource(fn);
   return { ...state, refetch };
 };

@@ -2,14 +2,14 @@ import "./signer-registry";
 
 import { act, waitFor } from "@testing-library/react";
 import type { Balance, BalanceOptions, WalletAdapter, WalletSigner } from "@usebutr/core";
-import { buildAccount, EVM_CHAINS } from "@usebutr/core";
+import { buildAccount, EVM_CHAINS, toStoredPoolEntry } from "@usebutr/core";
 import { createFakeAdapter, createFakeConnectedWallet } from "@usebutr/testing";
 import { describe, expect, it, vi } from "vitest";
 
 import { useBalance, useSigner } from "../hooks/async-resources";
 import { useWallet } from "../hooks/state";
 
-import { renderWithManager, settle, storedEntryOf } from "./render";
+import { renderWithManager, settle } from "./render";
 
 const first = buildAccount("0xfirst", EVM_CHAINS.ethereum);
 const second = buildAccount("0xsecond", EVM_CHAINS.ethereum);
@@ -46,11 +46,31 @@ describe("useSigner", () => {
     const { result } = renderWithManager(() => useSigner(useWallet()), {
       initialState: {
         activeConnectorId: "metamask",
-        pool: { metamask: storedEntryOf(wallet) },
+        pool: { metamask: toStoredPoolEntry(wallet) },
         selection: {},
       },
     });
     expect(result.current.value.status).toBe("idle");
+  });
+
+  it("resolves once the live adapter replaces the shadow", async () => {
+    const signer: WalletSigner = { connectorId: "metamask", kind: "test" };
+    const wallet = createFakeConnectedWallet({ id: "metamask" });
+    const { result } = renderWithManager(() => useSigner(useWallet()), {
+      adapters: [createFakeAdapter({ id: "metamask", signer })],
+      initialState: {
+        activeConnectorId: "metamask",
+        pool: { metamask: toStoredPoolEntry(wallet) },
+        selection: {},
+      },
+    });
+    expect(result.current.value.status).toBe("idle");
+    await settle();
+
+    await waitFor(() => {
+      expect(result.current.value.status).toBe("success");
+    });
+    expect(result.current.value.data).toBe(signer);
   });
 
   it("surfaces a signer that fails", async () => {
@@ -80,6 +100,18 @@ describe("useBalance", () => {
     expect(result.current.value.status).toBe("idle");
 
     await act(() => result.current.manager.connect("phantom"));
+    expect(result.current.value.status).toBe("idle");
+  });
+
+  it("stays idle while the wallet is still a reconnecting shadow", () => {
+    const wallet = createFakeConnectedWallet({ id: "metamask" });
+    const { result } = renderWithManager(() => useBalance(useWallet()), {
+      initialState: {
+        activeConnectorId: "metamask",
+        pool: { metamask: toStoredPoolEntry(wallet) },
+        selection: {},
+      },
+    });
     expect(result.current.value.status).toBe("idle");
   });
 

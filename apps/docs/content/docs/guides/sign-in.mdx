@@ -43,7 +43,8 @@ caller; `signIn()` resolves only after `verify()` succeeds.
    `{ account }`.
 5. Add base64 mirrors of the signature and signed bytes, then call `verify`.
 
-The SIWS path passes `{ nonce }` to the wallet. The wallet composes the statement,
+The SIWS path passes `{ address, nonce }` to the wallet, with the address of
+the account the nonce was fetched for. The wallet composes the statement,
 so `result.message` is absent and `result.account` comes from the wallet's output.
 `buildMessage` is unused on that path. With `preferSignMessage: true`, every
 platform uses your message builder instead.

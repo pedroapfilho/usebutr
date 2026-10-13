@@ -46,7 +46,7 @@ const pay = async (wallet: ConnectedWallet<"evm">, to: string) => {
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
 | EVM      | `EvmTransactionRequest`: an `eth_sendTransaction` object; `bigint` quantities are hex-encoded for you, and `from` is always the resolved account | transaction hash   |
 | SVM      | `Uint8Array`: the serialized transaction                                                                                                         | base58 signature   |
-| Sui      | `SuiTransactionInput`: a `@mysten/sui` `Transaction`, its JSON string, or BCS bytes                                                              | transaction digest |
+| Sui      | `SuiTransactionInput`: a `@mysten/sui` `Transaction`, its JSON string, BCS bytes, or their base64. See [Sui inputs](#sui-inputs)                 | transaction digest |
 | Bitcoin  | `BitcoinTransfer`: `{ amount: bigint; recipient: string }`, `amount` in satoshis                                                                 | txid               |
 | Polkadot | no `sendTx`: build and submit extrinsics with polkadot-api through [`getSigner()`](/integrations/polkadot)                                       | —                  |
 
@@ -94,6 +94,25 @@ EVM adapters have none: EVM wallets sign and send in one
 `eth_sendTransaction`. On EVM, `getTransactionReceipt(hash)` reports
 `"Pending"`, `"Success"`, or `"Error"` through the wallet's provider; other
 platforms read receipts with your own client.
+
+### Sui inputs
+
+Every Sui transport reads a `SuiTransactionInput` through one function,
+`prepareSuiTransaction` from `@usebutr/sui/transaction`, so the same input
+reaches every wallet as the same string. A string starting with `{` is a
+`Transaction`'s JSON; any other string is base64 BCS bytes.
+
+| Input                       | Wallet Standard | WalletConnect | Ledger  |
+| --------------------------- | --------------- | ------------- | ------- |
+| BCS bytes                   | ✓               | ✓             | ✓       |
+| base64 BCS bytes            | ✓               | ✓             | ✓       |
+| a `Transaction` or its JSON | ✓               | ✓             | rejects |
+
+Ledger has no RPC client to build a `Transaction` with, so it signs built
+bytes only: pass `await tx.build({ client })`. WalletConnect's
+`signTransaction` resolves `bytes` from the wallet's echo; when the wallet
+echoes none, it falls back to the input's own bytes, and rejects for a
+`Transaction` or its JSON.
 
 ## Through your chain library
 

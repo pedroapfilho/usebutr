@@ -1,5 +1,7 @@
 import type { ConnectorEvent, PolkadotAdapter } from "@usebutr/core";
 import { buildAccount, POLKADOT_CHAINS } from "@usebutr/core";
+import type { ObservedCall } from "@usebutr/testing/contract";
+import { describeAdapterContract } from "@usebutr/testing/contract";
 import { describe, expect, it, vi } from "vitest";
 
 import { buildInjectedPolkadotAdapter } from "../injected/adapter";
@@ -193,34 +195,12 @@ describe("buildInjectedPolkadotAdapter", () => {
       });
     });
 
-    it("signs as the requested account", async () => {
-      const extension = makeExtension({ accounts: [ALICE, BOB] });
-      const adapter = await connected(extension);
-      await requireSignMessage(adapter)(message, {
-        account: buildAccount(OTHER_ADDRESS, POLKADOT_CHAINS.polkadot),
-      });
-      expect(extension.signRaw).toHaveBeenCalledWith(
-        expect.objectContaining({ address: OTHER_ADDRESS }),
-      );
-    });
-
-    it("rejects an account the extension does not expose instead of signing as another", async () => {
-      const extension = makeExtension({ accounts: [ALICE] });
-      const adapter = await connected(extension);
-      await expect(
-        requireSignMessage(adapter)(message, {
-          account: buildAccount(OTHER_ADDRESS, POLKADOT_CHAINS.polkadot),
-        }),
-      ).rejects.toThrow(/does not expose account/v);
-      expect(extension.signRaw).not.toHaveBeenCalled();
-    });
-
     it("rejects once the session has ended", async () => {
       const extension = makeExtension();
       const adapter = await connected(extension);
       const signMessage = requireSignMessage(adapter);
       await adapter.disconnect?.();
-      await expect(signMessage(message)).rejects.toThrow(/is not connected/v);
+      await expect(signMessage(message)).rejects.toMatchObject({ kind: "NotConnected" });
     });
   });
 
@@ -238,7 +218,7 @@ describe("buildInjectedPolkadotAdapter", () => {
     it("rejects asynchronously before connect", async () => {
       const adapter = build(makeExtension());
       const pending = adapter.getSigner();
-      await expect(pending).rejects.toThrow(/is not connected/v);
+      await expect(pending).rejects.toMatchObject({ kind: "NotConnected" });
     });
   });
 
@@ -253,37 +233,6 @@ describe("buildInjectedPolkadotAdapter", () => {
 
       const withoutSubscribe = await connected(makeExtension({ withSubscribe: false }));
       expect(withoutSubscribe.subscribe).toBeUndefined();
-    });
-
-    it("emits accountsChanged with every account, active first", async () => {
-      const extension = makeExtension();
-      const adapter = await connected(extension);
-      const events = listen(adapter);
-
-      extension.push([BOB, ALICE]);
-
-      expect(events).toEqual([
-        {
-          accounts: [
-            buildAccount(OTHER_ADDRESS, POLKADOT_CHAINS.polkadot),
-            buildAccount(ADDRESS, POLKADOT_CHAINS.polkadot),
-          ],
-          type: "accountsChanged",
-        },
-      ]);
-    });
-
-    it("turns an empty push into disconnected and tears the session down", async () => {
-      const extension = makeExtension();
-      const adapter = await connected(extension);
-      const events = listen(adapter);
-
-      extension.push([]);
-
-      expect(events).toEqual([{ type: "disconnected" }]);
-      expect(extension.unsubscribeCalls()).toBe(1);
-      await expect(adapter.getAccounts()).resolves.toEqual([]);
-      await expect(adapter.getSigner()).rejects.toThrow(/is not connected/v);
     });
 
     it("fans one wallet event out to every subscriber", async () => {
@@ -309,17 +258,34 @@ describe("buildInjectedPolkadotAdapter", () => {
       expect(extension.unsubscribeCalls()).toBe(1);
       expect(events).toHaveLength(1);
     });
-
-    it("stops delivering after unsubscribe", async () => {
-      const extension = makeExtension();
-      const adapter = await connected(extension);
-      const listener = vi.fn<(event: ConnectorEvent) => void>();
-      const unsubscribe = adapter.subscribe?.(listener);
-
-      unsubscribe?.();
-      extension.push([BOB]);
-
-      expect(listener).not.toHaveBeenCalled();
-    });
   });
+});
+
+describeAdapterContract<PolkadotAdapter>({
+  addresses: [ADDRESS, OTHER_ADDRESS],
+  chain: POLKADOT_CHAINS.polkadot,
+  connect: async (addresses) => {
+    const calls: Array<ObservedCall> = [];
+    const extension = makeExtension({
+      accounts: addresses.map((address) => ({ address, name: address })),
+    });
+    extension.signRaw.mockImplementation(({ address }) => {
+      calls.push({ address });
+      return Promise.resolve({ id: 1, signature: "0xdead" });
+    });
+    const adapter = build(extension);
+    if (addresses.length > 0) {
+      await adapter.connect();
+    }
+    return {
+      adapter,
+      lastCall: () => calls.at(-1),
+      reportAccounts: (reported) => {
+        extension.push(reported.map((address) => ({ address, name: address })));
+      },
+    };
+  },
+  move: "fixed",
+  name: "Polkadot injectedWeb3",
+  unreachable: POLKADOT_CHAINS.kusama,
 });

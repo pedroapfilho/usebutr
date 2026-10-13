@@ -6,14 +6,18 @@ description: Wallet Standard discovery for Bitcoin wallets plus injected fallbac
 `@usebutr/bitcoin` discovers Bitcoin wallets two ways:
 
 - **Wallet Standard**: Phantom, Magic Eden, Leather, …
-- **Injected fallback**: `window.unisat`, `window.okxwallet.bitcoin`,
-  Xverse's sats-connect provider, and `window.btc`.
+- **Injected fallback**: `window.unisat`, `window.okxwallet.bitcoin` and
+  Xverse's sats-connect provider through `discoverInjectedBitcoinAdapter`, and
+  `window.btc` through `discoverLegacyBitcoinAdapter`.
 
 ## Register it
 
-`autoDiscovery()` from `@usebutr/wallets` includes both channels and runs the
-injected one only when Wallet Standard found no Bitcoin wallet, so a wallet
-on both channels lists once. For a Bitcoin-only app, keep that pairing:
+`autoDiscovery()` from `@usebutr/wallets` includes both channels and lists
+each wallet once. An injected wallet waits until Wallet Standard has loaded
+plus 150 ms, then lists unless Wallet Standard announced the same wallet:
+Xverse on both channels lists once, and Unisat still lists next to Phantom.
+`window.btc` names no wallet, so it lists only when no other Bitcoin wallet
+was found. For a Bitcoin-only app, keep that pairing:
 
 ```tsx
 import type { WalletManagerConfig } from "@usebutr/core";
@@ -22,7 +26,6 @@ import { autoDiscovery } from "@usebutr/wallets";
 
 const config: WalletManagerConfig = {
   sources: [autoDiscovery(["bitcoin"])],
-  storageKeyPrefix: "my-app",
 };
 
 export const Providers = ({ children }: { children: React.ReactNode }) => (
@@ -30,9 +33,9 @@ export const Providers = ({ children }: { children: React.ReactNode }) => (
 );
 ```
 
-`discoverBitcoinAdapters` alone is Wallet Standard only; add
-`discoverInjectedBitcoinAdapter` yourself only if you accept that a wallet on
-both channels can list twice.
+`discoverBitcoinAdapters` alone is Wallet Standard only; add the injected
+sources yourself only if you accept that a wallet on both channels lists
+twice.
 
 <Callout type="info">
   Wallet Standard discovery lazily imports `@wallet-standard/app`, an optional peer dependency. A
@@ -56,6 +59,10 @@ both channels can list twice.
 - `signTransaction` takes PSBT bytes (`psbt.toBuffer()`) and resolves the
   signed PSBT, for you to finalise and broadcast through your own Esplora or
   Electrum client.
+- `signMessage` resolves the input bytes as `signedMessage`. Wallet Standard
+  wallets sign the bytes as they are. Unisat, OKX, `window.btc` and Xverse
+  take text, so bytes that are not valid UTF-8 reject before the wallet is
+  asked; see [message signing](/api/bitcoin#message-signing).
 - There is no `getBalance` or `getTransactionReceipt`: butr ships no Bitcoin
   RPC.
 
@@ -107,9 +114,9 @@ const signOnSignet = async (wallet: ConnectedWallet<"bitcoin">, psbt: Uint8Array
 ```
 
 <Callout type="warn">
-  **Address formats vary by wallet.** Phantom exposes native SegWit only; Xverse exposes a payment
-  address as the account and signs with its ordinals address too. Read `account.walletAddress` and
-  detect the format from its prefix.
+  **Address formats vary by wallet.** Phantom exposes native SegWit only; Xverse exposes its payment
+  and ordinals addresses as two accounts, payment first, and `sendTx` debits the payment address.
+  Read `account.walletAddress` and detect the format from its prefix.
 </Callout>
 
 ## Signers

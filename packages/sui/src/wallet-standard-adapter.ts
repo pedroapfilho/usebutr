@@ -1,5 +1,5 @@
 import type { SuiAdapter, SuiTransactionInput, WalletAdapter } from "@usebutr/core";
-import { base64ToBytes, bytesToBase64, SUI_CHAINS_LIST } from "@usebutr/core";
+import { base64ToBytes, SUI_CHAINS_LIST } from "@usebutr/core";
 import {
   createWalletStandardCore,
   discoverWalletStandard,
@@ -11,6 +11,7 @@ import type {
   WalletStandardWallet,
 } from "@usebutr/wallet-standard-shared";
 
+import { prepareSuiTransaction } from "./transaction";
 import type {
   SuiSignAndExecuteTransactionFeature,
   SuiSignPersonalMessageFeature,
@@ -18,22 +19,13 @@ import type {
   SuiSignTransactionInput,
 } from "./wallet-standard-types";
 
-type WalletTransaction = SuiSignTransactionInput["transaction"];
-
-/**
- * Sui wallets accept only the `toJSON()` form, so a JSON or base64 string and
- * BCS bytes are wrapped. A `Transaction` passes through untouched: its
- * `toJSON` reads `this`, which a copied method would lose.
- */
-const coerceSuiTransaction = (tx: SuiTransactionInput): WalletTransaction => {
-  if (typeof tx === "string") {
-    return { toJSON: () => Promise.resolve(tx) };
-  }
-  if (tx instanceof Uint8Array) {
-    const encoded = bytesToBase64(tx);
-    return { toJSON: () => Promise.resolve(encoded) };
-  }
-  return tx;
+/** Sui wallets take only the `toJSON()` form, which hands them the same
+ *  string every other transport sends. */
+const walletTransaction = async (
+  tx: SuiTransactionInput,
+): Promise<SuiSignTransactionInput["transaction"]> => {
+  const { serialized } = await prepareSuiTransaction(tx);
+  return { toJSON: () => Promise.resolve(serialized) };
 };
 
 /**
@@ -85,7 +77,7 @@ const buildSuiAdapter = (
         const output = await signAndExecute.signAndExecuteTransaction({
           account: core.resolveAccount(options?.account),
           chain: core.resolveChainId(options?.chain),
-          transaction: coerceSuiTransaction(tx),
+          transaction: await walletTransaction(tx),
         });
         return output.digest;
       },
@@ -107,7 +99,7 @@ const buildSuiAdapter = (
         const output = await signTransaction.signTransaction({
           account: core.resolveAccount(options?.account),
           chain: core.resolveChainId(options?.chain),
-          transaction: coerceSuiTransaction(tx),
+          transaction: await walletTransaction(tx),
         });
         return { bytes: base64ToBytes(output.bytes), signature: base64ToBytes(output.signature) };
       },
@@ -123,6 +115,6 @@ const buildSuiAdapter = (
 const discoverSuiAdapters = (
   onAdapter: (adapter: WalletAdapter) => void,
   loadModule?: WalletStandardModuleLoader,
-): (() => void) => discoverWalletStandard(onAdapter, buildSuiAdapter, loadModule);
+): (() => void) => discoverWalletStandard([{ build: buildSuiAdapter, onAdapter }], { loadModule });
 
 export { buildSuiAdapter, discoverSuiAdapters };

@@ -1,10 +1,12 @@
 import type { SuiAdapter } from "@usebutr/core";
 import { buildAccount, bytesToHexPrefixed, SUI_CHAINS } from "@usebutr/core";
+import type { ObservedCall } from "@usebutr/testing/contract";
+import { describeAdapterContract } from "@usebutr/testing/contract";
 import { describe, expect, it } from "vitest";
 
 import { createLedgerAdapter } from "../adapter";
 import type { SuiAppConstructor, SuiAppLike } from "../apps/sui";
-import { createSuiLedgerAdapter, serializeEd25519Signature } from "../apps/sui";
+import { createSuiLedgerAdapter } from "../apps/sui";
 
 import { buildFakeTransport, indexOfPath } from "./helpers";
 
@@ -106,26 +108,28 @@ describe("createSuiLedgerAdapter", () => {
     expect(signed?.signature.slice(65)).toEqual(publicKeyAt(2));
   });
 
-  it("signTransaction() rejects what the device cannot sign or the adapter does not expose", async () => {
-    const adapter = await connectedSui();
-    const tx = Uint8Array.of(1, 2, 3);
-    const outsider = buildAccount(`0x${"de".repeat(32)}`, SUI_CHAINS.mainnet);
+  it("signTransaction() signs base64 BCS bytes as the bytes they encode", async () => {
+    const received: Array<Uint8Array> = [];
+    const adapter = await connectedSui({
+      onSignTransaction: (_path, intentMessage) => {
+        received.push(intentMessage);
+      },
+    });
 
-    await expect(adapter.signTransaction?.("{}")).rejects.toThrow(/BCS transaction bytes/v);
-    await expect(adapter.signTransaction?.(tx, { account: outsider })).rejects.toThrow(
-      /does not expose/v,
-    );
-    await expect(
-      adapter.signTransaction?.(tx, { chain: SUI_CHAINS.testnet }),
-    ).rejects.toMatchObject({ kind: "ChainMismatch" });
+    const signed = await adapter.signTransaction?.("AQID");
+
+    expect(received).toEqual([Uint8Array.of(0, 0, 0, 1, 2, 3)]);
+    expect(signed?.bytes).toEqual(Uint8Array.of(1, 2, 3));
   });
 
-  it("rejects malformed Ledger signature material", () => {
-    expect(() => serializeEd25519Signature(new Uint8Array(63), publicKeyAt(0))).toThrow(
-      /63-byte signature/v,
-    );
-    expect(() => serializeEd25519Signature(SIGNATURE, new Uint8Array(31))).toThrow(
-      /31-byte public key/v,
+  it.each([
+    ["a Transaction's JSON", '{"version":2}'],
+    ["a Transaction", { toJSON: () => Promise.resolve('{"version":2}') }],
+  ])("signTransaction() rejects %s, which needs an RPC client to build", async (_label, tx) => {
+    const adapter = await connectedSui();
+
+    await expect(adapter.signTransaction?.(tx)).rejects.toThrow(
+      /takes built BCS bytes or their base64/v,
     );
   });
 
@@ -149,4 +153,34 @@ describe("createSuiLedgerAdapter", () => {
     expect(adapter.chainPlatform).toBe("sui");
     expect(account?.chain).toEqual(SUI_CHAINS.testnet);
   });
+});
+
+describeAdapterContract<SuiAdapter>({
+  addresses: [bytesToHexPrefixed(addressAt(0)), bytesToHexPrefixed(addressAt(1))],
+  chain: SUI_CHAINS.mainnet,
+  connect: async (addresses) => {
+    const calls: Array<ObservedCall> = [];
+    const adapter = await createSuiLedgerAdapter({
+      accountCount: addresses.length,
+      platform: "sui",
+      sui: buildFakeSuiCtor({
+        onSignTransaction: (path) => {
+          const address = addressAt(indexOfPath(path));
+          calls.push({ address: bytesToHexPrefixed(address), chain: SUI_CHAINS.mainnet.id });
+        },
+      }),
+      transport: buildFakeTransport().factory,
+    });
+    if (addresses.length > 0) {
+      await adapter.connect();
+    }
+    return { adapter, lastCall: () => calls.at(-1) };
+  },
+  move: "fixed",
+  name: "Ledger Sui",
+  transactions: {
+    signTransaction: (adapter, options) =>
+      adapter.signTransaction?.(Uint8Array.of(1, 2, 3), options),
+  },
+  unreachable: SUI_CHAINS.testnet,
 });

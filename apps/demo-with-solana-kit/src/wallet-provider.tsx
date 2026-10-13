@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 
 const config: WalletManagerConfig = {
   sources: [discoverSvmAdapters],
-  storageKeyPrefix: "butr-solana-kit-demo",
 };
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (

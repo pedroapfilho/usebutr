@@ -29,7 +29,7 @@ const fakeDocument = (initial = ""): { cookie: string } => {
   };
 };
 
-describe("createCookieStorageDriver — browser context", () => {
+describe("createCookieStorageDriver", () => {
   let docStub: { cookie: string };
   beforeEach(() => {
     docStub = fakeDocument();
@@ -150,50 +150,5 @@ describe("createCookieStorageDriver — browser context", () => {
     vi.stubGlobal("document", { cookie: "" });
     const driver = createCookieStorageDriver();
     expect(driver.getItem("anything")).toBeNull();
-  });
-});
-
-describe("createCookieStorageDriver — server context (no document)", () => {
-  beforeEach(() => {
-    vi.stubGlobal("document", undefined);
-  });
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("returns a no-op driver when document is undefined", () => {
-    const driver = createCookieStorageDriver();
-    expect(driver.getItem("anything")).toBeNull();
-    expect(() => driver.setItem("k", "v")).not.toThrow();
-    expect(() => driver.removeItem("k")).not.toThrow();
-  });
-
-  it("reads from initialCookies snapshot when document is undefined", () => {
-    const driver = createCookieStorageDriver({
-      initialCookies: { "butr-active": "metamask", "butr-pool": "{}" },
-    });
-    expect(driver.getItem("butr-active")).toBe("metamask");
-    expect(driver.getItem("butr-pool")).toBe("{}");
-    expect(driver.getItem("missing")).toBeNull();
-  });
-
-  it("accepts an iterable of [name, value] pairs for initialCookies", () => {
-    const driver = createCookieStorageDriver({
-      initialCookies: [
-        ["butr-pool", "{}"],
-        ["butr-active", "metamask"],
-      ],
-    });
-    expect(driver.getItem("butr-active")).toBe("metamask");
-  });
-
-  it("writes remain no-ops on the server even with initialCookies", () => {
-    const driver = createCookieStorageDriver({
-      initialCookies: { "butr-active": "metamask" },
-    });
-    expect(() => driver.setItem("butr-active", "phantom")).not.toThrow();
-    expect(driver.getItem("butr-active")).toBe("metamask");
-    expect(() => driver.removeItem("butr-active")).not.toThrow();
-    expect(driver.getItem("butr-active")).toBe("metamask");
   });
 });

@@ -27,22 +27,25 @@ The library is split across small focused packages so consumers bundle only what
 ## Quickstart
 
 ```bash
-pnpm add @usebutr/react @usebutr/wallets zustand
+pnpm add @usebutr/core @usebutr/react @usebutr/wallets zustand
 ```
 
-Mount the provider once. `autoDiscovery()` returns a discovery source that finds every EIP-6963 EVM wallet, every Wallet Standard SVM / Sui / Bitcoin wallet, and every `window.injectedWeb3` Polkadot extension (with a Wallet Standard `polkadot:*` fallback), plus injected legacy fallbacks for EVM (`window.ethereum`) and Bitcoin (`window.unisat`, `window.XverseProviders`, `window.btc`).
+Mount the provider once. Its `config.sources` say where adapters come from. `autoDiscovery()` is one source for every platform: EIP-6963 EVM wallets, Wallet Standard Solana, Sui and Bitcoin wallets, `window.injectedWeb3` Polkadot extensions, and the fallback channels (`window.ethereum`, the injected Unisat, OKX and Xverse providers, `window.btc`, Wallet Standard `polkadot:*`). It lists a wallet present on two channels once.
 
 ```tsx
 // src/wallet-provider.tsx
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
+import type { ReactNode } from "react";
 
-const discovery = autoDiscovery();
+// Read once at mount: define it at module scope.
+const config: WalletManagerConfig = {
+  sources: [autoDiscovery()],
+};
 
-export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={discovery} storageKeyPrefix="my-app">
-    {children}
-  </WalletManagerProvider>
+export const WalletProvider = ({ children }: { children: ReactNode }) => (
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 ```
 
@@ -51,29 +54,29 @@ Then read from hooks anywhere below the provider:
 ```tsx
 // src/connect-button.tsx
 import {
-  useConnectWallet,
+  useConnect,
   useConnectedWallets,
-  useDisconnectWallet,
   useDiscoveredWallets,
   useIsHydrated,
+  useWalletManager,
 } from "@usebutr/react";
 
 export const ConnectButton = () => {
   const isHydrated = useIsHydrated();
   const discovered = useDiscoveredWallets();
   const connected = useConnectedWallets();
-  const connect = useConnectWallet();
-  const disconnect = useDisconnectWallet();
+  const { connect, connectingId, error } = useConnect();
+  const { disconnect } = useWalletManager();
 
-  // Client-only rendering: the pool is empty until the restore pass finishes.
-  // For SSR, seed the store instead and skip this gate entirely; see
-  // https://docs.usebutr.com/concepts/hydration#synchronous-seeding-ssr
+  // Client-only rendering: the pool is empty until the start-up hydration pass.
+  // For SSR, seed the manager with `initialState` and skip this gate; see
+  // https://docs.usebutr.com/concepts/hydration
   if (!isHydrated) return null;
 
   return (
     <div>
       {discovered.map((w) => (
-        <button key={w.id} onClick={() => connect(w.id)}>
+        <button disabled={connectingId !== null} key={w.id} onClick={() => connect(w.id)}>
           Connect {w.name} ({w.chainPlatform})
         </button>
       ))}
@@ -82,12 +85,13 @@ export const ConnectButton = () => {
           Disconnect {w.connector.name}
         </button>
       ))}
+      {error ? <p role="alert">{error.message}</p> : null}
     </div>
   );
 };
 ```
 
-That's the entire surface area for a basic dapp: a provider and a few hooks. Signing, balances, chain switching, and per-platform composition all build on the same shape.
+`connect` never rejects: a failure lands in `error` as a `ConnectionError` with a `kind`. Signing, balances, chain switching, and per-platform composition all build on the same provider and hooks.
 
 ## Highlights
 
@@ -113,7 +117,7 @@ Twelve published packages, each with a single responsibility.
 
 | Package                           | Purpose                                                                                               | Install                                                                               |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `@usebutr/core`                   | Types, store, storage, and the `WalletSource` discovery seam. No React, no protocols.                 | `pnpm add @usebutr/core zustand`                                                      |
+| `@usebutr/core`                   | Types, wallet manager, storage, chain targets, and the `WalletSource` seam. No React, no protocols.   | `pnpm add @usebutr/core zustand`                                                      |
 | `@usebutr/react`                  | React provider and hooks on top of `@usebutr/core`.                                                   | `pnpm add @usebutr/react zustand`                                                     |
 | `@usebutr/evm`                    | EIP-1193 / EIP-6963 / injected wallet discovery and adapters.                                         | `pnpm add @usebutr/evm zustand`                                                       |
 | `@usebutr/svm`                    | Wallet Standard adapter for Solana / SVM.                                                             | `pnpm add @usebutr/svm zustand @wallet-standard/app`                                  |
@@ -124,7 +128,7 @@ Twelve published packages, each with a single responsibility.
 | `@usebutr/wallets`                | Batteries-included composition: EVM + SVM + Sui + Bitcoin + Polkadot discovery + `autoDiscovery()`.   | `pnpm add @usebutr/react @usebutr/wallets zustand`                                    |
 | `@usebutr/walletconnect`          | WalletConnect v2 adapter for EVM / SVM / Sui / Bitcoin namespaces, single or multi-namespace.         | `pnpm add @usebutr/walletconnect zustand @walletconnect/universal-provider`           |
 | `@usebutr/ledger`                 | Ledger hardware-wallet adapter for EVM / SVM / Sui / Bitcoin over WebUSB.                             | `pnpm add @usebutr/ledger zustand @ledgerhq/hw-app-eth @ledgerhq/hw-transport-webusb` |
-| `@usebutr/testing`                | Fake adapters, fake persistence, mock storage for tests.                                              | `pnpm add -D @usebutr/testing zustand`                                                |
+| `@usebutr/testing`                | Fake adapters, fake persistence, and the adapter contract suite (`@usebutr/testing/contract`).        | `pnpm add -D @usebutr/testing zustand`                                                |
 
 > Workspace-internal packages (`@repo/typescript-config`, `@repo/config-vitest`, `@repo/wallet-extensions`) back the monorepo's tooling and tests and are not published.
 
@@ -132,8 +136,9 @@ Twelve published packages, each with a single responsibility.
 
 ```mermaid
 graph TD
-  core["**@usebutr/core**<br>types · store · storage · WalletSource"]
+  core["**@usebutr/core**<br>types · wallet manager · storage · chain targets"]
   react["**@usebutr/react**<br>provider + hooks"]
+  wss["**@usebutr/wallet-standard-shared**"]
   evm["**@usebutr/evm**<br>EIP-6963 / EIP-1193"]
   svm["**@usebutr/svm**<br>Wallet Standard"]
   sui["**@usebutr/sui**<br>Wallet Standard"]
@@ -145,68 +150,75 @@ graph TD
   testing["**@usebutr/testing**"]
 
   core --> react
+  core --> wss
   core --> evm
-  core --> svm
-  core --> sui
-  core --> btc
-  core --> dot
   core --> testing
-  evm --> wc
-  evm --> ledger
-  react --> wallets
+  wss --> svm
+  wss --> sui
+  wss --> btc
+  wss --> dot
   evm --> wallets
   svm --> wallets
   sui --> wallets
   btc --> wallets
   dot --> wallets
+  evm --> wc
+  svm --> wc
+  sui --> wc
+  btc --> wc
+  svm --> ledger
+  sui --> ledger
 ```
 
-`@usebutr/core` owns the types and the store. Every adapter implements the same `WalletAdapter` shape. `@usebutr/wallets` is a convenience layer that composes EVM + SVM + Sui + Bitcoin + Polkadot discovery; pick the lower-level packages directly if you want to ship only one platform.
+`@usebutr/core` owns the types and the wallet manager. Every package builds the same `WalletAdapter` shape and resolves each call's chain and account through core's chain targets, so the same refusal raises the same `ConnectionError` kind everywhere. A `WalletSource` is `(onAdapter) => unsubscribe`: every `discover*Adapters` export is one, `autoDiscovery()` composes them for every platform, and `fromAdapters()` turns built adapters (WalletConnect, Ledger, your own) into one. `@usebutr/react` needs only `@usebutr/core`; pick the platform packages directly to ship one platform.
 
 ## Recipes
 
+Every recipe passes a module-scope `WalletManagerConfig` to `WalletManagerProvider`. Without React, pass the same config to `createWalletManager` from `@usebutr/core` and call `manager.start()`.
+
 <details>
-<summary><b>Multi-chain (batteries-included)</b>: one provider, EVM + SVM + Sui + Bitcoin + Polkadot discovered together</summary>
+<summary><b>Multi-chain (batteries-included)</b>: one source for EVM, Solana, Sui, Bitcoin and Polkadot</summary>
 
 ```tsx
 // apps/demo-vite/src/wallet-provider.tsx
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
+import type { ReactNode } from "react";
 
-const discovery = autoDiscovery();
+const config: WalletManagerConfig = {
+  sources: [autoDiscovery()],
+};
 
-export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={discovery} storageKeyPrefix="butr-demo">
-    {children}
-  </WalletManagerProvider>
+export const WalletProvider = ({ children }: { children: ReactNode }) => (
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 ```
 
-`useConnectedWallets()` returns every active wallet across all four platforms. Render them side by side.
+`useConnectedWallets()` returns every connected wallet across platforms. Pass a platform list to discover only those, e.g. `autoDiscovery(["evm", "svm"])`, and `{ fallbacks: false }` to skip the fallback channels.
 
 </details>
 
 <details>
-<summary><b>EVM-only</b>: skip <code>@usebutr/wallets</code>, skip the SVM bundle</summary>
+<summary><b>EVM-only</b>: one platform package, no <code>@usebutr/wallets</code></summary>
 
 ```tsx
-// apps/demo-next/src/wallet-provider.tsx
-"use client";
-
-import { createWalletSource } from "@usebutr/core";
+// apps/demo-with-viem/src/wallet-provider.tsx
+import type { WalletManagerConfig } from "@usebutr/core";
 import { discoverEvmAdapters } from "@usebutr/evm";
 import { WalletManagerProvider } from "@usebutr/react";
+import type { ReactNode } from "react";
 
-const evmDiscovery = createWalletSource(discoverEvmAdapters);
+const config: WalletManagerConfig = {
+  sources: [discoverEvmAdapters],
+};
 
-export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={evmDiscovery} storageKeyPrefix="my-app">
-    {children}
-  </WalletManagerProvider>
+export const WalletProvider = ({ children }: { children: ReactNode }) => (
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 ```
 
-Drops `@usebutr/svm` and `@usebutr/wallets` from your bundle entirely.
+Every `discover*Adapters` export is a `WalletSource` as-is. `discoverInjectedAdapter` adds `window.ethereum`, but on its own it also lists a wallet that announced through EIP-6963; `autoDiscovery(["evm"])` lists it only when no wallet announced.
 
 </details>
 
@@ -215,211 +227,265 @@ Drops `@usebutr/svm` and `@usebutr/wallets` from your bundle entirely.
 
 ```tsx
 // apps/demo-with-solana-kit/src/wallet-provider.tsx
-import { createWalletSource } from "@usebutr/core";
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
 import { discoverSvmAdapters } from "@usebutr/svm";
+import type { ReactNode } from "react";
 
-const svmDiscovery = createWalletSource(discoverSvmAdapters);
+const config: WalletManagerConfig = {
+  sources: [discoverSvmAdapters],
+};
 
-export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={svmDiscovery} storageKeyPrefix="my-svm-app">
-    {children}
-  </WalletManagerProvider>
+export const WalletProvider = ({ children }: { children: ReactNode }) => (
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 ```
 
 </details>
 
 <details>
-<summary><b>Sui-only</b>: Wallet Standard, no EVM/SVM/Bitcoin code shipped</summary>
+<summary><b>Sui-only</b>: Wallet Standard, no EVM, Solana or Bitcoin code shipped</summary>
 
 ```tsx
 // apps/demo-with-sui/src/wallet-provider.tsx
-import { createWalletSource } from "@usebutr/core";
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
 import { discoverSuiAdapters } from "@usebutr/sui";
+import type { ReactNode } from "react";
 
-const suiDiscovery = createWalletSource(discoverSuiAdapters);
+const config: WalletManagerConfig = {
+  sources: [discoverSuiAdapters],
+};
 
-export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={suiDiscovery} storageKeyPrefix="my-sui-app">
-    {children}
-  </WalletManagerProvider>
+export const WalletProvider = ({ children }: { children: ReactNode }) => (
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 ```
 
 </details>
 
 <details>
-<summary><b>Bitcoin-only</b>: Wallet Standard + injected fallback for legacy Bitcoin wallets</summary>
+<summary><b>Bitcoin-only</b>: Wallet Standard plus the injected Bitcoin wallets</summary>
 
 ```tsx
 // apps/demo-with-bitcoin/src/wallet-provider.tsx
-import { discoverBitcoinAdapters, discoverInjectedBitcoinAdapter } from "@usebutr/bitcoin";
-import type { WalletSource } from "@usebutr/core";
+import type { WalletManagerConfig } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
+import { autoDiscovery } from "@usebutr/wallets";
+import type { ReactNode } from "react";
 
-const bitcoinDiscovery: WalletSource = {
-  subscribe: (onAdapter) => {
-    const seen = new Set<string>();
-    const emit = (a) => {
-      if (seen.has(a.id)) return;
-      seen.add(a.id);
-      onAdapter(a);
-    };
-    const offStandard = discoverBitcoinAdapters(emit);
-    const offInjected = discoverInjectedBitcoinAdapter(emit, {
-      hasAnyWalletStandardAdapter: () => seen.size > 0,
-    });
-    return () => {
-      offStandard();
-      offInjected();
-    };
-  },
+const config: WalletManagerConfig = {
+  sources: [autoDiscovery(["bitcoin"])],
 };
 
-export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={bitcoinDiscovery} storageKeyPrefix="my-btc-app">
+export const WalletProvider = ({ children }: { children: ReactNode }) => (
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
+);
+```
+
+Lists Wallet Standard Bitcoin wallets (Phantom, Magic Eden, Leather, OKX) and the injected Unisat, OKX and Xverse providers, each wallet once. `window.btc` names no wallet, so it lists only when no other Bitcoin wallet was found.
+
+</details>
+
+<details>
+<summary><b>SSR (Next.js App Router)</b>: render persisted connections from the first paint</summary>
+
+```ts
+// apps/demo-next/src/wallet-storage.ts
+import { createCookieWalletStorage } from "@usebutr/core";
+
+// Outside the "use client" module, so the Server Component receives the object.
+export const walletStorage = createCookieWalletStorage({
+  keyPrefix: "my-app",
+  secure: process.env.NODE_ENV === "production",
+});
+```
+
+```tsx
+// apps/demo-next/src/wallet-provider.tsx
+"use client";
+
+import type { WalletManagerConfig, WalletSnapshot } from "@usebutr/core";
+import { discoverEvmAdapters } from "@usebutr/evm";
+import { WalletManagerProvider } from "@usebutr/react";
+import type { ReactNode } from "react";
+
+import { walletStorage } from "./wallet-storage";
+
+const config: WalletManagerConfig = {
+  sources: [discoverEvmAdapters],
+  storage: walletStorage,
+};
+
+export const WalletProvider = ({
+  children,
+  initialState,
+}: {
+  children: ReactNode;
+  initialState?: WalletSnapshot;
+}) => (
+  <WalletManagerProvider config={config} initialState={initialState}>
     {children}
   </WalletManagerProvider>
 );
 ```
 
-Covers Phantom (Bitcoin), Magic Eden, Leather, modern OKX (Wallet Standard) plus Xverse (sats-connect), Unisat, OKX legacy, and `window.btc` (injected fallback).
+```tsx
+// apps/demo-next/src/app/layout.tsx
+import { cookies } from "next/headers";
+import type { ReactNode } from "react";
+
+import { WalletProvider } from "../wallet-provider";
+import { walletStorage } from "../wallet-storage";
+
+const RootLayout = async ({ children }: { children: ReactNode }) => {
+  const cookieStore = await cookies();
+  const initialState = walletStorage.readInitialState(cookieStore.getAll());
+
+  return (
+    <html lang="en">
+      <body>
+        <WalletProvider initialState={initialState}>{children}</WalletProvider>
+      </body>
+    </html>
+  );
+};
+
+export default RootLayout;
+```
+
+The client persists and the server reads through one storage, one key prefix and one decoder. Seeded wallets render at once with a shadow adapter and report `useIsReconnecting()` until their silent reconnect lands, so the tree needs no `useIsHydrated()` gate.
 
 </details>
 
 <details>
-<summary><b>WalletConnect (multi-platform)</b>: one QR scan, adapters for EVM + SVM + Sui + Bitcoin</summary>
+<summary><b>WalletConnect (multi-platform)</b>: one QR scan, one adapter per namespace</summary>
 
 ```tsx
-import { WalletManagerProvider } from "@usebutr/react";
+import type { WalletManagerConfig } from "@usebutr/core";
+import { fromAdapters } from "@usebutr/core";
 import { autoDiscovery } from "@usebutr/wallets";
 import { createWalletConnectAdapters } from "@usebutr/walletconnect";
 
-const discovery = autoDiscovery();
-const wcs = await createWalletConnectAdapters({
-  projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
-  metadata: { name: "My dapp", url: "https://my-dapp.example" },
-  namespaces: {
-    evm: ["eip155:1"],
-    svm: ["solana:mainnet"],
-    sui: ["sui:mainnet"],
-    bitcoin: ["bip122:000000000019d6689c085ae165831e93"],
-  },
-  onPairingUri: (uri) => setQrUri(uri),
-});
-const extra = new Map(wcs.map((a) => [a.id, a] as const));
-
-<WalletManagerProvider
-  discovery={discovery}
-  connectors={wcs.map((a) => ({ id: a.id, name: a.name, chainPlatform: a.chainPlatform }))}
-  createConnector={(id) => extra.get(id) ?? null}
->
-  {children}
-</WalletManagerProvider>;
+const config: WalletManagerConfig = {
+  sources: [
+    autoDiscovery(),
+    fromAdapters(
+      createWalletConnectAdapters({
+        metadata: { name: "My dapp", url: "https://my-dapp.example" },
+        namespaces: {
+          bitcoin: ["bip122:000000000019d6689c085ae165831e93"],
+          evm: ["eip155:1"],
+          sui: ["sui:mainnet"],
+          svm: ["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"],
+        },
+        onPairingUri: (uri) => showQr(uri),
+        projectId: "<your Reown project id>",
+      }),
+    ),
+  ],
+};
 ```
 
-One paired session, one adapter per namespace, each suffixed (`walletconnect-evm`, `walletconnect-svm`, …) so they coexist in the pool. Omit a key to skip a platform.
+One paired session, one adapter per namespace, each suffixed (`walletconnect-evm`, `walletconnect-svm`, …) so they coexist in the pool. Omit a key to skip a platform. The adapters appear in `useDiscoveredWallets()` next to the discovered ones.
 
 </details>
 
 <details>
-<summary><b>Ledger (multi-platform)</b>: hardware-wallet adapters for EVM / SVM / Sui / Bitcoin</summary>
+<summary><b>Ledger (multi-platform)</b>: hardware-wallet adapters for EVM, Solana, Sui and Bitcoin</summary>
 
 ```tsx
+// apps/demo-vite/src/extra-connectors.ts
+import type { WalletManagerConfig } from "@usebutr/core";
+import { fromAdapters } from "@usebutr/core";
 import { createLedgerAdapter } from "@usebutr/ledger";
-import { WalletManagerProvider } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
 
-const [evm, svm, sui, btc] = await Promise.all([
-  createLedgerAdapter({ platform: "evm", chainId: 1, accountCount: 3 }),
-  createLedgerAdapter({ platform: "svm", cluster: "mainnet", accountCount: 3 }),
-  createLedgerAdapter({ platform: "sui", cluster: "mainnet", accountCount: 3 }),
-  createLedgerAdapter({ platform: "bitcoin", addressFormat: "bech32", accountCount: 3 }),
-]);
-const all = [evm, svm, sui, btc];
-const extra = new Map(all.map((a) => [a.id, a] as const));
+const LEDGER_PLATFORMS = ["evm", "svm", "sui", "bitcoin"] as const;
 
-<WalletManagerProvider
-  discovery={autoDiscovery()}
-  connectors={all.map((a) => ({ id: a.id, name: a.name, chainPlatform: a.chainPlatform }))}
-  createConnector={(id) => extra.get(id) ?? null}
->
-  {children}
-</WalletManagerProvider>;
+const config: WalletManagerConfig = {
+  sources: [
+    autoDiscovery(),
+    // One source per factory: a device app that fails to load hides no other adapter.
+    ...LEDGER_PLATFORMS.map((platform) =>
+      fromAdapters(createLedgerAdapter({ accountCount: 3, id: `ledger-${platform}`, platform })),
+    ),
+  ],
+};
 ```
 
-Each per-platform factory is also exported directly (`createEvmLedgerAdapter`, `createSvmLedgerAdapter`, `createSuiLedgerAdapter`, `createBitcoinLedgerAdapter`). Ledger signs but doesn't broadcast; wrap `getSigner()` with viem / `@solana/kit` / `@mysten/sui` / `bitcoinjs-lib` and your own RPC for submission.
+`chainId` takes a CAIP-2 id and defaults to the platform's mainnet. Ledger apps cannot switch networks, so build one adapter per chain. Each per-platform factory is also exported (`createEvmLedgerAdapter`, `createSvmLedgerAdapter`, `createSuiLedgerAdapter`, `createBitcoinLedgerAdapter`). Ledger signs but does not broadcast; wrap `getSigner()` with viem, `@solana/kit`, `@mysten/sui` or `bitcoinjs-lib` and your own RPC for submission.
 
 </details>
 
 <details>
-<summary><b>Bridge to viem</b>: <code>getSigner()</code> returns a raw EIP-1193 provider</summary>
+<summary><b>Bridge to viem</b>: <code>useSigner()</code> resolves the raw EIP-1193 provider</summary>
 
 ```tsx
 // apps/demo-with-viem/src/app.tsx
-import { useActiveWallet } from "@usebutr/react";
-import { createWalletClient, custom, type EIP1193Provider } from "viem";
+import type { ConnectedWallet } from "@usebutr/core";
+import { useSigner } from "@usebutr/react";
+import { useMemo } from "react";
+import { createWalletClient, custom, getAddress } from "viem";
 import { sepolia } from "viem/chains";
 
-const wallet = useActiveWallet();
-const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
+const useWalletClient = (wallet: ConnectedWallet) => {
+  const signer = useSigner(wallet);
+  return useMemo(
+    () =>
+      signer.data?.kind === "eip1193"
+        ? createWalletClient({
+            account: getAddress(wallet.account.walletAddress),
+            chain: sepolia,
+            transport: custom(signer.data.provider),
+          })
+        : null,
+    [signer.data, wallet.account.walletAddress],
+  );
+};
 
-const walletClient = createWalletClient({
-  account: wallet.account.walletAddress as `0x${string}`,
-  chain: sepolia,
-  transport: custom(provider),
-});
-
-await walletClient.signMessage({
-  account: wallet.account.walletAddress as `0x${string}`,
-  message: "Hello from butr + viem",
-});
+// await walletClient?.signMessage({ message: "Hello from butr + viem" });
 ```
 
-butr exposes the raw EIP-1193 provider; viem's `custom()` transport wraps it. Use a separate `createPublicClient` with `http()` for chain reads so you don't bounce balance calls through the wallet.
+viem's `custom()` transport wraps the provider. Use a separate `createPublicClient` with `http()` for chain reads so balance calls never go through the wallet.
 
 </details>
 
 <details>
-<summary><b>Bridge to wagmi</b>: inject butr's provider into wagmi's <code>injected</code> connector</summary>
+<summary><b>Bridge to wagmi</b>: hand butr's provider to wagmi's <code>injected</code> connector</summary>
 
 ```tsx
 // apps/demo-with-wagmi/src/app.tsx
 import { injected } from "@wagmi/connectors";
-import { connect, createConfig, http, type Config } from "@wagmi/core";
-import { type EIP1193Provider } from "viem";
+import { connect, createConfig, http } from "@wagmi/core";
 import { sepolia } from "viem/chains";
 
-const provider = (await wallet.connector.getSigner()) as EIP1193Provider;
+const signer = useSigner(wallet);
 
-const wagmiConfig: Config = createConfig({
-  chains: [sepolia],
-  connectors: [
-    injected({
-      target: {
-        id: wallet.connector.id,
-        name: wallet.connector.name,
-        provider: () => provider,
-      },
-    }),
-  ],
-  transports: { [sepolia.id]: http() },
-});
-
-await connect(wagmiConfig, { connector: wagmiConfig.connectors[0] });
-// then use signMessage(wagmiConfig, …), sendTransaction(wagmiConfig, …), etc.
+if (signer.data?.kind === "eip1193") {
+  const { provider } = signer.data;
+  const wagmiConfig = createConfig({
+    chains: [sepolia],
+    connectors: [
+      injected({
+        target: { id: wallet.connector.id, name: wallet.connector.name, provider: () => provider },
+      }),
+    ],
+    transports: { [sepolia.id]: http() },
+  });
+  await connect(wagmiConfig, { connector: wagmiConfig.connectors[0] });
+  // then signMessage(wagmiConfig, …), sendTransaction(wagmiConfig, …)
+}
 ```
 
-The wallet has already authorised the dapp via butr, so wagmi's `connect()` lifecycle resolves silently with no second popup.
+The wallet already authorised the dapp through butr, so wagmi's `connect()` resolves without a second prompt.
 
 </details>
 
 <details>
 <summary><b>React Native / Expo</b>: swap localStorage for AsyncStorage</summary>
 
-```tsx
+```ts
 // apps/demo-expo-web/src/async-storage-driver.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { StorageDriver } from "@usebutr/core";
@@ -433,47 +499,51 @@ export const asyncStorageDriver: StorageDriver = {
 
 ```tsx
 // apps/demo-expo-web/src/wallet-provider.tsx
-import { WalletStorage } from "@usebutr/core";
+import type { WalletManagerConfig } from "@usebutr/core";
+import { createWalletStorage } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
 import { autoDiscovery } from "@usebutr/wallets";
+import type { ReactNode } from "react";
+
 import { asyncStorageDriver } from "./async-storage-driver";
 
-const storage = new WalletStorage({
-  keyPrefix: "butr-demo",
-  persistent: asyncStorageDriver,
-  session: asyncStorageDriver,
-});
+const config: WalletManagerConfig = {
+  sources: [autoDiscovery()],
+  storage: createWalletStorage({
+    keyPrefix: "my-app",
+    persistent: asyncStorageDriver,
+    session: asyncStorageDriver,
+  }),
+};
 
-export const WalletProvider = ({ children }: { children: React.ReactNode }) => (
-  <WalletManagerProvider discovery={autoDiscovery()} storage={storage} storageKeyPrefix="butr-demo">
-    {children}
-  </WalletManagerProvider>
+export const WalletProvider = ({ children }: { children: ReactNode }) => (
+  <WalletManagerProvider config={config}>{children}</WalletManagerProvider>
 );
 ```
 
-`StorageDriver` is the seam: bring any get/set/remove implementation.
+`StorageDriver` is the seam: any get/set/remove implementation works, sync or async. The storage owns its key prefix.
 
 </details>
 
 ## Core hooks
 
-The most-used hooks from `@usebutr/react`. Full list and reference at [`docs.usebutr.com`](https://docs.usebutr.com).
+The most-used hooks from `@usebutr/react`. Full list and reference at [`docs.usebutr.com`](https://docs.usebutr.com/api/react).
 
-| Hook                      | Returns                                                                                  |
-| ------------------------- | ---------------------------------------------------------------------------------------- |
-| `useIsHydrated()`         | `boolean`, `true` once persisted connections have been rehydrated.                       |
-| `useDiscoveredWallets()`  | `WalletAdapter[]`, every wallet the active sources have surfaced.                        |
-| `useConnectWallet()`      | `(adapterId) => Promise<void>`, starts a connection flow.                                |
-| `useDisconnectWallet()`   | `(connectorId) => void`, drops a single connection.                                      |
-| `useActiveWallet()`       | The currently active `ConnectedWallet`, or `null`.                                       |
-| `useConnectedWallets()`   | All active `ConnectedWallet`s across platforms.                                          |
-| `useSelectedWallet()`     | The wallet selected for the active platform (EVM / SVM / Sui / Bitcoin).                 |
-| `usePool()`               | The raw connection pool, useful when you need to iterate per-platform.                   |
-| `useAccounts()`           | Accounts on the active connector.                                                        |
-| `useBalance(connectorId)` | Async-state balance (`{ status, data, error }`) for one connector.                       |
-| `useSigner()`             | Async-state signer (EIP-1193 provider for EVM, Wallet Standard for SVM / Sui / Bitcoin). |
-| `useRequestAccounts()`    | `(connectorId) => Promise<…>`, prompts for additional accounts.                          |
-| `useSetActiveConnector()` | `(connectorId) => void`, promotes a connection to active.                                |
+| Hook                           | Returns                                                                                                                         |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `useDiscoveredWallets()`       | Every adapter the sources announced; a multi-chain wallet appears once per platform it speaks.                                  |
+| `useConnect()`                 | `connect(id)`, which never rejects, `connectAsync(id)`, `reset`, and the latest attempt's `status`, `error` and `connectingId`. |
+| `useWalletManager()`           | The wallet manager: `disconnect`, `disconnectAll`, `requestAccounts`, `setAccount`, `setActive`, `setSelection`, `getState()`.  |
+| `useConnectedWallets()`        | Every `ConnectedWallet` in the pool, across platforms.                                                                          |
+| `useWallet(id?)`               | One pool entry; the active wallet when `id` is omitted, none when it is `null`.                                                 |
+| `useSelectedWallet(platform)`  | The wallet selected for that platform, typed to its adapter.                                                                    |
+| `useAccounts(id?)`             | A wallet's exposed accounts, active first; the active wallet's when `id` is omitted.                                            |
+| `useConnectionStatus()`        | `"connected"`, `"connecting"`, `"reconnecting"` or `"disconnected"` for the active wallet.                                      |
+| `useIsHydrated()`              | `true` once the start-up hydration pass ran; always `true` when seeded from `initialState`.                                     |
+| `useIsReconnecting(id?)`       | Whether a wallet seeded from `initialState` still waits for its silent reconnect.                                               |
+| `useSigner(wallet)`            | `{ status, data, error }`, where `data` is the wallet's `WalletSigner`; narrow it with `switch (data.kind)`.                    |
+| `useBalance(wallet, options?)` | `{ status, data, error }` for wallets whose adapter defines `getBalance`.                                                       |
+| `useWalletState(selector)`     | Any other slice of the manager's state, compared shallowly.                                                                     |
 
 ## Demos
 

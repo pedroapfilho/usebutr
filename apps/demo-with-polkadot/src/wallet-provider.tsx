@@ -6,7 +6,6 @@ import type { ReactNode } from "react";
 // `autoDiscovery` pairs injectedWeb3 with the Polkadot Wallet Standard channel.
 const config: WalletManagerConfig = {
   sources: [autoDiscovery(["polkadot"])],
-  storageKeyPrefix: "butr-polkadot-demo",
 };
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (

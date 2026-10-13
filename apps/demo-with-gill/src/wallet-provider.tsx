@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 
 const config: WalletManagerConfig = {
   sources: [discoverSvmAdapters],
-  storageKeyPrefix: "butr-gill-demo",
 };
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (

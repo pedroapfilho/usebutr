@@ -40,9 +40,9 @@ butr is layered. Each package depends only on the ones below it.
 | `@usebutr/bitcoin`                | Wallet Standard + injected discovery and adapters for Bitcoin.                          | `@usebutr/core`, `@usebutr/wallet-standard-shared`                                                       |
 | `@usebutr/polkadot`               | `injectedWeb3` discovery and adapters for Polkadot, with a Wallet Standard fallback.    | `@usebutr/core`, `@usebutr/wallet-standard-shared`                                                       |
 | `@usebutr/wallets`                | Batteries-included five-platform discovery source: `autoDiscovery()`.                   | `@usebutr/core`, `@usebutr/evm`, `@usebutr/svm`, `@usebutr/sui`, `@usebutr/bitcoin`, `@usebutr/polkadot` |
-| `@usebutr/walletconnect`          | WalletConnect v2 adapters for EVM, Solana, Sui, and Bitcoin mobile wallets.             | `@usebutr/core`, `@usebutr/evm`                                                                          |
-| `@usebutr/ledger`                 | Ledger hardware-wallet adapters (WebUSB, signing-only).                                 | `@usebutr/core`                                                                                          |
-| `@usebutr/testing`                | Fake adapter + fake persistence for unit tests.                                         | `@usebutr/core`                                                                                          |
+| `@usebutr/walletconnect`          | WalletConnect v2 adapters for EVM, Solana, Sui, and Bitcoin mobile wallets.             | `@usebutr/core`, `@usebutr/evm`, `@usebutr/svm`, `@usebutr/sui`, `@usebutr/bitcoin`                      |
+| `@usebutr/ledger`                 | Ledger hardware-wallet adapters (WebUSB, signing-only).                                 | `@usebutr/core`, `@usebutr/svm`, `@usebutr/sui`                                                          |
+| `@usebutr/testing`                | Fake adapter, fake persistence and the adapter contract suite (`/contract`).            | `@usebutr/core`                                                                                          |
 
 Most apps want `@usebutr/react` plus `@usebutr/wallets`, which pulls in
 `@usebutr/core` and every per-platform adapter package. Put `autoDiscovery()`

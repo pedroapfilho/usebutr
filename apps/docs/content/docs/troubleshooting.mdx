@@ -20,23 +20,26 @@ ones. A WalletConnect or Ledger id appears only once its `fromAdapters`
 source has resolved; a factory that rejected is logged with
 `[butr] fromAdapters` and contributes nothing.
 
-## A signature or transaction rejects for an account the wallet shows
+## A call rejects with `AccountNotExposed`
 
 An `account` passed in the options must be one the wallet exposes on that
 chain, and no adapter falls back to its first account. Pass
 `wallet.account`, or an entry of `wallet.accounts` from the same pool entry.
+EVM addresses match in any casing; every other address must match exactly.
 Unisat-style Bitcoin wallets sign with their active account only, Xverse
 sends from its payment address only, and a Ledger exposes only the
-`accountCount` addresses it read.
+`accountCount` addresses it read. A wallet that exposes no account at all
+rejects with `NotConnected` instead.
 
-## A transaction rejects with `ChainMismatch`
+## A call rejects with `ChainMismatch`
 
-The transport cannot reach the `chain` you passed. Wallet Standard and
-WalletConnect route a chain per call but only to chains the wallet advertises
-or the session approved; OKX's Bitcoin provider and most `window.btc`
-wallets cannot switch networks; a Ledger adapter signs for its one `chainId`.
-Check `error.kind === "ChainMismatch"` and ask the user to switch in the
-wallet, or build one Ledger adapter per chain. See
+The transport cannot reach the `chain` you passed. A chain from another
+namespace always rejects. Wallet Standard and WalletConnect route a chain per
+call but only to chains the wallet advertises or the session approved; OKX's
+Bitcoin provider and most `window.btc` wallets cannot switch networks; an EVM
+wallet rejects a chain it does not know; a Ledger adapter signs for its one
+`chainId`. Check `error.kind === "ChainMismatch"` and ask the user to switch
+in the wallet, or build one Ledger adapter per chain. See
 [chains and accounts](/connectors#chains-and-accounts).
 
 ## A method is `undefined`
@@ -86,7 +89,9 @@ you set `onStorageError`; with no callback, butr logs a `console.warn`. See
 [Error normalisation](/concepts/errors) is best-effort. A wallet error whose
 code and message `toConnectionError` doesn't recognise lands in
 `kind: "Unknown"`. Inspect `error.cause` for the raw value. butr never
-retries; you decide based on `kind`.
+retries; you decide based on `kind`. Adapter methods you call yourself pass
+the wallet's own rejections through as thrown, with no `kind`; run them
+through `toConnectionError` first.
 
 ## "Request more accounts" does nothing on Solana
 
@@ -139,18 +144,21 @@ user disconnect, cleared by the next connect attempt.
 
 Storage keys are prefixed (`{prefix}-pool`, `{prefix}-selection`,
 `{prefix}-active`, `{prefix}-user-disconnected`) with the default prefix
-`butr`. Set a distinct `storageKeyPrefix` per app sharing an origin, and pass
-the same prefix to `readWalletSnapshot`.
+`butr`. Give each app sharing an origin its own prefix through
+`storage: createWalletStorage({ keyPrefix })`, or
+`createCookieWalletStorage({ keyPrefix })` when the server reads the state.
 
 ## Signature verification fails on Solana
 
 Verify against the `signedMessage` returned by `signMessage`, not your input
 bytes; Solana Wallet Standard wallets may prefix or re-encode the message.
-Polkadot injected signing wraps it in `<Bytes>…</Bytes>`. See
+Polkadot signing wraps it in `<Bytes>…</Bytes>` on both injectedWeb3 and
+Wallet Standard. See
 [signing](/guides/signing).
 
 ## UI flashes "not connected" on every reload
 
 You're rendering before hydration finishes. Gate the first render on
 `useIsHydrated()`, or seed the provider with `initialState` from
-`readWalletSnapshot`; see [SSR without a flash](/guides/ssr-no-flash).
+`createCookieWalletStorage`'s `readInitialState`; see
+[SSR without a flash](/guides/ssr-no-flash).

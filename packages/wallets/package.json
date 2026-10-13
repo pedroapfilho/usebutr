@@ -58,6 +58,7 @@
     "@usebutr/polkadot": "workspace:*",
     "@usebutr/sui": "workspace:*",
     "@usebutr/svm": "workspace:*",
+    "@usebutr/wallet-standard-shared": "workspace:*",
     "@wallet-standard/app": "^1.1.1"
   },
   "devDependencies": {

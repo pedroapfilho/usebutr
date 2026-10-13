@@ -53,25 +53,35 @@ manager.subscribe((state) => console.log(state.pool.size, state.activeConnectorI
   `setAccount`, `setActive`, `setSelection`, `clearConnectionError`. `connect`
   resolves the `ConnectedWallet` and rejects with a `ConnectionError` whose
   `kind` is `UserRejected`, `RequestPending`, `WalletLocked`, `ChainMismatch`,
-  `NotConnected`, `Timeout`, `WalletNotFound` or `Unknown`.
+  `AccountNotExposed`, `NotConnected`, `Timeout`, `WalletNotFound` or
+  `Unknown`.
 - **Signers.** `connector.getSigner()` resolves a tagged `WalletSigner`; narrow
   it with `switch (signer.kind)`. Each transport package registers its kind.
 - **Chains and accounts.** Every registry lives here (`EVM_CHAINS`,
   `SVM_CHAINS`, `SUI_CHAINS`, `BITCOIN_CHAINS`, `POLKADOT_CHAINS`, their
   `*_LIST`, `CHAINS_BY_PLATFORM`). Adapters build chains with
-  `resolveChain(id, list)` and accounts with `buildAccount(address, chain)`.
+  `resolveChain(id, list)`, which also maps a chain's `aliases`, and accounts
+  with `buildAccount(address, chain)`.
+- **Adapter building blocks.** Chain targets resolve the chain and account of
+  each call: `createRoutedChainTarget` (Wallet Standard, WalletConnect),
+  `createSwitchingChainTarget` (injected EVM, Unisat, Xverse),
+  `createFixedChainTarget` (Ledger) and `createAccountTarget` (Polkadot
+  injectedWeb3). `createConnectorEmitter` is the listener set behind an
+  adapter's `subscribe`. Run `describeAdapterContract` from
+  `@usebutr/testing/contract` against an adapter you build.
 
 ## Persistence
 
 Connections persist to localStorage and sessionStorage by default, written
-after every change once start-up hydration has read what was there. Swap the
-drivers with `createWalletStorage({ persistent, session })` (for example
-`createCookieStorageDriver()` so a server can read them), or pass any
-`WalletPersistence`: an object with `load()` and `save(state)`.
+after every change once start-up hydration has read what was there. Change the
+key prefix or the drivers with `createWalletStorage({ keyPrefix, persistent,
+session })`, or pass any `WalletPersistence`: an object with `load()` and
+`save(state)`.
 
-To render connections on the server, read the cookies with
-`readWalletSnapshot(cookies)` and pass the snapshot as
-`createWalletManager(config, { initialState })`. Seeded wallets render at
+To render connections on the server, persist with
+`createCookieWalletStorage({ keyPrefix })` and pass its
+`readInitialState(cookies)` as `createWalletManager(config, { initialState })`.
+Both decode one key layout, so they cannot drift. Seeded wallets render at
 once and stay in `reconnectingIds` until their silent reconnect lands.
 
 ## Documentation

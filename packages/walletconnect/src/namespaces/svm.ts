@@ -14,17 +14,14 @@ import type { WalletConnectNamespaceBuilder } from "./types";
 import { readResultString, readStringField } from "./wallet-response";
 
 const SOLANA_NAMESPACE = "solana";
-// WalletConnect names Solana clusters by genesis hash (the CAIP-2 Solana
-// namespace), not by the `solana:mainnet` alias Wallet Standard uses.
-const SOLANA_MAINNET = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 
-/** So `SVM_CHAINS.devnet` means the same cluster here as on every other
- *  transport, and accounts carry the registry's chains. */
-const GENESIS_IDS: ReadonlyMap<string, string> = new Map([
-  [SVM_CHAINS.devnet.id, "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"],
-  [SVM_CHAINS.mainnet.id, SOLANA_MAINNET],
-  [SVM_CHAINS.testnet.id, "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z"],
-]);
+/** WalletConnect names Solana clusters by genesis hash, each registry
+ *  entry's first alias, so `SVM_CHAINS.devnet` means the same cluster here
+ *  as on every other transport, and accounts carry the registry's chains. */
+const GENESIS_IDS: ReadonlyMap<string, string> = new Map(
+  SVM_CHAINS_LIST.map((chain) => [chain.id, chain.aliases?.[0] ?? chain.id]),
+);
+const [SOLANA_MAINNET] = SVM_CHAINS.mainnet.aliases;
 
 const DEFAULT_CHAINS: ReadonlyArray<string> = [SOLANA_MAINNET];
 

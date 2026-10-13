@@ -18,7 +18,6 @@ export type {
   EvmTransactionValue,
   EvmWallet,
   HydrationOutcome,
-  PlatformDiscoverer,
   PolkadotAdapter,
   PolkadotWallet,
   SignedMessage,
@@ -65,20 +64,30 @@ export {
   SVM_CHAINS_LIST,
 } from "./chains";
 
+export type { AccountTarget, ChainTarget } from "./chain-target";
+export {
+  createAccountTarget,
+  createFixedChainTarget,
+  createRoutedChainTarget,
+  createSwitchingChainTarget,
+} from "./chain-target";
+
+export type { ConnectorEmitter } from "./connector-emitter";
+export { createConnectorEmitter } from "./connector-emitter";
+
 export type { WalletSource } from "./wallet-source";
 export { fromAdapters } from "./wallet-source";
 
 export type { ConnectStatus, WalletManager, WalletState } from "./store";
-export { createWalletManager, ShadowConnectorError } from "./store";
+export { createWalletManager, isShadowAdapter, ShadowConnectorError } from "./store";
 
 export type {
   BrowserStorageDrivers,
-  CookieDriverOptions,
   CookieSource,
-  InitialCookies,
+  CookieWalletStorage,
+  CookieWalletStorageOptions,
   MaybePromise,
   PersistedWalletState,
-  SnapshotOptions,
   StorageDriver,
   StoredPoolEntry,
   StoredPoolRecord,
@@ -89,11 +98,10 @@ export type {
 } from "./storage";
 export {
   createBrowserStorageDriver,
-  createCookieStorageDriver,
+  createCookieWalletStorage,
   createMemoryStorageDriver,
   createWalletStorage,
-  EMPTY_SNAPSHOT,
-  readWalletSnapshot,
+  toStoredPoolEntry,
 } from "./storage";
 
 export { groupByPlatform } from "./group-by-platform";

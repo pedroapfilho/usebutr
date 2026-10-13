@@ -44,7 +44,6 @@ const config: WalletManagerConfig = {
       }),
     ),
   ],
-  storageKeyPrefix: "my-app",
 };
 
 export const Providers = ({ children }: { children: React.ReactNode }) => (
@@ -114,10 +113,16 @@ wallet waits for the user to connect again.
   signature. `signTransaction` resolves the full signed transaction, splicing
   the signature in when the wallet returns only that. There is no Sign In With
   Solana over WalletConnect.
-- **Sui** accepts a `Transaction`, its JSON string or BCS bytes.
-  `signTransaction` resolves `{ bytes, signature }`.
+- **Sui** accepts a `Transaction`, its JSON string, BCS bytes or their base64,
+  read by the same `prepareSuiTransaction` as every Sui transport.
+  `signTransaction` resolves `{ bytes, signature }`; when the wallet echoes no
+  bytes it falls back to the input's own, and rejects for a `Transaction` or
+  its JSON. See [Sui inputs](/guides/transactions#sui-inputs).
 - **Bitcoin** `sendTx({ amount, recipient })` is `sendTransfer`, with `amount`
   in satoshis. `signTransaction(psbt)` is `signPsbt` without broadcasting.
+  `signMessage` sends the message as text, so bytes that are not valid UTF-8
+  reject before the wallet is asked; see
+  [message signing](/api/bitcoin#message-signing).
   Reown's `bip122` methods still drift between wallets; see
   [its reference](https://docs.reown.com/advanced/multichain/rpc-reference/bitcoin-rpc).
 - `subscribe` on Solana, Sui and Bitcoin reports the new chain's accounts
@@ -133,10 +138,11 @@ another approved chain.
 
 WalletConnect sessions name Solana clusters by genesis hash
 (`solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` is mainnet), not by the
-`solana:mainnet` alias Wallet Standard uses. The Solana adapter translates at
-its boundary: pass `SVM_CHAINS` ids in `namespaces.svm` and `SVM_CHAINS`
-entries as `options.chain`, as on every other transport, and its accounts
-carry `SVM_CHAINS` chains. Genesis-hash ids are accepted too.
+`solana:mainnet` id Wallet Standard uses. Each `SVM_CHAINS` entry lists its
+genesis-hash id first in `aliases`, and the Solana adapter translates through
+it: pass `SVM_CHAINS` ids in `namespaces.svm` and `SVM_CHAINS` entries as
+`options.chain`, as on every other transport, and its accounts carry
+`SVM_CHAINS` chains. Genesis-hash ids are accepted too.
 
 `options.account` must be an account the session exposes on that chain.
 Accounts on other approved chains surface after `switchChain`: a pool entry

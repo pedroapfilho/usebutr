@@ -17,54 +17,52 @@ rendering.
 ## Why this needs two pieces
 
 1. **Persistence the server can read.** By default butr persists to
-   `localStorage`, which never reaches the server. Backing the persistent slot
-   with `createCookieStorageDriver` puts the pool, selection, and active id in
+   `localStorage`, which never reaches the server.
+   `createCookieWalletStorage` puts the pool, selection, and active id in
    cookies that ride every request.
 2. **A server-safe view of that state.** A wallet adapter can only exist in the
-   browser, so the server can't build real connections.
-   `readWalletSnapshot()` parses the cookies into a `WalletSnapshot` that names
-   the wallets and their accounts without an adapter, and
-   `<WalletManagerProvider initialState={…}>` seeds the manager with it
-   synchronously.
+   browser, so the server can't build real connections. The same
+   `createCookieWalletStorage` result has `readInitialState(cookies)`, which
+   decodes the cookies into a `WalletSnapshot` that names the wallets and their
+   accounts without an adapter, and `<WalletManagerProvider initialState={…}>`
+   seeds the manager with it synchronously.
 
-Wire one without the other and you get a partial fix. Wire both and the
-first paint already shows the user's address.
+Both pieces come from one call, over one key layout and one decoder, so the
+server cannot read a state the client did not write.
 
-## Step 1 — Config: cookie-backed persistence
+## Step 1 — Storage: one module for server and client
 
-Keep the key prefix in a module without `"use client"`, because the Server
-Component needs the string itself.
+Create the storage in a module without `"use client"`, because the Server
+Component needs the object itself.
 
 <Callout type="warn">
-  A constant imported from a `"use client"` module into a Server Component is a client reference,
-  not the string. `readWalletSnapshot` then matches no cookie and seeding silently does nothing.
+  A value imported from a `"use client"` module into a Server Component is a client reference, not
+  the value. Keep `walletStorage` in its own module, imported by both sides.
 </Callout>
 
-```ts title="src/wallet-keys.ts"
-export const STORAGE_KEY_PREFIX = "my-app";
+```ts title="src/wallet-storage.ts"
+import { createCookieWalletStorage } from "@usebutr/core";
+
+export const walletStorage = createCookieWalletStorage({
+  keyPrefix: "my-app",
+  // Local dev runs on http://localhost, where the browser drops Secure cookies.
+  secure: process.env.NODE_ENV === "production",
+});
 ```
 
 ```tsx title="src/wallet-provider.tsx"
 "use client";
 
 import type { WalletManagerConfig, WalletSnapshot } from "@usebutr/core";
-import { createCookieStorageDriver, createWalletStorage } from "@usebutr/core";
 import { discoverEvmAdapters } from "@usebutr/evm";
 import { WalletManagerProvider } from "@usebutr/react";
 import type { ReactNode } from "react";
 
-import { STORAGE_KEY_PREFIX } from "./wallet-keys";
+import { walletStorage } from "./wallet-storage";
 
 const config: WalletManagerConfig = {
   sources: [discoverEvmAdapters],
-  storage: createWalletStorage({
-    keyPrefix: STORAGE_KEY_PREFIX,
-    persistent: createCookieStorageDriver({
-      // Local dev runs on http://localhost, where the browser drops Secure cookies.
-      secure: process.env.NODE_ENV === "production",
-    }),
-    // `session` stays on sessionStorage: cookies can't model "until the tab closes".
-  }),
+  storage: walletStorage,
 };
 
 type WalletProviderProps = {
@@ -81,37 +79,33 @@ export const WalletProvider = ({ children, initialState }: WalletProviderProps) 
 
 Three notes:
 
-- **Why the persistent slot only.** The cookie driver holds the pool,
-  selection, and active id, which survive reloads. The session slot keeps the
-  disconnect intent in `sessionStorage`.
+- **Why cookies hold only part of the state.** The pool, selection, and active
+  id survive reloads and go to cookies. The disconnect intent is
+  session-scoped, which cookies can't model, so it stays in `sessionStorage`.
 - **Why `secure: false` in dev.** `Secure` cookies are only sent over HTTPS.
   Local development on `http://localhost` would otherwise silently fail to
   persist anything.
-- **Why module scope is safe.** The manager reads `config` once per mount and
-  touches storage only after it starts, in an effect, so the server never
-  reads or writes it. The cookie driver checks for `document` when it is
-  created, so the server's copy of this module gets an inert driver and the
-  browser's copy a real one. `initialState` is also read once, at mount.
+- **Why module scope is safe.** Creating the storage touches no browser
+  global: it reads and writes `document.cookie` only when the manager calls
+  it, and the manager touches storage only after it starts, in an effect. The
+  server's copy of the module is never asked to load or save. `config` and
+  `initialState` are each read once, at mount.
 
 ## Step 2 — Server Component: read cookies, build the snapshot
 
 In the Server Component that wraps the wallet provider (typically your root
-layout), read the request cookies and parse the snapshot:
+layout), read the request cookies with the same storage:
 
 ```tsx title="src/app/layout.tsx"
-import { readWalletSnapshot } from "@usebutr/core";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 import { WalletProvider } from "../wallet-provider";
-import { STORAGE_KEY_PREFIX } from "../wallet-keys";
+import { walletStorage } from "../wallet-storage";
 
 const RootLayout = async ({ children }: { children: ReactNode }) => {
   const cookieStore = await cookies();
-  // The keyPrefix must match the one passed to createWalletStorage.
-  const initialState = readWalletSnapshot(cookieStore.getAll(), {
-    keyPrefix: STORAGE_KEY_PREFIX,
-  });
+  const initialState = walletStorage.readInitialState(cookieStore.getAll());
 
   return (
     <html lang="en">
@@ -128,21 +122,18 @@ export default RootLayout;
 Only the parsed snapshot crosses into the client component, never the cookie
 jar, so your httpOnly session cookies stay on the server.
 
-`readWalletSnapshot` accepts three input shapes — pick whichever your
-framework hands you:
+`readInitialState` accepts three input shapes. Pick whichever your framework
+hands you:
 
 ```ts
 // Plain object (Hono, a parsed Cookie header, generic Node)
-readWalletSnapshot(
-  { "my-app-pool": "{...}", "my-app-active": "io.metamask" },
-  { keyPrefix: "my-app" },
-);
+walletStorage.readInitialState({ "my-app-pool": "{...}", "my-app-active": "io.metamask" });
 
 // { name, value }[] (Next.js cookies().getAll())
-readWalletSnapshot(cookieStore.getAll(), { keyPrefix: "my-app" });
+walletStorage.readInitialState(cookieStore.getAll());
 
-// [name, value][] (URLSearchParams-style iterables)
-readWalletSnapshot(entries, { keyPrefix: "my-app" });
+// [name, value][] (a Map or any iterable of pairs)
+walletStorage.readInitialState(entries);
 ```
 
 ## Step 3 — Component: render normally
@@ -173,7 +164,7 @@ const Page = () => {
 };
 ```
 
-Until the live adapter arrives, a seeded wallet is backed by a placeholder that
+Until the live adapter arrives, a seeded wallet is backed by a shadow adapter that
 carries data but has none of the optional methods: `signMessage`, `sendTx`,
 and `switchChain` are absent. A presence check alone would hide those controls
 and then pop them in. Render them disabled while reconnecting instead, so the
@@ -284,14 +275,14 @@ prerendered before and you want to keep it that way, you can either:
 
 ## See also
 
-- [ADR 0002 — SSR snapshot channel](https://github.com/pedroapfilho/usebutr/blob/main/docs/adr/0002-ssr-snapshot-channel.md)
-  for the architectural reasoning.
+- [ADR 0005 — One wire format for persisted wallet state](https://github.com/pedroapfilho/usebutr/blob/main/docs/adr/0005-one-wire-format-for-persisted-wallet-state.md)
+  for why the reader and the persistence come from one call.
 - `apps/demo-next/` for the end-to-end worked example.
-- `createCookieStorageDriver` in `@usebutr/core` for the full set of
-  cookie driver options (`domain`, `path`, `sameSite`, `maxAgeSeconds`).
+- [Custom storage](/guides/custom-storage#cookies) for the full set of cookie
+  options (`domain`, `path`, `sameSite`, `maxAgeSeconds`).
 
 <Callout type="info">
-  **Source:** the SSR snapshot design in ADR 0002. See the [Next.js
-  guide](/getting-started/frameworks/nextjs) and [synchronous
+  **Source:** synchronous seeding in ADR 0003 and the persisted-state wire format in ADR 0005. See
+  the [Next.js guide](/getting-started/frameworks/nextjs) and [synchronous
   seeding](/concepts/hydration#synchronous-seeding-ssr).
 </Callout>

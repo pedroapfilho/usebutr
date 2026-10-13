@@ -1,5 +1,6 @@
 import type { SuiAdapter } from "@usebutr/core";
 import { bytesToHexPrefixed, SUI_CHAINS, SUI_CHAINS_LIST } from "@usebutr/core";
+import { prepareSuiTransaction, serializeEd25519Signature } from "@usebutr/sui/transaction";
 
 import type { LedgerBaseOptions, TransportLike } from "../adapter-core";
 import { createLedgerAdapterCore, isClassWith, loadPeer } from "../adapter-core";
@@ -26,30 +27,12 @@ type SuiLedgerOptions = LedgerBaseOptions & {
   sui?: SuiAppConstructor;
 };
 
-const ED25519_SCHEME_FLAG = 0;
-const ED25519_PUBLIC_KEY_LENGTH = 32;
-const ED25519_SIGNATURE_LENGTH = 64;
 /** Intent scope `TransactionData`, version 0, app id Sui: all zero. */
 const TRANSACTION_INTENT_LENGTH = 3;
 
-/** Sui's serialized signature: scheme flag, signature, public key. */
-const serializeEd25519Signature = (signature: Uint8Array, publicKey: Uint8Array): Uint8Array => {
-  if (signature.length !== ED25519_SIGNATURE_LENGTH) {
-    throw new Error(
-      `[butr/ledger] Sui app returned a ${signature.length}-byte signature; expected ${ED25519_SIGNATURE_LENGTH}`,
-    );
-  }
-  if (publicKey.length !== ED25519_PUBLIC_KEY_LENGTH) {
-    throw new Error(
-      `[butr/ledger] Sui app returned a ${publicKey.length}-byte public key; expected ${ED25519_PUBLIC_KEY_LENGTH}`,
-    );
-  }
-  return Uint8Array.of(ED25519_SCHEME_FLAG, ...signature, ...publicKey);
-};
-
 /**
  * Un-paired until `connect()`, when the browser asks for WebUSB access and
- * the user opens the Sui app. Only BCS transaction bytes can be signed:
+ * the user opens the Sui app. Signs built BCS bytes or their base64 only:
  * building a `Transaction` needs an RPC client, which Ledger does not have.
  */
 const createSuiLedgerAdapter = async (options: SuiLedgerOptions): Promise<SuiAdapter> => {
@@ -80,19 +63,20 @@ const createSuiLedgerAdapter = async (options: SuiLedgerOptions): Promise<SuiAda
     ...core.base,
     chainPlatform: "sui",
     async signTransaction(tx, signOptions) {
-      if (!(tx instanceof Uint8Array)) {
+      const { app, path } = core.resolve(signOptions);
+      const { bytes } = await prepareSuiTransaction(tx);
+      if (bytes === undefined) {
         throw new TypeError(
-          "[butr/ledger] signTransaction expects BCS transaction bytes (`await tx.build({ client })`)",
+          "[butr/ledger] signTransaction takes built BCS bytes or their base64 (`await tx.build({ client })`), not a Transaction or its JSON",
         );
       }
-      const { app, path } = core.resolve(signOptions);
-      const intentMessage = new Uint8Array(TRANSACTION_INTENT_LENGTH + tx.length);
-      intentMessage.set(tx, TRANSACTION_INTENT_LENGTH);
+      const intentMessage = new Uint8Array(TRANSACTION_INTENT_LENGTH + bytes.length);
+      intentMessage.set(bytes, TRANSACTION_INTENT_LENGTH);
       const { publicKey } = await app.getPublicKey(path);
       // oxlint-disable-next-line react-doctor/server-sequential-independent-await -- Ledger transports allow one APDU exchange at a time.
       const { signature } = await app.signTransaction(path, intentMessage);
       return {
-        bytes: tx,
+        bytes,
         signature: serializeEd25519Signature(new Uint8Array(signature), new Uint8Array(publicKey)),
       };
     },
@@ -100,4 +84,4 @@ const createSuiLedgerAdapter = async (options: SuiLedgerOptions): Promise<SuiAda
 };
 
 export type { SuiAppConstructor, SuiAppLike, SuiLedgerOptions };
-export { createSuiLedgerAdapter, serializeEd25519Signature };
+export { createSuiLedgerAdapter };

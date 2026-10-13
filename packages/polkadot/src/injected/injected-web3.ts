@@ -49,17 +49,6 @@ declare global {
   }
 }
 
-const BYTES_PREFIX = new TextEncoder().encode("<Bytes>");
-const BYTES_SUFFIX = new TextEncoder().encode("</Bytes>");
-
-const wrapBytes = (message: Uint8Array): Uint8Array => {
-  const out = new Uint8Array(BYTES_PREFIX.length + message.length + BYTES_SUFFIX.length);
-  out.set(BYTES_PREFIX, 0);
-  out.set(message, BYTES_PREFIX.length);
-  out.set(BYTES_SUFFIX, BYTES_PREFIX.length + message.length);
-  return out;
-};
-
 const readInjectedWindow = (target?: InjectedWindow | null): InjectedWindow | null => {
   if (target !== undefined) {
     return target;
@@ -72,4 +61,4 @@ const readInjectedWindow = (target?: InjectedWindow | null): InjectedWindow | nu
 
 export type { Injected, InjectedAccount, InjectedSigner, InjectedWindow, InjectedWindowProvider };
 export { bytesToHexPrefixed as bytesToHex, hexToBytes } from "@usebutr/core";
-export { readInjectedWindow, wrapBytes };
+export { readInjectedWindow };

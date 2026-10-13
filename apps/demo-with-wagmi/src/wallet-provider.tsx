@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 
 const config: WalletManagerConfig = {
   sources: [discoverEvmAdapters],
-  storageKeyPrefix: "butr-wagmi-demo",
 };
 
 const WalletProvider = ({ children }: { children: ReactNode }) => (

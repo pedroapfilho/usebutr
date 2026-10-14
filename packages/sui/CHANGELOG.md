@@ -1,5 +1,49 @@
 # @usebutr/sui
 
+## 4.0.0
+
+### Major Changes
+
+- [#217](https://github.com/pedroapfilho/usebutr/pull/217) [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - Every adapter resolves the chain and account of a call through `@usebutr/core`'s chain targets, so the same refusal raises the same `ConnectionError` kind everywhere, before the wallet is asked.
+
+  - Wallet Standard and WalletConnect adapters reject a chain the wallet does not advertise or the session did not approve with `ChainMismatch`, instead of a plain `Error` that `toConnectionError` classified as `Unknown`. A chain from another namespace rejects with `ChainMismatch` on every adapter.
+  - An account the wallet does not expose rejects with `AccountNotExposed` on every adapter, and a wallet that exposes none with `NotConnected`.
+  - Ledger EVM matches addresses case-insensitively, so a lowercase address of an exposed account no longer rejects.
+  - Xverse treats its payment and ordinals addresses as one exposed set: `getAccounts()` lists both, payment first.
+  - `subscribe` forwards the wallet's account list as is. An empty list now arrives as `accountsChanged` with no accounts instead of `disconnected`; the wallet manager treats both as a disconnect. Wallet Standard unregistering, a deleted WalletConnect session and an EIP-1193 `disconnect` still emit `disconnected`.
+
+- [#217](https://github.com/pedroapfilho/usebutr/pull/217) [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - `autoDiscovery` now owns fallback deferral. It waits for Wallet Standard to load, then gives every channel 150 ms before it lists the fallback channels, and it matches wallets by platform and name.
+
+  - A Bitcoin Wallet Standard wallet no longer hides Unisat, OKX or Xverse. A wallet on both channels, such as Xverse, lists once, even when the Wallet Standard import is slow.
+  - A Polkadot extension that injects late lists once. A Wallet Standard Polkadot wallet is no longer hidden by an unrelated `injectedWeb3` extension.
+  - `window.ethereum` and `window.btc` name no wallet, so they list only when their platform found nothing else.
+  - Every platform shares one Wallet Standard subscription.
+
+  Breaking changes:
+
+  - `PlatformDiscoverer` and `evmDiscoverer`, `svmDiscoverer`, `suiDiscoverer`, `bitcoinDiscoverer` and `polkadotDiscoverer` are removed. Use `autoDiscovery(platforms)` or a package's `discover*Adapters` source.
+  - `discoverWalletAdapters` and `DiscoverOptions` are removed from `@usebutr/wallets`. Use `autoDiscovery(platforms, options)`.
+  - `discoverInjectedAdapter` and `discoverInjectedBitcoinAdapter` emit when subscribed. Their `settleMs`, `hasAnyEip6963Adapter` and `hasAnyWalletStandardAdapter` options are removed.
+  - `window.btc` moved from `discoverInjectedBitcoinAdapter` to the new `discoverLegacyBitcoinAdapter`.
+  - `discoverWalletStandard(onAdapter, build, loadModule)` is now `discoverWalletStandard(routes, { loadModule, onReady })`, where each route is `{ build, onAdapter }`.
+
+  `autoDiscovery`, `discoverBitcoinAdapters` and `discoverPolkadotWalletStandardAdapters` accept a `loadModule` that replaces the `@wallet-standard/app` import.
+
+### Minor Changes
+
+- [#217](https://github.com/pedroapfilho/usebutr/pull/217) [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - Add `@usebutr/sui/transaction`. `prepareSuiTransaction(tx)` reads any `SuiTransactionInput` the way `Transaction.from` does and resolves `serialized`, the string every Sui transport sends, and `bytes` when the input carried BCS bytes. `serializeEd25519Signature` moves here from the Ledger app. Wallet Standard, WalletConnect and Ledger all read Sui transactions through it.
+
+  - Wallet Standard hands the wallet `{ toJSON }` returning that string, never the caller's `Transaction` object.
+  - Ledger signs base64 BCS strings as well as bytes, and rejects a `Transaction` or its JSON with one message, since building either needs an RPC client.
+  - WalletConnect `signTransaction` falls back to the input's own bytes for a base64 string too when the wallet echoes none.
+  - A string that is neither a `Transaction`'s JSON nor base64 rejects before any wallet is asked.
+
+### Patch Changes
+
+- Updated dependencies [[`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702)]:
+  - @usebutr/wallet-standard-shared@3.0.0
+  - @usebutr/core@4.0.0
+
 ## 3.0.1
 
 ### Patch Changes

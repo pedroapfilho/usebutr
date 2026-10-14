@@ -1,5 +1,33 @@
 # @usebutr/ledger
 
+## 3.0.0
+
+### Major Changes
+
+- [#217](https://github.com/pedroapfilho/usebutr/pull/217) [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - Every adapter resolves the chain and account of a call through `@usebutr/core`'s chain targets, so the same refusal raises the same `ConnectionError` kind everywhere, before the wallet is asked.
+
+  - Wallet Standard and WalletConnect adapters reject a chain the wallet does not advertise or the session did not approve with `ChainMismatch`, instead of a plain `Error` that `toConnectionError` classified as `Unknown`. A chain from another namespace rejects with `ChainMismatch` on every adapter.
+  - An account the wallet does not expose rejects with `AccountNotExposed` on every adapter, and a wallet that exposes none with `NotConnected`.
+  - Ledger EVM matches addresses case-insensitively, so a lowercase address of an exposed account no longer rejects.
+  - Xverse treats its payment and ordinals addresses as one exposed set: `getAccounts()` lists both, payment first.
+  - `subscribe` forwards the wallet's account list as is. An empty list now arrives as `accountsChanged` with no accounts instead of `disconnected`; the wallet manager treats both as a disconnect. Wallet Standard unregistering, a deleted WalletConnect session and an EIP-1193 `disconnect` still emit `disconnected`.
+
+### Minor Changes
+
+- [#217](https://github.com/pedroapfilho/usebutr/pull/217) [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - Add `@usebutr/sui/transaction`. `prepareSuiTransaction(tx)` reads any `SuiTransactionInput` the way `Transaction.from` does and resolves `serialized`, the string every Sui transport sends, and `bytes` when the input carried BCS bytes. `serializeEd25519Signature` moves here from the Ledger app. Wallet Standard, WalletConnect and Ledger all read Sui transactions through it.
+
+  - Wallet Standard hands the wallet `{ toJSON }` returning that string, never the caller's `Transaction` object.
+  - Ledger signs base64 BCS strings as well as bytes, and rejects a `Transaction` or its JSON with one message, since building either needs an RPC client.
+  - WalletConnect `signTransaction` falls back to the input's own bytes for a base64 string too when the wallet echoes none.
+  - A string that is neither a `Transaction`'s JSON nor base64 rejects before any wallet is asked.
+
+### Patch Changes
+
+- Updated dependencies [[`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702)]:
+  - @usebutr/sui@4.0.0
+  - @usebutr/svm@4.0.0
+  - @usebutr/core@4.0.0
+
 ## 2.0.1
 
 ### Patch Changes

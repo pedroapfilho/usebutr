@@ -1,5 +1,27 @@
 # @usebutr/testing
 
+## 3.0.0
+
+### Major Changes
+
+- [#217](https://github.com/pedroapfilho/usebutr/pull/217) [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - Persisted wallet state has one wire format, and the cookie persistence and its server reader come from one call.
+
+  - `createCookieWalletStorage({ keyPrefix, domain, path, sameSite, secure, maxAgeSeconds })` returns a `WalletPersistence` with `readInitialState(cookies)`. Build it in a module that both the Server Component and the client provider import, so the key prefix is set once. It replaces `readWalletSnapshot`, which is removed along with `SnapshotOptions` and `EMPTY_SNAPSHOT`.
+  - `createCookieStorageDriver`, `CookieDriverOptions`, the `initialCookies` option and `InitialCookies` are removed. The cookie driver no longer has a server branch.
+  - `WalletManagerConfig.storageKeyPrefix` is removed. Pass `keyPrefix` to `createWalletStorage` or `createCookieWalletStorage`. Storage keys are unchanged.
+  - The server read and the client load share one decoder. A snapshot's active id is now the stored one; the manager falls back to the first pool entry when it names none or a wallet the pool does not hold, as it does after a client-side load.
+  - `toStoredPoolEntry(wallet)` builds a `StoredPoolEntry` from a `ConnectedWallet`.
+  - `@usebutr/testing`'s `createFakePersistence` takes `{ wallets, active, isUserDisconnected }` instead of a `Partial<PersistedWalletState>`, so tests no longer build `StoredPoolEntry` values by hand.
+
+- [#217](https://github.com/pedroapfilho/usebutr/pull/217) [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - Add `@usebutr/testing/contract`: `describeAdapterContract` is the Vitest suite every butr adapter package runs, and adapter authors can run it against their own adapters. It checks account matching, chain routing per transport, each refusal's `ConnectionError` kind, empty account lists and `subscribe`. Install `vitest` to use it; it is an optional peer dependency.
+
+  `createFakeAdapter` runs on the same chain targets as the real adapters. An unexposed account rejects with `AccountNotExposed`, and a chain outside the platform's registry rejects with `ChainMismatch`. EVM addresses match case-insensitively, and an empty `accountsChanged` exposes no accounts until the next `connect()`. The new `requests()` control lists every signing or sending request the fake accepted, as `FakeRequest`.
+
+### Patch Changes
+
+- Updated dependencies [[`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702), [`dbb5053`](https://github.com/pedroapfilho/usebutr/commit/dbb5053c9c6c31337cbe43b4eab6b423cbcf8702)]:
+  - @usebutr/core@4.0.0
+
 ## 2.0.1
 
 ### Patch Changes

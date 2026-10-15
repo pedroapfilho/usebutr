@@ -4,6 +4,6 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["*.ts"],
+  "include": ["src"],
   "exclude": ["node_modules"]
 }

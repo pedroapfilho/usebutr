@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./index.ts",
-    "./registry": "./registry.ts",
-    "./preferences": "./preferences.ts",
-    "./playwright": "./playwright.ts"
+    ".": "./src/index.ts",
+    "./registry": "./src/registry.ts",
+    "./preferences": "./src/preferences.ts",
+    "./playwright": "./src/playwright.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit"

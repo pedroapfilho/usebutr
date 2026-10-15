@@ -114,7 +114,7 @@ This is a library + demo repo, with no Docker or Prisma. Vitest covers the libra
 
 ## Conventions & gotchas
 
-- **Library profile.** This repo is `library` in orchestrator. SaaS checks (auth-config, prisma-config, e2e, i18n-leak, theme, primitives, dev, base-styles) intentionally skip here. The applicable set is profile-aware and compared against the `library` base, `acme-package`; run `orchestrator verify --repo usebutr` for the current list.
+- **Library profile.** This repo is `library` in keel. SaaS checks (auth-config, prisma-config, e2e, i18n-leak, theme, primitives, dev, base-styles) intentionally skip here. The applicable set is profile-aware and compared against the `library` base, `acme-package`; run `keel verify --repo usebutr` for the current list.
 - **CI shape.** Eight workflows: `test`, `lint` (formatting, dead code and oxlint as steps of one job), `typecheck`, `build`, `e2e` (the four Playwright suites), `publish-checks`, `react-doctor` (advisory), and `release`. Validation runs on pull requests, a weekly schedule and manual dispatch, never on pushes to main.
 - **Per-app gitignores allowed.** Unlike SaaS repos, library demos may carry their own `.gitignore` files (the `gitignore` check is lenient here).
 - **Path aliases.** `@/*` → `src/*` in most apps; TanStack Start also maps `app/*`. Demo apps consume the library via workspace deps (`"@usebutr/core": "workspace:*"`) and tsconfig via `@repo/typescript-config`.
@@ -123,7 +123,7 @@ This is a library + demo repo, with no Docker or Prisma. Vitest covers the libra
 - **Releases via Changesets.** `release.yml` publishes from `main` after `version-packages` opens a release PR. Don't bump versions manually in `package.json` — author a changeset instead.
 - **Next builds are uncached.** `apps/docs`, `apps/landing` and `apps/demo-next` each carry a `turbo.json` that disables Turbo caching for `build`. Next.js file traces (`.nft.json`) record pnpm paths such as `node_modules/.pnpm/node_modules/...` that differ between dependency installs, so a Vercel build that restores cached traces fails packaging with ENOENT. Every Next app retraces against the current install; package and Vite builds stay cached, and CI keeps `apps/*/.next/cache` in its own `actions/cache` step.
 - **pnpm `allowBuilds` matters.** The native crypto deps (`keccak`, `bufferutil`, `bigint-buffer`, etc.) gate on `pnpm-workspace.yaml`'s `allowBuilds`. When adding a chain or wallet that pulls in new native deps, list them there: pnpm 11's `strictDepBuilds` fails `pnpm install` on any build script that is neither allowed nor denied.
-- **No App Router server-component check surface here.** Only `apps/docs` and `demo-next` are App Router; the rest are SPA / SSR-via-Vite. The orchestrator's `no-pointless-async` AST scan still applies.
+- **No App Router server-component check surface here.** Only `apps/docs` and `demo-next` are App Router; the rest are SPA / SSR-via-Vite. Keel's `no-pointless-async` AST scan still applies.
 
 ## Notable decisions
 
@@ -137,7 +137,7 @@ This is a library + demo repo, with no Docker or Prisma. Vitest covers the libra
 
 - Library docs: `https://docs.usebutr.com` (built from `apps/docs`)
 - Repo: `https://github.com/pedroapfilho/usebutr`
-- Orchestrator (shared standards across sibling repos): `~/dev/orchestrator`
+- Keel (shared standards across sibling repos): `~/dev/keel`
 - Sibling library repo: `astro-awesomeness` (`~/dev/astro-theme-awesomeness`)
 - SaaS source of truth: `acme` (`~/dev/acme-monorepo`) — most SaaS-only patterns there do not apply here
 

@@ -12,11 +12,11 @@ Entries live in `.agents/friction-log/`, one directory each. A GitHub Action rep
 
 ## Standards
 
-This repo follows the fleet's shared standards, checked by `keel` (`~/dev/keel`).
+This repo follows the fleet's shared standards, checked by `standy` (`~/dev/standy`).
 
-- Before editing, run `keel standards --for <paths>` for the rules that apply to the files you will touch.
-- Before finishing, run `keel check --changed --fix-hints` and fix what fails. It only sees tracked files, so run `git add -N` on new files first.
-- When a failure is unclear, `keel explain <rule>` prints what the rule asserts, why, and how to fix it.
+- Before editing, run `standy standards --for <paths>` for the rules that apply to the files you will touch.
+- Before finishing, run `standy check --changed --fix-hints` and fix what fails. It only sees tracked files, so run `git add -N` on new files first.
+- When a failure is unclear, `standy explain <rule>` prints what the rule asserts, why, and how to fix it.
 
 ## Stack
 
@@ -122,7 +122,7 @@ This is a library + demo repo, with no Docker or Prisma. Vitest covers the libra
 
 ## Conventions & gotchas
 
-- **Library profile.** This repo is `library` in keel. SaaS checks (auth-config, prisma-config, e2e, i18n-leak, theme, primitives, dev, base-styles) intentionally skip here. The applicable set is profile-aware and compared against the `library` base, `acme-package`; run `keel verify --repo usebutr` for the current list.
+- **Library profile.** This repo is `library` in standy. SaaS checks (auth-config, prisma-config, e2e, i18n-leak, theme, primitives, dev, base-styles) intentionally skip here. The applicable set is profile-aware and compared against the `library` base, `acme-package`; run `standy verify --repo usebutr` for the current list.
 - **CI shape.** Eight workflows: `test`, `lint` (formatting, dead code and oxlint as steps of one job), `typecheck`, `build`, `e2e` (the four Playwright suites), `publish-checks`, `react-doctor` (advisory), and `release`. Validation runs on pull requests, a weekly schedule and manual dispatch, never on pushes to main.
 - **Per-app gitignores allowed.** Unlike SaaS repos, library demos may carry their own `.gitignore` files (the `gitignore` check is lenient here).
 - **Path aliases.** `@/*` → `src/*` in most apps; TanStack Start also maps `app/*`. Demo apps consume the library via workspace deps (`"@usebutr/core": "workspace:*"`) and tsconfig via `@repo/typescript-config`.
@@ -145,7 +145,7 @@ This is a library + demo repo, with no Docker or Prisma. Vitest covers the libra
 
 - Library docs: `https://docs.usebutr.com` (built from `apps/docs`)
 - Repo: `https://github.com/pedroapfilho/usebutr`
-- Keel (shared standards across sibling repos): `~/dev/keel`
+- Keel (shared standards across sibling repos): `~/dev/standy`
 - Sibling library repo: `astro-awesomeness` (`~/dev/astro-theme-awesomeness`)
 - SaaS source of truth: `acme` (`~/dev/acme-monorepo`) — most SaaS-only patterns there do not apply here
 

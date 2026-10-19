@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures that are not real secrets"
+paths = ['''(^|/)__tests__/''', '''\.test\.tsx?$''', '''^tests/e2e/\.auth/''']

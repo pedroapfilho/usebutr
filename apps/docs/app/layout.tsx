@@ -4,6 +4,8 @@ import { RootProvider } from "fumadocs-ui/provider/next";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
+import { SearchDialog } from "@/components/search-dialog";
+
 export const metadata: Metadata = {
   description:
     "Documentation for butr: multi-chain (EVM, Solana, Sui, Bitcoin, Polkadot) wallet management primitives for React.",
@@ -30,8 +32,7 @@ const RootLayout = ({ children }: { children: ReactNode }) => (
         aria-hidden="true"
         className="reading-progress-bar reading-progress-range fixed top-0 left-0 z-50 h-0.5 w-0 bg-(--primary)"
       />
-      {/* oxlint-disable-next-line typescript/no-deprecated -- fumadocs static-search `type` option; migration to the re-created dialog is tracked upstream */}
-      <RootProvider search={{ options: { type: "static" } }}>{children}</RootProvider>
+      <RootProvider search={{ SearchDialog }}>{children}</RootProvider>
     </body>
   </html>
 );

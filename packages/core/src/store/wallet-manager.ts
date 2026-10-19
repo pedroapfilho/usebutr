@@ -77,8 +77,6 @@ const safely = <Args extends ReadonlyArray<unknown>>(
 };
 
 const withTimeout = async <T>(promise: Promise<T>, ms: number): Promise<T> => {
-  // oxlint-disable-next-line promise/prefer-await-to-then -- the race below may abandon it; keep its rejection handled
-  void promise.catch(() => {});
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([

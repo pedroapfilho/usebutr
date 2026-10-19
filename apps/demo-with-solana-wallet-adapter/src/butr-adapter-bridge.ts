@@ -59,7 +59,7 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     return this._connecting;
   }
 
-  get connected(): boolean {
+  override get connected(): boolean {
     return this._publicKey !== null;
   }
 
@@ -102,7 +102,7 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     );
   }
 
-  async sendTransaction(
+  override async sendTransaction(
     transaction: Transaction | VersionedTransaction,
     _connection: Connection,
     _options?: SendTransactionOptions,

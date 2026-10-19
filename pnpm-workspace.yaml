@@ -48,3 +48,12 @@ auditConfig:
     - GHSA-3gc7-fjrx-p6mg
     - GHSA-86w9-cpqp-85rv
     - GHSA-vfj7-8cjw-p6xm
+
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  - "@noble/curves@1.8.0"
+  - "@noble/hashes@1.7.0"
+  - semver@6.3.1
+  - slow-redact@0.3.2
+  - ua-parser-js@1.0.41
+  - undici-types@6.19.8

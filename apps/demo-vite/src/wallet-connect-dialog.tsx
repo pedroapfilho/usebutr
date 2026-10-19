@@ -1,7 +1,3 @@
-/**
- * `closedby="any"` (backdrop click closes the dialog) is Chrome 133+; the
- * ::backdrop click handler is the fallback for older browsers.
- */
 import type { WalletAdapter } from "@usebutr/core";
 import { useConnect } from "@usebutr/react";
 import { useEffect, useRef } from "react";
@@ -84,21 +80,14 @@ const WalletConnectDialog = ({
     }
   }, [open]);
 
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
-    if (e.target === dialogRef.current) {
-      onClose();
-    }
-  };
-
   const brands = groupByBrand(available);
 
   return (
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions, react-doctor/no-noninteractive-element-interactions -- backdrop click closes the modal; the native dialog already closes on Escape
     <dialog
       aria-label="Connect wallet"
       aria-modal="true"
       className="border-border-default bg-surface-base m-auto w-full max-w-sm rounded-xl border p-0 shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm open:flex open:flex-col"
-      onClick={handleBackdropClick}
+      closedby="any"
       onClose={onClose}
       ref={dialogRef}
     >

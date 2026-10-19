@@ -45,12 +45,6 @@ const PairingDialog = () => {
     };
   }, []);
 
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
-    if (e.target === dialogRef.current) {
-      clearPairingUri();
-    }
-  };
-
   const handleCopy = async () => {
     if (uri === null) {
       return;
@@ -67,12 +61,11 @@ const PairingDialog = () => {
     uri === null ? null : `data:image/svg+xml;utf8,${encodeURIComponent(renderSVG(uri))}`;
 
   return (
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions, react-doctor/no-noninteractive-element-interactions -- backdrop click closes the modal; the native dialog already closes on Escape
     <dialog
       aria-label="WalletConnect pairing"
       aria-modal="true"
       className="border-border-default bg-surface-base m-auto w-full max-w-sm rounded-xl border p-0 shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm open:flex open:flex-col"
-      onClick={handleBackdropClick}
+      closedby="any"
       ref={dialogRef}
     >
       <div className="border-border-faint flex items-center justify-between border-b px-5 py-4">

@@ -1,8 +1,6 @@
 import "./index.css";
 
-// oxlint-disable-next-line unicorn/prefer-node-protocol -- this is the npm `buffer` browser polyfill, not the Node builtin
-import { Buffer } from "buffer";
-
+import { Buffer } from "buffer/";
 import React from "react";
 import ReactDOM from "react-dom/client";
 

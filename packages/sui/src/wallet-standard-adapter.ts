@@ -74,9 +74,10 @@ const buildSuiAdapter = (
     chainPlatform: "sui",
     ...(signAndExecute !== undefined && {
       async sendTx(tx, options) {
+        const { account, chain } = core.resolveTarget("sui:signAndExecuteTransaction", options);
         const output = await signAndExecute.signAndExecuteTransaction({
-          account: core.resolveAccount(options?.account),
-          chain: core.resolveChainId(options?.chain),
+          account,
+          chain,
           transaction: await walletTransaction(tx),
         });
         return output.digest;
@@ -84,8 +85,9 @@ const buildSuiAdapter = (
     }),
     ...(signPersonalMessage !== undefined && {
       async signMessage(message, options) {
+        const { account } = core.resolveTarget("sui:signPersonalMessage", options);
         const output = await signPersonalMessage.signPersonalMessage({
-          account: core.resolveAccount(options?.account),
+          account,
           message,
         });
         return {
@@ -96,9 +98,10 @@ const buildSuiAdapter = (
     }),
     ...(signTransaction !== undefined && {
       async signTransaction(tx, options) {
+        const { account, chain } = core.resolveTarget("sui:signTransaction", options);
         const output = await signTransaction.signTransaction({
-          account: core.resolveAccount(options?.account),
-          chain: core.resolveChainId(options?.chain),
+          account,
+          chain,
           transaction: await walletTransaction(tx),
         });
         return { bytes: base64ToBytes(output.bytes), signature: base64ToBytes(output.signature) };

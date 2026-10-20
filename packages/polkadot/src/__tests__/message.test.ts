@@ -32,7 +32,13 @@ const walletStandard = () => {
     .fn<PolkadotSignMessageFeature["signMessage"]>()
     .mockResolvedValue({ signature: hexToBytes("dead") });
   const wallet: WalletStandardWallet = {
-    accounts: [{ address: ADDRESS, chains: [POLKADOT_CHAINS.polkadot.id], features: [] }],
+    accounts: [
+      {
+        address: ADDRESS,
+        chains: [POLKADOT_CHAINS.polkadot.id],
+        features: ["polkadot:signMessage"],
+      },
+    ],
     chains: [POLKADOT_CHAINS.polkadot.id],
     features: {
       "polkadot:signMessage": { signMessage },

@@ -14,7 +14,7 @@ import type { PolkadotSignMessageFeature } from "../wallet-standard-types";
 const walletAccount = (address: string): WalletStandardWalletAccount => ({
   address,
   chains: [POLKADOT_CHAINS.polkadot.id, POLKADOT_CHAINS.kusama.id],
-  features: [],
+  features: ["polkadot:signMessage"],
 });
 
 describeAdapterContract<PolkadotAdapter>({

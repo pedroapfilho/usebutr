@@ -19,7 +19,7 @@ const walletStandardWallet = (
   address: string,
   features: WalletStandardWallet["features"],
 ): WalletStandardWallet => ({
-  accounts: [{ address, chains: [chain], features: [] }],
+  accounts: [{ address, chains: [chain], features: Object.keys(features) }],
   chains: [chain],
   features: {
     ...features,

@@ -21,8 +21,8 @@ import type {
 
 const walletAccount = (address: string): WalletStandardWalletAccount => ({
   address,
-  chains: ["solana:mainnet"],
-  features: [],
+  chains: ["solana:mainnet", "solana:devnet"],
+  features: ["solana:signAndSendTransaction", "solana:signMessage", "solana:signTransaction"],
 });
 
 const connectFeature = (): StandardConnectFeature => ({
@@ -391,5 +391,74 @@ describe("buildSvmAdapter.signIn", () => {
     const feature: SolanaSignInFeature = { signIn: vi.fn().mockResolvedValue([]) };
     const adapter = adapterFor({}, { "solana:signIn": feature });
     await expect(present(adapter.signIn, "signIn")()).rejects.toThrow("signIn returned no outputs");
+  });
+});
+
+describe("buildSvmAdapter scoped signing", () => {
+  it.each(["sendTx", "signTransaction"] as const)(
+    "%s routes an account that advertises the requested chain",
+    async (method) => {
+      const main = { ...walletAccount("MAIN"), chains: ["solana:mainnet"] };
+      const dev = { ...walletAccount("DEV"), chains: ["solana:devnet"] };
+      const send = sendFeature();
+      const sign = signTransactionFeature();
+      const adapter = adapterFor(
+        {
+          accounts: [{ ...main, address: "SUI", chains: ["sui:mainnet"] }, main, dev],
+          chains: ["solana:mainnet", "solana:devnet"],
+        },
+        { "solana:signAndSendTransaction": send, "solana:signTransaction": sign },
+      );
+      const call = present(adapter[method], method);
+      await call(new Uint8Array([1]), { chain: SVM_CHAINS.devnet });
+      const feature = method === "sendTx" ? send.signAndSendTransaction : sign.signTransaction;
+      expect(feature).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ account: dev, chain: "solana:devnet" }),
+      );
+      await expect(
+        call(new Uint8Array([1]), {
+          account: buildAccount("MAIN", SVM_CHAINS.mainnet),
+          chain: SVM_CHAINS.devnet,
+        }),
+      ).rejects.toMatchObject({ kind: "AccountNotExposed" });
+      expect(feature).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("does not pass a foreign or feature-ineligible account to message signing", async () => {
+    const feature = signMessageFeature();
+    const account = walletAccount("SOL");
+    const adapter = adapterFor(
+      {
+        accounts: [
+          { ...account, address: "SUI", chains: ["sui:mainnet"] },
+          { ...account, address: "NO_FEATURE", features: [] },
+          account,
+        ],
+      },
+      { "solana:signMessage": feature },
+    );
+    await present(adapter.signMessage, "signMessage")(new Uint8Array([1]));
+    expect(feature.signMessage).toHaveBeenCalledWith(expect.objectContaining({ account }));
+    await expect(
+      present(adapter.signMessage, "signMessage")(new Uint8Array([1]), {
+        account: buildAccount("NO_FEATURE", SVM_CHAINS.mainnet),
+      }),
+    ).rejects.toMatchObject({ kind: "AccountNotExposed" });
+  });
+
+  it("rejects a sign-in output from another platform", async () => {
+    const feature = signInFeature();
+    vi.mocked(feature.signIn).mockResolvedValue([
+      {
+        account: { ...walletAccount("SUI"), chains: ["sui:mainnet"] },
+        signature: new Uint8Array([1]),
+        signedMessage: new Uint8Array([2]),
+      },
+    ]);
+    const adapter = adapterFor({}, { "solana:signIn": feature });
+    await expect(present(adapter.signIn, "signIn")()).rejects.toMatchObject({
+      kind: "NotConnected",
+    });
   });
 });

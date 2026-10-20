@@ -18,7 +18,7 @@ import type {
 const walletAccount = (address: string): WalletStandardWalletAccount => ({
   address,
   chains: [SVM_CHAINS.mainnet.id, SVM_CHAINS.devnet.id],
-  features: [],
+  features: ["solana:signAndSendTransaction", "solana:signMessage", "solana:signTransaction"],
 });
 
 describeAdapterContract<SvmAdapter>({

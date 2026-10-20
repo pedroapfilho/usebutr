@@ -20,8 +20,8 @@ import type {
 
 const walletAccount = (address: string): WalletStandardWalletAccount => ({
   address,
-  chains: ["sui:mainnet"],
-  features: [],
+  chains: ["sui:mainnet", "sui:testnet"],
+  features: ["sui:signAndExecuteTransaction", "sui:signPersonalMessage", "sui:signTransaction"],
 });
 
 const connectFeature = (): StandardConnectFeature => ({
@@ -323,5 +323,49 @@ describe("buildSuiAdapter.signTransaction", () => {
     expect(feature.signTransaction).toHaveBeenCalledWith(
       expect.objectContaining({ account: walletAccount("0xSuiAddress2"), chain: "sui:testnet" }),
     );
+  });
+});
+
+describe("buildSuiAdapter scoped signing", () => {
+  it.each(["sendTx", "signTransaction"] as const)(
+    "%s preserves the account-to-chain association",
+    async (method) => {
+      const main = { ...walletAccount("MAIN"), chains: ["sui:mainnet"] };
+      const test = { ...walletAccount("TEST"), chains: ["sui:testnet"] };
+      const execute = executeFeature();
+      const sign = signTransactionFeature();
+      const adapter = adapterFor(
+        {
+          accounts: [{ ...main, address: "SOL", chains: ["solana:mainnet"] }, main, test],
+          chains: ["sui:mainnet", "sui:testnet"],
+        },
+        { "sui:signAndExecuteTransaction": execute, "sui:signTransaction": sign },
+      );
+      const call = present(adapter[method], method);
+      await call("AQID", { chain: SUI_CHAINS.testnet });
+      const feature =
+        method === "sendTx" ? execute.signAndExecuteTransaction : sign.signTransaction;
+      expect(feature).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ account: test, chain: "sui:testnet" }),
+      );
+      await expect(
+        call("AQID", {
+          account: buildAccount("MAIN", SUI_CHAINS.mainnet),
+          chain: SUI_CHAINS.testnet,
+        }),
+      ).rejects.toMatchObject({ kind: "AccountNotExposed" });
+      expect(feature).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("requires personal-message support on the selected account", async () => {
+    const feature = personalMessageFeature();
+    const account = walletAccount("SUI");
+    const adapter = adapterFor(
+      { accounts: [{ ...account, address: "NO_FEATURE", features: [] }, account] },
+      { "sui:signPersonalMessage": feature },
+    );
+    await present(adapter.signMessage, "signMessage")(new Uint8Array([1]));
+    expect(feature.signPersonalMessage).toHaveBeenCalledWith(expect.objectContaining({ account }));
   });
 });

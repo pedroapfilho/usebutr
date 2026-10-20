@@ -18,7 +18,7 @@ import type {
 const walletAccount = (address: string): WalletStandardWalletAccount => ({
   address,
   chains: [SUI_CHAINS.mainnet.id, SUI_CHAINS.testnet.id],
-  features: [],
+  features: ["sui:signAndExecuteTransaction", "sui:signPersonalMessage", "sui:signTransaction"],
 });
 
 describeAdapterContract<SuiAdapter>({

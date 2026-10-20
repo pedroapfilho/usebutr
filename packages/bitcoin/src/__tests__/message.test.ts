@@ -63,7 +63,13 @@ const walletStandard = (): Transport => {
   );
   const chains = ["bip122:000000000019d6689c085ae165831e93"];
   const wallet: WalletStandardWallet = {
-    accounts: [{ address: ADDRESS, chains, features: [] }],
+    accounts: [
+      {
+        address: ADDRESS,
+        chains,
+        features: ["bitcoin:sendTransfer", "bitcoin:signMessage", "bitcoin:signPsbt"],
+      },
+    ],
     chains,
     features: {
       "bitcoin:signMessage": { signMessage },

@@ -22,7 +22,7 @@ const { kusama, polkadot, westend } = POLKADOT_CHAINS;
 const walletAccount = (address: string): WalletStandardWalletAccount => ({
   address,
   chains: [polkadot.id],
-  features: [],
+  features: ["polkadot:signMessage"],
 });
 
 type FeatureMap = Record<
@@ -107,7 +107,12 @@ describe("buildPolkadotWalletStandardAdapter", () => {
   });
 
   it("names a chain outside the registry by its id, never the wallet's name", async () => {
-    const adapter = requireAdapter(buildWallet({ chains: ["polkadot:paseo-like"] }));
+    const adapter = requireAdapter(
+      buildWallet({
+        accounts: [{ ...walletAccount(ADDRESS), chains: ["polkadot:paseo-like"] }],
+        chains: ["polkadot:paseo-like"],
+      }),
+    );
     const [account] = await adapter.getAccounts();
     expect(account?.chain.name).toBe("polkadot:paseo-like");
   });
@@ -208,5 +213,35 @@ describe("discoverPolkadotWalletStandardAdapters", () => {
     });
     expect(onAdapter.mock.calls[0]?.[0].id).toBe("wallet-standard:polkadot-mock-polkadot-wallet");
     unsubscribe();
+  });
+});
+
+describe("buildPolkadotWalletStandardAdapter scoped signing", () => {
+  it("exposes and signs only with accounts advertising this relay chain and feature", async () => {
+    const account = walletAccount(ADDRESS);
+    const signMessage = signMessageFeature();
+    const adapter = requireAdapter(
+      buildWallet(
+        {
+          accounts: [
+            { ...account, address: "SOL", chains: ["solana:mainnet"] },
+            { ...account, address: "KSM", chains: [kusama.id] },
+            { ...account, address: "NO_FEATURE", features: [] },
+            account,
+          ],
+        },
+        { "polkadot:signMessage": { signMessage } },
+      ),
+    );
+    await expect(adapter.getAccounts()).resolves.toEqual([
+      buildAccount("NO_FEATURE", polkadot),
+      buildAccount(ADDRESS, polkadot),
+    ]);
+    await requireSignMessage(adapter)(new Uint8Array([1]));
+    expect(signMessage).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ account }));
+    await expect(
+      requireSignMessage(adapter)(new Uint8Array([1]), { account: buildAccount("KSM", kusama) }),
+    ).rejects.toMatchObject({ kind: "AccountNotExposed" });
+    expect(signMessage).toHaveBeenCalledOnce();
   });
 });

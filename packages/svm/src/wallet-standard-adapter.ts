@@ -1,5 +1,5 @@
 import type { SvmAdapter, WalletAdapter } from "@usebutr/core";
-import { buildAccount, bytesToBase58, SVM_CHAINS, SVM_CHAINS_LIST } from "@usebutr/core";
+import { bytesToBase58, SVM_CHAINS, SVM_CHAINS_LIST } from "@usebutr/core";
 import {
   createWalletStandardCore,
   discoverWalletStandard,
@@ -75,10 +75,11 @@ const buildSvmAdapter = (
     chainPlatform: "svm",
     ...(signAndSend !== undefined && {
       async sendTx(tx, options) {
+        const { account, chain } = core.resolveTarget("solana:signAndSendTransaction", options);
         const output = firstOutput(
           await signAndSend.signAndSendTransaction({
-            account: core.resolveAccount(options?.account),
-            chain: core.resolveChainId(options?.chain),
+            account,
+            chain,
             transaction: tx,
           }),
           "signAndSendTransaction",
@@ -88,9 +89,10 @@ const buildSvmAdapter = (
     }),
     ...(signMessage !== undefined && {
       async signMessage(message, options) {
+        const { account } = core.resolveTarget("solana:signMessage", options);
         const output = firstOutput(
           await signMessage.signMessage({
-            account: core.resolveAccount(options?.account),
+            account,
             message,
           }),
           "signMessage",
@@ -100,10 +102,11 @@ const buildSvmAdapter = (
     }),
     ...(signTransaction !== undefined && {
       async signTransaction(tx, options) {
+        const { account, chain } = core.resolveTarget("solana:signTransaction", options);
         const output = firstOutput(
           await signTransaction.signTransaction({
-            account: core.resolveAccount(options?.account),
-            chain: core.resolveChainId(options?.chain),
+            account,
+            chain,
             transaction: tx,
           }),
           "signTransaction",
@@ -115,7 +118,7 @@ const buildSvmAdapter = (
       async signIn(input) {
         const output = firstOutput(await signIn.signIn(input), "signIn");
         return {
-          account: buildAccount(output.account.address, core.currentChain()),
+          account: core.toAccount(output.account),
           signature: output.signature,
           signedMessage: output.signedMessage,
         };

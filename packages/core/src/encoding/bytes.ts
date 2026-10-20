@@ -34,13 +34,13 @@ const hexToBytes = (hex: string): Uint8Array => {
   if (clean.length % 2 !== 0) {
     throw new TypeError("Invalid hex: odd length");
   }
+  const invalid = clean.search(/[^0-9a-f]/iv);
+  if (invalid !== -1) {
+    throw new TypeError(`Invalid hex character at offset ${invalid}`);
+  }
   const out = new Uint8Array(clean.length / 2);
   for (let i = 0; i < out.length; i += 1) {
-    const byte = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
-    if (Number.isNaN(byte)) {
-      throw new TypeError(`Invalid hex character at offset ${i * 2}`);
-    }
-    out[i] = byte;
+    out[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
   }
   return out;
 };

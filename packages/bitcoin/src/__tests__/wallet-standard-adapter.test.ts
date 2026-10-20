@@ -20,8 +20,8 @@ const TESTNET = BITCOIN_CHAINS.testnet.id;
 
 const wsAccount = (address: string): WalletStandardWalletAccount => ({
   address,
-  chains: [MAINNET],
-  features: [],
+  chains: [MAINNET, TESTNET],
+  features: ["bitcoin:sendTransfer", "bitcoin:signMessage", "bitcoin:signPsbt"],
 });
 
 const FIRST = wsAccount("bc1qfirst");
@@ -219,5 +219,57 @@ describe("discoverBitcoinAdapters", () => {
     });
     expect(onAdapter.mock.calls[0]?.[0].chainPlatform).toBe("bitcoin");
     unsubscribe();
+  });
+});
+
+describe("buildBitcoinAdapter scoped signing", () => {
+  it("routes transfers and PSBTs through an account on the requested chain", async () => {
+    const main = { ...FIRST, chains: [MAINNET] };
+    const test = { ...SECOND, chains: [TESTNET] };
+    const { feature: send, sendTransfer } = sendTransferFeature();
+    const { feature: sign, signPsbt } = signPsbtFeature();
+    const adapter = buildAdapter(
+      buildWallet(
+        {
+          accounts: [{ ...main, address: "SUI", chains: ["sui:mainnet"] }, main, test],
+          chains: [MAINNET, TESTNET],
+        },
+        { "bitcoin:sendTransfer": send, "bitcoin:signPsbt": sign },
+      ),
+    );
+    await adapter.sendTx?.(TRANSFER, { chain: BITCOIN_CHAINS.testnet });
+    await adapter.signTransaction?.(new Uint8Array([1]), { chain: BITCOIN_CHAINS.testnet });
+    expect(sendTransfer).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ account: test, chain: TESTNET }),
+    );
+    expect(signPsbt).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ account: test, chain: TESTNET }),
+    );
+    const invalid = {
+      account: buildAccount(main.address, BITCOIN_CHAINS.mainnet),
+      chain: BITCOIN_CHAINS.testnet,
+    };
+    await expect(adapter.sendTx?.(TRANSFER, invalid)).rejects.toMatchObject({
+      kind: "AccountNotExposed",
+    });
+    await expect(adapter.signTransaction?.(new Uint8Array([1]), invalid)).rejects.toMatchObject({
+      kind: "AccountNotExposed",
+    });
+    expect(sendTransfer).toHaveBeenCalledOnce();
+    expect(signPsbt).toHaveBeenCalledOnce();
+  });
+
+  it("requires message-signing support on the selected account", async () => {
+    const signMessage = vi
+      .fn<BitcoinSignMessageFeature["signMessage"]>()
+      .mockResolvedValue({ signature: new Uint8Array([1]), signedMessage: new Uint8Array([1]) });
+    const adapter = buildAdapter(
+      buildWallet(
+        { accounts: [{ ...FIRST, features: [] }, SECOND] },
+        { "bitcoin:signMessage": { signMessage } },
+      ),
+    );
+    await adapter.signMessage?.(new Uint8Array([1]));
+    expect(signMessage).toHaveBeenCalledWith(expect.objectContaining({ account: SECOND }));
   });
 });

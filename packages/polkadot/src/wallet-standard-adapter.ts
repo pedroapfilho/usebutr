@@ -48,9 +48,10 @@ const buildPolkadotWalletStandardAdapter = (
     chainPlatform: "polkadot",
     ...(signer !== undefined && {
       signMessage: async (message: Uint8Array, options?: AccountOptions) => {
+        const { account } = core.resolveTarget("polkadot:signMessage", options);
         const wrapped = wrapBytes(message);
         const output = await signer.signMessage({
-          account: core.resolveAccount(options?.account),
+          account,
           message: wrapped,
         });
         return { signature: output.signature, signedMessage: output.signedMessage ?? wrapped };

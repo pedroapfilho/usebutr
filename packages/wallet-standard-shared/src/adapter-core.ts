@@ -1,4 +1,11 @@
-import type { Account, ChainBase, Connector, ConnectorEvent, WalletSigner } from "@usebutr/core";
+import type {
+  Account,
+  ChainBase,
+  Connector,
+  ConnectorEvent,
+  TransactionOptions,
+  WalletSigner,
+} from "@usebutr/core";
 import {
   buildAccount,
   createConnectorEmitter,
@@ -56,13 +63,14 @@ type WalletStandardCore = {
   base: WalletStandardConnector;
   /** The active chain, for results that mint their own `Account`. */
   currentChain: () => ChainBase;
-  /** The Wallet Standard account a call signs with: the one matching
-   *  `account`, else the active one. Rejections are the chain target's. */
-  resolveAccount: (account?: Account) => WalletStandardWalletAccount;
-  /** The chain id a call targets, as the wallet names it: `chain` when the
-   *  wallet advertises it under its id or an alias, else the current one.
-   *  Rejections are the chain target's. */
-  resolveChainId: (chain?: ChainBase) => string;
+  resolveTarget: (
+    feature: string,
+    options?: TransactionOptions,
+  ) => {
+    account: WalletStandardWalletAccount;
+    chain: string;
+  };
+  toAccount: (account: WalletStandardWalletAccount) => Account;
 };
 
 /**
@@ -104,9 +112,13 @@ const createWalletStandardCore = ({
 
   let currentChainId = initialChainId;
   const currentChain = () => resolveChain(currentChainId, chains);
+  const accountsOn = (accounts: ReadonlyArray<WalletStandardWalletAccount>, chainId: string) =>
+    accounts.filter((account) =>
+      account.chains.some((chain) => toRegistryId(chain) === toRegistryId(chainId)),
+    );
   const toAccounts = (accounts: ReadonlyArray<WalletStandardWalletAccount>) => {
     const chain = currentChain();
-    return accounts.map((a) => buildAccount(a.address, chain));
+    return accountsOn(accounts, currentChainId).map((a) => buildAccount(a.address, chain));
   };
 
   const target = createRoutedChainTarget({
@@ -188,8 +200,15 @@ const createWalletStandardCore = ({
   return {
     base,
     currentChain,
-    resolveAccount: (account) => target.account(wallet.accounts, account),
-    resolveChainId: routeChain,
+    resolveTarget: (feature, options) => {
+      const chain = routeChain(options?.chain);
+      const accounts = accountsOn(wallet.accounts, chain).filter((account) =>
+        account.features.includes(feature),
+      );
+      return { account: target.account(accounts, options?.account), chain };
+    },
+    toAccount: (account) =>
+      buildAccount(target.account(accountsOn([account], currentChainId)).address, currentChain()),
   };
 };
 

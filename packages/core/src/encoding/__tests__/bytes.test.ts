@@ -55,8 +55,29 @@ describe("hexToBytes", () => {
     expect(() => hexToBytes("abc")).toThrow(TypeError);
   });
 
-  it("throws on non-hex characters", () => {
-    expect(() => hexToBytes("zz")).toThrow(TypeError);
+  it.each([
+    "zz",
+    "1g",
+    "g1",
+    "f-",
+    "-1",
+    "+1",
+    "1+",
+    " 1",
+    "1 ",
+    "\t1",
+    "1\t",
+    "\n1",
+    "1\n",
+    "00f-",
+    "0x1g",
+    "0x-1",
+  ])("rejects malformed hex %j", (input) => {
+    expect(() => hexToBytes(input)).toThrow(TypeError);
+  });
+
+  it("accepts both hex letter cases", () => {
+    expect(hexToBytes("0xAaBbCcDdEeFf")).toEqual(new Uint8Array([170, 187, 204, 221, 238, 255]));
   });
 });
 

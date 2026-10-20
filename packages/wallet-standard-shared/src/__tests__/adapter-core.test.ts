@@ -23,10 +23,13 @@ type CoreOverrides = {
   trackChainChanges?: boolean;
 };
 
-const buildWalletAccount = (address: string): WalletStandardWalletAccount => ({
+const buildWalletAccount = (
+  address: string,
+  chains: ReadonlyArray<string> = ["solana:mainnet", "solana:devnet"],
+): WalletStandardWalletAccount => ({
   address,
-  chains: ["solana:mainnet"],
-  features: [],
+  chains,
+  features: ["solana:signMessage"],
 });
 
 const buildConnectFeature = (): StandardConnectFeature => ({
@@ -200,9 +203,13 @@ describe("createWalletStandardCore chain resolution", () => {
 
   it("routes a registry chain to the alias the wallet advertises", () => {
     const core = coreFor({ chains: ["solana:mainnet-beta", "solana:devnet"] });
-    expect(core.resolveChainId()).toBe("solana:mainnet-beta");
-    expect(core.resolveChainId(SVM_CHAINS.mainnet)).toBe("solana:mainnet-beta");
-    expect(core.resolveChainId(SVM_CHAINS.devnet)).toBe("solana:devnet");
+    expect(core.resolveTarget("solana:signMessage").chain).toBe("solana:mainnet-beta");
+    expect(core.resolveTarget("solana:signMessage", { chain: SVM_CHAINS.mainnet }).chain).toBe(
+      "solana:mainnet-beta",
+    );
+    expect(core.resolveTarget("solana:signMessage", { chain: SVM_CHAINS.devnet }).chain).toBe(
+      "solana:devnet",
+    );
   });
 });
 
@@ -323,14 +330,14 @@ describe("createWalletStandardCore switchChain", () => {
     await switchChainOf(core)(SVM_CHAINS.devnet);
     await switchChainOf(core)(SVM_CHAINS.mainnet);
     expect(core.currentChain()).toBe(SVM_CHAINS.mainnet);
-    expect(core.resolveChainId()).toBe("solana:mainnet-beta");
+    expect(core.resolveTarget("solana:signMessage").chain).toBe("solana:mainnet-beta");
   });
 
   it("re-points the current chain, and later reads, on success", async () => {
     const core = coreFor({ chains: ["solana:mainnet", "solana:devnet"] });
     await switchChainOf(core)(SVM_CHAINS.devnet);
     expect(core.currentChain()).toBe(SVM_CHAINS.devnet);
-    expect(core.resolveChainId()).toBe("solana:devnet");
+    expect(core.resolveTarget("solana:signMessage").chain).toBe("solana:devnet");
     await expect(core.base.getAccounts()).resolves.toEqual([
       buildAccount("So1Address1", SVM_CHAINS.devnet),
     ]);
@@ -448,5 +455,97 @@ describe("createWalletStandardCore registerDisconnector", () => {
     unsubscribe();
     disconnector.emit();
     expect(listener).not.toHaveBeenCalled();
+  });
+});
+
+describe("createWalletStandardCore scoped targets", () => {
+  const mainnet = buildWalletAccount("MAIN", ["solana:mainnet"]);
+  const devnet = buildWalletAccount("DEV", ["solana:devnet"]);
+  const foreign = [
+    buildWalletAccount("SUI", ["sui:mainnet"]),
+    buildWalletAccount("BTC", ["bip122:000000000019d6689c085ae165831e93"]),
+  ] as const;
+
+  it("preserves account order within the selected platform and chain", async () => {
+    const core = coreFor({
+      accounts: [foreign[0], mainnet, foreign[1], devnet],
+      chains: ["sui:mainnet", "solana:mainnet", "solana:devnet"],
+    });
+    await expect(core.base.getAccounts()).resolves.toEqual([
+      buildAccount("MAIN", SVM_CHAINS.mainnet),
+    ]);
+    expect(core.resolveTarget("solana:signMessage").account).toBe(mainnet);
+    expect(core.resolveTarget("solana:signMessage", { chain: SVM_CHAINS.devnet })).toEqual({
+      account: devnet,
+      chain: "solana:devnet",
+    });
+    await switchChainOf(core)(SVM_CHAINS.devnet);
+    await expect(core.base.getAccounts()).resolves.toEqual([
+      buildAccount("DEV", SVM_CHAINS.devnet),
+    ]);
+    expect(core.resolveTarget("solana:signMessage").account).toBe(devnet);
+  });
+
+  it("rejects an explicitly requested account on an unsupported chain", () => {
+    const core = coreFor({
+      accounts: [mainnet, devnet],
+      chains: ["solana:mainnet", "solana:devnet"],
+    });
+    expect(() =>
+      core.resolveTarget("solana:signMessage", {
+        account: buildAccount("MAIN", SVM_CHAINS.mainnet),
+        chain: SVM_CHAINS.devnet,
+      }),
+    ).toThrow(expect.objectContaining({ kind: "AccountNotExposed" }));
+    expect(() =>
+      core.resolveTarget("solana:signMessage", {
+        account: buildAccount("SUI", SVM_CHAINS.mainnet),
+      }),
+    ).toThrow(expect.objectContaining({ kind: "AccountNotExposed" }));
+  });
+
+  it("normalizes account, wallet and requested chain aliases", () => {
+    const alias = buildWalletAccount("ALIAS", ["solana:mainnet-beta"]);
+    const core = coreFor({ accounts: [alias], chains: ["solana:mainnet-beta"] });
+    expect(
+      core.resolveTarget("solana:signMessage", {
+        account: buildAccount("ALIAS", SVM_CHAINS.mainnet),
+        chain: { ...SVM_CHAINS.mainnet, id: "solana:mainnet-beta" },
+      }),
+    ).toEqual({ account: alias, chain: "solana:mainnet-beta" });
+  });
+
+  it("selects only accounts that support the operation and rejects an explicit unsupported account", () => {
+    const unsupported = { ...mainnet, address: "NO_FEATURE", features: [] };
+    const core = coreFor({ accounts: [unsupported, mainnet] });
+    expect(core.resolveTarget("solana:signMessage").account).toBe(mainnet);
+    expect(() =>
+      core.resolveTarget("solana:signMessage", {
+        account: buildAccount("NO_FEATURE", SVM_CHAINS.mainnet),
+      }),
+    ).toThrow(expect.objectContaining({ kind: "AccountNotExposed" }));
+  });
+
+  it("filters account changes and chain changes through the same scoped view", () => {
+    const events = buildEventsFeature();
+    const core = coreFor({
+      accounts: [mainnet, devnet],
+      chains: ["solana:mainnet", "solana:devnet"],
+      features: { "standard:events": events.feature },
+    });
+    const listener = listenerFn();
+    subscribeTo(core)(listener);
+    events.emit({ accounts: [...foreign, mainnet, devnet] });
+    expect(listener).toHaveBeenLastCalledWith(accountsChanged(SVM_CHAINS.mainnet, "MAIN"));
+    events.emit({ chains: ["solana:devnet"] });
+    expect(listener).toHaveBeenLastCalledWith(accountsChanged(SVM_CHAINS.devnet, "DEV"));
+    events.emit({ accounts: foreign });
+    expect(listener).toHaveBeenLastCalledWith(accountsChanged(SVM_CHAINS.devnet));
+  });
+
+  it("rejects a sign-in result that does not support the selected chain", () => {
+    const core = coreFor();
+    expect(() => core.toAccount(devnet)).toThrow(expect.objectContaining({ kind: "NotConnected" }));
+    expect(core.toAccount(mainnet)).toEqual(buildAccount("MAIN", SVM_CHAINS.mainnet));
   });
 });

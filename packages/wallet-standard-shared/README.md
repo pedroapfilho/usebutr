@@ -24,7 +24,6 @@ import { createWalletStandardCore, slugify } from "@usebutr/wallet-standard-shar
 export const buildAdapter = (wallet: WalletStandardWallet): SvmAdapter | null => {
   const core = createWalletStandardCore({
     chains: SVM_CHAINS_LIST,
-    // Namespace the id so a multi-chain wallet has one adapter per platform.
     id: slugify("svm", wallet.name),
     label: "Solana",
     namespace: "solana",
@@ -32,13 +31,16 @@ export const buildAdapter = (wallet: WalletStandardWallet): SvmAdapter | null =>
     trackChainChanges: true,
     wallet,
   });
-  // `base` defines `disconnect`, `subscribe` and `switchChain` only when the
-  // wallet supports them. Add platform methods the same way: only when the
-  // wallet advertises the feature, routing `options.account` through
-  // `core.resolveAccount` and `options.chain` through `core.resolveChainId`.
   return core === null ? null : { ...core.base, chainPlatform: "svm" };
 };
 ```
+
+`base.getAccounts()` exposes only accounts advertising the selected chain.
+Platform signing methods use `core.resolveTarget(feature, options)` to obtain
+`{ account, chain }` together, with the account advertising both the chain and
+the operation feature. Chain aliases are normalized for matching; the wallet
+receives its advertised chain id. Use `core.toAccount(rawAccount)` to validate
+a sign-in result against the current chain.
 
 ## Documentation
 

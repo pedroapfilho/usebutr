@@ -74,12 +74,16 @@ advertises no chain in `input.namespace` or lacks `standard:connect`.
 
 `WalletStandardCore`:
 
-| Member                     | Notes                                                                                                                                                                 |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `base`                     | Spread into the adapter: `connect`, `getAccounts`, `getSigner`, `icon`, `id`, `name`, plus `disconnect`, `subscribe` and `switchChain` when the wallet supports them. |
-| `resolveAccount(account?)` | The Wallet Standard account a call signs with; throws for an account the wallet does not expose.                                                                      |
-| `resolveChainId(chain?)`   | The chain id a call targets; throws for a chain outside the namespace or not advertised.                                                                              |
-| `currentChain()`           | The active chain, for results that build their own `Account`.                                                                                                         |
+| Member                             | Notes                                                                                                                                                                                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `base`                             | Spread into the adapter: `connect`, `getAccounts`, `getSigner`, `icon`, `id`, `name`, plus `disconnect`, `subscribe` and `switchChain` when supported. Account reads and events include only accounts advertising the selected chain. |
+| `resolveTarget(feature, options?)` | Returns `{ account, chain }` together. Selects the requested account, or the first account supporting the target chain and operation feature. Rejects unsupported targets.                                                            |
+| `toAccount(rawAccount)`            | Builds an `Account` on the current chain after checking the raw account advertises it, including sign-in results.                                                                                                                     |
+| `currentChain()`                   | The active registry chain.                                                                                                                                                                                                            |
+
+`options` accepts `account` and `chain`. Chain matching recognizes registry aliases;
+returned accounts retain their original Wallet Standard records, and `chain` uses
+the wallet's advertised spelling. Switching changes the scoped account view.
 
 ```ts
 import type { SvmAdapter } from "@usebutr/core";
@@ -97,9 +101,6 @@ export const buildAdapter = (wallet: WalletStandardWallet): SvmAdapter | null =>
     trackChainChanges: true,
     wallet,
   });
-  // Add platform methods only when the wallet advertises their feature,
-  // routing `options.account` through `core.resolveAccount` and
-  // `options.chain` through `core.resolveChainId`.
   return core === null ? null : { ...core.base, chainPlatform: "svm" };
 };
 ```

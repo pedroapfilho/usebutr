@@ -66,10 +66,11 @@ const buildBitcoinAdapter = (
     chainPlatform: "bitcoin",
     ...(sendTransfer !== undefined && {
       async sendTx({ amount, recipient }: BitcoinTransfer, options?: TransactionOptions) {
+        const { account, chain } = core.resolveTarget("bitcoin:sendTransfer", options);
         const output = await sendTransfer.sendTransfer({
-          account: core.resolveAccount(options?.account),
+          account,
           amount,
-          chain: core.resolveChainId(options?.chain),
+          chain,
           recipient,
         });
         return output.txid;
@@ -77,8 +78,9 @@ const buildBitcoinAdapter = (
     }),
     ...(signMessage !== undefined && {
       async signMessage(message: Uint8Array, options?: AccountOptions) {
+        const { account } = core.resolveTarget("bitcoin:signMessage", options);
         const output = await signMessage.signMessage({
-          account: core.resolveAccount(options?.account),
+          account,
           message,
         });
         return { signature: output.signature, signedMessage: output.signedMessage };
@@ -86,9 +88,10 @@ const buildBitcoinAdapter = (
     }),
     ...(signPsbt !== undefined && {
       async signTransaction(psbt: Uint8Array, options?: TransactionOptions) {
+        const { account, chain } = core.resolveTarget("bitcoin:signPsbt", options);
         const output = await signPsbt.signPsbt({
-          account: core.resolveAccount(options?.account),
-          chain: core.resolveChainId(options?.chain),
+          account,
+          chain,
           psbt,
         });
         return output.signedPsbt;

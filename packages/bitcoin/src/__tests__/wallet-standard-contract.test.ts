@@ -18,7 +18,7 @@ import type {
 const walletAccount = (address: string): WalletStandardWalletAccount => ({
   address,
   chains: [BITCOIN_CHAINS.mainnet.id, BITCOIN_CHAINS.testnet.id],
-  features: [],
+  features: ["bitcoin:sendTransfer", "bitcoin:signMessage", "bitcoin:signPsbt"],
 });
 
 describeAdapterContract<BitcoinAdapter>({

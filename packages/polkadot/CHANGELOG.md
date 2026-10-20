@@ -1,5 +1,19 @@
 # @usebutr/polkadot
 
+## 3.0.1
+
+### Patch Changes
+
+- [#232](https://github.com/pedroapfilho/usebutr/pull/232) [`62e8f97`](https://github.com/pedroapfilho/usebutr/commit/62e8f9704692dbef6ad840e7c84a8906863b111a) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - Keep silent injectedWeb3 reconnects out of the extension permission flow. Reuse an enabled in-memory session, or reject with `NotConnected` before calling `enable`. Persisted connections remain dormant for an explicit user retry.
+
+- [#232](https://github.com/pedroapfilho/usebutr/pull/232) [`62e8f97`](https://github.com/pedroapfilho/usebutr/commit/62e8f9704692dbef6ad840e7c84a8906863b111a) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - Scope Wallet Standard account reads, events, and signing to each account's advertised chains and operation features. Mixed-platform wallets no longer expose foreign accounts through another platform's adapter, and unsupported account/chain pairs fail before reaching a signing feature.
+
+  Adapter authors must replace separate `resolveAccount` and `resolveChainId` calls with `resolveTarget(feature, options)`, which returns `{ account, chain }` together. Use `toAccount(rawAccount)` to validate sign-in results on the current chain. Registry chain aliases remain supported.
+
+- Updated dependencies [[`62e8f97`](https://github.com/pedroapfilho/usebutr/commit/62e8f9704692dbef6ad840e7c84a8906863b111a), [`62e8f97`](https://github.com/pedroapfilho/usebutr/commit/62e8f9704692dbef6ad840e7c84a8906863b111a), [`62e8f97`](https://github.com/pedroapfilho/usebutr/commit/62e8f9704692dbef6ad840e7c84a8906863b111a)]:
+  - @usebutr/core@4.0.1
+  - @usebutr/wallet-standard-shared@4.0.0
+
 ## 3.0.0
 
 ### Major Changes

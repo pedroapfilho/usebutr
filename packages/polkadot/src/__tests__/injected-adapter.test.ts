@@ -1,5 +1,5 @@
-import type { ConnectorEvent, PolkadotAdapter } from "@usebutr/core";
-import { buildAccount, POLKADOT_CHAINS } from "@usebutr/core";
+import type { ConnectorEvent, PolkadotAdapter, WalletManagerConfig } from "@usebutr/core";
+import { buildAccount, createWalletManager, POLKADOT_CHAINS } from "@usebutr/core";
 import type { ObservedCall } from "@usebutr/testing/contract";
 import { describeAdapterContract } from "@usebutr/testing/contract";
 import { describe, expect, it, vi } from "vitest";
@@ -120,6 +120,78 @@ describe("buildInjectedPolkadotAdapter", () => {
     expect(extension.provider.enable).not.toHaveBeenCalled();
     await adapter.connect();
     expect(extension.provider.enable).toHaveBeenCalledWith("butr");
+  });
+
+  it("rejects silent connect without invoking the permission flow", async () => {
+    const extension = makeExtension();
+    const adapter = build(extension);
+    await expect(adapter.connect({ silent: true })).rejects.toMatchObject({ kind: "NotConnected" });
+    expect(extension.provider.enable).not.toHaveBeenCalled();
+    await expect(adapter.getAccounts()).resolves.toEqual([]);
+  });
+
+  it("reuses only an existing in-memory session for silent connect", async () => {
+    const extension = makeExtension();
+    const adapter = await connected(extension);
+    await adapter.connect({ silent: true });
+    expect(extension.provider.enable).toHaveBeenCalledOnce();
+    expect(extension.unsubscribeCalls()).toBe(0);
+    await expect(adapter.getAccounts()).resolves.toEqual([
+      buildAccount(ADDRESS, POLKADOT_CHAINS.polkadot),
+    ]);
+    await adapter.disconnect?.();
+    await expect(adapter.connect({ silent: true })).rejects.toMatchObject({ kind: "NotConnected" });
+    expect(extension.provider.enable).toHaveBeenCalledOnce();
+    expect(extension.unsubscribeCalls()).toBe(1);
+  });
+
+  it("keeps a persisted revoked origin dormant until the user explicitly connects", async () => {
+    const extension = makeExtension();
+    vi.mocked(extension.provider.enable).mockRejectedValueOnce(new Error("user rejected"));
+    const adapter = build(extension);
+    const account = buildAccount(ADDRESS, POLKADOT_CHAINS.polkadot);
+    const entry = {
+      account,
+      accounts: [account],
+      chainPlatform: "polkadot" as const,
+      connectorId: adapter.id,
+      name: adapter.name,
+    };
+    const onHydrated = vi.fn<NonNullable<WalletManagerConfig["onHydrated"]>>();
+    const manager = createWalletManager({
+      onHydrated,
+      sources: [
+        (announce) => {
+          announce(adapter);
+          return () => {};
+        },
+      ],
+      storage: {
+        load: () =>
+          Promise.resolve({
+            activeConnectorId: adapter.id,
+            isUserDisconnected: false,
+            pool: { [adapter.id]: entry },
+            selection: {},
+          }),
+        save: () => Promise.resolve(),
+      },
+    });
+    const stop = manager.start();
+    await vi.waitFor(() => {
+      expect(manager.getState().isHydrated).toBe(true);
+    });
+    expect(manager.getState().pool.size).toBe(0);
+    expect(manager.getState().dormant.has(adapter.id)).toBe(true);
+    expect(extension.provider.enable).not.toHaveBeenCalled();
+    expect(onHydrated.mock.lastCall?.[0].dropped[0]?.reason.kind).toBe("NotConnected");
+    await expect(manager.connect(adapter.id)).rejects.toMatchObject({ kind: "UserRejected" });
+    expect(extension.provider.enable).toHaveBeenCalledOnce();
+    await manager.connect(adapter.id);
+    expect(manager.getState().pool.get(adapter.id)?.account).toEqual(account);
+    manager.disconnectAll();
+    expect(extension.unsubscribeCalls()).toBe(1);
+    stop();
   });
 
   it("rejects connect when the extension exposes no account", async () => {

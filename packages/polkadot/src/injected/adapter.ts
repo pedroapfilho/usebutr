@@ -115,10 +115,11 @@ const buildInjectedPolkadotAdapter = (
   return {
     chainPlatform: "polkadot",
 
-    // injectedWeb3 has no silent check, so `silent` still calls `enable()`.
-    // It only prompts an origin the extension has not authorised, and a
-    // session being restored already is.
-    async connect() {
+    async connect(options) {
+      if (options?.silent === true) {
+        target.connected(session);
+        return;
+      }
       const injected = await provider.enable(DAPP_NAME);
       const accounts = await injected.accounts.get();
       if (accounts.length === 0) {

@@ -1,5 +1,13 @@
 # @usebutr/core
 
+## 4.0.1
+
+### Patch Changes
+
+- [#232](https://github.com/pedroapfilho/usebutr/pull/232) [`62e8f97`](https://github.com/pedroapfilho/usebutr/commit/62e8f9704692dbef6ad840e7c84a8906863b111a) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - Invalidate pending connections when their wallet disconnects or the manager resets. Late results cannot reactivate or persist forgotten wallets, overwrite fresh connection status, or close a newer pending session. Silent restoration follows the same connection lifetime rule, and sessions opening after a timeout are cleaned up.
+
+- [#232](https://github.com/pedroapfilho/usebutr/pull/232) [`62e8f97`](https://github.com/pedroapfilho/usebutr/commit/62e8f9704692dbef6ad840e7c84a8906863b111a) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - Reject partially invalid, signed, and whitespace-containing hex before decoding provider signatures or transactions. Empty inputs, lowercase `0x` prefixes, and either hex letter case remain supported.
+
 ## 4.0.0
 
 ### Major Changes

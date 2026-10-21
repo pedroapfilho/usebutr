@@ -1,5 +1,18 @@
 # @usebutr/wallets
 
+## 3.0.1
+
+### Patch Changes
+
+- Updated dependencies [[`62e8f97`](https://github.com/pedroapfilho/usebutr/commit/62e8f9704692dbef6ad840e7c84a8906863b111a), [`62e8f97`](https://github.com/pedroapfilho/usebutr/commit/62e8f9704692dbef6ad840e7c84a8906863b111a), [`62e8f97`](https://github.com/pedroapfilho/usebutr/commit/62e8f9704692dbef6ad840e7c84a8906863b111a), [`62e8f97`](https://github.com/pedroapfilho/usebutr/commit/62e8f9704692dbef6ad840e7c84a8906863b111a)]:
+  - @usebutr/core@4.0.1
+  - @usebutr/polkadot@3.0.1
+  - @usebutr/wallet-standard-shared@4.0.0
+  - @usebutr/svm@4.0.1
+  - @usebutr/sui@4.0.1
+  - @usebutr/bitcoin@3.0.1
+  - @usebutr/evm@3.0.1
+
 ## 3.0.0
 
 ### Major Changes

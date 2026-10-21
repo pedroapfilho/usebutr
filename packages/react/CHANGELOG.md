@@ -1,5 +1,12 @@
 # @usebutr/react
 
+## 2.0.3
+
+### Patch Changes
+
+- Updated dependencies [[`62e8f97`](https://github.com/pedroapfilho/usebutr/commit/62e8f9704692dbef6ad840e7c84a8906863b111a), [`62e8f97`](https://github.com/pedroapfilho/usebutr/commit/62e8f9704692dbef6ad840e7c84a8906863b111a)]:
+  - @usebutr/core@4.0.1
+
 ## 2.0.2
 
 ### Patch Changes

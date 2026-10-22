@@ -24,10 +24,13 @@ const prepareSuiTransaction = async (tx: SuiTransactionInput): Promise<SuiSignin
   if (tx instanceof Uint8Array) {
     return { bytes: tx, serialized: bytesToBase64(tx) };
   }
+
   const serialized = typeof tx === "string" ? tx : await tx.toJSON();
+
   if (serialized.startsWith("{")) {
     return { serialized };
   }
+
   try {
     return { bytes: base64ToBytes(serialized), serialized };
   } catch (error) {
@@ -44,13 +47,16 @@ const serializeEd25519Signature = (signature: Uint8Array, publicKey: Uint8Array)
       `Expected a ${ED25519_SIGNATURE_LENGTH}-byte Ed25519 signature, received ${signature.length} bytes`,
     );
   }
+
   if (publicKey.length !== ED25519_PUBLIC_KEY_LENGTH) {
     throw new Error(
       `Expected a ${ED25519_PUBLIC_KEY_LENGTH}-byte Ed25519 public key, received ${publicKey.length} bytes`,
     );
   }
+
   return Uint8Array.of(ED25519_SCHEME_FLAG, ...signature, ...publicKey);
 };
 
 export type { SuiSigningPayload };
+
 export { prepareSuiTransaction, serializeEd25519Signature };

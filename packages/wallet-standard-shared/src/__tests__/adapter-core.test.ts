@@ -51,15 +51,18 @@ const buildWallet = (overrides: WalletOverrides = {}): WalletStandardWallet => (
  *  listeners, so tests can play the role of the wallet extension. */
 const buildEventsFeature = () => {
   const listeners = new Set<StandardEventsListener>();
+
   const feature: StandardEventsFeature = {
     on: vi.fn((_event: "change", listener: StandardEventsListener) => {
       listeners.add(listener);
+
       return () => {
         listeners.delete(listener);
       };
     }),
     version: "1.0.0",
   };
+
   return {
     emit: (changes: Changes) => {
       for (const listener of listeners) {
@@ -75,12 +78,15 @@ const buildEventsFeature = () => {
  *  in for the discovery layer's Wallet Standard `unregister` hook. */
 const buildDisconnector = () => {
   const captured: Array<() => void> = [];
+
   return {
     emit: () => {
       const [first] = captured;
+
       if (first === undefined) {
         throw new Error("registerDisconnector was never called");
       }
+
       first();
     },
     register: (emit: () => void) => {
@@ -111,9 +117,11 @@ const coreFor = (
   overrides: CoreOverrides = {},
 ): WalletStandardCore => {
   const core = buildCore(buildWallet(wallet), overrides);
+
   if (core === null) {
     throw new Error("expected a wallet standard core");
   }
+
   return core;
 };
 
@@ -123,6 +131,7 @@ const present = <T>(value: T | undefined, name: string): T => {
   if (value === undefined) {
     throw new Error(`expected ${name} to be defined`);
   }
+
   return value;
 };
 
@@ -151,6 +160,7 @@ describe("createWalletStandardCore chain resolution", () => {
       name: "Mock Solana Wallet",
       version: "1.0.0",
     };
+
     expect(buildCore(wallet)).toBeNull();
   });
 
@@ -169,6 +179,7 @@ describe("createWalletStandardCore chain resolution", () => {
       { chains: ["solana:devnet", "solana:mainnet"] },
       { preferredChainIds: ["solana:mainnet", "solana:devnet"] },
     );
+
     expect(core.currentChain()).toBe(SVM_CHAINS.devnet);
   });
 
@@ -265,6 +276,7 @@ describe("createWalletStandardCore disconnect", () => {
     const disconnectFeature: StandardDisconnectFeature = {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
+
     const core = coreFor({ features: { "standard:disconnect": disconnectFeature } });
     await present(core.base.disconnect, "disconnect")();
     expect(disconnectFeature.disconnect).toHaveBeenCalledTimes(1);
@@ -277,9 +289,11 @@ describe("createWalletStandardCore disconnect", () => {
   it("swallows a throwing standard:disconnect and warns", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const failure = new Error("wallet locked");
+
     const disconnectFeature: StandardDisconnectFeature = {
       disconnect: vi.fn().mockRejectedValue(failure),
     };
+
     const core = coreFor({ features: { "standard:disconnect": disconnectFeature } });
     await expect(present(core.base.disconnect, "disconnect")()).resolves.toBeUndefined();
     expect(warn).toHaveBeenCalledWith("[butr] Solana Wallet Standard disconnect threw:", failure);
@@ -375,10 +389,12 @@ describe("createWalletStandardCore subscribe", () => {
 
   it("ignores a chains-only change when trackChainChanges is false", () => {
     const events = buildEventsFeature();
+
     const core = coreFor(
       { features: { "standard:events": events.feature } },
       { trackChainChanges: false },
     );
+
     const listener = listenerFn();
     subscribeTo(core)(listener);
     events.emit({ chains: ["solana:devnet"] });
@@ -419,10 +435,12 @@ describe("createWalletStandardCore subscribe", () => {
 
   it("stops delivery and drops the wallet listener on unsubscribe", async () => {
     const events = buildEventsFeature();
+
     const core = coreFor({
       chains: ["solana:mainnet", "solana:devnet"],
       features: { "standard:events": events.feature },
     });
+
     const listener = listenerFn();
     const unsubscribe = subscribeTo(core)(listener);
     expect(events.listenerCount()).toBe(1);
@@ -461,6 +479,7 @@ describe("createWalletStandardCore registerDisconnector", () => {
 describe("createWalletStandardCore scoped targets", () => {
   const mainnet = buildWalletAccount("MAIN", ["solana:mainnet"]);
   const devnet = buildWalletAccount("DEV", ["solana:devnet"]);
+
   const foreign = [
     buildWalletAccount("SUI", ["sui:mainnet"]),
     buildWalletAccount("BTC", ["bip122:000000000019d6689c085ae165831e93"]),
@@ -471,6 +490,7 @@ describe("createWalletStandardCore scoped targets", () => {
       accounts: [foreign[0], mainnet, foreign[1], devnet],
       chains: ["sui:mainnet", "solana:mainnet", "solana:devnet"],
     });
+
     await expect(core.base.getAccounts()).resolves.toEqual([
       buildAccount("MAIN", SVM_CHAINS.mainnet),
     ]);
@@ -491,6 +511,7 @@ describe("createWalletStandardCore scoped targets", () => {
       accounts: [mainnet, devnet],
       chains: ["solana:mainnet", "solana:devnet"],
     });
+
     expect(() =>
       core.resolveTarget("solana:signMessage", {
         account: buildAccount("MAIN", SVM_CHAINS.mainnet),
@@ -528,11 +549,13 @@ describe("createWalletStandardCore scoped targets", () => {
 
   it("filters account changes and chain changes through the same scoped view", () => {
     const events = buildEventsFeature();
+
     const core = coreFor({
       accounts: [mainnet, devnet],
       chains: ["solana:mainnet", "solana:devnet"],
       features: { "standard:events": events.feature },
     });
+
     const listener = listenerFn();
     subscribeTo(core)(listener);
     events.emit({ accounts: [...foreign, mainnet, devnet] });

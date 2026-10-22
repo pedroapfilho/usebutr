@@ -10,9 +10,11 @@ type WalletBrand = {
 
 const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand> => {
   const byName = new Map<string, WalletBrand>();
+
   for (const wallet of wallets) {
     const key = wallet.name.toLowerCase();
     const existing = byName.get(key);
+
     if (existing) {
       existing.adapters.push(wallet);
       existing.icon ??= wallet.icon;
@@ -20,11 +22,13 @@ const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand>
       byName.set(key, { adapters: [wallet], icon: wallet.icon, name: wallet.name });
     }
   }
+
   return [...byName.values()];
 };
 
 const WalletBrandRow = ({ brand }: { brand: WalletBrand }) => {
   const { connect, connectingId } = useConnect();
+
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="flex items-center gap-3">
@@ -36,6 +40,7 @@ const WalletBrandRow = ({ brand }: { brand: WalletBrand }) => {
       <span className="flex gap-2">
         {brand.adapters.map((adapter) => {
           const isConnecting = connectingId === adapter.id;
+
           return (
             <button
               aria-busy={isConnecting}
@@ -70,9 +75,11 @@ const WalletConnectDialog = ({
 
   useEffect(() => {
     const dialog = dialogRef.current;
+
     if (!dialog) {
       return;
     }
+
     if (open) {
       dialog.showModal();
     } else {

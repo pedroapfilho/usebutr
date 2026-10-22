@@ -39,15 +39,18 @@ const makeExtension = ({
 } = {}): Extension => {
   const callbacks = new Set<(accounts: ReadonlyArray<InjectedAccount>) => void>();
   let unsubscribeCalls = 0;
+
   const signRaw = vi
     .fn<NonNullable<InjectedSigner["signRaw"]>>()
     .mockResolvedValue({ id: 1, signature: "0xdead" });
+
   const injected: Injected = {
     accounts: {
       get: () => Promise.resolve(accounts),
       ...(withSubscribe && {
         subscribe: (callback: (next: ReadonlyArray<InjectedAccount>) => void) => {
           callbacks.add(callback);
+
           return () => {
             callbacks.delete(callback);
             unsubscribeCalls += 1;
@@ -57,6 +60,7 @@ const makeExtension = ({
     },
     signer: withSignRaw ? { signRaw } : {},
   };
+
   return {
     injected,
     provider: { enable: vi.fn<InjectedWindowProvider["enable"]>().mockResolvedValue(injected) },
@@ -76,6 +80,7 @@ const build = (extension: Extension): PolkadotAdapter =>
 const connected = async (extension: Extension): Promise<PolkadotAdapter> => {
   const adapter = build(extension);
   await adapter.connect();
+
   return adapter;
 };
 
@@ -83,6 +88,7 @@ const requireSignMessage = (adapter: PolkadotAdapter) => {
   if (adapter.signMessage === undefined) {
     throw new Error("expected signMessage once connected");
   }
+
   return adapter.signMessage;
 };
 
@@ -92,6 +98,7 @@ const listen = (adapter: PolkadotAdapter): Array<ConnectorEvent> => {
   adapter.subscribe?.((event) => {
     events.push(event);
   });
+
   return events;
 };
 
@@ -150,6 +157,7 @@ describe("buildInjectedPolkadotAdapter", () => {
     vi.mocked(extension.provider.enable).mockRejectedValueOnce(new Error("user rejected"));
     const adapter = build(extension);
     const account = buildAccount(ADDRESS, POLKADOT_CHAINS.polkadot);
+
     const entry = {
       account,
       accounts: [account],
@@ -157,12 +165,15 @@ describe("buildInjectedPolkadotAdapter", () => {
       connectorId: adapter.id,
       name: adapter.name,
     };
+
     const onHydrated = vi.fn<NonNullable<WalletManagerConfig["onHydrated"]>>();
+
     const manager = createWalletManager({
       onHydrated,
       sources: [
         (announce) => {
           announce(adapter);
+
           return () => {};
         },
       ],
@@ -177,6 +188,7 @@ describe("buildInjectedPolkadotAdapter", () => {
         save: () => Promise.resolve(),
       },
     });
+
     const stop = manager.start();
     await vi.waitFor(() => {
       expect(manager.getState().isHydrated).toBe(true);
@@ -223,6 +235,7 @@ describe("buildInjectedPolkadotAdapter", () => {
           ],
         }),
       );
+
       const [kusama, unknown, unpinned] = await adapter.getAccounts();
       expect(kusama?.chain).toBe(POLKADOT_CHAINS.kusama);
       expect(unknown?.chain).toEqual({
@@ -338,17 +351,22 @@ describeAdapterContract<PolkadotAdapter>({
   chain: POLKADOT_CHAINS.polkadot,
   connect: async (addresses) => {
     const calls: Array<ObservedCall> = [];
+
     const extension = makeExtension({
       accounts: addresses.map((address) => ({ address, name: address })),
     });
+
     extension.signRaw.mockImplementation(({ address }) => {
       calls.push({ address });
+
       return Promise.resolve({ id: 1, signature: "0xdead" });
     });
     const adapter = build(extension);
+
     if (addresses.length > 0) {
       await adapter.connect();
     }
+
     return {
       adapter,
       lastCall: () => calls.at(-1),

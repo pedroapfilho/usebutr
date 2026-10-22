@@ -15,30 +15,37 @@ import { SETTLE_MS } from "../discovery-bus";
 const fakeRegistry = (loadMs = 0) => {
   const wallets: Array<WalletStandardWallet> = [];
   const listeners = new Set<(...registered: ReadonlyArray<WalletStandardWallet>) => void>();
+
   const app: WalletsApp = {
     get: () => wallets,
     on: (event, listener) => {
       if (event !== "register") {
         return () => {};
       }
+
       listeners.add(listener);
+
       return () => {
         listeners.delete(listener);
       };
     },
   };
+
   const loadModule: WalletStandardModuleLoader = () =>
     new Promise((resolve) => {
       setTimeout(() => {
         resolve({ getWallets: () => app });
       }, loadMs);
     });
+
   const register = (wallet: WalletStandardWallet) => {
     wallets.push(wallet);
+
     for (const listener of listeners) {
       listener(wallet);
     }
   };
+
   return { loadModule, register };
 };
 
@@ -72,6 +79,7 @@ const polkadotExtension = () => ({ enable: () => Promise.reject(new Error("not u
 const fakeWindow = () => {
   const host = new EventTarget();
   vi.stubGlobal("window", host);
+
   return host;
 };
 
@@ -93,6 +101,7 @@ const start = (
   const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
   const stop = autoDiscovery(platforms, { ...options, loadModule: registry.loadModule })(onAdapter);
   const listed = () => onAdapter.mock.calls.map(([adapter]) => adapter.id);
+
   return { listed, stop };
 };
 

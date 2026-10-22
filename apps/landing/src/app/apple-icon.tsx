@@ -5,6 +5,7 @@ import { brandPaths } from "@/lib/brand-paths";
 const size = { height: 180, width: 180 };
 const contentType = "image/png";
 const PAPER = "#ffffff";
+
 const Icon = () =>
   new ImageResponse(
     <svg height={180} viewBox="0 0 180 180" width={180}>
@@ -13,5 +14,7 @@ const Icon = () =>
     </svg>,
     size,
   );
+
 export { contentType, size };
+
 export default Icon;

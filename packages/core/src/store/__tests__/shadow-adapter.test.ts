@@ -5,6 +5,7 @@ import { buildAccount } from "../../types";
 import { createShadowAdapter, isShadowAdapter, ShadowConnectorError } from "../shadow-adapter";
 
 const account = buildAccount("0xmetamask", ETHEREUM);
+
 const entry = {
   account,
   accounts: [account],

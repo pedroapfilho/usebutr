@@ -67,6 +67,7 @@ describe("chain registries", () => {
     for (const chain of Object.values(CHAINS_BY_PLATFORM).flat()) {
       expect(chain.id).toBe(`${chain.namespace}:${chain.reference}`);
       expect(chain.name).not.toBe(chain.id);
+
       for (const alias of chain.aliases ?? []) {
         expect(alias.startsWith(`${chain.namespace}:`)).toBe(true);
       }
@@ -85,6 +86,7 @@ describe("platform guards", () => {
     for (const platform of CHAIN_PLATFORMS) {
       expect(isChainPlatform(platform)).toBe(true);
     }
+
     expect(isChainPlatform("martian")).toBe(false);
   });
 

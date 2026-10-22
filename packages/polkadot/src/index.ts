@@ -1,5 +1,7 @@
 export { buildInjectedPolkadotAdapter } from "./injected/adapter";
+
 export type { InjectedPolkadotDiscoveryOptions } from "./injected";
+
 export { discoverInjectedPolkadotAdapters } from "./injected";
 
 export type {
@@ -7,6 +9,7 @@ export type {
   PolkadotSignMessageInput,
   PolkadotSignMessageOutput,
 } from "./wallet-standard-types";
+
 export {
   buildPolkadotWalletStandardAdapter,
   discoverPolkadotWalletStandardAdapters,

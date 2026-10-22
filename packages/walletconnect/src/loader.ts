@@ -63,17 +63,21 @@ const hasUniversalProviderInit = (
  */
 const loadUniversalProvider = async (): Promise<UniversalProviderConstructor> => {
   const mod: unknown = await import("@walletconnect/universal-provider");
+
   if (typeof mod !== "object" || mod === null) {
     throw new Error("@walletconnect/universal-provider did not resolve to a module");
   }
+
   const named = "UniversalProvider" in mod ? mod.UniversalProvider : undefined;
   const fallback = "default" in mod ? mod.default : undefined;
   const ctor = named ?? fallback;
+
   if (typeof ctor !== "function" || !hasUniversalProviderInit(ctor)) {
     throw new TypeError(
       "@walletconnect/universal-provider exposes no UniversalProvider constructor",
     );
   }
+
   return { init: ctor.init };
 };
 
@@ -83,4 +87,5 @@ export type {
   UniversalProviderLike,
   WcNamespaceRequest,
 };
+
 export { loadUniversalProvider };

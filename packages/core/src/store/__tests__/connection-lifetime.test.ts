@@ -20,6 +20,7 @@ const setup = async () => {
   const onConnect = vi.fn<Callbacks["onConnect"]>();
   const onConnectError = vi.fn<Callbacks["onConnectError"]>();
   const onDisconnect = vi.fn<Callbacks["onDisconnect"]>();
+
   const manager = createWalletManager({
     onConnect,
     onConnectError,
@@ -27,8 +28,10 @@ const setup = async () => {
     sources: [staticSource(adapter)],
     storage,
   });
+
   manager.start();
   await flush();
+
   return { adapter, manager, onConnect, onConnectError, onDisconnect, pending, storage };
 };
 
@@ -37,6 +40,7 @@ describe("connection lifetimes", () => {
     it(`${disconnect} rejects a late successful connect without persisting or announcing it`, async () => {
       const { adapter, manager, onConnect, onConnectError, onDisconnect, pending, storage } =
         await setup();
+
       const attempt = rejectionOf(manager.connect(adapter.id));
       manager[disconnect](adapter.id);
       pending.resolve(undefined);
@@ -131,17 +135,21 @@ describe("connection lifetimes", () => {
   it("does not resurrect a forgotten restore when a fresh failed attempt leaves it unpooled", async () => {
     const gate = createGate();
     const adapter = evmAdapter("wallet", { connect: () => gate.promise });
+
     const storage = createMemoryPersistence({
       pool: { wallet: toStoredPoolEntry(walletOf(adapter)) },
     });
+
     const onConnect = vi.fn<Callbacks["onConnect"]>();
     const onHydrated = vi.fn<Callbacks["onHydrated"]>();
+
     const manager = createWalletManager({
       onConnect,
       onHydrated,
       sources: [staticSource(adapter)],
       storage,
     });
+
     manager.start();
     await flush();
     manager.disconnectAll();
@@ -191,6 +199,7 @@ describe("late session cleanup", () => {
 it("closes a forgotten session that opens after the connection timeout", async () => {
   const { adapter, manager, pending } = await setup();
   vi.useFakeTimers();
+
   try {
     const stale = rejectionOf(manager.connect(adapter.id));
     manager.disconnectAll();

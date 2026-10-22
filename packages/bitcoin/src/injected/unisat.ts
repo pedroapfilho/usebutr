@@ -51,6 +51,7 @@ type UnisatProvider = {
 };
 
 type UnisatEventItem = number | string | null;
+
 type UnisatEventValue = ReadonlyArray<UnisatEventItem> | string | undefined;
 
 type UnisatSignPsbtOptions = {
@@ -91,25 +92,31 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     if (getNetwork === undefined) {
       return chain;
     }
+
     const network = await getNetwork();
     const match = NETWORK_CHAINS.get(network);
+
     if (match === undefined) {
       throw new Error(`Wallet ${name} reported an unknown network "${network}"`);
     }
+
     return match;
   };
 
   const readAccounts = async (): Promise<ReadonlyArray<Account>> => {
     const addresses = await provider.getAccounts();
+
     if (addresses.length === 0) {
       return [];
     }
+
     try {
       chain = await readChain();
     } catch {
       // Labels only: a locked wallet may refuse `getNetwork` while still
       // listing its accounts, which keep the last known chain.
     }
+
     return addresses.map((address) => buildAccount(address, chain));
   };
 
@@ -117,11 +124,13 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     canSwitch: (to) => switchNetwork !== undefined && SWITCH_NETWORKS.has(to.id),
     current: async () => {
       chain = await readChain();
+
       return chain.id;
     },
     namespace: "bip122",
     switchTo: async (to) => {
       const network = SWITCH_NETWORKS.get(to.id);
+
       if (switchNetwork !== undefined && network !== undefined) {
         await switchNetwork(network);
         chain = resolveChain(to.id, BITCOIN_CHAINS_LIST);
@@ -149,9 +158,12 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     async connect(options) {
       if (options?.silent !== true) {
         await provider.requestAccounts();
+
         return;
       }
+
       const accounts = await provider.getAccounts();
+
       if (accounts.length === 0) {
         throw new Error("No authorized accounts for silent reconnect");
       }
@@ -169,17 +181,20 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
       const text = bitcoinMessageText(message, name);
       await assertActive(options?.account);
       const signature = await provider.signMessage(text);
+
       return { signature: base64ToBytes(signature), signedMessage: message };
     },
 
     async signTransaction(psbt, options) {
       await prepare(options);
+
       return hexToBytes(await provider.signPsbt(bytesToHex(psbt)));
     },
 
     ...(sendBitcoin !== undefined && {
       async sendTx({ amount, recipient }: BitcoinTransfer, options?: TransactionOptions) {
         await prepare(options);
+
         return sendBitcoin(recipient, Number(amount));
       },
     }),
@@ -189,9 +204,11 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
         const emit = (accounts: ReadonlyArray<Account>) => {
           listener({ accounts, type: "accountsChanged" });
         };
+
         const onAccountsChanged = (...args: ReadonlyArray<UnisatEventValue>) => {
           emit(toStringArray(args[0]).map((address) => buildAccount(address, chain)));
         };
+
         // The network is wallet-wide, so a change moves every account with it.
         const reemitAccounts = async () => {
           try {
@@ -200,11 +217,14 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
             logWarn(`[butr] ${name} accounts could not be re-read after a network change:`, error);
           }
         };
+
         const onNetworkChanged = () => {
           void reemitAccounts();
         };
+
         on("accountsChanged", onAccountsChanged);
         on("networkChanged", onNetworkChanged);
+
         return () => {
           provider.removeListener?.("accountsChanged", onAccountsChanged);
           provider.removeListener?.("networkChanged", onNetworkChanged);
@@ -217,4 +237,5 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
 };
 
 export type { UnisatProvider };
+
 export { buildUnisatAdapter };

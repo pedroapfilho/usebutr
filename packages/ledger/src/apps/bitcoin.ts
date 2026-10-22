@@ -62,9 +62,11 @@ const createBitcoinLedgerAdapter = async (
   options: BitcoinLedgerOptions,
 ): Promise<BitcoinAdapter> => {
   const addressFormat = options.addressFormat ?? "bech32";
+
   const core = await createLedgerAdapterCore<BtcAppLike>(options, {
     addressAt: async (btc, path) => {
       const { bitcoinAddress } = await btc.getWalletPublicKey(path, { format: addressFormat });
+
       return bitcoinAddress;
     },
     chains: BITCOIN_CHAINS_LIST,
@@ -79,6 +81,7 @@ const createBitcoinLedgerAdapter = async (
           "@ledgerhq/hw-app-btc",
           isClassWith<BtcAppConstructor>("getWalletPublicKey", "signMessage", "signPsbtBuffer"),
         ));
+
       return (transport) => new Btc({ currency: "bitcoin", transport });
     },
     signer: (app) => ({ app, kind: "ledger-bitcoin" }),
@@ -92,6 +95,7 @@ const createBitcoinLedgerAdapter = async (
     async signMessage(message, signOptions) {
       const { app, path } = core.resolve(signOptions);
       const { r, s, v } = await app.signMessage(path, bytesToHex(message));
+
       return {
         signature: Uint8Array.of(COMPRESSED_KEY_HEADER + v, ...rsBytes(r, s)),
         signedMessage: message,
@@ -104,6 +108,7 @@ const createBitcoinLedgerAdapter = async (
      */
     async signTransaction(psbt, signOptions) {
       const { app, path } = core.resolve(signOptions);
+
       const result = await app.signPsbtBuffer(psbt, {
         // `<purpose>'/<coin>'/<account>'/<change>/<index>` minus the last two.
         accountPath: path.split("/").slice(0, -2).join("/"),
@@ -111,10 +116,12 @@ const createBitcoinLedgerAdapter = async (
         finalizePsbt: false,
         knownAddressDerivations: new Map(),
       });
+
       return new Uint8Array(result.psbt);
     },
   };
 };
 
 export type { BitcoinAddressFormat, BitcoinLedgerOptions, BtcAppConstructor, BtcAppLike };
+
 export { createBitcoinLedgerAdapter };

@@ -17,7 +17,9 @@ const toError = (cause: unknown): Error => {
   if (cause instanceof Error) {
     return cause;
   }
+
   const message = typeof cause === "string" && cause !== "" ? cause : "Request failed";
+
   return new Error(message, { cause });
 };
 
@@ -41,14 +43,17 @@ const useAsyncResource = <T>(fn: (() => Promise<T>) | null): AsyncState<T> => {
     if (fn === null) {
       return undefined;
     }
+
     // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
     let cancelled = false as boolean;
     void (async () => {
       const state = await settle(fn);
+
       if (!cancelled) {
         setSettled({ fn, state });
       }
     })();
+
     return () => {
       cancelled = true;
     };
@@ -57,6 +62,7 @@ const useAsyncResource = <T>(fn: (() => Promise<T>) | null): AsyncState<T> => {
   if (fn === null) {
     return IDLE;
   }
+
   return settled?.fn === fn ? settled.state : LOADING;
 };
 
@@ -73,6 +79,7 @@ const useSigner = (wallet: ConnectedWallet | undefined): AsyncState<WalletSigner
         : () => wallet.connector.getSigner(),
     [wallet],
   );
+
   return useAsyncResource(fn);
 };
 
@@ -97,22 +104,31 @@ const useBalance = (
 ): UseBalanceResult => {
   const { account, token } = options;
   const [counter, refetch] = useReducer((n: number) => n + 1, 0);
+
   const fn = useMemo(() => {
     void counter;
+
     if (wallet === undefined || isShadowAdapter(wallet.connector)) {
       return null;
     }
+
     // Bound, so an adapter written as a class keeps its `this`.
     const getBalance = wallet.connector.getBalance?.bind(wallet.connector);
+
     if (getBalance === undefined) {
       return null;
     }
+
     const target = account ?? wallet.account;
+
     return () => getBalance({ account: target, token });
   }, [wallet, account, token, counter]);
+
   const state = useAsyncResource(fn);
+
   return { ...state, refetch };
 };
 
 export type { AsyncState, UseBalanceOptions, UseBalanceResult };
+
 export { useBalance, useSigner };

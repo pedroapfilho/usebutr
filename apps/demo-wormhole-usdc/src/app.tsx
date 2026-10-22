@@ -35,9 +35,11 @@ const formatBalance = (b: UsdcBalance): string => {
   if (b.status === "loading" || b.status === "idle") {
     return "…";
   }
+
   if (b.status === "error") {
     return "—";
   }
+
   return `${b.uiAmountString ?? "0"} USDC`;
 };
 
@@ -58,6 +60,7 @@ const ChainSelect = ({
     disabled={disabled}
     onChange={(event) => {
       const chain = CHAIN_LIST.find((spec) => spec.chain === event.target.value)?.chain;
+
       if (chain !== undefined) {
         onChange(chain);
       }
@@ -119,6 +122,7 @@ const TxLink = ({ hash, spec }: { hash: string; spec: ChainSpec }) => {
   if (!hash) {
     return null;
   }
+
   return (
     <p>
       <a
@@ -145,6 +149,7 @@ const PhaseBody = ({
   if (phase.kind === "idle") {
     return null;
   }
+
   if (phase.kind === "initiating") {
     return (
       <p className="text-foreground-subtle text-sm">
@@ -152,6 +157,7 @@ const PhaseBody = ({
       </p>
     );
   }
+
   if (phase.kind === "waiting-attestation") {
     return (
       <div className="space-y-1 text-sm">
@@ -163,6 +169,7 @@ const PhaseBody = ({
       </div>
     );
   }
+
   if (phase.kind === "ready-to-redeem") {
     return (
       <div className="space-y-1 text-sm">
@@ -173,6 +180,7 @@ const PhaseBody = ({
       </div>
     );
   }
+
   if (phase.kind === "redeeming") {
     return (
       <div className="space-y-1 text-sm">
@@ -181,6 +189,7 @@ const PhaseBody = ({
       </div>
     );
   }
+
   return (
     <div className="space-y-1 text-sm">
       <p className="text-success-foreground">Transfer complete.</p>
@@ -204,6 +213,7 @@ const StatusPanel = ({
   if (phase.kind === "idle" && error === null) {
     return null;
   }
+
   return (
     <div
       aria-live="polite"
@@ -239,10 +249,12 @@ const TransferButtons = ({
   transfer: Transfer;
 }) => {
   const { phase } = transfer;
+
   const isWorking =
     phase.kind === "initiating" ||
     phase.kind === "waiting-attestation" ||
     phase.kind === "redeeming";
+
   const canRetryAttestation = phase.kind === "waiting-attestation" && transfer.error !== null;
 
   return (
@@ -317,8 +329,10 @@ const App = () => {
 
   const srcSpec = getChainSpec(sourceChain);
   const dstSpec = getChainSpec(destChain);
+
   const walletFor = (spec: ChainSpec): BridgeWallet | undefined =>
     spec.platform === "evm" ? evmWallet : svmWallet;
+
   const srcWallet = walletFor(srcSpec);
   const dstWallet = walletFor(dstSpec);
 
@@ -335,10 +349,13 @@ const App = () => {
     if (isTransferOpen) {
       return;
     }
+
     resetTransfer();
+
     if (next === destChain) {
       setDestChain(sourceChain);
     }
+
     setSourceChain(next);
   };
 
@@ -346,10 +363,13 @@ const App = () => {
     if (isTransferOpen) {
       return;
     }
+
     resetTransfer();
+
     if (next === sourceChain) {
       setSourceChain(destChain);
     }
+
     setDestChain(next);
   };
 
@@ -357,6 +377,7 @@ const App = () => {
     if (isTransferOpen) {
       return;
     }
+
     resetTransfer();
     setSourceChain(destChain);
     setDestChain(sourceChain);
@@ -366,8 +387,10 @@ const App = () => {
     if (!srcWallet || !dstWallet) {
       return;
     }
+
     setTransfer({ error: null, phase: { kind: "initiating" } });
     let burned: { sourceTxHash: string; xfer: CircleTransfer } | null = null;
+
     try {
       const wh = getWormhole();
       const sourceAddress = Wormhole.chainAddress(srcSpec.chain, srcWallet.account.walletAddress);
@@ -398,8 +421,10 @@ const App = () => {
     if (phase.kind !== "waiting-attestation") {
       return;
     }
+
     const { sourceTxHash, xfer } = phase;
     setTransfer({ error: null, phase: { kind: "waiting-attestation", sourceTxHash, xfer } });
+
     try {
       await xfer.fetchAttestation(ATTESTATION_TIMEOUT_MS);
       setTransfer({ error: null, phase: { kind: "ready-to-redeem", sourceTxHash, xfer } });
@@ -415,8 +440,10 @@ const App = () => {
     if (!dstWallet || phase.kind !== "ready-to-redeem") {
       return;
     }
+
     const { sourceTxHash, xfer } = phase;
     setTransfer({ error: null, phase: { kind: "redeeming", sourceTxHash, xfer } });
+
     try {
       const destSigner = await makeSigner(dstSpec, dstWallet);
       const destTxids = await xfer.completeTransfer(destSigner);
@@ -432,6 +459,7 @@ const App = () => {
   };
 
   let missingWallet: ChainSpec["platform"] | null = null;
+
   if (!srcWallet) {
     missingWallet = srcSpec.platform;
   } else if (!dstWallet) {

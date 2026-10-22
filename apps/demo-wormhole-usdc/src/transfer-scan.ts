@@ -19,6 +19,7 @@ type EvmScanResult = {
   partial: boolean;
   toBlock: number;
 };
+
 type SolanaScanResult = {
   burns: Array<DiscoveredBurn>;
   partial: boolean;
@@ -28,6 +29,7 @@ type SolanaScanResult = {
 const burnInterface = new Interface([
   "event DepositForBurn(uint64 indexed nonce, address indexed burnToken, uint256 amount, address indexed depositor, bytes32 mintRecipient, uint32 destinationDomain, bytes32 destinationTokenMessenger, bytes32 destinationCaller)",
 ]);
+
 const DEPOSIT_FOR_BURN_TOPIC = burnInterface.getEvent("DepositForBurn")?.topicHash ?? "";
 
 const EVM_LOOKBACK_BLOCKS = 100_000;
@@ -44,18 +46,23 @@ const mapPool = async <T, R>(
 ): Promise<Array<R>> => {
   const results = Array.from<R>({ length: items.length });
   const pending = items.entries();
+
   const worker = async (): Promise<void> => {
     for (const [index, item] of pending) {
       results[index] = await fn(item);
     }
   };
+
   const workers = await Promise.allSettled(
     Array.from({ length: Math.min(limit, items.length) }, () => worker()),
   );
+
   const failure = workers.find((result) => result.status === "rejected");
+
   if (failure?.status === "rejected") {
     throw failure.reason instanceof Error ? failure.reason : new Error(String(failure.reason));
   }
+
   return results;
 };
 
@@ -64,6 +71,7 @@ const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
 const deriveUsdcAta = async (owner: string, mint: string): Promise<string> => {
   const encoder = getAddressEncoder();
+
   const [ata] = await getProgramDerivedAddress({
     programAddress: toAddress(ASSOCIATED_TOKEN_PROGRAM),
     seeds: [
@@ -72,6 +80,7 @@ const deriveUsdcAta = async (owner: string, mint: string): Promise<string> => {
       encoder.encode(toAddress(mint)),
     ],
   });
+
   return ata;
 };
 
@@ -84,13 +93,16 @@ const scanEvmBurns = async (
   const latest = await provider.getBlockNumber();
   const fromBlock = Math.max(0, latest - EVM_LOOKBACK_BLOCKS);
   const depositorTopic = zeroPadValue(depositor.toLowerCase(), 32);
+
   const chunks = Array.from(
     { length: Math.ceil((latest - fromBlock + 1) / EVM_CHUNK_BLOCKS) },
     (_, index) => {
       const start = fromBlock + index * EVM_CHUNK_BLOCKS;
+
       return { end: Math.min(start + EVM_CHUNK_BLOCKS - 1, latest), start };
     },
   );
+
   const settledLogs = await Promise.allSettled(
     chunks.map(({ end, start }) =>
       provider.getLogs({
@@ -101,11 +113,14 @@ const scanEvmBurns = async (
       }),
     ),
   );
+
   const seen = new Set<string>();
   const burns: Array<DiscoveredBurn> = [];
+
   for (const result of settledLogs) {
     if (result.status === "fulfilled") {
       const logs = result.value;
+
       for (const log of logs) {
         if (!seen.has(log.transactionHash)) {
           seen.add(log.transactionHash);
@@ -114,14 +129,18 @@ const scanEvmBurns = async (
       }
     }
   }
+
   const partial = settledLogs.some((result) => result.status === "rejected");
+
   return { burns, fromBlock, partial, toBlock: latest };
 };
 
 const parsedAccountKeySchema = z.object({ pubkey: z.string() });
+
 const parsedMessageSchema = z.object({
   accountKeys: z.array(parsedAccountKeySchema),
 });
+
 const parsedTransactionSchema = z.object({ message: parsedMessageSchema.optional() });
 const parsedTxSchema = z.object({ transaction: parsedTransactionSchema.optional() }).nullable();
 
@@ -138,27 +157,34 @@ const scanSolanaBurns = async (
   let before: Signature | undefined;
   let totalFetched = 0;
   let reachedEnd = false;
+
   while (totalFetched < SOLANA_SIGNATURE_LIMIT) {
     const page = await rpc
       .getSignaturesForAddress(ownerAddress, { before, limit: SOLANA_PAGE_SIZE })
       .send();
+
     if (page.length === 0) {
       reachedEnd = true;
       break;
     }
+
     totalFetched += page.length;
+
     for (const entry of page) {
       if (entry.err === null) {
         candidates.push(entry.signature);
       }
     }
+
     const last = page.at(-1);
     before = last ? last.signature : before;
+
     if (page.length < SOLANA_PAGE_SIZE) {
       reachedEnd = true;
       break;
     }
   }
+
   const scanned = candidates.slice(0, SOLANA_SIGNATURE_LIMIT);
 
   const matches = await mapPool(scanned, SOLANA_TX_CONCURRENCY, async (signature) => {
@@ -170,7 +196,9 @@ const scanSolanaBurns = async (
           maxSupportedTransactionVersion: 0,
         })
         .send();
+
       const keys = parsedTxSchema.parse(tx)?.transaction?.message?.accountKeys;
+
       return keys?.some((k) => programSet.has(k.pubkey)) === true
         ? { sourceChain: spec.chain, txid: signature }
         : undefined;
@@ -178,11 +206,14 @@ const scanSolanaBurns = async (
       return undefined;
     }
   });
+
   const burns = matches.filter((burn) => burn !== undefined);
+
   return { burns, partial: !reachedEnd, scannedSignatures: scanned.length };
 };
 
 export type { DiscoveredBurn };
+
 export {
   EVM_LOOKBACK_BLOCKS,
   SOLANA_SIGNATURE_LIMIT,

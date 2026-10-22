@@ -26,6 +26,7 @@ const formatError = (error: Error | string): string => {
   if (error instanceof Error) {
     return error.message;
   }
+
   return error;
 };
 
@@ -53,9 +54,11 @@ const Connected = ({
 
   const account: Address = useMemo(() => {
     const candidate = wallet.account.walletAddress;
+
     if (!isAddress(candidate)) {
       throw new Error(`Invalid EVM address: ${candidate}`);
     }
+
     return candidate;
   }, [wallet.account.walletAddress]);
 
@@ -66,6 +69,7 @@ const Connected = ({
         : null,
     [account, signer.data],
   );
+
   const shownError = errorMsg ?? (signer.status === "error" ? signer.error.message : null);
 
   useEffect(() => {
@@ -74,6 +78,7 @@ const Connected = ({
     void (async () => {
       try {
         const wei = await publicClient.getBalance({ address: account });
+
         if (!cancelled) {
           setBalance(`${formatEther(wei)} ETH`);
         }
@@ -81,9 +86,11 @@ const Connected = ({
         if (!cancelled) {
           setBalance("error");
         }
+
         console.warn("getBalance failed:", error);
       }
     })();
+
     return () => {
       cancelled = true;
     };
@@ -93,7 +100,9 @@ const Connected = ({
     if (!walletClient) {
       return;
     }
+
     setErrorMsg(null);
+
     try {
       const sig = await walletClient.signMessage({ account, message: "Hello from butr + viem" });
       setSignature(sig);
@@ -106,7 +115,9 @@ const Connected = ({
     if (!walletClient) {
       return;
     }
+
     setErrorMsg(null);
+
     try {
       const hash = await walletClient.sendTransaction({
         account,
@@ -114,6 +125,7 @@ const Connected = ({
         to: BURN_ADDRESS,
         value: parseEther("0"),
       });
+
       setTxHash(hash);
     } catch (error) {
       setErrorMsg(formatError(error instanceof Error ? error : String(error)));

@@ -27,32 +27,41 @@ describeAdapterContract<SuiAdapter>({
   connect: (addresses) => {
     const calls: Array<ObservedCall> = [];
     const listeners = new Set<StandardEventsListener>();
+
     const execute: SuiSignAndExecuteTransactionFeature = {
       signAndExecuteTransaction: ({ account, chain }) => {
         calls.push({ address: account.address, chain });
+
         return Promise.resolve({ bytes: "", digest: "Digest", effects: "", signature: "" });
       },
     };
+
     const personalMessage: SuiSignPersonalMessageFeature = {
       signPersonalMessage: ({ account }) => {
         calls.push({ address: account.address });
+
         return Promise.resolve({ bytes: "AQ==", signature: "Ag==" });
       },
     };
+
     const signTransaction: SuiSignTransactionFeature = {
       signTransaction: ({ account, chain }) => {
         calls.push({ address: account.address, chain });
+
         return Promise.resolve({ bytes: "AQ==", signature: "Ag==" });
       },
     };
+
     const events: StandardEventsFeature = {
       on: (_event, listener) => {
         listeners.add(listener);
+
         return () => {
           listeners.delete(listener);
         };
       },
     };
+
     const adapter = buildSuiAdapter({
       accounts: addresses.map(walletAccount),
       chains: [SUI_CHAINS.mainnet.id, SUI_CHAINS.testnet.id],
@@ -67,9 +76,11 @@ describeAdapterContract<SuiAdapter>({
       name: "Contract Sui Wallet",
       version: "1.0.0",
     });
+
     if (adapter === null) {
       throw new Error("expected a sui adapter");
     }
+
     return Promise.resolve({
       adapter,
       lastCall: () => calls.at(-1),

@@ -29,7 +29,9 @@ const buildFakeEthCtor = (hooks: EthHooks = {}): EthAppConstructor =>
       if (hooks.getAddress !== undefined) {
         return hooks.getAddress(path);
       }
+
       const address = FAKE_ADDRESSES[indexOfPath(path)] ?? FAKE_ADDRESSES[0];
+
       return Promise.resolve({ address, publicKey: "0xpubkey" });
     }
     signPersonalMessage(
@@ -37,6 +39,7 @@ const buildFakeEthCtor = (hooks: EthHooks = {}): EthAppConstructor =>
       messageHex: string,
     ): Promise<{ r: string; s: string; v: number }> {
       hooks.onSign?.(path, messageHex);
+
       // Ledger drops leading zero bytes, so `r` arrives short.
       return Promise.resolve({ r: "aa".repeat(31), s: "bb".repeat(32), v: 27 });
     }
@@ -54,7 +57,9 @@ const connectedEvm = async (
     platform: "evm",
     transport: buildFakeTransport().factory,
   });
+
   await adapter.connect();
+
   return adapter;
 };
 
@@ -70,6 +75,7 @@ describe("createEvmLedgerAdapter", () => {
 
     expect(adapter).toMatchObject({ chainPlatform: "evm", id: "ledger", name: "Ledger" });
     expect(adapter.signMessage).toBeTypeOf("function");
+
     for (const method of [
       "getBalance",
       "getTransactionReceipt",
@@ -84,12 +90,14 @@ describe("createEvmLedgerAdapter", () => {
 
   it("reads every account once on connect, active first, on the registry's chain", async () => {
     const seen: Array<string> = [];
+
     const adapter = await connectedEvm({
       accountCount: 3,
       hooks: {
         getAddress: (path) => {
           seen.push(path);
           const address = FAKE_ADDRESSES[indexOfPath(path)] ?? "";
+
           return Promise.resolve({ address, publicKey: "0xpubkey" });
         },
       },
@@ -109,6 +117,7 @@ describe("createEvmLedgerAdapter", () => {
       platform: "evm",
       transport: buildFakeTransport().factory,
     });
+
     await onSepolia.connect();
     const [account] = await onSepolia.getAccounts();
     expect(account?.chain).toEqual(EVM_CHAINS.sepolia);
@@ -119,6 +128,7 @@ describe("createEvmLedgerAdapter", () => {
       platform: "evm",
       transport: buildFakeTransport().factory,
     });
+
     await onAnvil.connect();
     const [anvilAccount] = await onAnvil.getAccounts();
     expect(anvilAccount?.chain.name).toBe("eip155:31337");
@@ -136,6 +146,7 @@ describe("createEvmLedgerAdapter", () => {
 
   it("rejects a silent connect instead of prompting", async () => {
     const fake = buildFakeTransport();
+
     const adapter = await createEvmLedgerAdapter({
       eth: buildFakeEthCtor(),
       platform: "evm",
@@ -148,6 +159,7 @@ describe("createEvmLedgerAdapter", () => {
 
   it("disconnect() closes the transport and empties the accounts", async () => {
     const fake = buildFakeTransport();
+
     const adapter = await createEvmLedgerAdapter({
       eth: buildFakeEthCtor(),
       platform: "evm",
@@ -163,6 +175,7 @@ describe("createEvmLedgerAdapter", () => {
 
   it("a failed connect closes the transport and leaves the adapter disconnected", async () => {
     const fake = buildFakeTransport();
+
     const adapter = await createEvmLedgerAdapter({
       eth: buildFakeEthCtor({
         getAddress: () => Promise.reject(new Error("Ledger device is locked")),
@@ -181,13 +194,16 @@ describe("createEvmLedgerAdapter", () => {
   it("disconnect() during an in-flight connect() wins over the late addresses", async () => {
     const fake = buildFakeTransport();
     let release: (() => void) | undefined;
+
     const pending = new Promise<void>((resolve) => {
       release = resolve;
     });
+
     const adapter = await createEvmLedgerAdapter({
       eth: buildFakeEthCtor({
         getAddress: async () => {
           await pending;
+
           return { address: FAKE_ADDRESSES[0], publicKey: "0xpubkey" };
         },
       }),
@@ -206,6 +222,7 @@ describe("createEvmLedgerAdapter", () => {
 
   it("two concurrent connect() calls open exactly one transport", async () => {
     const fake = buildFakeTransport();
+
     const adapter = await createEvmLedgerAdapter({
       eth: buildFakeEthCtor(),
       platform: "evm",
@@ -219,6 +236,7 @@ describe("createEvmLedgerAdapter", () => {
 
   it("signMessage() returns r || s || v, each half padded to 32 bytes", async () => {
     const signed: Array<string> = [];
+
     const adapter = await connectedEvm({
       hooks: {
         onSign: (path) => {
@@ -239,6 +257,7 @@ describe("createEvmLedgerAdapter", () => {
 
   it("signMessage() signs as an exposed non-active account on its own path", async () => {
     const signed: Array<string> = [];
+
     const adapter = await connectedEvm({
       accountCount: 3,
       hooks: {
@@ -247,6 +266,7 @@ describe("createEvmLedgerAdapter", () => {
         },
       },
     });
+
     const accounts = await adapter.getAccounts();
     const third = accounts.at(2);
 
@@ -257,6 +277,7 @@ describe("createEvmLedgerAdapter", () => {
 
   it("signMessage() matches an address case-insensitively, as EIP-55 casing is a checksum", async () => {
     const signed: Array<string> = [];
+
     const adapter = await connectedEvm({
       accountCount: 2,
       hooks: {
@@ -265,6 +286,7 @@ describe("createEvmLedgerAdapter", () => {
         },
       },
     });
+
     const lowercase = buildAccount(FAKE_ADDRESSES[1].toLowerCase(), EVM_CHAINS.ethereum);
 
     await adapter.signMessage?.(hello, { account: lowercase });
@@ -278,6 +300,7 @@ describe("createEvmLedgerAdapter", () => {
     const signer = await adapter.getSigner();
 
     expect(signer.kind).toBe("ledger-evm");
+
     if (signer.kind === "ledger-evm") {
       await expect(signer.app.signTransaction("44'/60'/0'/0/0", "00")).resolves.toMatchObject({
         v: "1b",
@@ -324,6 +347,7 @@ describeAdapterContract<EvmAdapter>({
   chain: EVM_CHAINS.ethereum,
   connect: async (addresses) => {
     const calls: Array<ObservedCall> = [];
+
     const adapter = await createEvmLedgerAdapter({
       accountCount: addresses.length,
       eth: buildFakeEthCtor({
@@ -334,9 +358,11 @@ describeAdapterContract<EvmAdapter>({
       platform: "evm",
       transport: buildFakeTransport().factory,
     });
+
     if (addresses.length > 0) {
       await adapter.connect();
     }
+
     return { adapter, lastCall: () => calls.at(-1) };
   },
   move: "fixed",

@@ -24,10 +24,12 @@ const buildFakeSuiCtor = (hooks: SuiHooks = {}): SuiAppConstructor =>
     getPublicKey(path: string): Promise<{ address: Uint8Array; publicKey: Uint8Array }> {
       hooks.onGetPublicKey?.(path);
       const index = indexOfPath(path);
+
       return Promise.resolve({ address: addressAt(index), publicKey: publicKeyAt(index) });
     }
     signTransaction(path: string, intentMessage: Uint8Array): Promise<{ signature: Uint8Array }> {
       hooks.onSignTransaction?.(path, intentMessage);
+
       return Promise.resolve({ signature: SIGNATURE });
     }
   };
@@ -39,7 +41,9 @@ const connectedSui = async (hooks: SuiHooks = {}): Promise<SuiAdapter> => {
     sui: buildFakeSuiCtor(hooks),
     transport: buildFakeTransport().factory,
   });
+
   await adapter.connect();
+
   return adapter;
 };
 
@@ -53,6 +57,7 @@ describe("createSuiLedgerAdapter", () => {
 
     expect(adapter.chainPlatform).toBe("sui");
     expect(adapter.signTransaction).toBeTypeOf("function");
+
     for (const method of ["getBalance", "sendTx", "signMessage", "subscribe", "switchChain"]) {
       expect(adapter).not.toHaveProperty(method);
     }
@@ -60,6 +65,7 @@ describe("createSuiLedgerAdapter", () => {
 
   it("derives 0x-hex accounts on hardened five-segment paths", async () => {
     const seen: Array<string> = [];
+
     const adapter = await connectedSui({
       onGetPublicKey: (path) => {
         seen.push(path);
@@ -75,11 +81,13 @@ describe("createSuiLedgerAdapter", () => {
 
   it("signTransaction() signs the TransactionData intent and serializes the signature", async () => {
     const received: Array<{ intentMessage: Uint8Array; path: string }> = [];
+
     const adapter = await connectedSui({
       onSignTransaction: (path, intentMessage) => {
         received.push({ intentMessage, path });
       },
     });
+
     const tx = Uint8Array.of(1, 2, 3, 4);
 
     const signed = await adapter.signTransaction?.(tx);
@@ -94,11 +102,13 @@ describe("createSuiLedgerAdapter", () => {
 
   it("signTransaction() signs as a non-active account with that account's key", async () => {
     const received: Array<string> = [];
+
     const adapter = await connectedSui({
       onSignTransaction: (path) => {
         received.push(path);
       },
     });
+
     const accounts = await adapter.getAccounts();
     const third = accounts.at(2);
 
@@ -110,6 +120,7 @@ describe("createSuiLedgerAdapter", () => {
 
   it("signTransaction() signs base64 BCS bytes as the bytes they encode", async () => {
     const received: Array<Uint8Array> = [];
+
     const adapter = await connectedSui({
       onSignTransaction: (_path, intentMessage) => {
         received.push(intentMessage);
@@ -146,6 +157,7 @@ describe("createSuiLedgerAdapter", () => {
       sui: buildFakeSuiCtor(),
       transport: buildFakeTransport().factory,
     });
+
     await adapter.connect();
 
     const [account] = await adapter.getAccounts();
@@ -160,6 +172,7 @@ describeAdapterContract<SuiAdapter>({
   chain: SUI_CHAINS.mainnet,
   connect: async (addresses) => {
     const calls: Array<ObservedCall> = [];
+
     const adapter = await createSuiLedgerAdapter({
       accountCount: addresses.length,
       platform: "sui",
@@ -171,9 +184,11 @@ describeAdapterContract<SuiAdapter>({
       }),
       transport: buildFakeTransport().factory,
     });
+
     if (addresses.length > 0) {
       await adapter.connect();
     }
+
     return { adapter, lastCall: () => calls.at(-1) };
   },
   move: "fixed",

@@ -12,6 +12,7 @@ if (!("Buffer" in globalThis)) {
 }
 
 const root = document.querySelector("#root");
+
 if (!root) {
   throw new Error("#root not found");
 }

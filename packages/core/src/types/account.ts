@@ -29,4 +29,5 @@ type Balance = {
 };
 
 export type { Account, Balance };
+
 export { buildAccount };

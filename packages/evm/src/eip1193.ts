@@ -5,6 +5,7 @@
  */
 
 type Eip1193Object = { [key: string]: Eip1193Value | undefined };
+
 type Eip1193Value =
   | bigint
   | boolean
@@ -57,6 +58,7 @@ const requestString = async (
   args: Eip1193RequestArgs,
 ): Promise<string | null> => {
   const result = await provider.request(args);
+
   return typeof result === "string" ? result : null;
 };
 
@@ -65,6 +67,7 @@ const requestStringArray = async (
   args: Eip1193RequestArgs,
 ): Promise<Array<string>> => {
   const result = await provider.request(args);
+
   return Array.isArray(result)
     ? result.filter((item): item is string => typeof item === "string")
     : [];

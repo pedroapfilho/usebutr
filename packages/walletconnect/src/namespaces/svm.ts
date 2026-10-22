@@ -21,6 +21,7 @@ const SOLANA_NAMESPACE = "solana";
 const GENESIS_IDS: ReadonlyMap<string, string> = new Map(
   SVM_CHAINS_LIST.map((chain) => [chain.id, chain.aliases?.[0] ?? chain.id]),
 );
+
 const [SOLANA_MAINNET] = SVM_CHAINS.mainnet.aliases;
 
 const DEFAULT_CHAINS: ReadonlyArray<string> = [SOLANA_MAINNET];
@@ -55,39 +56,49 @@ const solanaNamespace: WalletConnectNamespaceBuilder<SvmAdapter> = {
 
       async sendTx(tx, options) {
         const { address, chainId } = resolveTarget(options);
+
         const result = await request(
           "solana_signAndSendTransaction",
           { pubkey: address, transaction: bytesToBase64(tx) },
           chainId,
         );
+
         return readResultString(result, "signature", "solana_signAndSendTransaction");
       },
 
       async signMessage(message, options) {
         const { address, chainId } = resolveTarget({ account: options?.account });
+
         // The WalletConnect Solana RPC carries the message base58-encoded.
         const result = await request(
           "solana_signMessage",
           { message: bytesToBase58(message), pubkey: address },
           chainId,
         );
+
         const signature = readResultString(result, "signature", "solana_signMessage");
+
         return { signature: base58ToBytes(signature), signedMessage: message };
       },
 
       async signTransaction(tx, options) {
         const { address, chainId } = resolveTarget(options);
         const transaction = prepareSolanaTransaction(tx, address);
+
         const result = await request(
           "solana_signTransaction",
           { pubkey: address, transaction: bytesToBase64(tx) },
           chainId,
         );
+
         const signed = readStringField(result, "transaction");
+
         if (signed !== undefined && signed !== "") {
           return base64ToBytes(signed);
         }
+
         const signature = readResultString(result, "signature", "solana_signTransaction");
+
         return transaction.withSignature(base58ToBytes(signature));
       },
     };

@@ -23,6 +23,7 @@ type UseConnectResult = {
  *  is a stable reference. */
 const useConnect = (): UseConnectResult => {
   const manager = useWalletManager();
+
   const attempt = useStoreWithEqualityFn(
     manager,
     (state) => ({
@@ -32,6 +33,7 @@ const useConnect = (): UseConnectResult => {
     }),
     shallow,
   );
+
   const connect = useCallback(
     (connectorId: string) => {
       void (async () => {
@@ -44,6 +46,7 @@ const useConnect = (): UseConnectResult => {
     },
     [manager],
   );
+
   return {
     ...attempt,
     connect,
@@ -53,4 +56,5 @@ const useConnect = (): UseConnectResult => {
 };
 
 export type { UseConnectResult };
+
 export { useConnect };

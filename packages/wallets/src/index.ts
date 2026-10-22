@@ -1,4 +1,5 @@
 export type { AutoDiscoveryOptions } from "./auto-discovery";
+
 export { autoDiscovery } from "./auto-discovery";
 
 // Loads each platform's signer kinds into `WalletSigner`, so an app that

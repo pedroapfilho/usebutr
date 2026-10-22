@@ -42,6 +42,7 @@ describe("getFeature", () => {
       connect: () => Promise.resolve({ accounts: [] }),
       version: "1.0.0",
     };
+
     const w = wallet({ features: { "standard:connect": connectFeature } });
     expect(getFeature<StandardConnectFeature>(w, "standard:connect", "connect")).toBe(
       connectFeature,

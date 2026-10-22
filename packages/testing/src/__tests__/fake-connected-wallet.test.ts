@@ -19,6 +19,7 @@ describe("createFakeConnectedWallet", () => {
       chain: SUI_CHAINS.testnet,
       chainPlatform: "sui",
     });
+
     expect(wallet.accounts).toEqual([
       buildAccount("0xa", SUI_CHAINS.testnet),
       buildAccount("0xb", SUI_CHAINS.testnet),
@@ -28,12 +29,14 @@ describe("createFakeConnectedWallet", () => {
 
   it("takes prebuilt accounts and adapter options", async () => {
     const account = buildAccount("0xabc", SUI_CHAINS.mainnet);
+
     const wallet = createFakeConnectedWallet({
       accounts: [account],
       chainPlatform: "sui",
       id: "suiet",
       omit: ["signTransaction"],
     });
+
     expect(wallet.connector.id).toBe("suiet");
     expect(wallet.connector.signTransaction).toBeUndefined();
     expect(await wallet.connector.signMessage?.(new Uint8Array([1]))).toBeDefined();

@@ -12,4 +12,5 @@ const PLATFORMS: ReadonlySet<string> = new Set(CHAIN_PLATFORMS);
 const isChainPlatform = (value: string): value is ChainPlatform => PLATFORMS.has(value);
 
 export type { ChainPlatform };
+
 export { CHAIN_PLATFORMS, isChainPlatform };

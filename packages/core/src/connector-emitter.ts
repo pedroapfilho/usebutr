@@ -13,6 +13,7 @@ type ConnectorEmitter = {
 
 const createConnectorEmitter = (): ConnectorEmitter => {
   const listeners = new Set<ConnectorListener>();
+
   return {
     emit: (event) => {
       for (const listener of listeners) {
@@ -22,6 +23,7 @@ const createConnectorEmitter = (): ConnectorEmitter => {
     listenerCount: () => listeners.size,
     subscribe: (listener) => {
       listeners.add(listener);
+
       return () => {
         listeners.delete(listener);
       };
@@ -30,4 +32,5 @@ const createConnectorEmitter = (): ConnectorEmitter => {
 };
 
 export type { ConnectorEmitter };
+
 export { createConnectorEmitter };

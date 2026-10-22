@@ -34,8 +34,10 @@ const walletStandardWallet = (
 const requestParam = (provider: FakeProvider, key: string): Asked => {
   const params = Object.entries(provider.requests.at(-1)?.args.params ?? {});
   const value = params.find(([name]) => name === key)?.[1];
+
   return typeof value === "string" ? value : undefined;
 };
 
 export type { Transport };
+
 export { ledgerTransport, requestParam, walletStandardWallet };

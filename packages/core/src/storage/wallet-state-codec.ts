@@ -61,36 +61,45 @@ const parseRecord = (raw: string | null | undefined, what: string) => {
   if (raw === null || raw === undefined || raw === "") {
     return {};
   }
+
   try {
     const parsed = recordSchema.safeParse(JSON.parse(raw));
+
     return parsed.success ? parsed.data : {};
   } catch (error) {
     logWarn(`${LABEL} failed to parse ${what} from storage:`, error);
+
     return {};
   }
 };
 
 const decodePool = (raw: string | null | undefined): StoredPoolRecord => {
   const result: StoredPoolRecord = {};
+
   for (const [key, value] of Object.entries(parseRecord(raw, "pool"))) {
     const entry = storedPoolEntrySchema.safeParse(value);
+
     if (entry.success && entry.data.connectorId === key) {
       result[key] = entry.data;
     } else {
       logWarn(`${LABEL} dropping invalid pool entry for ${key}`);
     }
   }
+
   return result;
 };
 
 const decodeSelection = (raw: string | null | undefined): StoredSelectionRecord => {
   const result: StoredSelectionRecord = {};
+
   for (const [key, value] of Object.entries(parseRecord(raw, "selection"))) {
     const platform = chainPlatformSchema.safeParse(key);
+
     if (platform.success && typeof value === "string" && value.length > 0) {
       result[platform.data] = value;
     }
   }
+
   return result;
 };
 
@@ -117,6 +126,7 @@ const toStoredPoolEntry = (wallet: ConnectedWallet): StoredPoolEntry => ({
  */
 const createWalletStateCodec = (keyPrefix?: string) => {
   const prefix = keyPrefix === undefined || keyPrefix === "" ? DEFAULT_KEY_PREFIX : keyPrefix;
+
   const keys = {
     active: `${prefix}-active`,
     pool: `${prefix}-pool`,
@@ -157,4 +167,5 @@ const createWalletStateCodec = (keyPrefix?: string) => {
 };
 
 export type { StorageSlot };
+
 export { createWalletStateCodec, EMPTY_PERSISTED, toStoredPoolEntry };

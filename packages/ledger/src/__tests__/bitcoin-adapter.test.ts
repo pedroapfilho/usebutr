@@ -36,6 +36,7 @@ const buildFakeBtcCtor = (hooks: BtcHooks = {}): BtcAppConstructor =>
     ): Promise<{ bitcoinAddress: string; chainCode: string; publicKey: string }> {
       hooks.onGetWalletPublicKey?.(path, opts?.format);
       const prefix = PREFIX_BY_FORMAT[opts?.format ?? "legacy"];
+
       return Promise.resolve({
         bitcoinAddress: `${prefix}fakeaddr${indexOfPath(path)}`,
         chainCode: "aa".repeat(32),
@@ -44,6 +45,7 @@ const buildFakeBtcCtor = (hooks: BtcHooks = {}): BtcAppConstructor =>
     }
     signMessage(path: string, messageHex: string): Promise<{ r: string; s: string; v: number }> {
       hooks.onSignMessage?.(path, messageHex);
+
       return Promise.resolve({ r: "ab".repeat(32), s: "cd".repeat(31), v: 1 });
     }
     signPsbtBuffer(
@@ -51,6 +53,7 @@ const buildFakeBtcCtor = (hooks: BtcHooks = {}): BtcAppConstructor =>
       options: { accountPath: string },
     ): Promise<{ psbt: Uint8Array; tx?: string }> {
       hooks.onSignPsbt?.(options.accountPath);
+
       return Promise.resolve({ psbt: Uint8Array.of(...psbtBuffer, 0xef) });
     }
   };
@@ -66,7 +69,9 @@ const connectedBitcoin = async (
     ...options,
     platform: "bitcoin",
   });
+
   await adapter.connect();
+
   return adapter;
 };
 
@@ -81,6 +86,7 @@ describe("createBitcoinLedgerAdapter", () => {
     expect(adapter.chainPlatform).toBe("bitcoin");
     expect(adapter.signMessage).toBeTypeOf("function");
     expect(adapter.signTransaction).toBeTypeOf("function");
+
     for (const method of ["getBalance", "sendTx", "subscribe", "switchChain"]) {
       expect(adapter).not.toHaveProperty(method);
     }
@@ -88,6 +94,7 @@ describe("createBitcoinLedgerAdapter", () => {
 
   it("derives bech32 accounts on BIP-84 paths with a non-hardened index", async () => {
     const seen: Array<string> = [];
+
     const adapter = await connectedBitcoin({
       onGetWalletPublicKey: (path, format) => {
         seen.push(`${path} ${format}`);
@@ -102,6 +109,7 @@ describe("createBitcoinLedgerAdapter", () => {
 
   it("honours a custom addressFormat, path prefix and chain", async () => {
     const seen: Array<string> = [];
+
     const adapter = await connectedBitcoin(
       {
         onGetWalletPublicKey: (path) => {
@@ -124,6 +132,7 @@ describe("createBitcoinLedgerAdapter", () => {
 
   it("signMessage() returns a BIP-137 compact signature: header, then padded r and s", async () => {
     const signed: Array<string> = [];
+
     const adapter = await connectedBitcoin({
       onSignMessage: (path, hex) => {
         signed.push(`${path} ${hex}`);
@@ -141,11 +150,13 @@ describe("createBitcoinLedgerAdapter", () => {
 
   it("signTransaction() hands the PSBT to the device under the account's path", async () => {
     const accountPaths: Array<string> = [];
+
     const adapter = await connectedBitcoin({
       onSignPsbt: (path) => {
         accountPaths.push(path);
       },
     });
+
     const accounts = await adapter.getAccounts();
     const third = accounts.at(2);
 
@@ -177,6 +188,7 @@ describeAdapterContract<BitcoinAdapter>({
   chain: BITCOIN_CHAINS.mainnet,
   connect: async (addresses) => {
     const calls: Array<ObservedCall> = [];
+
     const adapter = await createBitcoinLedgerAdapter({
       accountCount: addresses.length,
       btc: buildFakeBtcCtor({
@@ -190,9 +202,11 @@ describeAdapterContract<BitcoinAdapter>({
       platform: "bitcoin",
       transport: buildFakeTransport().factory,
     });
+
     if (addresses.length > 0) {
       await adapter.connect();
     }
+
     return { adapter, lastCall: () => calls.at(-1) };
   },
   move: "fixed",

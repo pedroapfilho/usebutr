@@ -29,4 +29,5 @@ const WalletProvider = ({ children, initialState }: WalletProviderProps) => (
 );
 
 export { WalletProvider };
+
 export { useDiscoveredWallets } from "@usebutr/react";

@@ -44,6 +44,7 @@ const DestHint = ({
       </p>
     );
   }
+
   if (walletMissing) {
     return (
       <p className="text-warning-foreground text-xs">
@@ -51,6 +52,7 @@ const DestHint = ({
       </p>
     );
   }
+
   if (!ownedByActive) {
     return (
       <p className="text-warning-foreground text-xs">
@@ -60,12 +62,14 @@ const DestHint = ({
       </p>
     );
   }
+
   return null;
 };
 
 const PendingTransfers = () => {
   const evmWallet = useSelectedWallet("evm");
   const svmWallet = useSelectedWallet("svm");
+
   const {
     dismiss,
     error: scanError,
@@ -74,9 +78,11 @@ const PendingTransfers = () => {
     state,
     summary,
   } = usePendingTransfers(evmWallet, svmWallet);
+
   const [rows, setRows] = useState<Record<string, RowStatus>>({});
 
   const noWallets = !evmWallet && !svmWallet;
+
   const setRow = (key: string, status: RowStatus) => {
     setRows((current) => ({ ...current, [key]: status }));
   };
@@ -84,16 +90,21 @@ const PendingTransfers = () => {
   const handleComplete = async (item: ResumableTransfer) => {
     const destSpec = findChainSpec(item.destChain);
     const destWallet = destSpec?.platform === "evm" ? evmWallet : svmWallet;
+
     if (!destSpec || !destWallet) {
       return;
     }
+
     setRow(item.key, { kind: "redeeming" });
+
     try {
       const wh = getWormhole();
+
       const xfer = await CircleTransfer.from(wh, {
         chain: item.sourceChain,
         txid: item.sourceTxid,
       });
+
       await xfer.fetchAttestation(ATTESTATION_TIMEOUT_MS);
       const signer = await makeSigner(destSpec, destWallet);
       const txids = await xfer.completeTransfer(signer);
@@ -156,6 +167,7 @@ const PendingTransfers = () => {
         const row = rows[item.key] ?? { kind: "idle" };
         const srcSpec = getChainSpec(item.sourceChain);
         const blocked = !destSpec || !destWallet || !item.destOwnedByActive;
+
         return (
           <div
             className="border-border-default space-y-2 rounded-lg border bg-white p-4"

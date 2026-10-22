@@ -35,6 +35,7 @@ const useDiscoveredWallets = (): ReadonlyArray<WalletAdapter> =>
 /** The pool as an array; stable while the pool is unchanged. */
 const useConnectedWallets = (): ReadonlyArray<ConnectedWallet> => {
   const pool = useStore(useWalletManager(), (state) => state.pool);
+
   return useMemo(() => [...pool.values()], [pool]);
 };
 
@@ -47,6 +48,7 @@ const useWallet = (connectorId?: string | null): ConnectedWallet | undefined =>
     useWalletManager(),
     (state) => {
       const id = resolveId(state, connectorId);
+
       return id === null ? undefined : state.pool.get(id);
     },
     walletEqual,
@@ -60,10 +62,12 @@ const useSelectedWallet = <P extends ChainPlatform>(
     useWalletManager(),
     (state) => {
       const id = state.selection.get(platform);
+
       return id === undefined ? undefined : state.pool.get(id);
     },
     walletEqual,
   );
+
   return wallet !== undefined && isPlatformWallet(wallet, platform) ? wallet : undefined;
 };
 
@@ -73,6 +77,7 @@ const useAccounts = (connectorId?: string | null): ReadonlyArray<Account> =>
     useWalletManager(),
     (state) => {
       const id = resolveId(state, connectorId);
+
       return (id === null ? undefined : state.pool.get(id)?.accounts) ?? EMPTY_ACCOUNTS;
     },
     accountsEqual,
@@ -90,9 +95,11 @@ const useConnectionStatus = (): ConnectionStatus =>
     if (state.connectionStatus === "connecting") {
       return "connecting";
     }
+
     if (state.activeConnectorId === null) {
       return "disconnected";
     }
+
     return state.reconnectingIds.has(state.activeConnectorId) ? "reconnecting" : "connected";
   });
 
@@ -108,10 +115,12 @@ const useIsHydrated = (): boolean => useStore(useWalletManager(), (state) => sta
 const useIsReconnecting = (connectorId?: string | null): boolean =>
   useStore(useWalletManager(), (state) => {
     const id = resolveId(state, connectorId);
+
     return id !== null && state.reconnectingIds.has(id);
   });
 
 export type { ConnectionStatus };
+
 export {
   useAccounts,
   useConnectedWallets,

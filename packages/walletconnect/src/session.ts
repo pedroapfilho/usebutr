@@ -48,12 +48,15 @@ const createWalletConnectSession = ({
     if (onPairingUri === undefined || displayUriListener !== null) {
       return;
     }
+
     const listener: Eip1193Listener = (...args) => {
       const uri = args[0];
+
       if (typeof uri === "string") {
         onPairingUri(uri);
       }
     };
+
     displayUriListener = listener;
     provider.on("display_uri", listener);
   };
@@ -62,6 +65,7 @@ const createWalletConnectSession = ({
     if (displayUriListener === null) {
       return;
     }
+
     provider.removeListener("display_uri", displayUriListener);
     displayUriListener = null;
   };
@@ -82,8 +86,10 @@ const createWalletConnectSession = ({
     if (provider.session) {
       return;
     }
+
     pairing ??= (async () => {
       attachPairingListener();
+
       try {
         await provider.connect({ namespaces: { ...namespaces }, optionalNamespaces: optional });
       } finally {
@@ -96,29 +102,37 @@ const createWalletConnectSession = ({
   return {
     lifecycle: (namespace, label) => {
       const member = Symbol(namespace);
+
       return {
         async connect(options) {
           if (!hasNamespace(namespace)) {
             if (options?.silent === true && !provider.session) {
               throw new Error("No WalletConnect session for silent reconnect");
             }
+
             await ensurePaired();
+
             if (!hasNamespace(namespace)) {
               throw missingNamespaceError(namespace, label);
             }
           }
+
           connected.add(member);
         },
 
         async disconnect() {
           connected.delete(member);
+
           if (connected.size > 0) {
             return;
           }
+
           detachPairingListener();
+
           if (!provider.session) {
             return;
           }
+
           try {
             await provider.disconnect();
           } catch (error) {
@@ -151,4 +165,5 @@ const createSingleNamespaceSession = (input: {
   });
 
 export type { PairingRequest, WalletConnectSession };
+
 export { createSingleNamespaceSession, createWalletConnectSession };

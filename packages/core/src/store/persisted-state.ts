@@ -36,9 +36,11 @@ const toPersistedState = ({
   selection,
 }: ReturnType<typeof persistedSlice>): PersistedWalletState => {
   const stored: StoredPoolRecord = Object.fromEntries(dormant);
+
   for (const [connectorId, wallet] of pool) {
     stored[connectorId] = toStoredPoolEntry(wallet);
   }
+
   return {
     activeConnectorId,
     isUserDisconnected,
@@ -57,6 +59,7 @@ const applyStoredSelection = (
   pool: ReadonlyMap<string, ConnectedWallet>,
 ): ReadonlyMap<ChainPlatform, string> => {
   let next = selection;
+
   for (const [platform, id] of Object.entries(stored)) {
     if (
       isChainPlatform(platform) &&
@@ -66,6 +69,7 @@ const applyStoredSelection = (
       next = new Map(next).set(platform, id);
     }
   }
+
   return next;
 };
 
@@ -77,12 +81,14 @@ const snapshotState = (
   snapshot: WalletSnapshot,
 ): Pick<WalletState, "activeConnectorId" | "dormant" | "pool" | "selection"> => {
   const entries = storedEntries(snapshot.pool);
+
   const pool = new Map<string, ConnectedWallet>(
     entries.map(([connectorId, entry]) => [
       connectorId,
       { account: entry.account, accounts: entry.accounts, connector: createShadowAdapter(entry) },
     ]),
   );
+
   return {
     activeConnectorId: snapshot.activeConnectorId,
     dormant: new Map(entries),

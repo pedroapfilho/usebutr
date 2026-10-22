@@ -10,12 +10,14 @@ type FakeTransport = {
 
 const buildFakeTransport = (): FakeTransport => {
   const created: Array<TransportLike> = [];
+
   return {
     created,
     factory: {
       create: () => {
         const transport: TransportLike = { close: vi.fn().mockResolvedValue(undefined) };
         created.push(transport);
+
         return Promise.resolve(transport);
       },
     },

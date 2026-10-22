@@ -36,6 +36,7 @@ const REQUIRED = [
   "getSigner",
   "requests",
 ];
+
 const IDENTITY = ["icon", "id", "listenerCount", "name"];
 
 describe("createFakeAdapter", () => {
@@ -82,6 +83,7 @@ describe("createFakeAdapter", () => {
       id: "phantom",
       name: "Phantom",
     });
+
     expect(adapter).toMatchObject({ icon: "data:image/svg+xml,x", id: "phantom", name: "Phantom" });
     expect(await adapter.getAccounts()).toEqual([
       buildAccount("So11111111111111111111111111111111111111112", SVM_CHAINS.mainnet),
@@ -108,6 +110,7 @@ describe("createFakeAdapter", () => {
           balance: 15n * 10n ** BigInt(decimals - 1),
           chainPlatform,
         });
+
         expect(await adapter.getBalance?.()).toEqual({
           decimals,
           formatted: "1.5",
@@ -164,6 +167,7 @@ describe("createFakeAdapter", () => {
       const adapter = createFakeAdapter({ accounts: [first] });
       const attempt = adapter.signMessage?.(message, { account: second });
       expect(attempt).toBeInstanceOf(Promise);
+
       return expect(attempt).rejects.toMatchObject({ kind: "AccountNotExposed" });
     });
   });
@@ -292,10 +296,12 @@ describe("createFakeAdapter", () => {
 
     it("replaces members with overrides", async () => {
       const rejected = new Error("user rejected");
+
       const adapter = createFakeAdapter({
         chainPlatform: "svm",
         overrides: { connect: () => Promise.reject(rejected) },
       });
+
       await expect(adapter.connect()).rejects.toBe(rejected);
     });
 

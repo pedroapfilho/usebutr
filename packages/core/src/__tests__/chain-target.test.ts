@@ -91,6 +91,7 @@ describe("routed chain target", () => {
 
 const switching = (overrides: { current?: string; unknownChain?: boolean } = {}) => {
   const switchTo = vi.fn<(chain: ChainBase) => Promise<void>>().mockResolvedValue();
+
   const target = createSwitchingChainTarget({
     canSwitch: (chain) => chain.id !== BITCOIN_CHAINS.signet.id,
     current: () => Promise.resolve(overrides.current ?? BITCOIN_CHAINS.mainnet.id),
@@ -99,6 +100,7 @@ const switching = (overrides: { current?: string; unknownChain?: boolean } = {})
     unknownChain: () => overrides.unknownChain ?? false,
     wallet: "Unisat",
   });
+
   return { switchTo, target };
 };
 

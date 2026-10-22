@@ -5,6 +5,7 @@ import { svgText } from "@repo/social-image";
 
 const logo = await readFile(join(process.cwd(), "public/butr-logo-light.svg"), "base64");
 const COLORS = { accent: "#fdd754", ink: "#171717", muted: "#525252", paper: "#ffffff" };
+
 const OgCard = ({ description, title }: { description?: string; title: string }) => (
   <svg height={630} viewBox="0 0 1200 630" width={1200}>
     <rect fill={COLORS.paper} height={630} width={1200} />
@@ -22,4 +23,5 @@ const OgCard = ({ description, title }: { description?: string; title: string })
     {svgText("docs.usebutr.com", { color: COLORS.muted, size: 22, x: 72, y: 560 })}
   </svg>
 );
+
 export { OgCard };

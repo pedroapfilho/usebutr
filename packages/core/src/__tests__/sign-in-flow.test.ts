@@ -21,6 +21,7 @@ const siwsOutput: SignInOutput = {
 const flow = (options: { preferSignMessage?: boolean } = {}) => {
   const getNonce = vi.fn(() => Promise.resolve("n-1"));
   const verify = vi.fn(() => Promise.resolve());
+
   return { getNonce, verify, ...createSignInFlow({ getNonce, verify, ...options }) };
 };
 
@@ -39,6 +40,7 @@ describe("createSignInFlow", () => {
     const wallet = walletOf(evmAdapter("metamask", { signMessage: echo }));
     const getNonce = vi.fn(() => Promise.resolve("n-1"));
     const verify = vi.fn(() => Promise.resolve());
+
     const { signIn } = createSignInFlow({
       buildMessage: ({ account, nonce }) => `${account.walletAddress} ${nonce}`,
       getNonce,
@@ -131,10 +133,12 @@ describe("createSignInFlow", () => {
 
   it("propagates a rejection from verify", async () => {
     const wallet = walletOf(evmAdapter("metamask", { signMessage: echo }));
+
     const { signIn } = createSignInFlow({
       getNonce: () => Promise.resolve("n-1"),
       verify: () => Promise.reject(new Error("bad signature")),
     });
+
     await expect(signIn(wallet)).rejects.toThrow("bad signature");
   });
 });

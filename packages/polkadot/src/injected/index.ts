@@ -9,18 +9,23 @@ const knownDisplayNameFor = (key: string): string | undefined => {
     case "enkrypt": {
       return "Enkrypt";
     }
+
     case "nova-wallet": {
       return "Nova Wallet";
     }
+
     case "polkadot-js": {
       return "Polkadot{.js}";
     }
+
     case "subwallet-js": {
       return "SubWallet";
     }
+
     case "talisman": {
       return "Talisman";
     }
+
     default: {
       return undefined;
     }
@@ -62,30 +67,37 @@ const discoverInjectedPolkadotAdapters = (
     if (cancelled) {
       return;
     }
+
     const host = readInjectedWindow(options.target);
     const registry = host?.injectedWeb3;
+
     if (!registry) {
       return;
     }
+
     for (const [key, provider] of Object.entries(registry)) {
       if (seen.has(key)) {
         continue;
       }
+
       seen.add(key);
       onAdapter(buildInjectedPolkadotAdapter(key, displayNameFor(key), provider));
     }
   };
 
   scan();
+
   for (const offset of polls) {
     if (offset === 0) {
       continue;
     }
+
     timers.push(setTimeout(scan, offset));
   }
 
   return () => {
     cancelled = true;
+
     for (const timer of timers) {
       clearTimeout(timer);
     }
@@ -93,4 +105,5 @@ const discoverInjectedPolkadotAdapters = (
 };
 
 export type { InjectedPolkadotDiscoveryOptions };
+
 export { discoverInjectedPolkadotAdapters };

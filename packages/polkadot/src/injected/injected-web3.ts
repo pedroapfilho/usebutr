@@ -53,12 +53,16 @@ const readInjectedWindow = (target?: InjectedWindow | null): InjectedWindow | nu
   if (target !== undefined) {
     return target;
   }
+
   if (typeof window === "undefined") {
     return null;
   }
+
   return window;
 };
 
 export type { Injected, InjectedAccount, InjectedSigner, InjectedWindow, InjectedWindowProvider };
+
 export { bytesToHexPrefixed as bytesToHex, hexToBytes } from "@usebutr/core";
+
 export { readInjectedWindow };

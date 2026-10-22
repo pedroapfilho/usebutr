@@ -15,6 +15,7 @@ const rabby = walletOf(evmAdapter("rabby"));
 const phantom = walletOf(svmAdapter("phantom"));
 const rabbyShadow = shadowOf(rabby);
 const phantomShadow = shadowOf(phantom);
+
 const dormantEntries = new Map([
   ["metamask", toStoredPoolEntry(metamask)],
   ["rabby", toStoredPoolEntry(rabby)],
@@ -47,6 +48,7 @@ describe("reconcile", () => {
         reconnectingIds: new Set(["metamask", "gone"]),
       }),
     );
+
     expect([...state.reconnectingIds]).toEqual(["rabby", "phantom"]);
     expect(reconcile({ ...state, activeConnectorId: null }).reconnectingIds).toBe(
       state.reconnectingIds,
@@ -57,6 +59,7 @@ describe("reconcile", () => {
     const state = reconcile(
       stateWith({ dormant: dormantEntries, pool: poolOf(metamask, rabbyShadow) }),
     );
+
     expect([...state.dormant.keys()]).toEqual(["rabby", "phantom"]);
   });
 
@@ -81,6 +84,7 @@ describe("reconcile", () => {
         ]),
       }),
     );
+
     expect(state.selection).toEqual(new Map([["evm", "rabby"]]));
   });
 

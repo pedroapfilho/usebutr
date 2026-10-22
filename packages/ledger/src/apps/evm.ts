@@ -44,6 +44,7 @@ const createEvmLedgerAdapter = async (options: EvmLedgerOptions): Promise<EvmAda
   const core = await createLedgerAdapterCore<EthAppLike>(options, {
     addressAt: async (eth, path) => {
       const { address } = await eth.getAddress(path);
+
       return address;
     },
     chains: EVM_CHAINS_LIST,
@@ -58,6 +59,7 @@ const createEvmLedgerAdapter = async (options: EvmLedgerOptions): Promise<EvmAda
           "@ledgerhq/hw-app-eth",
           isClassWith<EthAppConstructor>("getAddress", "signPersonalMessage"),
         ));
+
       return (transport) => new Eth(transport);
     },
     signer: (app) => ({ app, kind: "ledger-evm" }),
@@ -69,10 +71,12 @@ const createEvmLedgerAdapter = async (options: EvmLedgerOptions): Promise<EvmAda
     async signMessage(message, signOptions) {
       const { app, path } = core.resolve(signOptions);
       const { r, s, v } = await app.signPersonalMessage(path, bytesToHex(message));
+
       return { signature: Uint8Array.of(...rsBytes(r, s), v), signedMessage: message };
     },
   };
 };
 
 export type { EthAppConstructor, EthAppLike, EvmLedgerOptions };
+
 export { createEvmLedgerAdapter };

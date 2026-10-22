@@ -25,10 +25,13 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
 
   const detach = (connectorId: string) => {
     const subscription = live.get(connectorId);
+
     if (subscription === undefined) {
       return;
     }
+
     live.delete(connectorId);
+
     try {
       subscription.unsubscribe();
     } catch (error) {
@@ -40,22 +43,28 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
     if (connector.subscribe === undefined) {
       return;
     }
+
     const disconnected = () => {
       detach(connectorId);
       handlers.onDisconnected(connectorId);
     };
+
     try {
       const unsubscribe = connector.subscribe((event) => {
         // Ignore events from a connector that has since been replaced.
         if (live.get(connectorId)?.connector !== connector) {
           return;
         }
+
         if (event.type === "disconnected" || event.accounts.length === 0) {
           disconnected();
+
           return;
         }
+
         handlers.onAccountsChanged(connectorId, event.accounts);
       });
+
       live.set(connectorId, { connector, unsubscribe });
     } catch (error) {
       logWarn(`[butr] subscribe failed for ${connectorId}:`, error);
@@ -75,6 +84,7 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
           detach(connectorId);
         }
       }
+
       for (const [connectorId, wallet] of pool) {
         if (!live.has(connectorId)) {
           attach(connectorId, wallet.connector);
@@ -85,4 +95,5 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
 };
 
 export type { ConnectorLifecycle, LifecycleHandlers };
+
 export { createConnectorLifecycle };

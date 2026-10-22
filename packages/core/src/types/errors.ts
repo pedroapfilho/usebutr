@@ -36,28 +36,37 @@ const readCode = (error: Error): number | string | undefined =>
  */
 const classify = (error: Error): ConnectionErrorKind => {
   const code = readCode(error);
+
   if (code === 4001) {
     return "UserRejected";
   }
+
   if (code === -32_002) {
     return "RequestPending";
   }
+
   if (code === 4100 || code === 4900 || code === 4901) {
     return "NotConnected";
   }
+
   const lower = error.message.toLowerCase();
+
   if (lower.includes("user rejected") || lower.includes("user denied")) {
     return "UserRejected";
   }
+
   if (lower.includes("not connected")) {
     return "NotConnected";
   }
+
   if (lower.includes("locked")) {
     return "WalletLocked";
   }
+
   if (lower.includes("chain") && (lower.includes("mismatch") || lower.includes("unsupported"))) {
     return "ChainMismatch";
   }
+
   return "Unknown";
 };
 
@@ -66,12 +75,16 @@ const toConnectionError = (cause: unknown): ConnectionError => {
   if (cause instanceof ConnectionError) {
     return cause;
   }
+
   if (cause instanceof Error) {
     return new ConnectionError(classify(cause), cause.message, { cause });
   }
+
   const message = typeof cause === "string" && cause !== "" ? cause : "Connection failed";
+
   return new ConnectionError("Unknown", message, { cause });
 };
 
 export type { ConnectionErrorKind };
+
 export { ConnectionError, toConnectionError };

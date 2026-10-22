@@ -16,6 +16,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
 
   const handleSign = async (sign: NonNullable<typeof signMessage>) => {
     setState({ kind: "signing" });
+
     try {
       const bytes = new TextEncoder().encode(SIGN_MESSAGE_TEXT);
       await sign(bytes, { account });
@@ -29,6 +30,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
   };
 
   let signIndicator: ReactNode = null;
+
   if (state.kind === "ok") {
     signIndicator = <span className="text-success-foreground text-xs">✓ signed</span>;
   } else if (state.kind === "error") {

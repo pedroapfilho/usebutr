@@ -20,6 +20,7 @@ const walletEventSchema = z.discriminatedUnion("name", [
   z.object({ data: z.array(accountAddressSchema), name: z.literal("accountsChanged") }),
   z.object({ data: chainReferenceSchema, name: z.literal("chainChanged") }),
 ]);
+
 const sessionParamsSchema = z.object({
   chainId: z.string().regex(/^eip155:\d+$/v),
   event: walletEventSchema,
@@ -37,18 +38,22 @@ const createEip155Provider = (
 ): Eip1193Provider => {
   const readReference = async (): Promise<string> => {
     const chainId = await provider.request({ method: "eth_chainId" }, anchorChainId);
+
     if (typeof chainId !== "number" && typeof chainId !== "string") {
       throw new TypeError("WalletConnect returned a malformed eth_chainId response");
     }
+
     return BigInt(chainId).toString(10);
   };
 
   const accountsChanged = new Set<Eip1193Listener>();
   const chainChanged = new Set<Eip1193Listener>();
+
   const scoped = new Map([
     ["accountsChanged", accountsChanged],
     ["chainChanged", chainChanged],
   ]);
+
   const hasListeners = () => accountsChanged.size + chainChanged.size > 0;
   let lastEmittedChain: string | null = null;
 
@@ -56,7 +61,9 @@ const createEip155Provider = (
     if (chainChanged.size === 0 || chain === lastEmittedChain) {
       return;
     }
+
     lastEmittedChain = chain;
+
     for (const listener of chainChanged) {
       listener(chain);
     }
@@ -64,14 +71,19 @@ const createEip155Provider = (
 
   const onSessionEvent: Eip1193Listener = (payload) => {
     const parsed = sessionEventSchema.safeParse(payload);
+
     if (!parsed.success) {
       return;
     }
+
     const { event } = parsed.data.params;
+
     if (event.name === "chainChanged") {
       emitChain(event.data);
+
       return;
     }
+
     for (const listener of accountsChanged) {
       listener(event.data);
     }
@@ -80,21 +92,28 @@ const createEip155Provider = (
   return {
     on: (event, listener) => {
       const listeners = scoped.get(event);
+
       if (listeners === undefined) {
         provider.on(event, listener);
+
         return;
       }
+
       if (!hasListeners()) {
         provider.on("session_event", onSessionEvent);
       }
+
       listeners.add(listener);
     },
     removeListener: (event, listener) => {
       const listeners = scoped.get(event);
+
       if (listeners === undefined) {
         provider.removeListener(event, listener);
+
         return;
       }
+
       if (listeners.delete(listener) && !hasListeners()) {
         provider.removeListener("session_event", onSessionEvent);
         lastEmittedChain = null;
@@ -102,15 +121,19 @@ const createEip155Provider = (
     },
     async request(args) {
       const reference = await readReference();
+
       if (args.method === "eth_chainId") {
         return chainIdDecimalToHex(reference);
       }
+
       const result = await provider.request(args, `eip155:${reference}`);
+
       // A local switch can complete without a remote session_event. Publish
       // its confirmed chain too; emitChain deduplicates a wallet's echo.
       if (args.method === "wallet_switchEthereumChain") {
         emitChain(chainIdDecimalToHex(await readReference()));
       }
+
       return result;
     },
   };

@@ -49,9 +49,11 @@ const buildWallet = (
 
 const requireAdapter = (wallet: WalletStandardWallet): PolkadotAdapter => {
   const adapter = buildPolkadotWalletStandardAdapter(wallet);
+
   if (adapter === null) {
     throw new Error("expected a Polkadot Wallet Standard adapter");
   }
+
   return adapter;
 };
 
@@ -59,6 +61,7 @@ const requireSignMessage = (adapter: PolkadotAdapter) => {
   if (adapter.signMessage === undefined) {
     throw new Error("expected signMessage");
   }
+
   return adapter.signMessage;
 };
 
@@ -94,6 +97,7 @@ describe("buildPolkadotWalletStandardAdapter", () => {
     const adapter = requireAdapter(
       buildWallet({ accounts: [walletAccount(ADDRESS), walletAccount(OTHER_ADDRESS)] }),
     );
+
     await expect(adapter.getAccounts()).resolves.toEqual([
       buildAccount(ADDRESS, polkadot),
       buildAccount(OTHER_ADDRESS, polkadot),
@@ -113,6 +117,7 @@ describe("buildPolkadotWalletStandardAdapter", () => {
         chains: ["polkadot:paseo-like"],
       }),
     );
+
     const [account] = await adapter.getAccounts();
     expect(account?.chain.name).toBe("polkadot:paseo-like");
   });
@@ -138,22 +143,27 @@ describe("buildPolkadotWalletStandardAdapter", () => {
 
     it("ignores a chains change: Polkadot wallets advertise one relay chain", () => {
       const listeners = new Set<StandardEventsListener>();
+
       const events: StandardEventsFeature = {
         on: (_event, listener) => {
           listeners.add(listener);
+
           return () => {
             listeners.delete(listener);
           };
         },
       };
+
       const emitChange: StandardEventsListener = (changes) => {
         for (const listener of listeners) {
           listener(changes);
         }
       };
+
       const adapter = requireAdapter(
         buildWallet({ chains: [polkadot.id, kusama.id] }, { "standard:events": events }),
       );
+
       const received: Array<ConnectorEvent> = [];
       adapter.subscribe?.((event) => {
         received.push(event);
@@ -186,10 +196,12 @@ describe("buildPolkadotWalletStandardAdapter", () => {
 
     it("preserves the signed message the wallet reports", async () => {
       const signedMessage = new Uint8Array([3]);
+
       const signMessage = signMessageFeature().mockResolvedValue({
         signature: new Uint8Array([2]),
         signedMessage,
       });
+
       const adapter = requireAdapter(buildWallet({}, { "polkadot:signMessage": { signMessage } }));
 
       await expect(requireSignMessage(adapter)(new Uint8Array([1]))).resolves.toEqual({
@@ -204,6 +216,7 @@ describe("discoverPolkadotWalletStandardAdapters", () => {
   it("announces only wallets that speak Polkadot", async () => {
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
     const wallets = [buildWallet(), buildWallet({ chains: ["solana:mainnet"], name: "Solflare" })];
+
     const unsubscribe = discoverPolkadotWalletStandardAdapters(onAdapter, () =>
       Promise.resolve({ getWallets: () => ({ get: () => wallets, on: () => () => {} }) }),
     );
@@ -220,6 +233,7 @@ describe("buildPolkadotWalletStandardAdapter scoped signing", () => {
   it("exposes and signs only with accounts advertising this relay chain and feature", async () => {
     const account = walletAccount(ADDRESS);
     const signMessage = signMessageFeature();
+
     const adapter = requireAdapter(
       buildWallet(
         {
@@ -233,6 +247,7 @@ describe("buildPolkadotWalletStandardAdapter scoped signing", () => {
         { "polkadot:signMessage": { signMessage } },
       ),
     );
+
     await expect(adapter.getAccounts()).resolves.toEqual([
       buildAccount("NO_FEATURE", polkadot),
       buildAccount(ADDRESS, polkadot),

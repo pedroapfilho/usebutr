@@ -25,6 +25,7 @@ const walletTransaction = async (
   tx: SuiTransactionInput,
 ): Promise<SuiSignTransactionInput["transaction"]> => {
   const { serialized } = await prepareSuiTransaction(tx);
+
   return { toJSON: () => Promise.resolve(serialized) };
 };
 
@@ -49,6 +50,7 @@ const buildSuiAdapter = (
     trackChainChanges: true,
     wallet,
   });
+
   if (core === null) {
     return null;
   }
@@ -58,11 +60,13 @@ const buildSuiAdapter = (
     "sui:signAndExecuteTransaction",
     "signAndExecuteTransaction",
   );
+
   const signPersonalMessage = getFeature<SuiSignPersonalMessageFeature>(
     wallet,
     "sui:signPersonalMessage",
     "signPersonalMessage",
   );
+
   const signTransaction = getFeature<SuiSignTransactionFeature>(
     wallet,
     "sui:signTransaction",
@@ -75,21 +79,25 @@ const buildSuiAdapter = (
     ...(signAndExecute !== undefined && {
       async sendTx(tx, options) {
         const { account, chain } = core.resolveTarget("sui:signAndExecuteTransaction", options);
+
         const output = await signAndExecute.signAndExecuteTransaction({
           account,
           chain,
           transaction: await walletTransaction(tx),
         });
+
         return output.digest;
       },
     }),
     ...(signPersonalMessage !== undefined && {
       async signMessage(message, options) {
         const { account } = core.resolveTarget("sui:signPersonalMessage", options);
+
         const output = await signPersonalMessage.signPersonalMessage({
           account,
           message,
         });
+
         return {
           signature: base64ToBytes(output.signature),
           signedMessage: base64ToBytes(output.bytes),
@@ -99,11 +107,13 @@ const buildSuiAdapter = (
     ...(signTransaction !== undefined && {
       async signTransaction(tx, options) {
         const { account, chain } = core.resolveTarget("sui:signTransaction", options);
+
         const output = await signTransaction.signTransaction({
           account,
           chain,
           transaction: await walletTransaction(tx),
         });
+
         return { bytes: base64ToBytes(output.bytes), signature: base64ToBytes(output.signature) };
       },
     }),

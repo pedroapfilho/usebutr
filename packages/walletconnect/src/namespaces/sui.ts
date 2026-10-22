@@ -43,23 +43,28 @@ const suiNamespace: WalletConnectNamespaceBuilder<SuiAdapter> = {
       async sendTx(tx, options) {
         const { address, chainId } = resolveTarget(options);
         const { serialized } = await prepareSuiTransaction(tx);
+
         const result = await request(
           "sui_signAndExecuteTransaction",
           { address, transaction: serialized },
           chainId,
         );
+
         return readResultString(result, "digest", "sui_signAndExecuteTransaction");
       },
 
       async signMessage(message, options) {
         const { address, chainId } = resolveTarget({ account: options?.account });
+
         const result = await request(
           "sui_signPersonalMessage",
           { address, message: bytesToBase64(message) },
           chainId,
         );
+
         const signature = readResultString(result, "signature", "sui_signPersonalMessage");
         const echoed = readStringField(result, "bytes");
+
         return {
           signature: base64ToBytes(signature),
           signedMessage: echoed === undefined || echoed === "" ? message : base64ToBytes(echoed),
@@ -69,23 +74,29 @@ const suiNamespace: WalletConnectNamespaceBuilder<SuiAdapter> = {
       async signTransaction(tx, options) {
         const { address, chainId } = resolveTarget(options);
         const { bytes, serialized } = await prepareSuiTransaction(tx);
+
         const result = await request(
           "sui_signTransaction",
           { address, transaction: serialized },
           chainId,
         );
+
         const signature = readResultString(result, "signature", "sui_signTransaction");
+
         const echoed =
           readStringField(result, "transactionBytes") ??
           readStringField(result, "transactionBlockBytes");
+
         if (echoed !== undefined && echoed !== "") {
           return { bytes: base64ToBytes(echoed), signature: base64ToBytes(signature) };
         }
+
         // Some wallets echo no bytes. The signature covers the bytes we
         // submitted, which are only known here when the input carried them.
         if (bytes !== undefined) {
           return { bytes, signature: base64ToBytes(signature) };
         }
+
         throw new Error("sui_signTransaction returned no transaction bytes");
       },
     };

@@ -7,6 +7,7 @@ const getLlmsIndex = async () => {
   "use cache";
   cacheLife("max");
   const index = await Promise.resolve(llms(source).index());
+
   return index;
 };
 

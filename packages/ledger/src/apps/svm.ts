@@ -34,6 +34,7 @@ const createSvmLedgerAdapter = async (options: SvmLedgerOptions): Promise<SvmAda
   const core = await createLedgerAdapterCore<SolanaAppLike>(options, {
     addressAt: async (solana, path) => {
       const { address } = await solana.getAddress(path);
+
       return bytesToBase58(address);
     },
     chains: SVM_CHAINS_LIST,
@@ -48,6 +49,7 @@ const createSvmLedgerAdapter = async (options: SvmLedgerOptions): Promise<SvmAda
           "@ledgerhq/hw-app-solana",
           isClassWith<SolanaAppConstructor>("getAddress", "signOffchainMessage", "signTransaction"),
         ));
+
       return (transport) => new Solana(transport);
     },
     signer: (app) => ({ app, kind: "ledger-svm" }),
@@ -59,6 +61,7 @@ const createSvmLedgerAdapter = async (options: SvmLedgerOptions): Promise<SvmAda
     async signMessage(message, signOptions) {
       const { app, path } = core.resolve(signOptions);
       const { signature } = await app.signOffchainMessage(path, message);
+
       return { signature: new Uint8Array(signature), signedMessage: message };
     },
     /** The device signs the message and returns 64 bytes; they go into the
@@ -67,10 +70,12 @@ const createSvmLedgerAdapter = async (options: SvmLedgerOptions): Promise<SvmAda
       const { address, app, path } = core.resolve(signOptions);
       const transaction = prepareSolanaTransaction(tx, address);
       const { signature } = await app.signTransaction(path, transaction.message);
+
       return transaction.withSignature(signature);
     },
   };
 };
 
 export type { SolanaAppConstructor, SolanaAppLike, SvmLedgerOptions };
+
 export { createSvmLedgerAdapter };

@@ -28,11 +28,13 @@ const setup = (
 ) => {
   const persistent = createSyncDriver();
   const session = createSyncDriver();
+
   const storage = createWalletStorage({
     keyPrefix,
     persistent: drivers.persistent ?? persistent,
     session: drivers.session ?? session,
   });
+
   return { persistent, session, storage };
 };
 
@@ -138,6 +140,7 @@ describe("createWalletStorage", () => {
     persistent.getItem = () => {
       throw new Error("denied");
     };
+
     const { storage } = setup({ persistent });
 
     expect(await storage.load()).toEqual(EMPTY_PERSISTED);
@@ -175,19 +178,25 @@ describe("createWalletStorage", () => {
       if (key === "test-active") {
         throw failure;
       }
+
       if (key === "test-pool") {
         await gate.promise;
       }
+
       persistent.entries.set(key, value);
     };
+
     const { storage } = setup({ persistent });
     await storage.load();
     let settled = false;
+
     const save = (async () => {
       const error = await rejectionOf(storage.save(connectedState));
       settled = true;
+
       return error;
     })();
+
     await flush();
     expect(settled).toBe(false);
 

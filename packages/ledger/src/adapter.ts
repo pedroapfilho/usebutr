@@ -20,19 +20,24 @@ const createLedgerAdapter = (
   options: LedgerOptions,
 ): Promise<WalletAdapterFor<LedgerOptions["platform"]>> => {
   const { platform } = options;
+
   switch (options.platform) {
     case "bitcoin": {
       return createBitcoinLedgerAdapter(options);
     }
+
     case "evm": {
       return createEvmLedgerAdapter(options);
     }
+
     case "sui": {
       return createSuiLedgerAdapter(options);
     }
+
     case "svm": {
       return createSvmLedgerAdapter(options);
     }
+
     default: {
       // Reachable only from untyped callers.
       return Promise.reject(new Error(`[butr/ledger] no Ledger app for platform "${platform}"`));
@@ -41,4 +46,5 @@ const createLedgerAdapter = (
 };
 
 export type { LedgerOptions };
+
 export { createLedgerAdapter };

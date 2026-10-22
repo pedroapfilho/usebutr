@@ -23,12 +23,14 @@ type Transport = {
 
 const unisat = (): Transport => {
   const signMessage = vi.fn<UnisatProvider["signMessage"]>().mockResolvedValue("AQID");
+
   const provider: UnisatProvider = {
     getAccounts: () => Promise.resolve([ADDRESS]),
     requestAccounts: () => Promise.resolve([ADDRESS]),
     signMessage,
     signPsbt: () => Promise.resolve(""),
   };
+
   return {
     adapter: buildUnisatAdapter("injected:bitcoin:unisat", "Unisat", provider),
     signed: () => signMessage.mock.lastCall?.[0],
@@ -44,12 +46,15 @@ const satsConnect = async (): Promise<Transport> => {
           : [{ address: ADDRESS, purpose: "payment" }],
     }),
   );
+
   const adapter = buildSatsConnectAdapter("injected:bitcoin:xverse", "Xverse", { request });
   await adapter.connect();
+
   return {
     adapter,
     signed: () => {
       const [method, params] = request.mock.lastCall ?? [];
+
       return method === "signMessage" && typeof params?.message === "string"
         ? params.message
         : undefined;
@@ -61,7 +66,9 @@ const walletStandard = (): Transport => {
   const signMessage = vi.fn<BitcoinSignMessageFeature["signMessage"]>(({ message }) =>
     Promise.resolve({ signature: Uint8Array.of(1, 2, 3), signedMessage: message }),
   );
+
   const chains = ["bip122:000000000019d6689c085ae165831e93"];
+
   const wallet: WalletStandardWallet = {
     accounts: [
       {
@@ -79,15 +86,19 @@ const walletStandard = (): Transport => {
     name: "Mock Bitcoin Wallet",
     version: "1.0.0",
   };
+
   const adapter = buildBitcoinAdapter(wallet);
+
   if (adapter === null) {
     throw new Error("expected a bitcoin adapter");
   }
+
   return { adapter, signed: () => signMessage.mock.lastCall?.[0].message };
 };
 
 const signWith = async (transport: Transport, message: Uint8Array) => {
   const result = await transport.adapter.signMessage?.(message);
+
   return { asked: transport.signed(), signedMessage: result?.signedMessage };
 };
 
@@ -119,6 +130,7 @@ describe("Bitcoin message signing across transports", () => {
     for (const result of results) {
       expect(result).toEqual({ asked: bitcoinMessageText(message, ""), signedMessage: message });
     }
+
     await expect(signWith(walletStandard(), message)).resolves.toEqual({
       asked: message,
       signedMessage: message,
@@ -127,12 +139,14 @@ describe("Bitcoin message signing across transports", () => {
 
   it("rejects non-UTF-8 on every text wallet without prompting, and signs it as bytes", async () => {
     const text = [unisat(), await satsConnect()];
+
     for (const transport of text) {
       await expect(transport.adapter.signMessage?.(NON_UTF8_MESSAGE)).rejects.toThrow(
         /signs text, and this message is not valid UTF-8/v,
       );
       expect(transport.signed()).toBeUndefined();
     }
+
     await expect(signWith(walletStandard(), NON_UTF8_MESSAGE)).resolves.toEqual({
       asked: NON_UTF8_MESSAGE,
       signedMessage: NON_UTF8_MESSAGE,

@@ -14,6 +14,7 @@ const setup = () => {
   const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
   const bus = createDiscoveryBus(onAdapter);
   const listed = () => onAdapter.mock.calls.map(([adapter]) => adapter.id);
+
   return { bus, listed };
 };
 

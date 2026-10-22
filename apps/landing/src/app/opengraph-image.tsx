@@ -7,6 +7,7 @@ const alt = "butr: multi-chain wallet management for React";
 const size = { height: 630, width: 1200 };
 const contentType = "image/png";
 const COLORS = { accent: "#fdd754", ink: "#171717", muted: "#525252", paper: "#ffffff" };
+
 const Image = () =>
   new ImageResponse(
     <svg height={630} viewBox="0 0 1200 630" width={1200}>
@@ -30,5 +31,7 @@ const Image = () =>
     </svg>,
     size,
   );
+
 export { alt, contentType, size };
+
 export default Image;

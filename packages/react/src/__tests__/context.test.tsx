@@ -18,6 +18,7 @@ import { renderWithManager, settle, staticSource } from "./render";
 
 const WalletName = () => {
   const wallet = useWallet();
+
   return <span>{wallet === undefined ? "none" : wallet.account.walletAddress}</span>;
 };
 
@@ -57,6 +58,7 @@ describe("WalletManagerProvider", () => {
 
   it("renders a seeded wallet from the first server render", () => {
     const wallet = createFakeConnectedWallet({ addresses: ["0xseeded"], id: "metamask" });
+
     const initialState = {
       activeConnectorId: "metamask",
       pool: { metamask: toStoredPoolEntry(wallet) },
@@ -78,13 +80,17 @@ describe("WalletManagerProvider", () => {
   it("stops the manager on unmount", async () => {
     const adapter = createFakeAdapter({ id: "metamask" });
     const unsubscribe = vi.fn<() => void>();
+
     const source = vi.fn<WalletSource>((onAdapter) => {
       onAdapter(adapter);
+
       return unsubscribe;
     });
+
     const { result, unmount } = renderWithManager(() => null, {
       config: { sources: [source] },
     });
+
     await settle();
     await act(() => result.current.manager.connect("metamask"));
     expect(adapter.listenerCount()).toBe(1);
@@ -99,6 +105,7 @@ describe("WalletManagerProvider", () => {
     const storage = createFakePersistence();
     const load = vi.spyOn(storage, "load");
     const source = vi.fn(staticSource(createFakeAdapter()));
+
     const Wrapper = ({ children }: PropsWithChildren) => (
       <StrictMode>
         <WalletManagerProvider config={{ sources: [source], storage }}>

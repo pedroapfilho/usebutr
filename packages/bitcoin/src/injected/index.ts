@@ -31,9 +31,11 @@ const readHost = (target: InjectedBitcoinDiscoveryOptions["target"]): InjectedHo
   if (target !== undefined) {
     return target;
   }
+
   if (typeof window === "undefined") {
     return null;
   }
+
   return window;
 };
 
@@ -47,12 +49,14 @@ const probeProviders = (host: InjectedHost): Array<BitcoinAdapter> => {
   }
 
   const okxBitcoin = host.okxwallet?.bitcoin;
+
   if (okxBitcoin && !seen.has(okxBitcoin)) {
     seen.add(okxBitcoin);
     adapters.push(buildUnisatAdapter("injected:bitcoin:okx", "OKX Wallet (Bitcoin)", okxBitcoin));
   }
 
   const xverse = host.XverseProviders?.BitcoinProvider;
+
   if (xverse && !seen.has(xverse)) {
     seen.add(xverse);
     adapters.push(buildSatsConnectAdapter("injected:bitcoin:xverse", "Xverse", xverse));
@@ -71,9 +75,11 @@ const discoverInjectedBitcoinAdapter = (
   options: InjectedBitcoinDiscoveryOptions = {},
 ): (() => void) => {
   const host = readHost(options.target);
+
   for (const adapter of host === null ? [] : probeProviders(host)) {
     onAdapter(adapter);
   }
+
   return () => {};
 };
 
@@ -87,12 +93,16 @@ const discoverLegacyBitcoinAdapter = (
 ): (() => void) => {
   const host = readHost(options.target);
   const btc = host?.btc;
+
   if (btc !== undefined && btc !== host?.unisat && btc !== host?.okxwallet?.bitcoin) {
     onAdapter(buildUnisatAdapter("injected:bitcoin:legacy", "Browser Bitcoin wallet", btc));
   }
+
   return () => {};
 };
 
 export type { InjectedBitcoinDiscoveryOptions };
+
 export { GENERIC_BITCOIN_ICON } from "./icon";
+
 export { discoverInjectedBitcoinAdapter, discoverLegacyBitcoinAdapter };

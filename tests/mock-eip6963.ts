@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 type MockMode = "pending" | "reject-once" | "success";
+
 type MockProviderResult = Array<string> | string | null;
 
 const MOCK_ACCOUNT = "0x1111111111111111111111111111111111111111";
@@ -35,11 +36,13 @@ const mockWalletInitScript = ({ account, behavior }: { account: string; behavior
     request: ({ method }: { method: string }): Promise<MockProviderResult> => {
       if (method === "eth_requestAccounts") {
         connectAttempts += 1;
+
         if (behavior === "reject-once" && connectAttempts === 1) {
           return Promise.reject(
             Object.assign(new Error("User rejected the request"), { code: 4001 }),
           );
         }
+
         if (behavior === "pending" && connectAttempts === 1) {
           return new Promise<Array<string>>((resolve) => {
             resolvePending = () => {
@@ -48,23 +51,31 @@ const mockWalletInitScript = ({ account, behavior }: { account: string; behavior
             };
           });
         }
+
         connect();
+
         return Promise.resolve([account]);
       }
+
       if (method === "eth_accounts") {
         return Promise.resolve(connected ? [account] : []);
       }
+
       if (method === "eth_chainId") {
         return Promise.resolve("0x1");
       }
+
       if (method === "eth_getBalance") {
         return Promise.resolve("0x0");
       }
+
       if (method === "wallet_revokePermissions") {
         connected = false;
         emit("accountsChanged", []);
+
         return Promise.resolve(null);
       }
+
       return Promise.resolve(null);
     },
   };

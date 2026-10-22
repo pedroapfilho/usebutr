@@ -17,10 +17,13 @@ const second = buildAccount("0xsecond", EVM_CHAINS.ethereum);
 describe("useSigner", () => {
   it("stays idle without a wallet", async () => {
     let renders = 0;
+
     const { result } = renderWithManager(() => {
       renders += 1;
+
       return useSigner(useWallet());
     });
+
     await settle();
     expect(result.current.value).toEqual({ data: null, error: null, status: "idle" });
     // Mount, then the provider's start: no render for resetting an idle state.
@@ -29,9 +32,11 @@ describe("useSigner", () => {
 
   it("resolves the active wallet's signer", async () => {
     const signer: WalletSigner = { connectorId: "metamask", kind: "test" };
+
     const { result } = renderWithManager(() => useSigner(useWallet()), {
       adapters: [createFakeAdapter({ id: "metamask", signer })],
     });
+
     await settle();
     await act(() => result.current.manager.connect("metamask"));
 
@@ -43,6 +48,7 @@ describe("useSigner", () => {
 
   it("stays idle while the wallet is still a reconnecting shadow", () => {
     const wallet = createFakeConnectedWallet({ id: "metamask" });
+
     const { result } = renderWithManager(() => useSigner(useWallet()), {
       initialState: {
         activeConnectorId: "metamask",
@@ -50,12 +56,14 @@ describe("useSigner", () => {
         selection: {},
       },
     });
+
     expect(result.current.value.status).toBe("idle");
   });
 
   it("resolves once the live adapter replaces the shadow", async () => {
     const signer: WalletSigner = { connectorId: "metamask", kind: "test" };
     const wallet = createFakeConnectedWallet({ id: "metamask" });
+
     const { result } = renderWithManager(() => useSigner(useWallet()), {
       adapters: [createFakeAdapter({ id: "metamask", signer })],
       initialState: {
@@ -64,6 +72,7 @@ describe("useSigner", () => {
         selection: {},
       },
     });
+
     expect(result.current.value.status).toBe("idle");
     await settle();
 
@@ -75,13 +84,16 @@ describe("useSigner", () => {
 
   it("surfaces a signer that fails", async () => {
     const failure = new Error("locked");
+
     const adapter = createFakeAdapter({
       id: "metamask",
       overrides: { getSigner: () => Promise.reject(failure) },
     });
+
     const { result } = renderWithManager(() => useSigner(useWallet("metamask")), {
       adapters: [adapter],
     });
+
     await settle();
     await act(() => result.current.manager.connect("metamask"));
 
@@ -96,6 +108,7 @@ describe("useBalance", () => {
     const { result } = renderWithManager(() => useBalance(useWallet()), {
       adapters: [createFakeAdapter({ chainPlatform: "svm", id: "phantom" })],
     });
+
     await settle();
     expect(result.current.value.status).toBe("idle");
 
@@ -105,6 +118,7 @@ describe("useBalance", () => {
 
   it("stays idle while the wallet is still a reconnecting shadow", () => {
     const wallet = createFakeConnectedWallet({ id: "metamask" });
+
     const { result } = renderWithManager(() => useBalance(useWallet()), {
       initialState: {
         activeConnectorId: "metamask",
@@ -112,6 +126,7 @@ describe("useBalance", () => {
         selection: {},
       },
     });
+
     expect(result.current.value.status).toBe("idle");
   });
 
@@ -119,6 +134,7 @@ describe("useBalance", () => {
     const { result } = renderWithManager(() => useBalance(useWallet()), {
       adapters: [createFakeAdapter({ balance: 1_500_000_000_000_000_000n, id: "metamask" })],
     });
+
     await settle();
     await act(() => result.current.manager.connect("metamask"));
 
@@ -137,15 +153,18 @@ describe("useBalance", () => {
     const getBalance = vi.fn((_options?: BalanceOptions): Promise<Balance> =>
       Promise.resolve({ decimals: 6, formatted: "1", symbol: "USDC", value: 1_000_000n }),
     );
+
     const adapter = createFakeAdapter({
       accounts: [first, second],
       id: "metamask",
       overrides: { getBalance },
     });
+
     const { result } = renderWithManager(
       () => useBalance(useWallet("metamask"), { account: second, token: "0xusdc" }),
       { adapters: [adapter] },
     );
+
     await settle();
     await act(() => result.current.manager.connect("metamask"));
     await waitFor(() => {
@@ -166,8 +185,10 @@ describe("useBalance", () => {
     const receivers: Array<WalletAdapter> = [];
     adapter.getBalance = function getBalance(this: WalletAdapter) {
       receivers.push(this);
+
       return Promise.resolve({ decimals: 18, formatted: "0", symbol: "ETH", value: 0n });
     };
+
     const { result } = renderWithManager(() => useBalance(useWallet()), { adapters: [adapter] });
     await settle();
     await act(() => result.current.manager.connect("metamask"));
@@ -180,13 +201,16 @@ describe("useBalance", () => {
 
   it("never renders the previous wallet's balance next to the new one", async () => {
     const seen: Array<{ id: string | undefined; value: bigint | undefined }> = [];
+
     const { result } = renderWithManager(
       () => {
         const wallet = useWallet();
         const balance = useBalance(wallet);
+
         if (balance.status === "success") {
           seen.push({ id: wallet?.connector.id, value: balance.data.value });
         }
+
         return balance;
       },
       {
@@ -196,6 +220,7 @@ describe("useBalance", () => {
         ],
       },
     );
+
     await settle();
     await act(() => result.current.manager.connect("metamask"));
     await waitFor(() => {
@@ -224,6 +249,7 @@ describe("useBalance", () => {
         getBalance: () => Promise.reject({ code: -32_603 }),
       },
     });
+
     const { result } = renderWithManager(() => useBalance(useWallet()), { adapters: [adapter] });
     await settle();
     await act(() => result.current.manager.connect("metamask"));
@@ -239,6 +265,7 @@ describe("useBalance", () => {
     const { result } = renderWithManager(() => useBalance(useWallet(), { token: "0xusdc" }), {
       adapters: [createFakeAdapter({ id: "metamask" })],
     });
+
     await settle();
     await act(() => result.current.manager.connect("metamask"));
 

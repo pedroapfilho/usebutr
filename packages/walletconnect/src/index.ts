@@ -5,6 +5,7 @@ export type {
   WalletConnectNamespaceBuilder,
   WalletConnectOptions,
 } from "./adapter";
+
 export {
   KNOWN_NAMESPACES,
   WALLETCONNECT_DEFAULT_ICON,

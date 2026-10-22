@@ -11,6 +11,7 @@ import { useConnectedWallets, useDiscoveredWallets } from "./state";
  */
 const useDiscoveredWalletsByPlatform = (): Map<ChainPlatform, Array<WalletAdapter>> => {
   const discovered = useDiscoveredWallets();
+
   return useMemo(
     () => groupByPlatform(discovered, (adapter) => adapter.chainPlatform),
     [discovered],
@@ -20,6 +21,7 @@ const useDiscoveredWalletsByPlatform = (): Map<ChainPlatform, Array<WalletAdapte
 /** Connected wallets bucketed by platform, same ordering rules. */
 const useConnectedWalletsByPlatform = (): Map<ChainPlatform, Array<ConnectedWallet>> => {
   const connected = useConnectedWallets();
+
   return useMemo(
     () => groupByPlatform(connected, (wallet) => wallet.connector.chainPlatform),
     [connected],

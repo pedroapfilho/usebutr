@@ -19,9 +19,11 @@ const USDC_DECIMALS = 6;
 
 const usdcFor = (chain: Chain): string => {
   const address = circle.usdcContract.get("Testnet", chain);
+
   if (!address) {
     throw new Error(`No Testnet USDC address for chain ${chain}`);
   }
+
   return address;
 };
 
@@ -110,13 +112,16 @@ const CHAINS: Partial<Record<string, ChainSpec>> = Object.fromEntries(
 
 const getChainSpec = (chain: Chain): ChainSpec => {
   const spec = CHAINS[chain];
+
   if (spec === undefined) {
     throw new Error(`Unsupported chain: ${chain}`);
   }
+
   return spec;
 };
 
 const findChainSpec = (chain: string): ChainSpec | undefined => CHAINS[chain];
 
 export type { ChainSpec };
+
 export { CHAIN_LIST, USDC_DECIMALS, findChainSpec, getChainSpec };

@@ -19,10 +19,13 @@ const ChainPicker = ({
   // an unhandled rejection would silently snap it back with no explanation.
   const handleChange = async (event: ChangeEvent<HTMLSelectElement>) => {
     const target = chains.find((c) => c.id === event.target.value);
+
     if (!target) {
       return;
     }
+
     setSwitchError(null);
+
     try {
       await switchChain(target);
     } catch (error) {

@@ -64,8 +64,10 @@ const withoutKey = <K, V>(map: ReadonlyMap<K, V>, key: K): ReadonlyMap<K, V> => 
   if (!map.has(key)) {
     return map;
   }
+
   const next = new Map(map);
   next.delete(key);
+
   return next;
 };
 
@@ -74,6 +76,7 @@ const keepEntries = <K, V>(
   keep: (key: K, value: V) => boolean,
 ): ReadonlyMap<K, V> => {
   const kept = [...map].filter(([key, value]) => keep(key, value));
+
   return kept.length === map.size ? map : new Map(kept);
 };
 
@@ -87,6 +90,7 @@ const reconcileReconnectingIds = (
   const shadowIds = [...pool].flatMap(([id, wallet]) =>
     isShadowAdapter(wallet.connector) ? [id] : [],
   );
+
   return shadowIds.length === reconnectingIds.size &&
     shadowIds.every((id) => reconnectingIds.has(id))
     ? reconnectingIds
@@ -98,16 +102,19 @@ const reconcileSelection = (
   pool: ReadonlyMap<string, ConnectedWallet>,
 ): ReadonlyMap<ChainPlatform, string> => {
   const next = new Map<ChainPlatform, string>();
+
   for (const [platform, id] of selection) {
     if (pool.get(id)?.connector.chainPlatform === platform) {
       next.set(platform, id);
     }
   }
+
   for (const [id, wallet] of pool) {
     if (!next.has(wallet.connector.chainPlatform)) {
       next.set(wallet.connector.chainPlatform, id);
     }
   }
+
   return sameEntries(next, selection) ? selection : next;
 };
 
@@ -121,6 +128,7 @@ const reconcile = (state: StoreState): StoreState => {
   const reconnectingIds = reconcileReconnectingIds(state.reconnectingIds, pool);
   const dormant = keepEntries(state.dormant, (id) => !pool.has(id) || reconnectingIds.has(id));
   const selection = reconcileSelection(state.selection, pool);
+
   const activeConnectorId =
     state.activeConnectorId !== null && pool.has(state.activeConnectorId)
       ? state.activeConnectorId
@@ -134,6 +142,7 @@ const reconcile = (state: StoreState): StoreState => {
   ) {
     return state;
   }
+
   return { ...state, activeConnectorId, dormant, reconnectingIds, selection };
 };
 
@@ -143,14 +152,19 @@ const changeAccounts = (
 ): StoreState => {
   const wallet = state.pool.get(event.connectorId);
   const first = event.accounts.at(0);
+
   if (wallet === undefined || first === undefined) {
     return state;
   }
+
   const account = event.active ?? event.accounts.find((a) => a.id === wallet.account.id) ?? first;
+
   if (account.id === wallet.account.id && accountsEqual(event.accounts, wallet.accounts)) {
     return state;
   }
+
   const updated: ConnectedWallet = { ...wallet, account, accounts: event.accounts };
+
   return { ...state, pool: withEntry(state.pool, event.connectorId, updated) };
 };
 
@@ -160,6 +174,7 @@ const apply = (state: StoreState, event: WalletEvent): StoreState => {
       if (state.adapters.some((adapter) => adapter.id === event.adapter.id)) {
         return state;
       }
+
       return { ...state, adapters: [...state.adapters, event.adapter] };
     }
 
@@ -177,6 +192,7 @@ const apply = (state: StoreState, event: WalletEvent): StoreState => {
       if (!state.dormant.has(event.connectorId)) {
         return state;
       }
+
       return { ...state, pool: withEntry(state.pool, event.connectorId, event.entry) };
     }
 
@@ -186,6 +202,7 @@ const apply = (state: StoreState, event: WalletEvent): StoreState => {
       if (!state.reconnectingIds.has(event.connectorId)) {
         return state;
       }
+
       return { ...state, pool: withoutKey(state.pool, event.connectorId) };
     }
 
@@ -193,7 +210,9 @@ const apply = (state: StoreState, event: WalletEvent): StoreState => {
       if (state.userChose) {
         return { ...state, isHydrated: true };
       }
+
       const preferred = event.activeConnectorId;
+
       return {
         ...state,
         activeConnectorId:
@@ -216,6 +235,7 @@ const apply = (state: StoreState, event: WalletEvent): StoreState => {
     case "CONNECT_SUCCEEDED": {
       const { connectorId, entry } = event;
       const isCurrentAttempt = state.connectingConnectorId === connectorId;
+
       return {
         ...state,
         activeConnectorId: connectorId,
@@ -238,6 +258,7 @@ const apply = (state: StoreState, event: WalletEvent): StoreState => {
       if (state.connectingConnectorId !== event.connectorId) {
         return state;
       }
+
       return {
         ...state,
         connectingConnectorId: null,
@@ -250,6 +271,7 @@ const apply = (state: StoreState, event: WalletEvent): StoreState => {
       if (state.connectionStatus === "idle") {
         return state;
       }
+
       return {
         ...state,
         connectingConnectorId: null,
@@ -264,6 +286,7 @@ const apply = (state: StoreState, event: WalletEvent): StoreState => {
 
     case "DISCONNECTED": {
       const pool = withoutKey(state.pool, event.connectorId);
+
       if (event.byUser) {
         // Disconnecting the last live wallet forgets everything, including
         // connections that were only waiting to be retried.
@@ -271,18 +294,24 @@ const apply = (state: StoreState, event: WalletEvent): StoreState => {
           pool.size === 0
             ? keepEntries(state.dormant, () => false)
             : withoutKey(state.dormant, event.connectorId);
+
         if (pool === state.pool && dormant === state.dormant && state.isUserDisconnected) {
           return state;
         }
+
         return { ...state, dormant, isUserDisconnected: true, pool };
       }
+
       const wallet = state.pool.get(event.connectorId);
+
       if (wallet === undefined) {
         return state;
       }
+
       // The wallet ended the session (locked, removed): keep it persisted so
       // the next load can retry it.
       const stored = toStoredPoolEntry(wallet);
+
       return { ...state, dormant: withEntry(state.dormant, event.connectorId, stored), pool };
     }
 
@@ -299,6 +328,7 @@ const apply = (state: StoreState, event: WalletEvent): StoreState => {
       if (state.activeConnectorId === event.connectorId || !state.pool.has(event.connectorId)) {
         return state;
       }
+
       return { ...state, activeConnectorId: event.connectorId, userChose: true };
     }
 
@@ -309,6 +339,7 @@ const apply = (state: StoreState, event: WalletEvent): StoreState => {
       ) {
         return state;
       }
+
       return {
         ...state,
         selection: withEntry(state.selection, event.chainPlatform, event.connectorId),
@@ -319,6 +350,7 @@ const apply = (state: StoreState, event: WalletEvent): StoreState => {
     default: {
       const exhaustive: never = event;
       void exhaustive;
+
       return state;
     }
   }
@@ -327,6 +359,7 @@ const apply = (state: StoreState, event: WalletEvent): StoreState => {
 /** Pure: `(state, event) => state`. Side effects live in the manager. */
 const reducer = (state: StoreState, event: WalletEvent): StoreState => {
   const next = apply(state, event);
+
   return next === state ? state : reconcile(next);
 };
 
@@ -338,4 +371,5 @@ const seededState = (snapshot: WalletSnapshot): StoreState =>
   reconcile({ ...initialState, ...snapshotState(snapshot), isHydrated: true });
 
 export type { StoreState, WalletEvent };
+
 export { initialState, reconcile, reducer, seededState };

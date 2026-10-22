@@ -16,15 +16,18 @@ const createProvider = (
   removeListener() {},
   request({ method, params }) {
     const handler = handlers[method];
+
     return Promise.resolve(handler === undefined ? undefined : handler(params));
   },
 });
 
 const selectorOf = (params: Eip1193RequestArgs["params"]): string => {
   const call = (params as Array<{ data: string }>)[0];
+
   if (call === undefined) {
     throw new Error("missing call");
   }
+
   return call.data.slice(0, 10);
 };
 
@@ -57,9 +60,11 @@ describe("readEvmBalance", () => {
     const provider = createProvider({
       eth_call: (params) => {
         const selector = selectorOf(params);
+
         if (selector === SYMBOL) {
           return undefined;
         }
+
         return selector === DECIMALS
           ? "0x0000000000000000000000000000000000000000000000000000000000000006"
           : "0x00000000000000000000000000000000000000000000000000000000002625a0";

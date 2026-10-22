@@ -19,14 +19,19 @@ const isEip6963AnnounceEvent = (event: Event): event is Eip6963AnnounceEvent => 
   if (!("detail" in event)) {
     return false;
   }
+
   const detail: unknown = event.detail;
+
   if (typeof detail !== "object" || detail === null) {
     return false;
   }
+
   if (!("info" in detail) || !("provider" in detail)) {
     return false;
   }
+
   const { info, provider } = detail;
+
   return (
     typeof info === "object" &&
     info !== null &&
@@ -55,6 +60,7 @@ const resolveTarget = (target?: EventTarget): EventTarget | null => {
   if (target !== undefined) {
     return target;
   }
+
   return windowGlobal.window ?? null;
 };
 
@@ -68,22 +74,28 @@ const discoverEvmAdapters = (
   options: DiscoverOptions = {},
 ): (() => void) => {
   const target = resolveTarget(options.target);
+
   if (!target) {
     return () => {};
   }
 
   const seen = new Set<string>();
+
   const handler = (event: Event) => {
     if (!isEip6963AnnounceEvent(event)) {
       return;
     }
+
     const { info, provider } = event.detail;
+
     if (info.rdns.length === 0) {
       return;
     }
+
     if (seen.has(info.rdns)) {
       return;
     }
+
     seen.add(info.rdns);
     onAdapter(buildEvmAdapter(info, provider), info);
   };

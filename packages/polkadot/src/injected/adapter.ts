@@ -87,6 +87,7 @@ const buildInjectedPolkadotAdapter = (
     closeSession();
     const opened: InjectedSession = { injected, unsubscribe: null };
     session = opened;
+
     try {
       opened.unsubscribe = injected.accounts.subscribe?.(forwardAccounts) ?? null;
     } catch (error) {
@@ -99,16 +100,20 @@ const buildInjectedPolkadotAdapter = (
     options?: AccountOptions,
   ): Promise<SignedMessage> => {
     const { injected } = target.connected(session);
+
     if (injected.signer.signRaw === undefined) {
       throw new Error(`Wallet ${displayName} does not expose signRaw`);
     }
+
     const match = target.account(await injected.accounts.get(), options?.account);
     const wrapped = wrapBytes(message);
+
     const result = await injected.signer.signRaw({
       address: match.address,
       data: bytesToHex(wrapped),
       type: "bytes",
     });
+
     return { signature: hexToBytes(result.signature), signedMessage: wrapped };
   };
 
@@ -118,13 +123,17 @@ const buildInjectedPolkadotAdapter = (
     async connect(options) {
       if (options?.silent === true) {
         target.connected(session);
+
         return;
       }
+
       const injected = await provider.enable(DAPP_NAME);
       const accounts = await injected.accounts.get();
+
       if (accounts.length === 0) {
         throw new Error(`Wallet ${displayName} exposed no accounts`);
       }
+
       openSession(injected);
     },
 
@@ -137,13 +146,16 @@ const buildInjectedPolkadotAdapter = (
       if (session === null) {
         return [];
       }
+
       const accounts = await session.injected.accounts.get();
+
       return accounts.map(toAccount);
     },
 
     async getSigner() {
       const extension = target.connected(session).injected;
       await Promise.resolve();
+
       return { extension, extensionName, kind: "polkadot-injected" };
     },
 

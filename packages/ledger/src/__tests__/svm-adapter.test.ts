@@ -17,12 +17,16 @@ import { buildFakeTransport, indexOfPath } from "./helpers";
  */
 const LEGACY_UNSIGNED =
   "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgABBAkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMBAwIBAgwCAAAA6AMAAAAAAAA=";
+
 const LEGACY_SIGNED =
   "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3NAgABBAkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMBAwIBAgwCAAAA6AMAAAAAAAA=";
+
 const V0_UNSIGNED =
   "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAIAAQQJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAQMCAQIMAgAAAOgDAAAAAAAAAA==";
+
 const V0_SIGNED =
   "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3NgAIAAQQJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAQMCAQIMAgAAAOgDAAAAAAAAAA==";
+
 /** One compact-u16 byte plus two 64-byte signature slots. */
 const MESSAGE_OFFSET = 1 + 2 * 64;
 
@@ -39,14 +43,17 @@ const buildFakeSolanaCtor = (hooks: SolanaHooks = {}): SolanaAppConstructor =>
   class FakeSolana implements SolanaAppLike {
     getAddress(path: string): Promise<{ address: Uint8Array }> {
       hooks.onGetAddress?.(path);
+
       return Promise.resolve({ address: keyAt(indexOfPath(path)) });
     }
     signOffchainMessage(path: string): Promise<{ signature: Uint8Array }> {
       hooks.onSignOffchainMessage?.(path);
+
       return Promise.resolve({ signature: new Uint8Array(64).fill(0xab) });
     }
     signTransaction(path: string, message: Uint8Array): Promise<{ signature: Uint8Array }> {
       hooks.onSignTransaction?.(path, message);
+
       return Promise.resolve({ signature: new Uint8Array(64).fill(0xcd) });
     }
   };
@@ -58,7 +65,9 @@ const connectedSvm = async (hooks: SolanaHooks = {}): Promise<SvmAdapter> => {
     solana: buildFakeSolanaCtor(hooks),
     transport: buildFakeTransport().factory,
   });
+
   await adapter.connect();
+
   return adapter;
 };
 
@@ -73,6 +82,7 @@ describe("createSvmLedgerAdapter", () => {
     expect(adapter.chainPlatform).toBe("svm");
     expect(adapter.signMessage).toBeTypeOf("function");
     expect(adapter.signTransaction).toBeTypeOf("function");
+
     for (const method of ["getBalance", "sendTx", "signIn", "subscribe", "switchChain"]) {
       expect(adapter).not.toHaveProperty(method);
     }
@@ -80,6 +90,7 @@ describe("createSvmLedgerAdapter", () => {
 
   it("derives base58 accounts on hardened paths, read once at connect", async () => {
     const seen: Array<string> = [];
+
     const adapter = await connectedSvm({
       onGetAddress: (path) => {
         seen.push(path);
@@ -100,6 +111,7 @@ describe("createSvmLedgerAdapter", () => {
       solana: buildFakeSolanaCtor(),
       transport: buildFakeTransport().factory,
     });
+
     await adapter.connect();
 
     const [account] = await adapter.getAccounts();
@@ -119,11 +131,13 @@ describe("createSvmLedgerAdapter", () => {
 
   it("signTransaction() signs a legacy message and fills the signer's slot", async () => {
     const received: Array<{ message: Uint8Array; path: string }> = [];
+
     const adapter = await connectedSvm({
       onSignTransaction: (path, message) => {
         received.push({ message, path });
       },
     });
+
     const tx = base64ToBytes(LEGACY_UNSIGNED);
 
     const signed = await adapter.signTransaction?.(tx);
@@ -135,11 +149,13 @@ describe("createSvmLedgerAdapter", () => {
 
   it("signTransaction() signs a v0 message as the account it is given", async () => {
     const received: Array<{ message: Uint8Array; path: string }> = [];
+
     const adapter = await connectedSvm({
       onSignTransaction: (path, message) => {
         received.push({ message, path });
       },
     });
+
     const accounts = await adapter.getAccounts();
     const second = accounts.at(1);
     const tx = base64ToBytes(V0_UNSIGNED);
@@ -152,6 +168,7 @@ describe("createSvmLedgerAdapter", () => {
 
   it("signTransaction() rejects when the account is not one of the transaction's signers", async () => {
     const received: Array<string> = [];
+
     const adapter = await connectedSvm({
       onSignTransaction: (path) => {
         received.push(path);
@@ -194,19 +211,23 @@ describeAdapterContract<SvmAdapter>({
   chain: SVM_CHAINS.mainnet,
   connect: async (addresses) => {
     const calls: Array<ObservedCall> = [];
+
     const record = (path: string) => {
       const key = keyAt(indexOfPath(path));
       calls.push({ address: bytesToBase58(key), chain: SVM_CHAINS.mainnet.id });
     };
+
     const adapter = await createSvmLedgerAdapter({
       accountCount: addresses.length,
       platform: "svm",
       solana: buildFakeSolanaCtor({ onSignOffchainMessage: record, onSignTransaction: record }),
       transport: buildFakeTransport().factory,
     });
+
     if (addresses.length > 0) {
       await adapter.connect();
     }
+
     return { adapter, lastCall: () => calls.at(-1) };
   },
   move: "fixed",

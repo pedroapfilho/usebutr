@@ -19,6 +19,7 @@ const formatError = (error: Error | string): string => {
   if (error instanceof Error) {
     return error.message;
   }
+
   return error;
 };
 
@@ -26,6 +27,7 @@ const formatPas = (planck: bigint): string => {
   const base = 10n ** BigInt(PASEO_DECIMALS);
   const whole = planck / base;
   const frac = (planck % base).toString().padStart(PASEO_DECIMALS, "0").replace(/0+$/v, "");
+
   return frac ? `${whole}.${frac} PAS` : `${whole} PAS`;
 };
 
@@ -62,6 +64,7 @@ const Connected = ({
     void (async () => {
       try {
         const account = await api.query.System.Account.getValue(addr);
+
         if (!cancelled) {
           setBalance(formatPas(account.data.free));
         }
@@ -69,9 +72,11 @@ const Connected = ({
         if (!cancelled) {
           setBalance("error");
         }
+
         console.warn("balance read failed:", error);
       }
     })();
+
     return () => {
       cancelled = true;
     };
@@ -79,16 +84,19 @@ const Connected = ({
 
   const handleSign = async () => {
     setErrorMsg(null);
+
     try {
       // Defined once the wallet showed it can sign raw bytes (`signRaw` on
       // injectedWeb3, `polkadot:signMessage` on Wallet Standard).
       if (!wallet.connector.signMessage) {
         throw new Error(`${wallet.connector.name} does not support message signing`);
       }
+
       const result = await wallet.connector.signMessage(
         new TextEncoder().encode("Hello from butr + Polkadot"),
         { account: wallet.account },
       );
+
       setSignature(bytesToHex(result.signature));
       setSignedMessage(bytesToHex(result.signedMessage));
     } catch (error) {
@@ -99,23 +107,31 @@ const Connected = ({
   const handleTransfer = async () => {
     setErrorMsg(null);
     setTxStatus("Bridging signer…");
+
     try {
       const signer = await wallet.connector.getSigner();
+
       if (signer.kind !== "polkadot-injected") {
         throw new Error("This demo signs extrinsics through an injectedWeb3 extension");
       }
+
       const extension = await connectInjectedExtension(signer.extensionName);
       const account = extension.getAccounts().find((a) => a.address === addr);
+
       if (account === undefined) {
         setTxStatus(null);
         setErrorMsg("Active account not found in the injected extension");
+
         return;
       }
+
       setTxStatus("Awaiting signature…");
+
       const tx = api.tx.Balances.transfer_keep_alive({
         dest: MultiAddress.Id(addr),
         value: 1_000_000_000n,
       });
+
       txSubRef.current?.unsubscribe();
       txSubRef.current = tx.signSubmitAndWatch(account.polkadotSigner).subscribe({
         complete: () => {

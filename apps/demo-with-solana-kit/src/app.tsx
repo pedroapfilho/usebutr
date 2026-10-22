@@ -15,11 +15,13 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 const SYSTEM_PROGRAM = address("11111111111111111111111111111111");
+
 const buildTransferInstruction = (from: Address, to: Address, lamports: bigint): Instruction => {
   const data = new Uint8Array(12);
   const view = new DataView(data.buffer);
   view.setUint32(0, 2, true);
   view.setBigUint64(4, lamports, true);
+
   return {
     accounts: [
       { address: from, role: AccountRole.WRITABLE_SIGNER },
@@ -29,6 +31,7 @@ const buildTransferInstruction = (from: Address, to: Address, lamports: bigint):
     programAddress: SYSTEM_PROGRAM,
   };
 };
+
 import type { ConnectedWallet } from "@usebutr/core";
 import { bytesToBase58 } from "@usebutr/core";
 import { useConnect, useSelectedWallet, useSigner, useWalletManager } from "@usebutr/react";
@@ -45,9 +48,11 @@ const rpc = createSolanaRpc(DEVNET);
 const base64ToBytes = (b64: string): Uint8Array => {
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
+
   for (let i = 0; i < binary.length; i += 1) {
     bytes[i] = binary.codePointAt(i) ?? 0;
   }
+
   return bytes;
 };
 
@@ -55,6 +60,7 @@ const formatError = (error: Error | string): string => {
   if (error instanceof Error) {
     return error.message;
   }
+
   return error;
 };
 
@@ -83,10 +89,12 @@ const Connected = ({
   // Signing goes through the wallet's own Wallet Standard features, which
   // butr hands over as the raw wallet; @solana/kit only builds and reads.
   const walletStd = signer.data?.kind === "wallet-standard" ? signer.data.wallet : null;
+
   const signerError =
     signer.status === "error"
       ? formatError(signer.error instanceof Error ? signer.error : String(signer.error))
       : null;
+
   const shownError = errorMsg ?? signerError;
 
   const addr: Address = useMemo(
@@ -100,6 +108,7 @@ const Connected = ({
     void (async () => {
       try {
         const { value } = await rpc.getBalance(addr).send();
+
         if (!cancelled) {
           const sol = Number(value) / 1_000_000_000;
           setBalance(`${sol} SOL`);
@@ -108,9 +117,11 @@ const Connected = ({
         if (!cancelled) {
           setBalance("error");
         }
+
         console.warn("getBalance failed:", error);
       }
     })();
+
     return () => {
       cancelled = true;
     };
@@ -120,26 +131,34 @@ const Connected = ({
     if (!walletStd) {
       return;
     }
+
     setErrorMsg(null);
+
     try {
       const feature = getFeature<SolanaSignMessageFeature>(
         walletStd,
         "solana:signMessage",
         "signMessage",
       );
+
       if (feature === undefined) {
         throw new Error("Wallet does not advertise solana:signMessage");
       }
+
       const account = findAccount(walletStd.accounts, wallet.account.walletAddress);
+
       if (account === undefined) {
         throw new Error("Wallet does not expose the active account");
       }
+
       const message = new TextEncoder().encode("Hello from butr + @solana/kit");
       const outputs = await feature.signMessage({ account, message });
       const output = outputs.at(0);
+
       if (output === undefined) {
         throw new Error("signMessage returned no outputs");
       }
+
       setSignature(bytesToBase58(output.signature));
     } catch (error) {
       setErrorMsg(formatError(error instanceof Error ? error : String(error)));
@@ -150,9 +169,12 @@ const Connected = ({
     if (!walletStd) {
       return;
     }
+
     setErrorMsg(null);
+
     try {
       const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+
       const message = pipe(
         createTransactionMessage({ version: 0 }),
         (m) => setTransactionMessageFeePayer(addr, m),
@@ -160,6 +182,7 @@ const Connected = ({
         (m) =>
           appendTransactionMessageInstruction(buildTransferInstruction(addr, BURN_ADDRESS, 0n), m),
       );
+
       const compiled = compileTransaction(message);
       const wire = getBase64EncodedWireTransaction(compiled);
       const bytes = base64ToBytes(wire);
@@ -169,22 +192,29 @@ const Connected = ({
         "solana:signAndSendTransaction",
         "signAndSendTransaction",
       );
+
       if (feature === undefined) {
         throw new Error("Wallet does not advertise solana:signAndSendTransaction");
       }
+
       const account = findAccount(walletStd.accounts, wallet.account.walletAddress);
+
       if (account === undefined) {
         throw new Error("Wallet does not expose the active account");
       }
+
       const outputs = await feature.signAndSendTransaction({
         account,
         chain: "solana:devnet",
         transaction: bytes,
       });
+
       const output = outputs.at(0);
+
       if (output === undefined) {
         throw new Error("signAndSendTransaction returned no outputs");
       }
+
       setTxSignature(bytesToBase58(output.signature));
     } catch (error) {
       setErrorMsg(formatError(error instanceof Error ? error : String(error)));

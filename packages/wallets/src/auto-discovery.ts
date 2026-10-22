@@ -70,17 +70,21 @@ const autoDiscovery =
         "[butr] autoDiscovery was given an empty platform list, so no wallets will be discovered. Omit it to discover every platform.",
       );
     }
+
     const bus = createDiscoveryBus(onAdapter);
     const routes: Array<WalletStandardRoute> = [];
     const unsubscribes: Array<() => void> = [bus.stop];
+
     for (const platform of CHAIN_PLATFORMS) {
       if (!platforms.includes(platform)) {
         continue;
       }
+
       for (const channel of CHANNELS[platform]) {
         if (!fallbacks && channel.lane !== "primary") {
           continue;
         }
+
         if ("source" in channel) {
           unsubscribes.push(channel.source(bus[channel.lane]));
         } else {
@@ -88,6 +92,7 @@ const autoDiscovery =
         }
       }
     }
+
     if (routes.length === 0) {
       bus.ready();
     } else {
@@ -106,4 +111,5 @@ const autoDiscovery =
   };
 
 export type { AutoDiscoveryOptions };
+
 export { autoDiscovery };

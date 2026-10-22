@@ -62,6 +62,7 @@ const createDiscoveryBus = (onAdapter: (adapter: WalletAdapter) => void): Discov
     }),
     fallback: afterSettle((adapter) => {
       const key = walletKey(adapter);
+
       if (!ids.has(adapter.id) && !primaryWallets.has(key) && !fallbackWallets.has(key)) {
         fallbackWallets.add(key);
         list(adapter);
@@ -69,6 +70,7 @@ const createDiscoveryBus = (onAdapter: (adapter: WalletAdapter) => void): Discov
     }),
     primary: (adapter) => {
       const key = walletKey(adapter);
+
       if (!ids.has(adapter.id) && !fallbackWallets.has(key)) {
         primaryWallets.add(key);
         list(adapter);
@@ -78,6 +80,7 @@ const createDiscoveryBus = (onAdapter: (adapter: WalletAdapter) => void): Discov
       timer ??= setTimeout(() => {
         const queue = held ?? [];
         held = null;
+
         for (const run of queue) {
           run();
         }
@@ -90,4 +93,5 @@ const createDiscoveryBus = (onAdapter: (adapter: WalletAdapter) => void): Discov
 };
 
 export type { Lane };
+
 export { SETTLE_MS, createDiscoveryBus };

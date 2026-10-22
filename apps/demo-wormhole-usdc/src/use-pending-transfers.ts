@@ -59,17 +59,21 @@ const usePendingTransfers = (
     setState("scanning");
     setScanError(null);
     setItems([]);
+
     try {
       const wh = getWormhole();
       const evmAddr = evmWallet?.account.walletAddress;
       const svmAddr = svmWallet?.account.walletAddress;
 
       const tasks: Array<ScanTask> = [];
+
       for (const spec of CHAIN_LIST) {
         const cctp = wh.getChain(spec.chain).config.contracts.cctp;
+
         if (!cctp) {
           continue;
         }
+
         if (spec.platform === "evm" && evmAddr !== undefined && evmAddr !== "") {
           tasks.push({
             run: () => scanEvmBurns(spec, cctp.tokenMessenger, evmAddr),
@@ -93,16 +97,20 @@ const usePendingTransfers = (
           }
         }),
       );
+
       const discovered: Array<DiscoveredBurn> = [];
       const partialChains: Array<string> = [];
+
       for (const { burns, partial, spec } of outcomes) {
         discovered.push(...burns);
+
         if (partial) {
           partialChains.push(spec.label);
         }
       }
 
       const solanaUsdc = findChainSpec("Solana")?.usdc;
+
       const activeSvmAtaUniversal =
         svmAddr !== undefined && svmAddr !== "" && solanaUsdc !== undefined && solanaUsdc !== ""
           ? Wormhole.chainAddress("Solana", await deriveUsdcAta(svmAddr, solanaUsdc))
@@ -116,13 +124,17 @@ const usePendingTransfers = (
           const message = await srcBridge.parseTransactionDetails(burn.txid);
           const destChain = message.to.chain;
           const destCtx = wh.getChain(destChain);
+
           if (destCtx.supportsCircleBridge()) {
             const destBridge = await destCtx.getCircleBridge();
+
             if (await destBridge.isTransferCompleted(message.message)) {
               return null;
             }
           }
+
           const recipientUniversal = message.to.address.toUniversalAddress().toString();
+
           const item: ResumableTransfer = {
             amount: formatUnits(message.amount, USDC_DECIMALS),
             destAddress: message.to.address.toString(),
@@ -135,6 +147,7 @@ const usePendingTransfers = (
             sourceChain: burn.sourceChain,
             sourceTxid: burn.txid,
           };
+
           return item;
         } catch {
           return null;
@@ -163,4 +176,5 @@ const usePendingTransfers = (
 };
 
 export type { ResumableTransfer };
+
 export { usePendingTransfers };

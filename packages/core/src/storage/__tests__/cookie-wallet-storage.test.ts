@@ -26,6 +26,7 @@ const stubDocument = () => {
       const [head = ""] = value.split(";");
       const eq = head.indexOf("=");
       const name = head.slice(0, eq);
+
       if (value.includes("Max-Age=0")) {
         jar.delete(name);
       } else {
@@ -33,6 +34,7 @@ const stubDocument = () => {
       }
     },
   });
+
   return jar;
 };
 

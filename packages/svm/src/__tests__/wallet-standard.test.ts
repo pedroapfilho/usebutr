@@ -23,31 +23,40 @@ describe("discoverSvmAdapters", () => {
 
   it("emits adapters announced via the Wallet Standard `register` event", async () => {
     const listeners = new Set<(...wallets: ReadonlyArray<WalletStandardWallet>) => void>();
+
     const fakeApp: WalletsApp = {
       get: () => [],
       on: (event, handler) => {
         if (event !== "register") {
           return () => {};
         }
+
         listeners.add(handler);
+
         return () => {
           listeners.delete(handler);
         };
       },
     };
+
     const loadModule = (): Promise<WalletStandardAppModule> =>
       Promise.resolve({ getWallets: () => fakeApp });
+
     const seen: Array<string> = [];
+
     const unsubscribe = discoverSvmAdapters((adapter) => {
       seen.push(adapter.id);
     }, loadModule);
+
     await new Promise<void>((resolve) => {
       setTimeout(resolve, 0);
     });
+
     const connectFeature: StandardConnectFeature = {
       connect: () => Promise.resolve({ accounts: [] }),
       version: "1.0.0",
     };
+
     const fakeWallet: WalletStandardWallet = {
       accounts: [
         {
@@ -64,9 +73,11 @@ describe("discoverSvmAdapters", () => {
       name: "TestSolanaWallet",
       version: "1.0.0",
     };
+
     for (const listener of listeners) {
       listener(fakeWallet);
     }
+
     expect(seen).toContain("wallet-standard:svm-testsolanawallet");
     unsubscribe();
   });

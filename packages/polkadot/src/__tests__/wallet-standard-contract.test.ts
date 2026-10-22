@@ -26,20 +26,25 @@ describeAdapterContract<PolkadotAdapter>({
   connect: (addresses) => {
     const calls: Array<ObservedCall> = [];
     const listeners = new Set<StandardEventsListener>();
+
     const signMessage: PolkadotSignMessageFeature = {
       signMessage: ({ account }) => {
         calls.push({ address: account.address });
+
         return Promise.resolve({ signature: new Uint8Array([1]) });
       },
     };
+
     const events: StandardEventsFeature = {
       on: (_event, listener) => {
         listeners.add(listener);
+
         return () => {
           listeners.delete(listener);
         };
       },
     };
+
     const adapter = buildPolkadotWalletStandardAdapter({
       accounts: addresses.map(walletAccount),
       chains: [POLKADOT_CHAINS.polkadot.id, POLKADOT_CHAINS.kusama.id],
@@ -52,9 +57,11 @@ describeAdapterContract<PolkadotAdapter>({
       name: "Contract Polkadot Wallet",
       version: "1.0.0",
     });
+
     if (adapter === null) {
       throw new Error("expected a polkadot adapter");
     }
+
     return Promise.resolve({
       adapter,
       lastCall: () => calls.at(-1),

@@ -102,6 +102,7 @@ describe("bitcoinNamespace", () => {
       `${MAINNET}:bc1qaaa`,
       `${TESTNET}:tb1qbbb`,
     ]);
+
     const adapter = buildAdapter(provider, [MAINNET, TESTNET]);
     const transfer = { amount: 1n, recipient: "tb1qrecipient" };
 
@@ -163,6 +164,7 @@ describe("bitcoinNamespace", () => {
     const prefixed = await buildAdapter(
       connectedProvider({ signature: "0xcafebabe" }),
     ).signMessage?.(message);
+
     expect(prefixed && bytesToHex(prefixed.signature)).toBe("cafebabe");
   });
 
@@ -180,6 +182,7 @@ describe("bitcoinNamespace", () => {
       `${MAINNET}:bc1qaaa`,
       `${MAINNET}:bc1qbbb`,
     ]);
+
     const adapter = buildAdapter(provider);
 
     await adapter.signMessage?.(new Uint8Array([1]), {

@@ -13,6 +13,7 @@ const makeWindow = (): InjectedWindow => ({
 describe("discoverInjectedPolkadotAdapters", () => {
   it("emits one adapter per window.injectedWeb3 key, deduped", () => {
     const seen: Array<string> = [];
+
     const stop = discoverInjectedPolkadotAdapters(
       (a) => {
         seen.push(a.id);
@@ -22,6 +23,7 @@ describe("discoverInjectedPolkadotAdapters", () => {
         target: makeWindow(),
       },
     );
+
     stop();
     expect(seen.toSorted()).toEqual([
       "injected:polkadot:polkadot-js",
@@ -31,6 +33,7 @@ describe("discoverInjectedPolkadotAdapters", () => {
 
   it("emits nothing when injectedWeb3 is absent", () => {
     const seen: Array<string> = [];
+
     const stop = discoverInjectedPolkadotAdapters(
       (a) => {
         seen.push(a.id);
@@ -40,6 +43,7 @@ describe("discoverInjectedPolkadotAdapters", () => {
         target: {},
       },
     );
+
     stop();
     expect(seen).toEqual([]);
   });

@@ -18,6 +18,7 @@ const isFeatureObject = (value: unknown): value is WalletStandardFeature =>
 
 const toFeatureRecord = (features: ImportedWallet["features"]) => {
   const record: Partial<Record<string, WalletStandardFeature>> = {};
+
   for (const [name, value] of Object.entries(features)) {
     // Stored as-is rather than spread: a spread would detach its methods from
     // the wallet's own object, breaking any implementation that reads `this`.
@@ -25,6 +26,7 @@ const toFeatureRecord = (features: ImportedWallet["features"]) => {
       record[name] = value;
     }
   }
+
   return record;
 };
 
@@ -37,9 +39,11 @@ const wrappers = new WeakMap<ImportedWallet, WalletStandardWallet>();
  */
 const mapWallet = (wallet: ImportedWallet): WalletStandardWallet => {
   const cached = wrappers.get(wallet);
+
   if (cached !== undefined) {
     return cached;
   }
+
   const wrapper: WalletStandardWallet = {
     get accounts() {
       return wallet.accounts;
@@ -52,7 +56,9 @@ const mapWallet = (wallet: ImportedWallet): WalletStandardWallet => {
     name: wallet.name,
     version: wallet.version,
   };
+
   wrappers.set(wallet, wrapper);
+
   return wrapper;
 };
 
@@ -83,10 +89,13 @@ type WalletStandardDiscoveryOptions = {
 
 const loadWalletStandardModule = async (): Promise<WalletStandardAppModule> => {
   const imported = await import("@wallet-standard/app");
+
   if (!("getWallets" in imported) || typeof imported.getWallets !== "function") {
     throw new Error("@wallet-standard/app has no getWallets export");
   }
+
   const source = imported.getWallets();
+
   return {
     getWallets: () => ({
       get: () => source.get().map(mapWallet),
@@ -112,6 +121,7 @@ const discoverWalletStandard = (
 
   void (async () => {
     let mod: WalletStandardAppModule;
+
     try {
       mod = await loadModule();
     } catch (error) {
@@ -122,11 +132,14 @@ const discoverWalletStandard = (
           error,
         );
       }
+
       if (!cancelled) {
         onReady?.();
       }
+
       return;
     }
+
     if (cancelled) {
       return;
     }
@@ -138,17 +151,21 @@ const discoverWalletStandard = (
       const registerDisconnector = (emit: () => void) => {
         disconnectors.set(wallet, [...(disconnectors.get(wallet) ?? []), emit]);
       };
+
       for (const { build, onAdapter } of routes) {
         const adapter = build(wallet, registerDisconnector);
+
         if (adapter === null || seenIds.has(adapter.id)) {
           continue;
         }
+
         seenIds.add(adapter.id);
         onAdapter(adapter);
       }
     };
 
     const app = mod.getWallets();
+
     for (const wallet of app.get()) {
       add(wallet);
     }
@@ -158,18 +175,22 @@ const discoverWalletStandard = (
         add(wallet);
       }
     });
+
     const offUnregister = app.on("unregister", (...wallets) => {
       for (const wallet of wallets) {
         for (const emit of disconnectors.get(wallet) ?? []) {
           emit();
         }
+
         disconnectors.delete(wallet);
       }
     });
+
     internalUnsub = () => {
       offRegister();
       offUnregister();
     };
+
     onReady?.();
   })();
 
@@ -181,4 +202,5 @@ const discoverWalletStandard = (
 };
 
 export type { WalletStandardAdapterBuilder, WalletStandardRoute };
+
 export { discoverWalletStandard, mapWallet };

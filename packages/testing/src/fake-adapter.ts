@@ -112,9 +112,11 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
   const emitter = createConnectorEmitter();
   const requests: Array<FakeRequest> = [];
   const nextBytes = createByteSource();
+
   let accounts: ReadonlyArray<Account> = options.accounts ?? [
     buildAccount(DEFAULT_ADDRESSES[platform], DEFAULT_CHAINS[platform]),
   ];
+
   let exposed = true;
 
   const currentChain = (): ChainBase => accounts[0]?.chain ?? DEFAULT_CHAINS[platform];
@@ -138,6 +140,7 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
       account: entry,
       address: entry.walletAddress,
     }));
+
     return target.account(entries, account).account;
   };
 
@@ -149,6 +152,7 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
    *  does, and tells listeners. */
   const moveTo = (chain: ChainBase) => {
     accounts = accounts.map((account) => buildAccount(account.walletAddress, chain));
+
     if (exposed) {
       emitter.emit({ accounts, type: "accountsChanged" });
     }
@@ -156,17 +160,21 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
 
   const balanceOf = (balanceOptions: BalanceOptions | undefined): Balance => {
     accountFor(balanceOptions?.account);
+
     if (balanceOptions?.token !== undefined) {
       throw new Error(`${name} fakes the native asset only; override getBalance for tokens`);
     }
+
     const { decimals, symbol } = NATIVE_ASSETS[platform];
     const value = options.balance ?? 10n ** BigInt(decimals);
+
     return { decimals, formatted: formatUnits(value, decimals), symbol, value };
   };
 
   const signMessage = (message: Uint8Array, signOptions?: AccountOptions) =>
     settle((): SignedMessage => {
       record("signMessage", accountFor(signOptions?.account));
+
       return { signature: nextBytes(64), signedMessage: message };
     });
 
@@ -206,6 +214,7 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
       } else {
         exposed = false;
       }
+
       emitter.emit(event);
     },
     listenerCount: emitter.listenerCount,
@@ -215,9 +224,11 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
   /** Applies `overrides` and `omit` last, so they win over every default. */
   const finish = (adapter: WalletAdapterFor<P>): FakeAdapter<P> => {
     const fake: FakeAdapter<P> = { ...adapter, ...options.overrides, ...controls };
+
     for (const member of options.omit ?? []) {
       Reflect.deleteProperty(fake, member);
     }
+
     return fake;
   };
 
@@ -240,12 +251,14 @@ const suiBytes = async (tx: SuiTransactionInput): Promise<Uint8Array> => {
   if (tx instanceof Uint8Array) {
     return tx;
   }
+
   return encoder.encode(typeof tx === "string" ? tx : await tx.toJSON());
 };
 
 const siwsMessage = (input: SignInInput | undefined, account: Account): string => {
   const domain = typeof input?.domain === "string" ? input.domain : "localhost";
   const nonce = typeof input?.nonce === "string" ? `\n\nNonce: ${input.nonce}` : "";
+
   return `${domain} wants you to sign in with your Solana account:\n${account.walletAddress}${nonce}`;
 };
 
@@ -254,6 +267,7 @@ const siwsMessage = (input: SignInInput | undefined, account: Account): string =
 const buildEvm = (options: FakeAdapterOptions): FakeAdapter<"evm"> => {
   const wallet = createFakeWallet("evm", options);
   const { advertised, ...input } = wallet.targetInput;
+
   const target = createSwitchingChainTarget({
     ...input,
     canSwitch: (chain) => advertised().includes(chain.id),
@@ -263,6 +277,7 @@ const buildEvm = (options: FakeAdapterOptions): FakeAdapter<"evm"> => {
         wallet.moveTo(chain);
       }),
   });
+
   const adapter: EvmAdapter = {
     ...wallet.base,
     chainPlatform: "evm",
@@ -276,17 +291,20 @@ const buildEvm = (options: FakeAdapterOptions): FakeAdapter<"evm"> => {
       const account = wallet.accountFor(txOptions?.account);
       await target.chain(txOptions?.chain);
       wallet.record("sendTx", account, wallet.currentChain().id);
+
       return bytesToHexPrefixed(wallet.nextBytes(32));
     },
     signMessage: wallet.signMessage,
     switchChain: target.chain,
   };
+
   return wallet.finish(adapter);
 };
 
 /** A Wallet Standard Solana wallet: routes `chain` per call. */
 const buildSvm = (options: FakeAdapterOptions<"svm">): FakeAdapter<"svm"> => {
   const wallet = createFakeWallet("svm", options);
+
   const adapter: SvmAdapter = {
     ...wallet.base,
     chainPlatform: "svm",
@@ -294,12 +312,14 @@ const buildSvm = (options: FakeAdapterOptions<"svm">): FakeAdapter<"svm"> => {
     sendTx: (_tx, txOptions) =>
       settle(() => {
         wallet.route("sendTx", txOptions);
+
         return bytesToBase58(wallet.nextBytes(64));
       }),
     signIn: (input) =>
       settle(() => {
         const account = wallet.accountFor();
         wallet.record("signIn", account);
+
         return {
           account,
           signature: wallet.nextBytes(64),
@@ -310,14 +330,17 @@ const buildSvm = (options: FakeAdapterOptions<"svm">): FakeAdapter<"svm"> => {
     signTransaction: (tx, txOptions) =>
       settle(() => {
         wallet.route("signTransaction", txOptions);
+
         return tx;
       }),
   };
+
   return wallet.finish(adapter);
 };
 
 const buildSui = (options: FakeAdapterOptions<"sui">): FakeAdapter<"sui"> => {
   const wallet = createFakeWallet("sui", options);
+
   const adapter: SuiAdapter = {
     ...wallet.base,
     chainPlatform: "sui",
@@ -325,19 +348,23 @@ const buildSui = (options: FakeAdapterOptions<"sui">): FakeAdapter<"sui"> => {
     sendTx: (_tx, txOptions) =>
       settle(() => {
         wallet.route("sendTx", txOptions);
+
         return bytesToBase58(wallet.nextBytes(32));
       }),
     signMessage: wallet.signMessage,
     signTransaction: async (tx, txOptions) => {
       wallet.route("signTransaction", txOptions);
+
       return { bytes: await suiBytes(tx), signature: wallet.nextBytes(64) };
     },
   };
+
   return wallet.finish(adapter);
 };
 
 const buildBitcoin = (options: FakeAdapterOptions<"bitcoin">): FakeAdapter<"bitcoin"> => {
   const wallet = createFakeWallet("bitcoin", options);
+
   const adapter: BitcoinAdapter = {
     ...wallet.base,
     chainPlatform: "bitcoin",
@@ -345,30 +372,36 @@ const buildBitcoin = (options: FakeAdapterOptions<"bitcoin">): FakeAdapter<"bitc
     sendTx: (transfer, txOptions) =>
       settle(() => {
         wallet.route("sendTx", txOptions);
+
         if (transfer.amount <= 0n) {
           throw new Error(`${wallet.base.name} cannot send ${transfer.amount} satoshis`);
         }
+
         return bytesToHex(wallet.nextBytes(32));
       }),
     signMessage: wallet.signMessage,
     signTransaction: (psbt, txOptions) =>
       settle(() => {
         wallet.route("signTransaction", txOptions);
+
         return psbt;
       }),
   };
+
   return wallet.finish(adapter);
 };
 
 /** Extrinsics need chain metadata, so a Polkadot wallet only signs. */
 const buildPolkadot = (options: FakeAdapterOptions<"polkadot">): FakeAdapter<"polkadot"> => {
   const wallet = createFakeWallet("polkadot", options);
+
   const adapter: PolkadotAdapter = {
     ...wallet.base,
     chainPlatform: "polkadot",
     ...(options.balance !== undefined && { getBalance: wallet.getBalance }),
     signMessage: wallet.signMessage,
   };
+
   return wallet.finish(adapter);
 };
 
@@ -403,25 +436,32 @@ function createFakeAdapter(options: AnyFakeAdapterOptions = {}): FakeAdapter<Cha
     case "bitcoin": {
       return buildFakeAdapter("bitcoin", options);
     }
+
     case "polkadot": {
       return buildFakeAdapter("polkadot", options);
     }
+
     case "sui": {
       return buildFakeAdapter("sui", options);
     }
+
     case "svm": {
       return buildFakeAdapter("svm", options);
     }
+
     case undefined:
     case "evm": {
       return buildFakeAdapter("evm", options);
     }
+
     default: {
       const unknownPlatform: never = options;
+
       return unknownPlatform;
     }
   }
 }
 
 export type { FakeAdapter, FakeAdapterControls, FakeAdapterOptions, FakeRequest };
+
 export { buildFakeAdapter, createFakeAdapter };

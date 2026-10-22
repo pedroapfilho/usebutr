@@ -37,6 +37,7 @@ const describeFake = <P extends ChainPlatform>(platform: P, platformCase: Platfo
       const adapter = buildFakeAdapter(platform, {
         accounts: addresses.map((address) => buildAccount(address, platformCase.chain)),
       });
+
       return Promise.resolve({
         adapter,
         lastCall: () => adapter.requests().at(-1),

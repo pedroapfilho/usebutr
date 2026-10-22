@@ -18,6 +18,7 @@ const staticSource =
     for (const adapter of adapters) {
       onAdapter(adapter);
     }
+
     return () => {};
   };
 
@@ -30,19 +31,23 @@ type Setup = {
 /** Renders `hook` under a provider, next to the manager it binds to. */
 const renderWithManager = <T,>(hook: () => T, setup: Setup = {}) => {
   const persistence = createFakePersistence();
+
   const config: WalletManagerConfig = {
     sources: [staticSource(...(setup.adapters ?? []))],
     storage: persistence,
     ...setup.config,
   };
+
   const Wrapper = ({ children }: PropsWithChildren) => (
     <WalletManagerProvider config={config} initialState={setup.initialState}>
       {children}
     </WalletManagerProvider>
   );
+
   const view = renderHook(() => ({ manager: useWalletManager(), value: hook() }), {
     wrapper: Wrapper,
   });
+
   return { ...view, persistence };
 };
 

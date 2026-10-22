@@ -9,6 +9,7 @@ import { BrowserProvider, type Eip1193Provider } from "ethers";
 import { z } from "zod";
 
 const transactionValueSchema = z.union([z.bigint(), z.number(), z.string()]);
+
 const evmTransactionSchema = z
   .object({
     data: z.string().optional(),
@@ -16,6 +17,7 @@ const evmTransactionSchema = z
     value: transactionValueSchema.optional(),
   })
   .loose();
+
 const evmUnsignedTxSchema = z.object({
   description: z.string(),
   transaction: evmTransactionSchema,
@@ -48,6 +50,7 @@ class ButrEvmWormholeSigner<N extends Network, C extends Chain> implements SignA
     const provider = new BrowserProvider(this._eip1193);
     const signer = await provider.getSigner(this._address);
     const hashes: Array<TxHash> = [];
+
     for (const tx of txs) {
       const parsedTx = evmUnsignedTxSchema.parse(tx);
       console.log(`[wormhole/evm] sending: ${parsedTx.description}`);
@@ -55,6 +58,7 @@ class ButrEvmWormholeSigner<N extends Network, C extends Chain> implements SignA
       await response.wait(1);
       hashes.push(response.hash);
     }
+
     return hashes;
   }
 }

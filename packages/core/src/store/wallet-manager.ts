@@ -84,9 +84,11 @@ const createWalletManager = (
   options: { initialState?: WalletSnapshot } = {},
 ): WalletManager => {
   const storage = config.storage ?? createWalletStorage();
+
   const store = createStore<StoreState>()(() =>
     options.initialState ? seededState(options.initialState) : initialState,
   );
+
   const { getState } = store;
 
   /** True when `event` changed the state, i.e. the reducer accepted it. */
@@ -94,6 +96,7 @@ const createWalletManager = (
     const state = getState();
     const next = reducer(state, event);
     store.setState(next, true);
+
     return next !== state;
   };
 
@@ -101,20 +104,26 @@ const createWalletManager = (
     getState().adapters.find((adapter) => adapter.id === connectorId);
 
   const lifetimes = new Map<string, ConnectionLifetime>();
+
   const lifetimeOf = (connectorId: string) => {
     const lifetime = lifetimes.get(connectorId) ?? { pending: 0 };
     lifetime.pending += 1;
     lifetimes.set(connectorId, lifetime);
+
     return lifetime;
   };
+
   const releaseLifetime = (connectorId: string, lifetime: ConnectionLifetime) => {
     lifetime.pending -= 1;
+
     if (lifetime.pending === 0 && lifetimes.get(connectorId) === lifetime) {
       lifetimes.delete(connectorId);
     }
   };
+
   const invalidateConnection = (connectorId: string) => {
     lifetimes.delete(connectorId);
+
     if (getState().connectingConnectorId === connectorId) {
       dispatch({ type: "STATUS_RESET" });
     }
@@ -134,22 +143,29 @@ const createWalletManager = (
   // hydration is done. Saves are coalesced so an async driver never writes
   // an older state after a newer one.
   let saving: "idle" | "busy" | "stale" = "idle";
+
   const persist = async () => {
     if (saving !== "idle") {
       saving = "stale";
+
       return;
     }
+
     saving = "stale";
+
     while (saving === "stale") {
       saving = "busy";
+
       try {
         await storage.save(toPersistedState(getState()));
       } catch (error) {
         reportStorageError(error);
       }
     }
+
     saving = "idle";
   };
+
   store.subscribe((state, prev) => {
     if (hydration === "done" && persistedStateChanged(state, prev)) {
       void persist();
@@ -163,9 +179,11 @@ const createWalletManager = (
     onDisconnected: (connectorId) => {
       invalidateConnection(connectorId);
       const wallet = getState().pool.get(connectorId);
+
       if (wallet === undefined) {
         return;
       }
+
       // Discovery caches the adapter and hands it back on the next connect,
       // so it must not be reused while still holding the ended session.
       void teardown(wallet.connector);
@@ -178,6 +196,7 @@ const createWalletManager = (
   // session the pool does not hold must not stay open on it.
   const closeUnlessPooled = async (connector: WalletAdapter, lifetime: ConnectionLifetime) => {
     const current = lifetimes.get(connector.id);
+
     if (
       getState().pool.get(connector.id)?.connector !== connector &&
       (current === lifetime || (current?.pending ?? 0) === 0)
@@ -192,14 +211,18 @@ const createWalletManager = (
     type: "CONNECT_SUCCEEDED" | "ENTRY_RESTORED",
   ) => {
     const connectorId = wallet.connector.id;
+
     if (
       lifetimes.get(connectorId) !== lifetime ||
       !dispatch({ connectorId, entry: wallet, type })
     ) {
       await closeUnlessPooled(wallet.connector, lifetime);
+
       return false;
     }
+
     safely("onConnect", config.onConnect, wallet, { reconnected: type === "ENTRY_RESTORED" });
+
     return true;
   };
 
@@ -207,24 +230,31 @@ const createWalletManager = (
   // then of each late adapter the moment a source announces it.
   const restore = async (connectorId: string): Promise<RestoreResult | null> => {
     const adapter = findAdapter(connectorId);
+
     if (adapter === undefined || !getState().dormant.has(connectorId)) {
       return null;
     }
+
     const lifetime = lifetimeOf(connectorId);
+
     try {
       const wallet = await openSession(adapter, {
         close: () => closeUnlessPooled(adapter, lifetime),
         silent: true,
       });
+
       if (!(await commitSession(wallet, lifetime, "ENTRY_RESTORED"))) {
         return null;
       }
+
       return { connectorId, ok: true };
     } catch (error) {
       if (lifetimes.get(connectorId) !== lifetime) {
         return null;
       }
+
       dispatch({ connectorId, type: "RESTORE_FAILED" });
+
       return { connectorId, error: toConnectionError(error), ok: false };
     } finally {
       releaseLifetime(connectorId, lifetime);
@@ -233,6 +263,7 @@ const createWalletManager = (
 
   const restoreLate = async (connectorId: string) => {
     const result = await restore(connectorId);
+
     if (result?.ok === false) {
       logWarn(`[butr] silent reconnect failed for ${connectorId}:`, result.error);
     }
@@ -241,11 +272,13 @@ const createWalletManager = (
   const hydrate = async () => {
     hydration = "loading";
     let persisted = EMPTY_PERSISTED;
+
     try {
       persisted = await storage.load();
     } catch (error) {
       reportStorageError(error);
     }
+
     dispatch({
       entries: persisted.pool,
       isUserDisconnected: persisted.isUserDisconnected,
@@ -274,6 +307,7 @@ const createWalletManager = (
       pendingIds,
       restoredIds: results.flatMap((result) => (result.ok ? [result.connectorId] : [])),
     };
+
     if (config.onHydrated) {
       safely("onHydrated", config.onHydrated, outcome);
     } else {
@@ -285,6 +319,7 @@ const createWalletManager = (
 
   const register = (adapter: WalletAdapter) => {
     const registered = dispatch({ adapter, type: "ADAPTER_REGISTERED" });
+
     if (registered && (hydration === "restoring" || hydration === "done")) {
       void restoreLate(adapter.id);
     }
@@ -295,6 +330,7 @@ const createWalletManager = (
       return source(register);
     } catch (error) {
       logError("[butr] a wallet source threw on subscribe:", error);
+
       return () => {};
     }
   };
@@ -307,6 +343,7 @@ const createWalletManager = (
     connect: async (connectorId) => {
       const lifetime = lifetimeOf(connectorId);
       dispatch({ connectorId, type: "CONNECT_STARTED" });
+
       const slowTimer = config.onSlowConnect
         ? setTimeout(() => {
             if (lifetimes.get(connectorId) === lifetime) {
@@ -314,31 +351,38 @@ const createWalletManager = (
             }
           }, config.slowConnectThresholdMs ?? DEFAULT_SLOW_CONNECT_THRESHOLD_MS)
         : undefined;
+
       try {
         const connector = findAdapter(connectorId);
+
         if (connector === undefined) {
           throw new ConnectionError(
             "WalletNotFound",
             `No wallet adapter is registered as "${connectorId}"`,
           );
         }
+
         const wallet = await openSession(connector, {
           close: () => closeUnlessPooled(connector, lifetime),
           silent: false,
         });
+
         if (!(await commitSession(wallet, lifetime, "CONNECT_SUCCEEDED"))) {
           throw new ConnectionError(
             "NotConnected",
             `Connection to ${connector.name} was disconnected`,
           );
         }
+
         return wallet;
       } catch (error) {
         const failure = toConnectionError(error);
+
         if (lifetimes.get(connectorId) === lifetime) {
           dispatch({ connectorId, error: failure, type: "CONNECT_FAILED" });
           safely("onConnectError", config.onConnectError, failure, connectorId);
         }
+
         throw failure;
       } finally {
         releaseLifetime(connectorId, lifetime);
@@ -350,6 +394,7 @@ const createWalletManager = (
       invalidateConnection(connectorId);
       const wallet = getState().pool.get(connectorId);
       dispatch({ byUser: true, connectorId, type: "DISCONNECTED" });
+
       if (wallet !== undefined) {
         void teardown(wallet.connector);
         safely("onDisconnect", config.onDisconnect, wallet, { byUser: true });
@@ -360,6 +405,7 @@ const createWalletManager = (
       lifetimes.clear();
       const wallets = [...getState().pool.values()];
       dispatch({ type: "RESET" });
+
       for (const wallet of wallets) {
         void teardown(wallet.connector);
         safely("onDisconnect", config.onDisconnect, wallet, { byUser: true });
@@ -371,9 +417,11 @@ const createWalletManager = (
 
     requestAccounts: async (connectorId) => {
       const connector = getState().pool.get(connectorId)?.connector;
+
       if (connector?.requestAccounts === undefined) {
         return;
       }
+
       await connector.requestAccounts();
       const { accounts } = await readAccounts(connector);
       dispatch({ accounts, connectorId, type: "ACCOUNTS_CHANGED" });
@@ -382,9 +430,11 @@ const createWalletManager = (
     setAccount: (connectorId, account) => {
       const wallet = getState().pool.get(connectorId);
       const active = wallet?.accounts.find((candidate) => candidate.id === account.id);
+
       if (wallet === undefined || active === undefined) {
         return;
       }
+
       dispatch({ accounts: wallet.accounts, active, connectorId, type: "ACCOUNTS_CHANGED" });
     },
 
@@ -399,14 +449,17 @@ const createWalletManager = (
     start: () => {
       const unsubscribes = (config.sources ?? []).map(subscribeSource);
       lifecycle.sync(getState().pool);
+
       const unsubscribePool = store.subscribe((state, prev) => {
         if (state.pool !== prev.pool) {
           lifecycle.sync(state.pool);
         }
       });
+
       if (hydration === "idle") {
         void hydrate();
       }
+
       return () => {
         for (const unsubscribe of unsubscribes) {
           try {
@@ -415,6 +468,7 @@ const createWalletManager = (
             logWarn("[butr] a wallet source threw on unsubscribe:", error);
           }
         }
+
         unsubscribePool();
         lifecycle.detachAll();
       };
@@ -425,4 +479,5 @@ const createWalletManager = (
 };
 
 export type { WalletManager };
+
 export { createWalletManager };

@@ -94,19 +94,24 @@ const describeAdapterContract = <A extends WalletAdapter>(
 ): void => {
   const [active, other] = fixture.addresses;
   const { chain, reachable } = fixture;
+
   const foreign =
     chain.namespace === EVM_CHAINS.ethereum.namespace ? SVM_CHAINS.mainnet : EVM_CHAINS.ethereum;
+
   const evm = chain.namespace === EVM_CHAINS.ethereum.namespace;
   const accountOf = (address: string) => buildAccount(address, chain);
   const title = (topic: string) => `${fixture.name} adapter contract: ${topic}`;
 
   const subscribed = async () => {
     const { adapter, reportAccounts } = await fixture.connect([active]);
+
     if (adapter.subscribe === undefined || reportAccounts === undefined) {
       return null;
     }
+
     const listener: Listener = vi.fn();
     const unsubscribe = adapter.subscribe(listener);
+
     return { listener, reportAccounts, unsubscribe };
   };
 
@@ -127,10 +132,13 @@ const describeAdapterContract = <A extends WalletAdapter>(
   describe(title("signMessage"), () => {
     it("acts as the active account when none is requested", async (context) => {
       const { adapter, lastCall } = await fixture.connect([active, other]);
+
       if (adapter.signMessage === undefined) {
         context.skip("signMessage is not defined");
+
         return;
       }
+
       await adapter.signMessage(MESSAGE);
       expect(lastCall()?.address).toBe(active);
     });
@@ -141,16 +149,22 @@ const describeAdapterContract = <A extends WalletAdapter>(
         : "acts as a requested exposed account",
       async (context) => {
         const { adapter, lastCall } = await fixture.connect([active, other]);
+
         if (adapter.signMessage === undefined) {
           context.skip("signMessage is not defined");
+
           return;
         }
+
         const signing = adapter.signMessage(MESSAGE, { account: accountOf(other) });
+
         if (fixture.activeOnly === true) {
           await expect(signing).rejects.toMatchObject({ kind: "AccountNotExposed" });
           expect(lastCall()).toBeUndefined();
+
           return;
         }
+
         await signing;
         expect(lastCall()?.address).toBe(other);
       },
@@ -158,10 +172,13 @@ const describeAdapterContract = <A extends WalletAdapter>(
 
     it("rejects an account the wallet does not expose with AccountNotExposed", async (context) => {
       const { adapter, lastCall } = await fixture.connect([active]);
+
       if (adapter.signMessage === undefined) {
         context.skip("signMessage is not defined");
+
         return;
       }
+
       await expect(
         adapter.signMessage(MESSAGE, { account: accountOf(other) }),
       ).rejects.toMatchObject({ kind: "AccountNotExposed" });
@@ -174,26 +191,35 @@ const describeAdapterContract = <A extends WalletAdapter>(
         : "matches an address exactly, so a case-changed copy is not exposed",
       async (context) => {
         const { adapter, lastCall } = await fixture.connect([active]);
+
         if (adapter.signMessage === undefined) {
           context.skip("signMessage is not defined");
+
           return;
         }
+
         const signing = adapter.signMessage(MESSAGE, { account: accountOf(flipCase(active)) });
+
         if (evm) {
           await signing;
           expect(lastCall()?.address).toBe(active);
+
           return;
         }
+
         await expect(signing).rejects.toMatchObject({ kind: "AccountNotExposed" });
       },
     );
 
     it("rejects with NotConnected when the wallet exposes nothing", async (context) => {
       const { adapter, lastCall } = await fixture.connect([]);
+
       if (adapter.signMessage === undefined) {
         context.skip("signMessage is not defined while nothing is exposed");
+
         return;
       }
+
       await expect(adapter.signMessage(MESSAGE)).rejects.toMatchObject({ kind: "NotConnected" });
       expect(lastCall()).toBeUndefined();
     });
@@ -237,6 +263,7 @@ const describeAdapterContract = <A extends WalletAdapter>(
           await call(adapter, { chain });
           expect(lastCall()?.chain).toBe(chain.id);
         });
+
         return;
       }
 
@@ -260,19 +287,25 @@ const describeAdapterContract = <A extends WalletAdapter>(
   describe(title("switchChain"), () => {
     it("rejects a chain from another namespace with ChainMismatch", async (context) => {
       const { adapter } = await fixture.connect([active]);
+
       if (adapter.switchChain === undefined) {
         context.skip("switchChain is not defined");
+
         return;
       }
+
       await expect(adapter.switchChain(foreign)).rejects.toMatchObject({ kind: "ChainMismatch" });
     });
 
     it("rejects a chain the transport cannot reach with ChainMismatch", async (context) => {
       const { adapter } = await fixture.connect([active]);
+
       if (adapter.switchChain === undefined) {
         context.skip("switchChain is not defined");
+
         return;
       }
+
       await expect(adapter.switchChain(fixture.unreachable)).rejects.toMatchObject({
         kind: "ChainMismatch",
       });
@@ -280,16 +313,20 @@ const describeAdapterContract = <A extends WalletAdapter>(
 
     it("moves the accounts to a reachable chain and tells subscribers", async (context) => {
       const { adapter } = await fixture.connect([active]);
+
       if (adapter.switchChain === undefined || reachable === undefined) {
         context.skip("switchChain is not defined");
+
         return;
       }
+
       const listener: Listener = vi.fn();
       const unsubscribe = adapter.subscribe?.(listener);
       await adapter.switchChain(reachable);
 
       const moved = [buildAccount(active, reachable)];
       await expect(adapter.getAccounts()).resolves.toStrictEqual(moved);
+
       if (unsubscribe !== undefined) {
         await heardLast(listener, { accounts: moved, type: "accountsChanged" });
         unsubscribe();
@@ -300,10 +337,13 @@ const describeAdapterContract = <A extends WalletAdapter>(
   describe(title("subscribe"), () => {
     it("forwards a wallet account change as accountsChanged, active first", async (context) => {
       const reporter = await subscribed();
+
       if (reporter === null) {
         context.skip("the wallet pushes no account changes");
+
         return;
       }
+
       reporter.reportAccounts([other, active]);
       await heard(reporter.listener, {
         accounts: [accountOf(other), accountOf(active)],
@@ -313,10 +353,13 @@ const describeAdapterContract = <A extends WalletAdapter>(
 
     it("forwards an empty account list as accountsChanged, never as disconnected", async (context) => {
       const reporter = await subscribed();
+
       if (reporter === null) {
         context.skip("the wallet pushes no account changes");
+
         return;
       }
+
       reporter.reportAccounts([]);
       await heard(reporter.listener, { accounts: [], type: "accountsChanged" });
       expect(reporter.listener).not.toHaveBeenCalledWith({ type: "disconnected" });
@@ -324,10 +367,13 @@ const describeAdapterContract = <A extends WalletAdapter>(
 
     it("stops delivering once unsubscribed", async (context) => {
       const reporter = await subscribed();
+
       if (reporter === null) {
         context.skip("the wallet pushes no account changes");
+
         return;
       }
+
       reporter.unsubscribe();
       reporter.reportAccounts([other]);
       await settle();
@@ -337,4 +383,5 @@ const describeAdapterContract = <A extends WalletAdapter>(
 };
 
 export type { AdapterContractFixture, ContractWallet, ObservedCall, TransactionCall };
+
 export { describeAdapterContract };

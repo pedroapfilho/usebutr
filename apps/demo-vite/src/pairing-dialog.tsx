@@ -20,9 +20,11 @@ const PairingDialog = () => {
 
   useEffect(() => {
     const dialog = dialogRef.current;
+
     if (dialog === null) {
       return;
     }
+
     if (open) {
       dialog.showModal();
     } else {
@@ -32,14 +34,18 @@ const PairingDialog = () => {
 
   useEffect(() => {
     const dialog = dialogRef.current;
+
     if (dialog === null) {
       return undefined;
     }
+
     const handleClose = () => {
       clearPairingUri();
       setCopied(false);
     };
+
     dialog.addEventListener("close", handleClose);
+
     return () => {
       dialog.removeEventListener("close", handleClose);
     };
@@ -49,6 +55,7 @@ const PairingDialog = () => {
     if (uri === null) {
       return;
     }
+
     try {
       await navigator.clipboard.writeText(uri);
       setCopied(true);

@@ -46,11 +46,14 @@ const observe = (
   signerParam: string,
 ): ObservedCall | undefined => {
   const last = provider.requests.at(-1);
+
   if (last === undefined) {
     return undefined;
   }
+
   const address = Object.entries(last.args.params ?? {}).find(([key]) => key === signerParam)?.[1];
   const butrId = [...(builder.chainAliases ?? [])].find(([, id]) => id === last.chain)?.[0];
+
   return {
     address: typeof address === "string" ? address : undefined,
     chain: butrId ?? last.chain,
@@ -68,19 +71,23 @@ const caipContract = <A extends WalletAdapter>({
   const chains = [fixture.chain, fixture.reachable ?? fixture.chain].map((chain) =>
     sessionIdOf(builder, chain),
   );
+
   describeAdapterContract<A>({
     ...fixture,
     connect: (addresses) => {
       const [current = "", reachable = ""] = chains;
       const accounts = addresses.map((address) => `${current}:${address}`);
       const [active] = addresses;
+
       if (active !== undefined) {
         accounts.push(`${reachable}:${active}`);
       }
+
       const provider = createFakeProvider({
         request: (args) => answer(args.method),
         session: { namespaces: { [builder.caipPrefix]: { accounts } } },
       });
+
       const adapter = builder.buildAdapter({
         chains,
         icon: "",
@@ -88,6 +95,7 @@ const caipContract = <A extends WalletAdapter>({
         name: `WalletConnect (${builder.caipPrefix})`,
         provider,
       });
+
       return Promise.resolve({
         adapter,
         lastCall: () => observe(provider, builder, signerParam),
@@ -113,6 +121,7 @@ const solanaTransaction = (signer: string) =>
 
 const SOLANA_SIGNER_KEY = new Uint8Array(32).fill(2);
 const SOLANA_SIGNER = bytesToBase58(SOLANA_SIGNER_KEY);
+
 const signerKey = (signer: string) =>
   signer === SOLANA_SIGNER ? SOLANA_SIGNER_KEY : new Uint8Array(32).fill(9);
 
@@ -173,6 +182,7 @@ const KNOWN_EVM_CHAINS = new Set([1, 137]);
 
 const switchTarget = (params: Eip1193RequestArgs["params"]): number | undefined => {
   const [first] = Array.isArray(params) ? params : [];
+
   return typeof first === "object" && first !== null && "chainId" in first
     ? Number(first.chainId)
     : undefined;
@@ -187,29 +197,40 @@ describeAdapterContract<EvmAdapter>({
   connect: (addresses) => {
     const calls: Array<ObservedCall> = [];
     let chainId = 1;
+
     const provider = createFakeProvider({
       request: ({ method, params }, chain) => {
         if (method === "eth_chainId") {
           return chainId;
         }
+
         if (method === "eth_accounts") {
           return [...addresses];
         }
+
         if (method === "wallet_switchEthereumChain") {
           const target = switchTarget(params);
+
           if (target === undefined || !KNOWN_EVM_CHAINS.has(target)) {
             throw Object.assign(new Error("Unrecognized chain ID"), { code: 4902 });
           }
+
           chainId = target;
+
           return null;
         }
+
         const [first, second] = Array.isArray(params) ? params : [];
+
         const from =
           typeof first === "object" && first !== null && "from" in first ? first.from : second;
+
         calls.push({ address: String(from), chain });
+
         return method === "eth_sendTransaction" ? "0xhash" : "0x01";
       },
     });
+
     return Promise.resolve({
       adapter: evmNamespace.buildAdapter({
         chains: [EVM_CHAINS.ethereum.id, EVM_CHAINS.polygon.id],

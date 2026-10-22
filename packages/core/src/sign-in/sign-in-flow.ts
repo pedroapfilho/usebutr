@@ -86,6 +86,7 @@ const createSignInFlow = (options: SignInFlowOptions): SignInFlow => {
     ) {
       const nonce = await options.getNonce({ account: signingAccount, wallet });
       const output = await connector.signIn({ address: signingAccount.walletAddress, nonce });
+
       return {
         account: output.account,
         nonce,
@@ -103,6 +104,7 @@ const createSignInFlow = (options: SignInFlowOptions): SignInFlow => {
 
     const nonce = await options.getNonce({ account: signingAccount, wallet });
     const message = buildMessage({ account: signingAccount, nonce, wallet });
+
     const { signature, signedMessage } = await connector.signMessage(
       new TextEncoder().encode(message),
       { account: signingAccount },
@@ -124,10 +126,12 @@ const createSignInFlow = (options: SignInFlowOptions): SignInFlow => {
     signIn: async (wallet, account) => {
       const result = await sign(wallet, account);
       await options.verify(result);
+
       return result;
     },
   };
 };
 
 export type { SignInFlow, SignInFlowOptions, SignInMessageContext, SignInResult };
+
 export { SignInUnsupportedError, createSignInFlow };

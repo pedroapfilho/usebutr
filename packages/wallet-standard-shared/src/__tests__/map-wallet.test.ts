@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { mapWallet } from "../discovery";
 
 type Wallet = ReturnType<Wallets["get"]>[number];
+
 type WalletAccount = Wallet["accounts"][number];
 
 const account = (address: string): WalletAccount => ({
@@ -19,13 +20,16 @@ const account = (address: string): WalletAccount => ({
  */
 const sourceWallet = () => {
   let accounts: ReadonlyArray<WalletAccount> = [];
+
   const connectFeature = {
     connect: () => {
       accounts = [account("phantom-address")];
+
       return Promise.resolve({ accounts });
     },
     version: "1.0.0" as const,
   };
+
   const wallet: Wallet = {
     get accounts() {
       return accounts;
@@ -36,6 +40,7 @@ const sourceWallet = () => {
     name: "Phantom",
     version: "1.0.0",
   };
+
   return { connectFeature, wallet };
 };
 
@@ -53,6 +58,7 @@ describe("mapWallet", () => {
 
   it("reads chains through to the wallet", () => {
     let chains: ReadonlyArray<`${string}:${string}`> = ["solana:mainnet"];
+
     const wallet: Wallet = {
       accounts: [],
       get chains() {
@@ -63,6 +69,7 @@ describe("mapWallet", () => {
       name: "Solflare",
       version: "1.0.0",
     };
+
     const mapped = mapWallet(wallet);
 
     chains = ["solana:devnet"];

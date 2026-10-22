@@ -49,9 +49,11 @@ const adapterFor = (
   features: Readonly<Record<string, WalletStandardFeature>> = {},
 ): SvmAdapter => {
   const adapter = buildSvmAdapter(buildWallet(overrides, features));
+
   if (adapter === null) {
     throw new Error("expected an svm adapter");
   }
+
   return adapter;
 };
 
@@ -61,6 +63,7 @@ const present = <T>(value: T | undefined, name: string): T => {
   if (value === undefined) {
     throw new Error(`expected ${name} to be defined`);
   }
+
   return value;
 };
 
@@ -94,15 +97,18 @@ const signInFeature = (): SolanaSignInFeature => ({
 
 const eventsFeature = () => {
   const listeners = new Set<StandardEventsListener>();
+
   const feature: StandardEventsFeature = {
     on: vi.fn((_event: "change", listener: StandardEventsListener) => {
       listeners.add(listener);
+
       return () => {
         listeners.delete(listener);
       };
     }),
     version: "1.0.0",
   };
+
   return {
     emit: (changes: Parameters<StandardEventsListener>[0]) => {
       for (const listener of listeners) {
@@ -149,6 +155,7 @@ describe("buildSvmAdapter", () => {
         "solana:signMessage": signMessageFeature(),
       },
     );
+
     expect(adapter.getBalance).toBeUndefined();
     expect(adapter.getTransactionReceipt).toBeUndefined();
     expect(adapter.requestAccounts).toBeUndefined();
@@ -175,6 +182,7 @@ describe("buildSvmAdapter", () => {
         "standard:events": eventsFeature().feature,
       },
     );
+
     expect(full.sendTx).toBeTypeOf("function");
     expect(full.signMessage).toBeTypeOf("function");
     expect(full.signTransaction).toBeTypeOf("function");
@@ -204,6 +212,7 @@ describe("buildSvmAdapter session", () => {
     const disconnectFeature: StandardDisconnectFeature = {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
+
     const adapter = adapterFor({}, { "standard:disconnect": disconnectFeature });
     await present(adapter.disconnect, "disconnect")();
     expect(disconnectFeature.disconnect).toHaveBeenCalledTimes(1);
@@ -214,6 +223,7 @@ describe("buildSvmAdapter session", () => {
       { accounts: [walletAccount("So1Address1"), walletAccount("So1Address2")] },
       {},
     );
+
     await expect(adapter.getAccounts()).resolves.toEqual([
       buildAccount("So1Address1", SVM_CHAINS.mainnet),
       buildAccount("So1Address2", SVM_CHAINS.mainnet),
@@ -228,6 +238,7 @@ describe("buildSvmAdapter session", () => {
     const adapter = adapterFor({
       chains: ["solana:devnet", "solana:mainnet-beta", "solana:testnet"],
     });
+
     await expect(adapter.getAccounts()).resolves.toEqual([
       buildAccount("So1Address1", SVM_CHAINS.mainnet),
     ]);
@@ -235,10 +246,12 @@ describe("buildSvmAdapter session", () => {
 
   it("follows a cluster switch reported by the wallet", () => {
     const events = eventsFeature();
+
     const adapter = adapterFor(
       { chains: ["solana:mainnet", "solana:devnet"] },
       { "standard:events": events.feature },
     );
+
     const listener = listenerFn();
     present(adapter.subscribe, "subscribe")(listener);
     events.emit({ chains: ["solana:devnet"] });
@@ -250,14 +263,18 @@ describe("buildSvmAdapter session", () => {
 
   it("pushes disconnected through the discovery disconnector", () => {
     const emits: Array<() => void> = [];
+
     const adapter = buildSvmAdapter(buildWallet(), (emit) => {
       emits.push(emit);
     });
+
     const listener = listenerFn();
     present(adapter?.subscribe, "subscribe")(listener);
+
     for (const emit of emits) {
       emit();
     }
+
     expect(listener).toHaveBeenCalledWith({ type: "disconnected" });
   });
 });
@@ -281,10 +298,12 @@ describe("buildSvmAdapter.sendTx", () => {
 
   it("sends to mainnet under the alias a solana:mainnet-beta wallet advertises", async () => {
     const feature = sendFeature();
+
     const adapter = adapterFor(
       { chains: ["solana:mainnet-beta"] },
       { "solana:signAndSendTransaction": feature },
     );
+
     const tx = new Uint8Array([42]);
 
     await present(adapter.sendTx, "sendTx")(tx, { chain: SVM_CHAINS.mainnet });
@@ -300,6 +319,7 @@ describe("buildSvmAdapter.sendTx", () => {
     const feature: SolanaSignAndSendTransactionFeature = {
       signAndSendTransaction: vi.fn().mockResolvedValue([]),
     };
+
     const adapter = adapterFor({}, { "solana:signAndSendTransaction": feature });
     await expect(present(adapter.sendTx, "sendTx")(new Uint8Array([1]))).rejects.toThrow(
       "signAndSendTransaction returned no outputs",
@@ -349,6 +369,7 @@ describe("buildSvmAdapter.signTransaction", () => {
 
   it("routes options.chain and options.account to the wallet", async () => {
     const feature = signTransactionFeature();
+
     const adapter = adapterFor(
       {
         accounts: [walletAccount("So1Address1"), walletAccount("So1Address2")],
@@ -371,10 +392,12 @@ describe("buildSvmAdapter.signTransaction", () => {
 describe("buildSvmAdapter.signIn", () => {
   it("passes the SIWS input through and builds the account on the current chain", async () => {
     const feature = signInFeature();
+
     const adapter = adapterFor(
       { chains: ["solana:mainnet", "solana:devnet"] },
       { "solana:signIn": feature },
     );
+
     await present(adapter.switchChain, "switchChain")(SVM_CHAINS.devnet);
 
     const output = await present(adapter.signIn, "signIn")({ statement: "Sign in" });
@@ -402,6 +425,7 @@ describe("buildSvmAdapter scoped signing", () => {
       const dev = { ...walletAccount("DEV"), chains: ["solana:devnet"] };
       const send = sendFeature();
       const sign = signTransactionFeature();
+
       const adapter = adapterFor(
         {
           accounts: [{ ...main, address: "SUI", chains: ["sui:mainnet"] }, main, dev],
@@ -409,6 +433,7 @@ describe("buildSvmAdapter scoped signing", () => {
         },
         { "solana:signAndSendTransaction": send, "solana:signTransaction": sign },
       );
+
       const call = present(adapter[method], method);
       await call(new Uint8Array([1]), { chain: SVM_CHAINS.devnet });
       const feature = method === "sendTx" ? send.signAndSendTransaction : sign.signTransaction;
@@ -428,6 +453,7 @@ describe("buildSvmAdapter scoped signing", () => {
   it("does not pass a foreign or feature-ineligible account to message signing", async () => {
     const feature = signMessageFeature();
     const account = walletAccount("SOL");
+
     const adapter = adapterFor(
       {
         accounts: [
@@ -438,6 +464,7 @@ describe("buildSvmAdapter scoped signing", () => {
       },
       { "solana:signMessage": feature },
     );
+
     await present(adapter.signMessage, "signMessage")(new Uint8Array([1]));
     expect(feature.signMessage).toHaveBeenCalledWith(expect.objectContaining({ account }));
     await expect(

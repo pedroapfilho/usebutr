@@ -40,6 +40,7 @@ export type {
   WalletSignerOf,
   WalletSignerRegistry,
 } from "./types";
+
 export {
   buildAccount,
   CHAIN_PLATFORMS,
@@ -65,6 +66,7 @@ export {
 } from "./chains";
 
 export type { AccountTarget, ChainTarget } from "./chain-target";
+
 export {
   createAccountTarget,
   createFixedChainTarget,
@@ -73,12 +75,15 @@ export {
 } from "./chain-target";
 
 export type { ConnectorEmitter } from "./connector-emitter";
+
 export { createConnectorEmitter } from "./connector-emitter";
 
 export type { WalletSource } from "./wallet-source";
+
 export { fromAdapters } from "./wallet-source";
 
 export type { ConnectStatus, WalletManager, WalletState } from "./store";
+
 export { createWalletManager, isShadowAdapter, ShadowConnectorError } from "./store";
 
 export type {
@@ -96,6 +101,7 @@ export type {
   WalletSnapshot,
   WalletStorageOptions,
 } from "./storage";
+
 export {
   createBrowserStorageDriver,
   createCookieWalletStorage,
@@ -107,6 +113,7 @@ export {
 export { groupByPlatform } from "./group-by-platform";
 
 export type { SignInFlowOptions, SignInMessageContext, SignInResult } from "./sign-in";
+
 export { SignInUnsupportedError, createSignInFlow } from "./sign-in";
 
 export { accountsEqual, walletEqual } from "./wallet-equal";

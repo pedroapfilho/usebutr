@@ -48,6 +48,7 @@ const formatError = (error: Error | string): string => {
   if (error instanceof Error) {
     return error.message;
   }
+
   return error;
 };
 
@@ -77,9 +78,11 @@ const Connected = ({
 
   const account: Address = useMemo(() => {
     const candidate = wallet.account.walletAddress;
+
     if (!isAddress(candidate)) {
       throw new Error(`Invalid EVM address: ${candidate}`);
     }
+
     return candidate;
   }, [wallet.account.walletAddress]);
 
@@ -87,15 +90,18 @@ const Connected = ({
     if (provider === null) {
       return undefined;
     }
+
     // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
     let cancelled = false as boolean;
     void (async () => {
       try {
         const cfg = buildWagmiConfig(provider, wallet.connector.name, wallet.connector.id);
         const connector = cfg.connectors.at(0);
+
         if (connector !== undefined) {
           await connect(cfg, { connector });
         }
+
         if (!cancelled) {
           setWagmiConfig(cfg);
         }
@@ -105,6 +111,7 @@ const Connected = ({
         }
       }
     })();
+
     return () => {
       cancelled = true;
     };
@@ -116,11 +123,13 @@ const Connected = ({
     if (wagmiConfig === null) {
       return undefined;
     }
+
     // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
     let cancelled = false as boolean;
     void (async () => {
       try {
         const result = await getBalance(wagmiConfig, { address: account });
+
         if (!cancelled) {
           setBalance(`${formatEther(result.value)} ${result.symbol}`);
         }
@@ -128,9 +137,11 @@ const Connected = ({
         if (!cancelled) {
           setBalance("error");
         }
+
         console.warn("getBalance failed:", error);
       }
     })();
+
     return () => {
       cancelled = true;
     };
@@ -140,7 +151,9 @@ const Connected = ({
     if (!wagmiConfig) {
       return;
     }
+
     setErrorMsg(null);
+
     try {
       const sig = await signMessage(wagmiConfig, { message: "Hello from butr + wagmi" });
       setSignature(sig);
@@ -153,13 +166,16 @@ const Connected = ({
     if (!wagmiConfig) {
       return;
     }
+
     setErrorMsg(null);
+
     try {
       const hash = await sendTransaction(wagmiConfig, {
         chainId: sepolia.id,
         to: BURN_ADDRESS,
         value: parseEther("0"),
       });
+
       setTxHash(hash);
     } catch (error) {
       setErrorMsg(formatError(error instanceof Error ? error : String(error)));

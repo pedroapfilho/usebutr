@@ -23,6 +23,7 @@ const hasWebStorage = (kind: WebStorageKind): boolean => {
 
 const createMemoryStorageDriver = (): StorageDriver => {
   const memory = new Map<string, string>();
+
   return {
     getItem(key) {
       return memory.get(key) ?? null;
@@ -79,4 +80,5 @@ const createBrowserStorageDriver = (): BrowserStorageDrivers => ({
 });
 
 export type { BrowserStorageDrivers };
+
 export { createBrowserStorageDriver, createMemoryStorageDriver };

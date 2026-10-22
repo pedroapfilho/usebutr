@@ -64,6 +64,7 @@ const inNamespace = ({ namespace, wallet }: ChainTargetInput, chain: ChainBase):
   if (chain.namespace !== namespace) {
     throw mismatch(`Wallet ${wallet} takes "${namespace}" chains, not "${chain.id}"`);
   }
+
   return chain;
 };
 
@@ -83,27 +84,33 @@ const createAccountTarget = ({ namespace, wallet }: ChainTargetInput): AccountTa
   return {
     account: (exposed, requested) => {
       const [active] = exposed;
+
       if (active === undefined) {
         throw notConnected();
       }
+
       if (requested === undefined) {
         return active;
       }
+
       const match = exposed.find((entry) =>
         sameAddress(typeof entry === "string" ? entry : entry.address, requested.walletAddress),
       );
+
       if (match === undefined) {
         throw new ConnectionError(
           "AccountNotExposed",
           `Wallet ${wallet} does not expose account ${requested.walletAddress}`,
         );
       }
+
       return match;
     },
     connected: (session) => {
       if (session === null || session === undefined) {
         throw notConnected();
       }
+
       return session;
     },
   };
@@ -124,13 +131,16 @@ const createRoutedChainTarget = ({
       if (requested === undefined) {
         return current();
       }
+
       const { id } = inNamespace(input, requested);
       const chains = advertised().filter((chain) => chain.startsWith(`${input.namespace}:`));
+
       if (!chains.includes(id)) {
         throw mismatch(
           `Wallet ${input.wallet} does not advertise chain "${id}". Advertised: ${chains.join(", ")}`,
         );
       }
+
       return id;
     },
   };
@@ -153,19 +163,24 @@ const createSwitchingChainTarget = ({
       if (requested === undefined) {
         return;
       }
+
       const { id } = inNamespace(input, requested);
       const from = await current();
+
       if (from === id) {
         return;
       }
+
       const cannotSwitch = (cause?: unknown) =>
         mismatch(
           `Wallet ${input.wallet} is on ${from ?? "an unreported chain"} and cannot switch to "${id}"`,
           cause,
         );
+
       if (!canSwitch(requested)) {
         throw cannotSwitch();
       }
+
       try {
         await switchTo(requested);
       } catch (error) {
@@ -184,6 +199,7 @@ const createFixedChainTarget = ({
   ...input
 }: FixedChainTargetInput): ChainTarget<string> => {
   inNamespace(input, chain);
+
   return {
     ...createAccountTarget(input),
     chain: (requested) => {
@@ -192,12 +208,14 @@ const createFixedChainTarget = ({
           `Wallet ${input.wallet} signs for "${chain.id}" only, not "${requested.id}"`,
         );
       }
+
       return chain.id;
     },
   };
 };
 
 export type { AccountTarget, ChainTarget };
+
 export {
   createAccountTarget,
   createFixedChainTarget,

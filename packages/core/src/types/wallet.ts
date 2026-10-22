@@ -5,6 +5,7 @@ import type { ChainPlatform } from "./platform";
 import type { WalletSigner } from "./signer";
 
 type SignInInput = { readonly [key: string]: SignInValue };
+
 type SignInValue = boolean | number | string | null | ReadonlyArray<SignInValue> | SignInInput;
 
 type SignedMessage = { signature: Uint8Array; signedMessage: Uint8Array };
@@ -104,9 +105,13 @@ type BitcoinWallet = WalletBase<BitcoinTransfer> & {
 type PolkadotWallet = Omit<WalletBase<never>, "sendTx">;
 
 type EvmAdapter = Connector<"evm"> & EvmWallet;
+
 type SvmAdapter = Connector<"svm"> & SvmWallet;
+
 type SuiAdapter = Connector<"sui"> & SuiWallet;
+
 type BitcoinAdapter = Connector<"bitcoin"> & BitcoinWallet;
+
 type PolkadotAdapter = Connector<"polkadot"> & PolkadotWallet;
 
 /** Narrow on `chainPlatform` to reach a platform's own methods and
@@ -167,4 +172,5 @@ export type {
   WalletAdapterFor,
   WalletBase,
 };
+
 export { isPlatformWallet };

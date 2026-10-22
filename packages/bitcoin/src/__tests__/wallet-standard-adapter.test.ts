@@ -46,9 +46,11 @@ const buildWallet = (
 
 const buildAdapter = (wallet: WalletStandardWallet) => {
   const adapter = buildBitcoinAdapter(wallet);
+
   if (adapter === null) {
     throw new Error("expected a bitcoin adapter");
   }
+
   return adapter;
 };
 
@@ -56,7 +58,9 @@ const sendTransferFeature = () => {
   const sendTransfer = vi
     .fn<BitcoinSendTransferFeature["sendTransfer"]>()
     .mockResolvedValue({ txid: "abcd1234" });
+
   const feature: BitcoinSendTransferFeature = { sendTransfer };
+
   return { feature, sendTransfer };
 };
 
@@ -64,7 +68,9 @@ const signPsbtFeature = () => {
   const signPsbt = vi
     .fn<BitcoinSignPsbtFeature["signPsbt"]>()
     .mockResolvedValue({ signedPsbt: new Uint8Array([10, 11, 12]) });
+
   const feature: BitcoinSignPsbtFeature = { signPsbt };
+
   return { feature, signPsbt };
 };
 
@@ -75,13 +81,16 @@ const buildSigner = () => {
     signature: new Uint8Array([7, 8, 9]),
     signedMessage: new Uint8Array([1, 2]),
   });
+
   const adapter = buildAdapter(buildWallet({}, { "bitcoin:signMessage": { signMessage } }));
+
   return { adapter, signMessage };
 };
 
 const buildSender = (chains: ReadonlyArray<string> = [MAINNET, TESTNET]) => {
   const { feature, sendTransfer } = sendTransferFeature();
   const adapter = buildAdapter(buildWallet({ chains }, { "bitcoin:sendTransfer": feature }));
+
   return { adapter, sendTransfer };
 };
 
@@ -172,6 +181,7 @@ describe("buildBitcoinAdapter", () => {
 
     it("routes options.chain and options.account", async () => {
       const { feature, signPsbt } = signPsbtFeature();
+
       const adapter = buildAdapter(
         buildWallet({ chains: [MAINNET, TESTNET] }, { "bitcoin:signPsbt": feature }),
       );
@@ -190,6 +200,7 @@ describe("buildBitcoinAdapter", () => {
   describe("switchChain", () => {
     it("re-points later calls when the wallet advertises several chains", async () => {
       const { feature, sendTransfer } = sendTransferFeature();
+
       const adapter = buildAdapter(
         buildWallet({ chains: [MAINNET, TESTNET] }, { "bitcoin:sendTransfer": feature }),
       );
@@ -210,6 +221,7 @@ describe("discoverBitcoinAdapters", () => {
   it("announces only wallets that speak Bitcoin", async () => {
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
     const wallets = [buildWallet(), buildWallet({ chains: ["solana:mainnet"], name: "Solflare" })];
+
     const unsubscribe = discoverBitcoinAdapters(onAdapter, () =>
       Promise.resolve({ getWallets: () => ({ get: () => wallets, on: () => () => {} }) }),
     );
@@ -228,6 +240,7 @@ describe("buildBitcoinAdapter scoped signing", () => {
     const test = { ...SECOND, chains: [TESTNET] };
     const { feature: send, sendTransfer } = sendTransferFeature();
     const { feature: sign, signPsbt } = signPsbtFeature();
+
     const adapter = buildAdapter(
       buildWallet(
         {
@@ -237,6 +250,7 @@ describe("buildBitcoinAdapter scoped signing", () => {
         { "bitcoin:sendTransfer": send, "bitcoin:signPsbt": sign },
       ),
     );
+
     await adapter.sendTx?.(TRANSFER, { chain: BITCOIN_CHAINS.testnet });
     await adapter.signTransaction?.(new Uint8Array([1]), { chain: BITCOIN_CHAINS.testnet });
     expect(sendTransfer).toHaveBeenCalledExactlyOnceWith(
@@ -245,10 +259,12 @@ describe("buildBitcoinAdapter scoped signing", () => {
     expect(signPsbt).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ account: test, chain: TESTNET }),
     );
+
     const invalid = {
       account: buildAccount(main.address, BITCOIN_CHAINS.mainnet),
       chain: BITCOIN_CHAINS.testnet,
     };
+
     await expect(adapter.sendTx?.(TRANSFER, invalid)).rejects.toMatchObject({
       kind: "AccountNotExposed",
     });
@@ -263,12 +279,14 @@ describe("buildBitcoinAdapter scoped signing", () => {
     const signMessage = vi
       .fn<BitcoinSignMessageFeature["signMessage"]>()
       .mockResolvedValue({ signature: new Uint8Array([1]), signedMessage: new Uint8Array([1]) });
+
     const adapter = buildAdapter(
       buildWallet(
         { accounts: [{ ...FIRST, features: [] }, SECOND] },
         { "bitcoin:signMessage": { signMessage } },
       ),
     );
+
     await adapter.signMessage?.(new Uint8Array([1]));
     expect(signMessage).toHaveBeenCalledWith(expect.objectContaining({ account: SECOND }));
   });

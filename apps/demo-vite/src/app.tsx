@@ -37,6 +37,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
 
   const handleSign = async (sign: NonNullable<typeof signMessage>) => {
     setState({ kind: "signing" });
+
     try {
       const bytes = new TextEncoder().encode(SIGN_MESSAGE_TEXT);
       await sign(bytes, { account });
@@ -50,6 +51,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
   };
 
   let signIndicator: ReactNode = null;
+
   if (state.kind === "ok") {
     signIndicator = <span className="text-success-foreground text-xs">✓ signed</span>;
   } else if (state.kind === "error") {
@@ -115,10 +117,13 @@ const ChainPicker = ({
 
   const handleChange = async (chainId: string) => {
     const target = chains.find((c) => c.id === chainId);
+
     if (!target) {
       return;
     }
+
     setError(null);
+
     try {
       await switchChain(target);
     } catch (switchError) {
@@ -165,6 +170,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
   const { switchChain } = wallet.connector;
 
   let balanceText: string;
+
   if (balance.status === "success") {
     balanceText = `${balance.data.formatted} ${balance.data.symbol}`;
   } else if (balance.status === "loading") {
@@ -258,6 +264,7 @@ const PLATFORM_LABELS = {
 
 const ConnectedList = ({ count }: { count: number }) => {
   const byPlatform = useConnectedWalletsByPlatform();
+
   return (
     <section>
       <h2 className="mb-4 flex items-center gap-2 font-semibold">
@@ -306,9 +313,11 @@ type WalletBrand = {
 
 const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand> => {
   const byName = new Map<string, WalletBrand>();
+
   for (const wallet of wallets) {
     const key = wallet.name.toLowerCase();
     const existing = byName.get(key);
+
     if (existing) {
       existing.adapters.push(wallet);
       existing.icon ??= wallet.icon;
@@ -316,11 +325,13 @@ const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand>
       byName.set(key, { adapters: [wallet], icon: wallet.icon, name: wallet.name });
     }
   }
+
   return [...byName.values()];
 };
 
 const WalletBrandRow = ({ brand }: { brand: WalletBrand }) => {
   const { connect, connectingId } = useConnect();
+
   return (
     <div className="border-border-default bg-surface-base rounded-lg border px-4 py-3">
       <div className="flex items-center justify-between gap-3">
@@ -333,6 +344,7 @@ const WalletBrandRow = ({ brand }: { brand: WalletBrand }) => {
         <span className="flex gap-2">
           {brand.adapters.map((adapter) => {
             const isConnecting = connectingId === adapter.id;
+
             return (
               <button
                 aria-busy={isConnecting}
@@ -390,6 +402,7 @@ const WalletPicker = ({
       </section>
     );
   }
+
   if (available.length === 0) {
     return null;
   }

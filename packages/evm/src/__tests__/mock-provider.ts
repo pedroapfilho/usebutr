@@ -18,18 +18,22 @@ type MockProviderHandle = Eip1193Provider & {
 /** An EIP-1193 provider that records requests and answers from per-method handlers. */
 const createMockProvider = (): MockProviderHandle => {
   const listeners = new Map<string, Set<Eip1193Listener>>();
+
   const handlers = new Map<
     string,
     (params: Eip1193RequestArgs["params"]) => Eip1193Value | undefined
   >();
+
   const requests: Array<Eip1193RequestArgs> = [];
 
   return {
     emit(event, ...args) {
       const set = listeners.get(event);
+
       if (!set) {
         return;
       }
+
       for (const listener of set) {
         listener(...args);
       }
@@ -37,10 +41,12 @@ const createMockProvider = (): MockProviderHandle => {
     methods: () => requests.map(({ method }) => method),
     on(event, listener) {
       let set = listeners.get(event);
+
       if (!set) {
         set = new Set();
         listeners.set(event, set);
       }
+
       set.add(listener);
     },
     removeListener(event, listener) {
@@ -49,6 +55,7 @@ const createMockProvider = (): MockProviderHandle => {
     request({ method, params }) {
       requests.push({ method, params });
       const handler = handlers.get(method);
+
       return Promise.resolve(handler ? handler(params) : undefined);
     },
     requests,
@@ -59,4 +66,5 @@ const createMockProvider = (): MockProviderHandle => {
 };
 
 export type { MockProviderHandle };
+
 export { createMockProvider };

@@ -27,6 +27,7 @@ import { WalletProvider } from "./wallet-provider";
 const queryClient = new QueryClient();
 
 const root = document.querySelector("#root");
+
 if (!root) {
   throw new Error("#root not found");
 }

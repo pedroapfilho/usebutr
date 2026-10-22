@@ -19,6 +19,7 @@ const walletConnect = (): Transport<BitcoinAdapter> => {
     request: () => ({ signature: "dead" }),
     session: { namespaces: { bip122: { accounts: [`${BITCOIN_CHAINS.mainnet.id}:${ADDRESS}`] } } },
   });
+
   const adapter = bitcoinNamespace.buildAdapter({
     chains: [BITCOIN_CHAINS.mainnet.id],
     icon: "data:image/svg+xml;base64,AAA",
@@ -26,47 +27,57 @@ const walletConnect = (): Transport<BitcoinAdapter> => {
     name: "WalletConnect",
     provider,
   });
+
   return { adapter, asked: () => requestParam(provider, "message") };
 };
 
 const ledger = async (): Promise<Transport<BitcoinAdapter>> => {
   const asked: Array<string> = [];
+
   const FakeBtc: BtcAppConstructor = class {
     getWalletPublicKey() {
       return Promise.resolve({ bitcoinAddress: ADDRESS, chainCode: "", publicKey: "" });
     }
     signMessage(_path: string, messageHex: string) {
       asked.push(messageHex);
+
       return Promise.resolve({ r: "01", s: "02", v: 0 });
     }
     signPsbtBuffer(psbt: Uint8Array) {
       return Promise.resolve({ psbt });
     }
   };
+
   const adapter = await createBitcoinLedgerAdapter({
     btc: FakeBtc,
     platform: "bitcoin",
     transport: ledgerTransport,
   });
+
   await adapter.connect();
+
   return { adapter, asked: () => asked.at(-1) };
 };
 
 const walletStandard = (): Transport<BitcoinAdapter> => {
   const asked: Array<Uint8Array> = [];
+
   const adapter = buildBitcoinAdapter(
     walletStandardWallet(BITCOIN_CHAINS.mainnet.id, ADDRESS, {
       "bitcoin:signMessage": {
         signMessage: ({ message }: { message: Uint8Array }) => {
           asked.push(message);
+
           return Promise.resolve({ signature: Uint8Array.of(1), signedMessage: message });
         },
       },
     }),
   );
+
   if (adapter === null) {
     throw new Error("expected a Bitcoin adapter");
   }
+
   return { adapter, asked: () => asked.at(-1) };
 };
 
@@ -76,6 +87,7 @@ describe("Bitcoin messages across transports", () => {
     const transports = [walletConnect(), await ledger(), walletStandard()];
 
     const signedMessages = [];
+
     for (const { adapter } of transports) {
       const result = await adapter.signMessage?.(message);
       signedMessages.push(result?.signedMessage);

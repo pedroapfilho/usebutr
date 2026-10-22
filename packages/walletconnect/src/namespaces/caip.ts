@@ -25,6 +25,7 @@ import type { NamespaceAdapterInput } from "./types";
  *  well-formed account has exactly three segments. */
 const parseCaip10 = (caip10: string): { address: string; chainId: string } | null => {
   const [namespace, reference, address, ...rest] = caip10.split(":");
+
   if (
     namespace === undefined ||
     namespace === "" ||
@@ -36,6 +37,7 @@ const parseCaip10 = (caip10: string): { address: string; chainId: string } | nul
   ) {
     return null;
   }
+
   return { address, chainId: `${namespace}:${reference}` };
 };
 
@@ -98,9 +100,11 @@ const createCaipAdapterCore = ({
   // The session speaks its own chain ids; butr's accounts and callers speak
   // the registry's, so translate at this boundary only.
   const toSessionId = (chainId: string) => chainAliases.get(chainId) ?? chainId;
+
   const fromSessionId = new Map(
     [...chainAliases].map(([butrId, sessionId]) => [sessionId, butrId]),
   );
+
   const toButrId = (sessionId: string) => fromSessionId.get(sessionId) ?? sessionId;
   const chains = requestedChains.map(toSessionId);
 
@@ -111,25 +115,30 @@ const createCaipAdapterCore = ({
 
   const sessionAccounts = () => {
     const parsed: Array<{ address: string; chainId: string }> = [];
+
     for (const caip10 of provider.session?.namespaces?.[namespace]?.accounts ?? []) {
       const account = parseCaip10(caip10);
+
       if (account === null) {
         logWarn(`[butr/walletconnect] ignoring malformed CAIP-10 account "${caip10}"`);
       } else {
         parsed.push(account);
       }
     }
+
     return parsed;
   };
 
   const accountsOn = (chainId: string): Array<Account> => {
     const chain = resolveChain(toButrId(chainId), knownChains);
     const accounts: Array<Account> = [];
+
     for (const account of sessionAccounts()) {
       if (account.chainId === chainId) {
         accounts.push(buildAccount(account.address, chain));
       }
     }
+
     return accounts;
   };
 
@@ -145,6 +154,7 @@ const createCaipAdapterCore = ({
   const resolveTarget = (options?: TransactionOptions) => {
     const chainId = resolveChainId(options?.chain);
     const exposed = accountsOn(chainId).map((account) => account.walletAddress);
+
     return { address: target.account(exposed, options?.account), chainId };
   };
 
@@ -163,10 +173,13 @@ const createCaipAdapterCore = ({
     // session (not for our own `disconnect()`); it does not observe expiry.
     subscribe: (listener) => {
       const unsubscribe = emitter.subscribe(listener);
+
       const onSessionDeleted: Eip1193Listener = () => {
         listener({ type: "disconnected" });
       };
+
       provider.on("disconnect", onSessionDeleted);
+
       return () => {
         unsubscribe();
         provider.removeListener("disconnect", onSessionDeleted);

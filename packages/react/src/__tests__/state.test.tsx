@@ -30,9 +30,11 @@ const wallets = () => ({
 describe("useDiscoveredWallets", () => {
   it("lists announced adapters in order", async () => {
     const { metamask, phantom } = wallets();
+
     const { result } = renderWithManager(() => useDiscoveredWallets(), {
       adapters: [metamask, phantom],
     });
+
     await settle();
     expect(result.current.value).toEqual([metamask, phantom]);
   });
@@ -41,9 +43,11 @@ describe("useDiscoveredWallets", () => {
 describe("useConnectedWallets", () => {
   it("lists the pool and keeps its reference while the pool is unchanged", async () => {
     const { metamask, rabby } = wallets();
+
     const { rerender, result } = renderWithManager(() => useConnectedWallets(), {
       adapters: [metamask, rabby],
     });
+
     await settle();
     expect(result.current.value).toEqual([]);
 
@@ -62,9 +66,11 @@ describe("useConnectedWallets", () => {
 describe("useWallet", () => {
   it("returns the active wallet, or the one asked for", async () => {
     const { metamask, rabby } = wallets();
+
     const { result } = renderWithManager(() => [useWallet(), useWallet("metamask")] as const, {
       adapters: [metamask, rabby],
     });
+
     await settle();
     expect(result.current.value).toEqual([undefined, undefined]);
 
@@ -89,13 +95,16 @@ describe("useWallet", () => {
   it("does not re-render for a change to another wallet", async () => {
     const { metamask, rabby } = wallets();
     let renders = 0;
+
     const { result } = renderWithManager(
       () => {
         renders += 1;
+
         return useWallet("metamask");
       },
       { adapters: [metamask, rabby] },
     );
+
     await settle();
     await act(() => result.current.manager.connect("metamask"));
     const before = renders;
@@ -125,10 +134,12 @@ describe("useWallet", () => {
 describe("useSelectedWallet", () => {
   it("returns the platform's selected wallet, typed to it", async () => {
     const { metamask, phantom, rabby } = wallets();
+
     const { result } = renderWithManager(
       () => ({ evm: useSelectedWallet("evm"), svm: useSelectedWallet("svm") }),
       { adapters: [metamask, phantom, rabby] },
     );
+
     await settle();
     await act(() => result.current.manager.connect("metamask"));
     await act(() => result.current.manager.connect("rabby"));
@@ -148,9 +159,11 @@ describe("useSelectedWallet", () => {
 describe("useAccounts", () => {
   it("returns a wallet's accounts, empty when there is none", async () => {
     const { metamask } = wallets();
+
     const { result } = renderWithManager(() => [useAccounts(), useAccounts("nope")] as const, {
       adapters: [metamask],
     });
+
     await settle();
     const [empty] = result.current.value;
     expect(empty).toEqual([]);
@@ -201,6 +214,7 @@ describe("useConnectionStatus", () => {
 
   it("reports a seeded wallet as reconnecting until its silent reconnect lands", async () => {
     const wallet = createFakeConnectedWallet({ id: "metamask" });
+
     const { result } = renderWithManager(
       () => ({
         hydrated: useIsHydrated(),
@@ -216,6 +230,7 @@ describe("useConnectionStatus", () => {
         },
       },
     );
+
     expect(result.current.value).toEqual({
       hydrated: true,
       reconnecting: true,
@@ -238,6 +253,7 @@ describe("useIsHydrated and useIsReconnecting", () => {
       hydrated: useIsHydrated(),
       reconnecting: useIsReconnecting("metamask"),
     }));
+
     expect(result.current.value.hydrated).toBe(false);
     await settle();
     expect(result.current.value).toEqual({ hydrated: true, reconnecting: false });
@@ -248,9 +264,11 @@ describe("useWalletState", () => {
   it("selects a derived value without looping on a fresh object", async () => {
     const { metamask } = wallets();
     let renders = 0;
+
     const { rerender, result } = renderWithManager(
       () => {
         renders += 1;
+
         return useWalletState((state) => ({
           count: state.pool.size,
           ids: [...state.pool.keys()],
@@ -258,6 +276,7 @@ describe("useWalletState", () => {
       },
       { adapters: [metamask] },
     );
+
     await settle();
     const before = renders;
     rerender();

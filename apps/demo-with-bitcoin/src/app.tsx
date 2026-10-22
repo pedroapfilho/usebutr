@@ -16,6 +16,7 @@ const formatError = (error: Error | string): string => {
   if (error instanceof Error) {
     return error.message;
   }
+
   return error;
 };
 
@@ -44,15 +45,18 @@ const Connected = ({
 
   const bech32Prefix = useMemo(() => {
     const ref = chainId.split(":")[1] ?? "";
+
     return NETWORK_BY_CHAIN_REF.get(ref)?.bech32 ?? "unknown";
   }, [chainId]);
 
   const handleSign = async () => {
     setErrorMsg(null);
+
     try {
       if (!wallet.connector.signMessage) {
         throw new Error(`${wallet.connector.name} does not support message signing`);
       }
+
       const message = new TextEncoder().encode("Hello from butr + bitcoinjs-lib");
       const result = await wallet.connector.signMessage(message, { account: wallet.account });
       setSignature(bytesToHex(result.signature));
@@ -63,12 +67,14 @@ const Connected = ({
 
   const handleSignPsbt = async () => {
     setErrorMsg(null);
+
     try {
       if (!wallet.connector.signTransaction) {
         throw new Error(
           "This wallet does not advertise PSBT signing (bitcoin:signPsbt). Try Phantom, Magic Eden, or Leather.",
         );
       }
+
       const psbt = hexToBytes("70736274FF010A02000000000000000000");
       const signed = await wallet.connector.signTransaction(psbt, { account: wallet.account });
       setSignedPsbt(bytesToHex(signed));

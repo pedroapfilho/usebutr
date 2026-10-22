@@ -27,8 +27,10 @@ const walletApp = (initialWallets: ReadonlyArray<WalletStandardWallet>) => {
   const listeners: Partial<
     Record<"register" | "unregister", (...wallets: ReadonlyArray<WalletStandardWallet>) => void>
   > = {};
+
   const offRegister = vi.fn();
   const offUnregister = vi.fn();
+
   const app: WalletsApp = {
     get: vi.fn(() => initialWallets),
     on: vi.fn(
@@ -37,10 +39,12 @@ const walletApp = (initialWallets: ReadonlyArray<WalletStandardWallet>) => {
         listener: (...wallets: ReadonlyArray<WalletStandardWallet>) => void,
       ) => {
         listeners[event] = listener;
+
         return event === "register" ? offRegister : offUnregister;
       },
     ),
   };
+
   const loadModule: WalletStandardModuleLoader = () => Promise.resolve({ getWallets: () => app });
 
   return {
@@ -94,21 +98,28 @@ describe("discoverWalletStandard", () => {
     const source = walletApp([first, unsupported]);
     const disconnectFirst = vi.fn();
     const disconnectSecond = vi.fn();
+
     const emitDisconnectFirst = () => {
       disconnectFirst();
     };
+
     const emitDisconnectSecond = () => {
       disconnectSecond();
     };
+
     const build: WalletStandardAdapterBuilder = (candidate, registerDisconnector) => {
       if (candidate === unsupported) {
         return null;
       }
+
       const id = candidate === duplicate ? "first" : candidate.name;
       registerDisconnector(candidate === first ? emitDisconnectFirst : emitDisconnectSecond);
+
       return adapter(id);
     };
+
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
+
     const unsubscribe = discoverWalletStandard([{ build, onAdapter }], {
       loadModule: source.loadModule,
     });
@@ -137,13 +148,17 @@ describe("discoverWalletStandard", () => {
     let resolveModule:
       | ((module: Awaited<ReturnType<WalletStandardModuleLoader>>) => void)
       | undefined;
+
     const source = walletApp([wallet("first")]);
+
     const loadModule: WalletStandardModuleLoader = () =>
       new Promise((resolve) => {
         resolveModule = resolve;
       });
+
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
     const onReady = vi.fn<() => void>();
+
     const unsubscribe = discoverWalletStandard([{ build: () => adapter("first"), onAdapter }], {
       loadModule,
       onReady,
@@ -166,6 +181,7 @@ describe("discoverWalletStandard", () => {
     const svmAdapters = vi.fn<(adapter: WalletAdapter) => void>();
     const suiAdapters = vi.fn<(adapter: WalletAdapter) => void>();
     const disconnected: Array<string> = [];
+
     const route = (prefix: string, onAdapter: (adapter: WalletAdapter) => void) => ({
       build: (
         candidate: WalletStandardWallet,
@@ -174,10 +190,12 @@ describe("discoverWalletStandard", () => {
         registerDisconnector(() => {
           disconnected.push(prefix);
         });
+
         return adapter(`${prefix}-${candidate.name}`);
       },
       onAdapter,
     });
+
     const onReady = vi.fn<() => void>();
 
     const unsubscribe = discoverWalletStandard(

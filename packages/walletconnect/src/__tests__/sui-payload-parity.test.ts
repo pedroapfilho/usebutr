@@ -17,6 +17,7 @@ const JSON_TX = '{"version":2}';
 
 const walletStandard = (): Transport<SuiAdapter> => {
   const asked: Array<string> = [];
+
   const adapter = buildSuiAdapter(
     walletStandardWallet(SUI_CHAINS.mainnet.id, ADDRESS, {
       "sui:signTransaction": {
@@ -26,14 +27,17 @@ const walletStandard = (): Transport<SuiAdapter> => {
           transaction: { toJSON: () => Promise<string> };
         }) => {
           asked.push(await transaction.toJSON());
+
           return { bytes: "AQID", signature: "AQID" };
         },
       },
     }),
   );
+
   if (adapter === null) {
     throw new Error("expected a Sui adapter");
   }
+
   return { adapter, asked: () => asked.at(-1) };
 };
 
@@ -42,6 +46,7 @@ const walletConnect = (): Transport<SuiAdapter> => {
     request: () => ({ signature: "AQID" }),
     session: { namespaces: { sui: { accounts: [`${SUI_CHAINS.mainnet.id}:${ADDRESS}`] } } },
   });
+
   const adapter = suiNamespace.buildAdapter({
     chains: [SUI_CHAINS.mainnet.id],
     icon: "data:image/svg+xml;base64,AAA",
@@ -49,26 +54,32 @@ const walletConnect = (): Transport<SuiAdapter> => {
     name: "WalletConnect",
     provider,
   });
+
   return { adapter, asked: () => requestParam(provider, "transaction") };
 };
 
 const ledger = async (): Promise<Transport<SuiAdapter>> => {
   const asked: Array<Uint8Array> = [];
+
   const FakeSui: SuiAppConstructor = class {
     getPublicKey() {
       return Promise.resolve({ address: ADDRESS_BYTES, publicKey: new Uint8Array(32) });
     }
     signTransaction(_path: string, intentMessage: Uint8Array) {
       asked.push(intentMessage.subarray(3));
+
       return Promise.resolve({ signature: new Uint8Array(64) });
     }
   };
+
   const adapter = await createSuiLedgerAdapter({
     platform: "sui",
     sui: FakeSui,
     transport: ledgerTransport,
   });
+
   await adapter.connect();
+
   return { adapter, asked: () => asked.at(-1) };
 };
 
@@ -80,6 +91,7 @@ describe("Sui transactions across transports", () => {
     const transports = [walletStandard(), walletConnect(), await ledger()];
 
     const results = [];
+
     for (const { adapter } of transports) {
       results.push(await adapter.signTransaction?.(tx));
     }

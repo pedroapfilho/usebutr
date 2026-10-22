@@ -37,11 +37,14 @@ const WalletManagerProvider = ({ children, config, initialState }: WalletManager
  */
 const useWalletManager = (): WalletManager => {
   const manager = use(WalletManagerContext);
+
   if (manager === null) {
     throw new Error("useWalletManager must be used within WalletManagerProvider");
   }
+
   return manager;
 };
 
 export type { WalletManagerProviderProps };
+
 export { WalletManagerProvider, useWalletManager };

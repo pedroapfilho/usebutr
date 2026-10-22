@@ -25,6 +25,7 @@ const connectedProvider = (addresses: ReadonlyArray<string> = ["0xAAA"]): MockPr
   const provider = createMockProvider();
   provider.setHandler("eth_accounts", () => [...addresses]);
   provider.setHandler("eth_chainId", () => "0x1");
+
   return provider;
 };
 
@@ -364,16 +365,22 @@ describe("buildEvmAdapter reads", () => {
     const provider = connectedProvider([holder]);
     provider.setHandler("eth_call", (params) => {
       const [call] = Array.isArray(params) ? params : [];
+
       const data =
         typeof call === "object" && call !== null && "data" in call ? String(call.data) : "";
+
       const selector = data.slice(0, 10);
+
       if (selector === "0x70a08231") {
         expect(data.endsWith(holder.slice(2).toLowerCase())).toBe(true);
+
         return "0x00000000000000000000000000000000000000000000000000000000002625a0";
       }
+
       if (selector === "0x313ce567") {
         return "0x0000000000000000000000000000000000000000000000000000000000000006";
       }
+
       return (
         "0x0000000000000000000000000000000000000000000000000000000000000020" +
         "0000000000000000000000000000000000000000000000000000000000000004" +
@@ -390,6 +397,7 @@ describe("buildEvmAdapter reads", () => {
 const subscribe = (provider: MockProviderHandle) => {
   const listener = vi.fn<(event: ConnectorEvent) => void>();
   const unsubscribe = buildEvmAdapter(INFO, provider).subscribe?.(listener);
+
   return { listener, unsubscribe };
 };
 

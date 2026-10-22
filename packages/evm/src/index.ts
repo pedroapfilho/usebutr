@@ -19,6 +19,7 @@ export {
 } from "./eip6963-adapter";
 
 export type { InjectedDiscoveryOptions } from "./injected";
+
 export { GENERIC_INJECTED_ICON, discoverInjectedAdapter, isEip1193Provider } from "./injected";
 
 import "./signer-augmentation";

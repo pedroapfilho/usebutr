@@ -80,6 +80,7 @@ describe("discoverEvmAdapters", () => {
       },
       provider: noopProvider,
     };
+
     announce(target, detail);
     announce(target, { ...detail, info: { ...detail.info, uuid: "uuid-changed" } });
 

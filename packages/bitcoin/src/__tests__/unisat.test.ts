@@ -21,6 +21,7 @@ type UnisatMock = {
 const buildProvider = (): UnisatMock => {
   let network: "livenet" | "testnet" = "livenet";
   const addresses = () => (network === "livenet" ? [MAINNET_ADDRESS] : [TESTNET_ADDRESS]);
+
   return {
     getAccounts: vi.fn<UnisatProvider["getAccounts"]>(() => Promise.resolve(addresses())),
     getNetwork: vi.fn<NonNullable<UnisatProvider["getNetwork"]>>(() => Promise.resolve(network)),
@@ -33,6 +34,7 @@ const buildProvider = (): UnisatMock => {
     signPsbt: vi.fn<UnisatProvider["signPsbt"]>().mockResolvedValue("0a0b0c"),
     switchNetwork: vi.fn<NonNullable<UnisatProvider["switchNetwork"]>>((next) => {
       network = next;
+
       return Promise.resolve();
     }),
   };
@@ -52,6 +54,7 @@ const buildBareProvider = (): UnisatProvider => ({
  *  pinned to mainnet, so it cannot switch. */
 const buildPinnedProvider = (): UnisatProvider => {
   const { switchNetwork: _switchNetwork, ...rest } = buildProvider();
+
   return rest;
 };
 
@@ -60,6 +63,7 @@ const buildAdapter = (provider: UnisatProvider) =>
 
 const chainIdOf = async (adapter: ReturnType<typeof buildAdapter>) => {
   const [account] = await adapter.getAccounts();
+
   return account?.chain.id;
 };
 
@@ -75,6 +79,7 @@ const expectAccountsChanged = (event: ConnectorEvent | undefined) => {
   if (event?.type !== "accountsChanged") {
     throw new Error("expected an accountsChanged event");
   }
+
   return event;
 };
 

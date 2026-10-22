@@ -12,16 +12,20 @@ const TESTNET_PAYMENT = { address: "tb1qpayment", purpose: "payment" };
 const TESTNET_ORDINALS = { address: "tb1pordinals", purpose: "ordinals" };
 
 type Params = Parameters<SatsConnectProvider["request"]>[1];
+
 type Handler = RpcValue | ((params: Params) => RpcValue);
+
 type MockProvider = { request: Mock<SatsConnectProvider["request"]> };
 
 /** Unknown methods answer with the JSON-RPC error a wallet returns. */
 const buildProvider = (handlers: Record<string, Handler>): MockProvider => ({
   request: vi.fn<SatsConnectProvider["request"]>((method, params) => {
     const handler = handlers[method];
+
     if (handler === undefined) {
       return Promise.resolve({ error: { message: `unsupported method: ${method}` } });
     }
+
     return Promise.resolve({ result: typeof handler === "function" ? handler(params) : handler });
   }),
 });
@@ -33,8 +37,10 @@ const buildProvider = (handlers: Record<string, Handler>): MockProvider => ({
  */
 const buildXverse = (handlers: Record<string, Handler> = {}): MockProvider => {
   let network = "Mainnet";
+
   const addresses = () =>
     network === "Mainnet" ? [PAYMENT, ORDINALS] : [TESTNET_PAYMENT, TESTNET_ORDINALS];
+
   return buildProvider({
     getAccounts: () => addresses(),
     sendTransfer: { txid: "abcd" },
@@ -44,6 +50,7 @@ const buildXverse = (handlers: Record<string, Handler> = {}): MockProvider => {
       if (typeof params?.name === "string") {
         network = params.name;
       }
+
       return null;
     },
     wallet_getAccount: () => ({ addresses: addresses() }),
@@ -59,6 +66,7 @@ const connected = async (provider: MockProvider = buildXverse()) => {
   const adapter = buildAdapter(provider);
   await adapter.connect();
   provider.request.mockClear();
+
   return adapter;
 };
 
@@ -68,6 +76,7 @@ const methodsCalled = (provider: MockProvider): Array<string> =>
 const onMainnet = (address: string) => buildAccount(address, BITCOIN_CHAINS.mainnet);
 
 const MAINNET_ACCOUNTS = [onMainnet(PAYMENT.address), onMainnet(ORDINALS.address)];
+
 const TESTNET_ACCOUNTS = [TESTNET_PAYMENT, TESTNET_ORDINALS].map(({ address }) =>
   buildAccount(address, BITCOIN_CHAINS.testnet),
 );
@@ -267,6 +276,7 @@ describe("buildSatsConnectAdapter", () => {
     it("rejects a chain sats-connect has no network for, without sending", async () => {
       const provider = buildXverse();
       const adapter = await connected(provider);
+
       const unknown: ChainBase = {
         id: "bip122:ffffffffffffffffffffffffffffffff",
         name: "Elsewhere",

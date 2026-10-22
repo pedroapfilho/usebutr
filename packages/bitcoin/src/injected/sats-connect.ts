@@ -77,19 +77,24 @@ const accountResultSchema = z.union([
   z.array(satsAddressSchema),
   z.object({ addresses: z.array(satsAddressSchema) }).transform((result) => result.addresses),
 ]);
+
 const networkResultSchema = z.object({ bitcoin: z.object({ name: networkNameSchema }) });
 const sendTransferResultSchema = z.object({ txid: z.string() });
+
 const signMessageResultSchema = z.object({
   messageHash: z.string().optional(),
   signature: z.string(),
 });
+
 const signPsbtResultSchema = z.object({ psbt: z.string() });
+
 // Module-level like the rest: a schema built per call gets hoisted by apps
 // compiling with zod-compiler, which then needs zod in the app itself.
 const changeNetworkResultSchema = z.unknown();
 
 const paymentFirst = (addresses: ReadonlyArray<SatsAddress>): Session => {
   const payment = addresses.find((a) => a.purpose === "payment") ?? addresses[0];
+
   return payment === undefined
     ? []
     : [payment, ...addresses.filter((a) => a !== payment)].map((a) => a.address);
@@ -118,9 +123,11 @@ const buildSatsConnectAdapter = (
     params?: Readonly<Record<string, RpcValue>>,
   ): Promise<z.output<Schema>> => {
     const response = await provider.request(method, params);
+
     if (response.error) {
       throw new Error(`[butr/bitcoin] sats-connect ${method} failed: ${response.error.message}`);
     }
+
     return schema.parse(response.result);
   };
 
@@ -129,9 +136,11 @@ const buildSatsConnectAdapter = (
     params: Readonly<Record<string, RpcValue>>,
   ): Promise<void> => {
     const addresses = paymentFirst(await callRequest(method, accountResultSchema, params));
+
     if (addresses.length === 0) {
       throw new Error(`Wallet ${name} returned no addresses from ${method}`);
     }
+
     session = addresses;
   };
 
@@ -141,6 +150,7 @@ const buildSatsConnectAdapter = (
 
   const readChain = async (): Promise<ChainBase> => {
     const result = await callRequest("wallet_getNetwork", networkResultSchema);
+
     return resolveChain(NETWORK_CHAIN_IDS[result.bitcoin.name], BITCOIN_CHAINS_LIST);
   };
 
@@ -151,11 +161,13 @@ const buildSatsConnectAdapter = (
     canSwitch: (to) => networkFor(to) !== undefined,
     current: async () => {
       const current = await readChain();
+
       return current.id;
     },
     namespace: "bip122",
     switchTo: async (to) => {
       const network = networkFor(to);
+
       if (network !== undefined) {
         await callRequest("wallet_changeNetwork", changeNetworkResultSchema, { name: network });
       }
@@ -165,9 +177,11 @@ const buildSatsConnectAdapter = (
 
   const moveTo = async (to?: ChainBase): Promise<void> => {
     await target.chain(to);
+
     if (to === undefined || chain.id === to.id) {
       return;
     }
+
     // A Bitcoin address encodes its network, so the session is re-read on
     // the new one before anything is labelled with it.
     await readSession();
@@ -184,6 +198,7 @@ const buildSatsConnectAdapter = (
       await (options?.silent === true
         ? readSession()
         : startSession("getAccounts", { message: CONNECT_MESSAGE, purposes: ACCOUNT_PURPOSES }));
+
       try {
         chain = await readChain();
       } catch {
@@ -194,6 +209,7 @@ const buildSatsConnectAdapter = (
 
     disconnect: () => {
       session = [];
+
       return Promise.resolve();
     },
 
@@ -210,27 +226,33 @@ const buildSatsConnectAdapter = (
     async sendTx({ amount, recipient }: BitcoinTransfer, options?: TransactionOptions) {
       await moveTo(options?.chain);
       target.account(session.slice(0, 1), options?.account);
+
       const result = await callRequest("sendTransfer", sendTransferResultSchema, {
         recipients: [{ address: recipient, amount: Number(amount) }],
       });
+
       return result.txid;
     },
 
     async signMessage(message, options) {
       const address = target.account(session, options?.account);
+
       const result = await callRequest("signMessage", signMessageResultSchema, {
         address,
         message: bitcoinMessageText(message, name),
       });
+
       return { signature: base64ToBytes(result.signature), signedMessage: message };
     },
 
     async signTransaction(psbt, options) {
       await moveTo(options?.chain);
       target.account(session, options?.account);
+
       const result = await callRequest("signPsbt", signPsbtResultSchema, {
         psbt: bytesToBase64(psbt),
       });
+
       return base64ToBytes(result.psbt);
     },
 
@@ -243,4 +265,5 @@ const buildSatsConnectAdapter = (
 };
 
 export type { RpcValue, SatsConnectProvider };
+
 export { buildSatsConnectAdapter };

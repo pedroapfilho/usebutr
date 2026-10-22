@@ -22,9 +22,11 @@ import type {
  *  one input, so an empty result is a wallet bug, not an empty success. */
 const firstOutput = <Output>(outputs: ReadonlyArray<Output>, method: string): Output => {
   const [output] = outputs;
+
   if (output === undefined) {
     throw new Error(`${method} returned no outputs`);
   }
+
   return output;
 };
 
@@ -49,6 +51,7 @@ const buildSvmAdapter = (
     trackChainChanges: true,
     wallet,
   });
+
   if (core === null) {
     return null;
   }
@@ -58,16 +61,19 @@ const buildSvmAdapter = (
     "solana:signAndSendTransaction",
     "signAndSendTransaction",
   );
+
   const signMessage = getFeature<SolanaSignMessageFeature>(
     wallet,
     "solana:signMessage",
     "signMessage",
   );
+
   const signTransaction = getFeature<SolanaSignTransactionFeature>(
     wallet,
     "solana:signTransaction",
     "signTransaction",
   );
+
   const signIn = getFeature<SolanaSignInFeature>(wallet, "solana:signIn", "signIn");
 
   return {
@@ -76,6 +82,7 @@ const buildSvmAdapter = (
     ...(signAndSend !== undefined && {
       async sendTx(tx, options) {
         const { account, chain } = core.resolveTarget("solana:signAndSendTransaction", options);
+
         const output = firstOutput(
           await signAndSend.signAndSendTransaction({
             account,
@@ -84,12 +91,14 @@ const buildSvmAdapter = (
           }),
           "signAndSendTransaction",
         );
+
         return bytesToBase58(output.signature);
       },
     }),
     ...(signMessage !== undefined && {
       async signMessage(message, options) {
         const { account } = core.resolveTarget("solana:signMessage", options);
+
         const output = firstOutput(
           await signMessage.signMessage({
             account,
@@ -97,12 +106,14 @@ const buildSvmAdapter = (
           }),
           "signMessage",
         );
+
         return { signature: output.signature, signedMessage: output.signedMessage };
       },
     }),
     ...(signTransaction !== undefined && {
       async signTransaction(tx, options) {
         const { account, chain } = core.resolveTarget("solana:signTransaction", options);
+
         const output = firstOutput(
           await signTransaction.signTransaction({
             account,
@@ -111,12 +122,14 @@ const buildSvmAdapter = (
           }),
           "signTransaction",
         );
+
         return output.signedTransaction;
       },
     }),
     ...(signIn !== undefined && {
       async signIn(input) {
         const output = firstOutput(await signIn.signIn(input), "signIn");
+
         return {
           account: core.toAccount(output.account),
           signature: output.signature,

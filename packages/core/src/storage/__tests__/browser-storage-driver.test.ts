@@ -128,6 +128,7 @@ describe("createBrowserStorageDriver", () => {
       const spy = vi.spyOn(window.localStorage, "getItem").mockImplementation(() => {
         throw new Error("SecurityError");
       });
+
       const { persistent } = createBrowserStorageDriver();
 
       expect(persistent.getItem("key")).toBeNull();
@@ -138,6 +139,7 @@ describe("createBrowserStorageDriver", () => {
       const spy = vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
         throw new Error("QuotaExceededError");
       });
+
       const { persistent } = createBrowserStorageDriver();
 
       expect(() => persistent.setItem("key", "value")).not.toThrow();
@@ -148,6 +150,7 @@ describe("createBrowserStorageDriver", () => {
       const spy = vi.spyOn(window.sessionStorage, "removeItem").mockImplementation(() => {
         throw new Error("SecurityError");
       });
+
       const { session } = createBrowserStorageDriver();
 
       expect(() => session.removeItem("key")).not.toThrow();

@@ -39,6 +39,7 @@ const createSuiLedgerAdapter = async (options: SuiLedgerOptions): Promise<SuiAda
   const core = await createLedgerAdapterCore<SuiAppLike>(options, {
     addressAt: async (sui, path) => {
       const { address } = await sui.getPublicKey(path);
+
       return bytesToHexPrefixed(address);
     },
     chains: SUI_CHAINS_LIST,
@@ -54,6 +55,7 @@ const createSuiLedgerAdapter = async (options: SuiLedgerOptions): Promise<SuiAda
           "@ledgerhq/hw-app-sui",
           isClassWith<SuiAppConstructor>("getPublicKey", "signTransaction"),
         ));
+
       return (transport) => new Sui(transport);
     },
     signer: (app) => ({ app, kind: "ledger-sui" }),
@@ -65,16 +67,19 @@ const createSuiLedgerAdapter = async (options: SuiLedgerOptions): Promise<SuiAda
     async signTransaction(tx, signOptions) {
       const { app, path } = core.resolve(signOptions);
       const { bytes } = await prepareSuiTransaction(tx);
+
       if (bytes === undefined) {
         throw new TypeError(
           "[butr/ledger] signTransaction takes built BCS bytes or their base64 (`await tx.build({ client })`), not a Transaction or its JSON",
         );
       }
+
       const intentMessage = new Uint8Array(TRANSACTION_INTENT_LENGTH + bytes.length);
       intentMessage.set(bytes, TRANSACTION_INTENT_LENGTH);
       const { publicKey } = await app.getPublicKey(path);
       // oxlint-disable-next-line react-doctor/server-sequential-independent-await -- Ledger transports allow one APDU exchange at a time.
       const { signature } = await app.signTransaction(path, intentMessage);
+
       return {
         bytes,
         signature: serializeEd25519Signature(new Uint8Array(signature), new Uint8Array(publicKey)),
@@ -84,4 +89,5 @@ const createSuiLedgerAdapter = async (options: SuiLedgerOptions): Promise<SuiAda
 };
 
 export type { SuiAppConstructor, SuiAppLike, SuiLedgerOptions };
+
 export { createSuiLedgerAdapter };

@@ -51,6 +51,7 @@ describe("createWalletStateCodec", () => {
     const entries = Object.fromEntries(
       codec.encode(state).map(({ key, value }) => [key, value ?? ""]),
     );
+
     expect(decodeFrom(entries)).toEqual(state);
   });
 
@@ -71,6 +72,7 @@ describe("createWalletStateCodec", () => {
     const read = vi.fn((key: string) =>
       key === "butr-pool" ? JSON.stringify({ metamask }) : null,
     );
+
     expect(codec.decodeSnapshot(read)).toEqual({
       activeConnectorId: null,
       pool: { metamask },

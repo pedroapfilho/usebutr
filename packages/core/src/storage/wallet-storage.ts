@@ -23,19 +23,23 @@ const createWalletStorage = (options: WalletStorageOptions = {}): WalletPersiste
   const codec = createWalletStateCodec(options.keyPrefix);
   // Cheap: wraps the globals (or in-memory maps) without touching them.
   const browser = createBrowserStorageDriver();
+
   const drivers: Record<StorageSlot, StorageDriver> = {
     persistent: options.persistent ?? browser.persistent,
     session: options.session ?? browser.session,
   };
+
   const written = new Map<string, string | null>();
 
   const read = async (key: string, slot: StorageSlot): Promise<string | null> => {
     try {
       const value = await drivers[slot].getItem(key);
       written.set(key, value);
+
       return value;
     } catch (error) {
       logWarn(`[butr] failed to read ${key} from storage:`, error);
+
       return null;
     }
   };
@@ -44,6 +48,7 @@ const createWalletStorage = (options: WalletStorageOptions = {}): WalletPersiste
     if (written.get(key) === value) {
       return;
     }
+
     const driver = drivers[slot];
     await (value === null ? driver.removeItem(key) : driver.setItem(key, value));
     written.set(key, value);
@@ -56,6 +61,7 @@ const createWalletStorage = (options: WalletStorageOptions = {}): WalletPersiste
           codec.layout.map(async ({ key, slot }) => [key, await read(key, slot)] as const),
         ),
       );
+
       return codec.decode((key) => values.get(key));
     },
 
@@ -65,7 +71,9 @@ const createWalletStorage = (options: WalletStorageOptions = {}): WalletPersiste
       const results = await Promise.allSettled(
         codec.encode(state).map(({ key, slot, value }) => write(key, slot, value)),
       );
+
       const failure = results.find((result) => result.status === "rejected");
+
       if (failure !== undefined) {
         throw failure.reason;
       }
@@ -74,4 +82,5 @@ const createWalletStorage = (options: WalletStorageOptions = {}): WalletPersiste
 };
 
 export type { WalletStorageOptions };
+
 export { createWalletStorage };

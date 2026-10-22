@@ -18,6 +18,7 @@ describe("useDiscoveredWalletsByPlatform", () => {
     const { rerender, result } = renderWithManager(() => useDiscoveredWalletsByPlatform(), {
       adapters: adapters(),
     });
+
     await settle();
 
     const groups = result.current.value;
@@ -34,6 +35,7 @@ describe("useConnectedWalletsByPlatform", () => {
     const { result } = renderWithManager(() => useConnectedWalletsByPlatform(), {
       adapters: adapters(),
     });
+
     await settle();
     expect(result.current.value.size).toBe(0);
 

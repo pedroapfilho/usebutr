@@ -9,6 +9,7 @@ const setup = () => {
   const onAccountsChanged = vi.fn<LifecycleHandlers["onAccountsChanged"]>();
   const onDisconnected = vi.fn<LifecycleHandlers["onDisconnected"]>();
   const lifecycle = createConnectorLifecycle({ onAccountsChanged, onDisconnected });
+
   return { lifecycle, onAccountsChanged, onDisconnected };
 };
 
@@ -70,8 +71,10 @@ describe("createConnectorLifecycle", () => {
     let stale: ((event: { type: "disconnected" }) => void) | undefined;
     before.subscribe = (listener) => {
       stale = listener;
+
       return () => {};
     };
+
     const replacement = walletOf(evmAdapter("metamask"));
     lifecycle.sync(poolOf(walletOf(before)));
     lifecycle.sync(poolOf(replacement));
@@ -110,12 +113,14 @@ describe("createConnectorLifecycle", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { lifecycle } = setup();
     const adapter = evmAdapter("metamask");
+
     const subscribe = vi
       .fn<NonNullable<typeof adapter.subscribe>>()
       .mockImplementationOnce(() => {
         throw new Error("boom");
       })
       .mockImplementation(() => () => {});
+
     adapter.subscribe = subscribe;
     const pool = poolOf(walletOf(adapter));
 
@@ -135,6 +140,7 @@ describe("createConnectorLifecycle", () => {
     adapter.subscribe = () => () => {
       throw new Error("boom");
     };
+
     lifecycle.sync(poolOf(walletOf(adapter)));
     lifecycle.detachAll();
     expect(warn).toHaveBeenCalledWith(

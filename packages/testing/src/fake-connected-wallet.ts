@@ -29,15 +29,19 @@ const connectedWallet = <P extends ChainPlatform>(
   options: FakeConnectedWalletOptions<P>,
 ): FakeConnectedWallet<P> => {
   const chain = options.chain ?? DEFAULT_CHAINS[platform];
+
   const accounts =
     options.accounts ??
     (options.addresses ?? [DEFAULT_ADDRESSES[platform]]).map((address) =>
       buildAccount(address, chain),
     );
+
   const account = accounts.at(0);
+
   if (account === undefined) {
     throw new Error("createFakeConnectedWallet needs at least one account or address.");
   }
+
   return { account, accounts, connector: buildFakeAdapter(platform, { ...options, accounts }) };
 };
 
@@ -59,25 +63,32 @@ function createFakeConnectedWallet(
     case "bitcoin": {
       return connectedWallet("bitcoin", options);
     }
+
     case "polkadot": {
       return connectedWallet("polkadot", options);
     }
+
     case "sui": {
       return connectedWallet("sui", options);
     }
+
     case "svm": {
       return connectedWallet("svm", options);
     }
+
     case undefined:
     case "evm": {
       return connectedWallet("evm", options);
     }
+
     default: {
       const unknownPlatform: never = options;
+
       return unknownPlatform;
     }
   }
 }
 
 export type { FakeConnectedWallet, FakeConnectedWalletOptions };
+
 export { createFakeConnectedWallet };

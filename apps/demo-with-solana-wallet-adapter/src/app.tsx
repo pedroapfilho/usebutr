@@ -20,6 +20,7 @@ const formatError = (error: Error | string): string => {
   if (error instanceof Error) {
     return error.message;
   }
+
   return error;
 };
 
@@ -47,11 +48,13 @@ const AdapterConsumer = ({ butrWallet }: { butrWallet: ConnectedWallet<"svm"> })
     if (pubkey === null) {
       return undefined;
     }
+
     // SAFETY: the effect cleanup sets this after the await; TypeScript cannot see writes from closures
     let cancelled = false as boolean;
     void (async () => {
       try {
         const lamports = await connection.getBalance(pubkey);
+
         if (!cancelled) {
           setBalance(`${lamports / LAMPORTS_PER_SOL} SOL`);
         }
@@ -59,9 +62,11 @@ const AdapterConsumer = ({ butrWallet }: { butrWallet: ConnectedWallet<"svm"> })
         if (!cancelled) {
           setBalance("error");
         }
+
         console.warn("getBalance failed:", error);
       }
     })();
+
     return () => {
       cancelled = true;
     };
@@ -71,11 +76,14 @@ const AdapterConsumer = ({ butrWallet }: { butrWallet: ConnectedWallet<"svm"> })
     if (!signMessage) {
       return;
     }
+
     setErrorMsg(null);
+
     try {
       const sig = await signMessage(
         new TextEncoder().encode("Hello from butr + @solana/wallet-adapter-react"),
       );
+
       setSignature(bytesToBase58(sig));
     } catch (error) {
       setErrorMsg(formatError(error instanceof Error ? error : String(error)));
@@ -86,11 +94,14 @@ const AdapterConsumer = ({ butrWallet }: { butrWallet: ConnectedWallet<"svm"> })
     if (!pubkey) {
       return;
     }
+
     setErrorMsg(null);
+
     try {
       const tx = new Transaction().add(
         SystemProgram.transfer({ fromPubkey: pubkey, lamports: 0, toPubkey: BURN_ADDRESS }),
       );
+
       const { blockhash } = await connection.getLatestBlockhash();
       tx.recentBlockhash = blockhash;
       tx.feePayer = pubkey;

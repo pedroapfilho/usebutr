@@ -13,6 +13,7 @@ export type {
 export { buildBitcoinAdapter, discoverBitcoinAdapters } from "./wallet-standard-adapter";
 
 export type { InjectedBitcoinDiscoveryOptions } from "./injected";
+
 export {
   GENERIC_BITCOIN_ICON,
   discoverInjectedBitcoinAdapter,

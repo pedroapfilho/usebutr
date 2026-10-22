@@ -32,6 +32,7 @@ const WalletRow = ({
   const { accounts, connector } = wallet;
   const showSwitcher = accounts.length > 1;
   const canAddAccounts = connector.requestAccounts !== undefined;
+
   return (
     <div className="border-border-default rounded-md border bg-white px-2.5 py-2 sm:py-1.5">
       <div className="flex items-center justify-between gap-2">
@@ -89,6 +90,7 @@ const WalletRow = ({
               className="border-border-strong text-foreground-secondary min-w-0 flex-1 rounded border bg-white px-1.5 py-0.5 font-mono text-base focus:outline-none sm:text-xs"
               onChange={(e) => {
                 const next = accounts.find((a) => a.id === e.target.value);
+
                 if (next) {
                   onSelectAccount(connector.id, next);
                 }
@@ -145,6 +147,7 @@ const WalletGroup = ({
   setSelection: (platform: ChainPlatform, id: string) => void;
 }) => {
   const connectable = discovered.filter((d) => !connected.some((w) => w.connector.id === d.id));
+
   return (
     <div className="border-border-default bg-surface-subtle rounded-lg border p-3">
       <p className="text-foreground-muted mb-2 text-xs font-medium tracking-wide uppercase">

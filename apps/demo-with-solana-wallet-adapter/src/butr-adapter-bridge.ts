@@ -67,13 +67,18 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     if (this.connected) {
       return Promise.resolve();
     }
+
     this._connecting = true;
+
     try {
       const pk = this._publicKey;
+
       if (pk === null) {
         return Promise.resolve();
       }
+
       this.emit("connect", pk);
+
       return Promise.resolve();
     } finally {
       this._connecting = false;
@@ -83,6 +88,7 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
   disconnect(): Promise<void> {
     this._publicKey = null;
     this.emit("disconnect");
+
     return Promise.resolve();
   }
 
@@ -90,7 +96,9 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     if (!this.butr.signMessage) {
       throw new Error(`${this.butr.name} cannot sign messages`);
     }
+
     const { signature } = await this.butr.signMessage(message, { account: this._account });
+
     return signature;
   }
 
@@ -110,16 +118,19 @@ class ButrAdapterBridge extends BaseMessageSignerWalletAdapter {
     if (!this.butr.sendTx) {
       throw new Error(`${this.butr.name} cannot send Solana transactions`);
     }
+
     const serialised =
       transaction instanceof Transaction
         ? transaction.serialize({ requireAllSignatures: false })
         : transaction.serialize();
+
     // Wallet Standard routes the chain per call: devnet here never moves the
     // wallet off whatever cluster it is showing.
     const signature = await this.butr.sendTx(new Uint8Array(serialised), {
       account: this._account,
       chain: SVM_CHAINS.devnet,
     });
+
     return signature;
   }
 }

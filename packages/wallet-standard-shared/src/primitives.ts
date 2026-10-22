@@ -13,6 +13,7 @@ const slugify = (platformPrefix: string, name: string): string => {
     .trim()
     .toLowerCase()
     .replaceAll(/[^a-z0-9]+/gv, "-");
+
   return `wallet-standard:${platformPrefix}-${slug}`;
 };
 
@@ -32,6 +33,7 @@ const getFeature = <Feature extends object>(
   method: keyof Feature & string,
 ): (WalletStandardFeature & Feature) | undefined => {
   const feature = wallet.features[name];
+
   return feature !== undefined && hasMethod<Feature>(feature, method) ? feature : undefined;
 };
 

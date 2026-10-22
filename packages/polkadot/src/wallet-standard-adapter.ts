@@ -33,6 +33,7 @@ const buildPolkadotWalletStandardAdapter = (
     trackChainChanges: false,
     wallet,
   });
+
   if (core === null) {
     return null;
   }
@@ -50,10 +51,12 @@ const buildPolkadotWalletStandardAdapter = (
       signMessage: async (message: Uint8Array, options?: AccountOptions) => {
         const { account } = core.resolveTarget("polkadot:signMessage", options);
         const wrapped = wrapBytes(message);
+
         const output = await signer.signMessage({
           account,
           message: wrapped,
         });
+
         return { signature: output.signature, signedMessage: output.signedMessage ?? wrapped };
       },
     }),

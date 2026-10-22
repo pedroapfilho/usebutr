@@ -11,9 +11,11 @@ const groupByPlatform = <T>(
   getPlatform: (item: T) => ChainPlatform,
 ): Map<ChainPlatform, Array<T>> => {
   const buckets = new Map<ChainPlatform, Array<T>>();
+
   for (const item of items) {
     const platform = getPlatform(item);
     const bucket = buckets.get(platform);
+
     if (bucket === undefined) {
       buckets.set(platform, [item]);
     } else {
@@ -22,12 +24,15 @@ const groupByPlatform = <T>(
   }
 
   const ordered = new Map<ChainPlatform, Array<T>>();
+
   for (const platform of CHAIN_PLATFORMS) {
     const bucket = buckets.get(platform);
+
     if (bucket !== undefined) {
       ordered.set(platform, bucket);
     }
   }
+
   return ordered;
 };
 

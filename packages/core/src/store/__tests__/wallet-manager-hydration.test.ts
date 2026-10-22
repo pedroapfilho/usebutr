@@ -34,6 +34,7 @@ const startManager = async ({ config = {}, persisted = {}, sources = [] }: Setup
   const manager = createWalletManager({ sources, storage, ...config });
   manager.start();
   await flush();
+
   return { manager, storage };
 };
 
@@ -50,6 +51,7 @@ describe("hydration", () => {
     const onHydrated = vi.fn<Callbacks["onHydrated"]>();
     const metamask = evmAdapter("metamask");
     const rabby = evmAdapter("rabby");
+
     const { manager } = await startManager({
       config: { onConnect, onHydrated },
       persisted: { pool: poolOf(metamask) },
@@ -75,6 +77,7 @@ describe("hydration", () => {
   it("applies the stored active wallet and selection", async () => {
     const metamask = evmAdapter("metamask");
     const rabby = evmAdapter("rabby");
+
     const { manager } = await startManager({
       persisted: {
         activeConnectorId: "rabby",
@@ -91,6 +94,7 @@ describe("hydration", () => {
   it("ignores a stored active wallet or selection that is not live or not on that platform", async () => {
     const metamask = evmAdapter("metamask");
     const phantom = svmAdapter("phantom");
+
     const { manager } = await startManager({
       persisted: {
         activeConnectorId: "gone",
@@ -115,6 +119,7 @@ describe("hydration", () => {
       persisted: { isUserDisconnected: true },
       sources: [staticSource(evmAdapter("metamask"))],
     });
+
     expect(manager.getState().isUserDisconnected).toBe(true);
 
     await manager.connect("metamask");
@@ -123,15 +128,19 @@ describe("hydration", () => {
 
   it("does not let a stored preference override a choice made during hydration", async () => {
     const gate = createGate();
+
     const metamask = evmAdapter("metamask", {
       connect: (options) => (options?.silent === true ? gate.promise : Promise.resolve()),
     });
+
     const rabby = evmAdapter("rabby");
+
     const storage = createMemoryPersistence({
       activeConnectorId: "metamask",
       pool: poolOf(metamask),
       selection: { evm: "metamask" },
     });
+
     const manager = createWalletManager({ sources: [staticSource(metamask, rabby)], storage });
     manager.start();
 
@@ -147,9 +156,11 @@ describe("hydration", () => {
 
   it("drops a failed silent reconnect but keeps it persisted for the next load", async () => {
     const onHydrated = vi.fn<Callbacks["onHydrated"]>();
+
     const metamask = evmAdapter("metamask", {
       connect: () => Promise.reject(new Error("wallet is locked")),
     });
+
     const { manager, storage } = await startManager({
       config: { onHydrated },
       persisted: { pool: poolOf(metamask) },
@@ -199,11 +210,13 @@ describe("hydration", () => {
     vi.useFakeTimers();
     const onHydrated = vi.fn<Callbacks["onHydrated"]>();
     const metamask = evmAdapter("metamask", { connect: () => new Promise(() => {}) });
+
     const manager = createWalletManager({
       onHydrated,
       sources: [staticSource(metamask)],
       storage: createMemoryPersistence({ pool: poolOf(metamask) }),
     });
+
     manager.start();
 
     await vi.advanceTimersByTimeAsync(14_999);
@@ -217,10 +230,12 @@ describe("hydration", () => {
   it("closes the session of a silent reconnect that times out", async () => {
     vi.useFakeTimers();
     const metamask = evmAdapter("metamask", { connect: () => new Promise(() => {}) });
+
     const manager = createWalletManager({
       sources: [staticSource(metamask)],
       storage: createMemoryPersistence({ pool: poolOf(metamask) }),
     });
+
     manager.start();
 
     await vi.advanceTimersByTimeAsync(15_000);
@@ -231,13 +246,16 @@ describe("hydration", () => {
 
   it("leaves the user's session open when the silent reconnect it overtook times out", async () => {
     vi.useFakeTimers();
+
     const metamask = evmAdapter("metamask", {
       connect: (options) => (options?.silent === true ? new Promise(() => {}) : Promise.resolve()),
     });
+
     const manager = createWalletManager({
       sources: [staticSource(metamask)],
       storage: createMemoryPersistence({ pool: poolOf(metamask) }),
     });
+
     manager.start();
 
     const wallet = await manager.connect("metamask");
@@ -279,6 +297,7 @@ describe("hydration", () => {
     const onHydrated = vi.fn<Callbacks["onHydrated"]>();
     const phantom = svmAdapter("phantom");
     const manual = createManualSource();
+
     const { manager, storage } = await startManager({
       config: { onConnect, onHydrated },
       persisted: { pool: poolOf(phantom) },
@@ -310,11 +329,13 @@ describe("hydration", () => {
     const metamask = evmAdapter("metamask", { connect: () => gate.promise });
     const phantom = svmAdapter("phantom");
     const manual = createManualSource();
+
     const manager = createWalletManager({
       onHydrated,
       sources: [staticSource(metamask), manual.source],
       storage: createMemoryPersistence({ pool: poolOf(metamask, phantom) }),
     });
+
     manager.start();
     await flush();
 
@@ -333,10 +354,12 @@ describe("hydration", () => {
   it("closes the session a silent reconnect reopened after the user disconnected it", async () => {
     const gate = createGate();
     const metamask = evmAdapter("metamask", { connect: () => gate.promise });
+
     const manager = createWalletManager({
       sources: [staticSource(metamask)],
       storage: createMemoryPersistence({ pool: poolOf(metamask) }),
     });
+
     manager.start();
     await flush();
 
@@ -351,14 +374,17 @@ describe("hydration", () => {
   it("keeps a wallet the user connected while its silent reconnect was in flight", async () => {
     const onConnect = vi.fn<Callbacks["onConnect"]>();
     const gate = createGate();
+
     const metamask = evmAdapter("metamask", {
       connect: (options) => (options?.silent === true ? gate.promise : Promise.resolve()),
     });
+
     const manager = createWalletManager({
       onConnect,
       sources: [staticSource(metamask)],
       storage: createMemoryPersistence({ pool: poolOf(metamask) }),
     });
+
     manager.start();
 
     const wallet = await manager.connect("metamask");
@@ -385,6 +411,7 @@ describe("hydration", () => {
 
 describe("initialState seeding", () => {
   const metamask = evmAdapter("metamask", { icon: "data:image/svg+xml,mm", name: "MetaMask" });
+
   const snapshot = {
     activeConnectorId: "metamask",
     pool: poolOf(metamask),
@@ -397,6 +424,7 @@ describe("initialState seeding", () => {
   ])("makes the first seeded wallet active when the snapshot %s", (_, activeConnectorId) => {
     const phantom = svmAdapter("phantom");
     const rabby = evmAdapter("rabby");
+
     const manager = createWalletManager(
       { storage: createMemoryPersistence() },
       { initialState: { activeConnectorId, pool: poolOf(phantom, rabby), selection: {} } },
@@ -434,6 +462,7 @@ describe("initialState seeding", () => {
       { sources: [staticSource(metamask)], storage: createMemoryPersistence() },
       { initialState: snapshot },
     );
+
     manager.start();
     await flush();
 
@@ -447,10 +476,12 @@ describe("initialState seeding", () => {
   it("evicts a shadow whose silent reconnect fails but keeps it persisted", async () => {
     const locked = evmAdapter("metamask", { connect: () => Promise.reject(new Error("locked")) });
     const storage = createMemoryPersistence();
+
     const manager = createWalletManager(
       { sources: [staticSource(locked)], storage },
       { initialState: snapshot },
     );
+
     manager.start();
     await flush();
 
@@ -463,13 +494,16 @@ describe("initialState seeding", () => {
 
   it("replaces a shadow with the wallet the user connects before its reconnect lands", async () => {
     const gate = createGate();
+
     const live = evmAdapter("metamask", {
       connect: (options) => (options?.silent === true ? gate.promise : Promise.resolve()),
     });
+
     const manager = createWalletManager(
       { sources: [staticSource(live)], storage: createMemoryPersistence() },
       { initialState: snapshot },
     );
+
     manager.start();
 
     const wallet = await manager.connect("metamask");
@@ -483,11 +517,13 @@ describe("initialState seeding", () => {
 
   it("keeps the user's choice of active wallet and selection over the stored ones", async () => {
     const rabby = evmAdapter("rabby");
+
     const stored = {
       activeConnectorId: "metamask",
       pool: poolOf(metamask, rabby),
       selection: { evm: "metamask" },
     };
+
     const manager = createWalletManager(
       {
         sources: [staticSource(metamask, rabby)],
@@ -495,6 +531,7 @@ describe("initialState seeding", () => {
       },
       { initialState: stored },
     );
+
     manager.start();
 
     manager.setActive("rabby");
@@ -509,10 +546,12 @@ describe("initialState seeding", () => {
 
   it("keeps a shadow reconnecting until its adapter is announced", async () => {
     const onHydrated = vi.fn<Callbacks["onHydrated"]>();
+
     const manager = createWalletManager(
       { onHydrated, storage: createMemoryPersistence() },
       { initialState: snapshot },
     );
+
     manager.start();
     await flush();
 
@@ -526,10 +565,12 @@ describe("persistence", () => {
     const storage = createMemoryPersistence();
     const load = Promise.withResolvers<PersistedWalletState>();
     storage.load.mockReturnValueOnce(load.promise);
+
     const manager = createWalletManager({
       sources: [staticSource(evmAdapter("metamask"))],
       storage,
     });
+
     manager.start();
 
     await manager.connect("metamask");
@@ -544,10 +585,12 @@ describe("persistence", () => {
   it("saves the live pool, the dormant entries, the selection and the intent", async () => {
     const metamask = evmAdapter("metamask");
     const phantom = svmAdapter("phantom");
+
     const { manager, storage } = await startManager({
       persisted: { pool: poolOf(phantom) },
       sources: [staticSource(metamask)],
     });
+
     await manager.connect("metamask");
     await flush();
 
@@ -586,12 +629,15 @@ describe("persistence", () => {
       storage.saves.push(state);
       const gate = createGate();
       gates.push(gate);
+
       return gate.promise;
     });
+
     const manager = createWalletManager({
       sources: [staticSource(evmAdapter("metamask"), evmAdapter("rabby"))],
       storage,
     });
+
     manager.start();
     await flush();
 
@@ -614,11 +660,13 @@ describe("persistence", () => {
     const onStorageError = vi.fn<Callbacks["onStorageError"]>();
     const storage = createMemoryPersistence();
     storage.save.mockRejectedValueOnce(new Error("quota"));
+
     const manager = createWalletManager({
       onStorageError,
       sources: [staticSource(evmAdapter("metamask"))],
       storage,
     });
+
     manager.start();
     await flush();
 
@@ -633,6 +681,7 @@ describe("persistence", () => {
     const manager = createWalletManager({
       sources: [staticSource(evmAdapter("metamask"))],
     });
+
     manager.start();
     await flush();
     await manager.connect("metamask");

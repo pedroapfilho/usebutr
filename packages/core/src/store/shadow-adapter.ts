@@ -30,6 +30,7 @@ const shadows = new WeakSet<WalletAdapter>();
 const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
   const reject = (method: string) => () =>
     Promise.reject(new ShadowConnectorError(method, entry.connectorId));
+
   const shadow: WalletAdapter = {
     chainPlatform: entry.chainPlatform,
     connect: reject("connect"),
@@ -39,7 +40,9 @@ const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
     id: entry.connectorId,
     name: entry.name,
   };
+
   shadows.add(shadow);
+
   return shadow;
 };
 

@@ -39,13 +39,16 @@ const evmNamespace: WalletConnectNamespaceBuilder<EvmAdapter> = {
         namespace: EVM_NAMESPACE,
         provider,
       });
+
     const eip155 = createEip155Provider(provider, chains[0] ?? EVM_CHAINS.ethereum.id);
+
     const {
       connect: _connect,
       disconnect: _disconnect,
       requestAccounts: _requestAccounts,
       ...adapter
     } = buildEvmAdapter({ icon, name, rdns: id, uuid: id }, eip155);
+
     return { ...adapter, ...wc.lifecycle(EVM_NAMESPACE, "EVM") };
   },
   caipPrefix: EVM_NAMESPACE,

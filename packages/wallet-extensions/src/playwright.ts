@@ -9,7 +9,9 @@ const buildLoadExtensionArgs = (extensionPaths: ReadonlyArray<string>): Readonly
   if (extensionPaths.length === 0) {
     return [];
   }
+
   const joined = extensionPaths.join(",");
+
   return [`--disable-extensions-except=${joined}`, `--load-extension=${joined}`];
 };
 
@@ -34,16 +36,20 @@ const partitionResolvedExtensions = (
 ): ResolvedPaths => {
   const paths: Array<{ path: string; wallet: WalletExtension }> = [];
   const missing: Array<WalletExtension> = [];
+
   for (const wallet of wallets) {
     const path = resolve(wallet);
+
     if (path !== null && path !== "") {
       paths.push({ path, wallet });
     } else {
       missing.push(wallet);
     }
   }
+
   return { missing, paths };
 };
 
 export type { ResolvedPaths };
+
 export { buildLoadExtensionArgs, partitionResolvedExtensions };

@@ -7,6 +7,7 @@ import { App } from "./app";
 import { WalletProvider } from "./wallet-provider";
 
 const root = document.querySelector("#root");
+
 if (!root) {
   throw new Error("#root not found");
 }

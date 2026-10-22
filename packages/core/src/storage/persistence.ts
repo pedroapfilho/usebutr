@@ -22,6 +22,7 @@ type StoredPoolEntry = {
 };
 
 type StoredPoolRecord = Partial<Record<string, StoredPoolEntry>>;
+
 type StoredSelectionRecord = Partial<Record<ChainPlatform, string>>;
 
 /**

@@ -14,4 +14,5 @@ const buttonClassName = (variant: ButtonVariant, className?: string) =>
   cn(BASE_CLASSES, VARIANT_CLASSES[variant], className);
 
 export { buttonClassName };
+
 export type { ButtonVariant };

@@ -4,8 +4,11 @@ import { vi } from "vitest";
 import type { UniversalProviderConstructor, UniversalProviderLike } from "../adapter";
 
 type ConnectArgs = Parameters<UniversalProviderLike["connect"]>[0];
+
 type FakeSession = { namespaces: Record<string, { accounts: ReadonlyArray<string> }> };
+
 type ListenerCall = { event: string; listener: Eip1193Listener };
+
 type RequestCall = { args: Eip1193RequestArgs; chain: string | undefined };
 
 type FakeProviderOptions = {
@@ -42,20 +45,24 @@ const createFakeProvider = (options: FakeProviderOptions = {}): FakeProvider => 
   return {
     connect(args) {
       connectCalls.push(args);
+
       const granted = Object.keys({ ...args.namespaces, ...args.optionalNamespaces }).filter(
         (prefix) => options.approve === undefined || options.approve.includes(prefix),
       );
+
       session = {
         namespaces: Object.fromEntries(
           granted.map((prefix) => [prefix, { accounts: options.accounts?.[prefix] ?? [] }]),
         ),
       };
+
       return Promise.resolve(undefined);
     },
     connectCalls,
     disconnect() {
       disconnectCalls += 1;
       session = null;
+
       return options.disconnect ? options.disconnect() : Promise.resolve();
     },
     disconnectCalls: () => disconnectCalls,
@@ -78,6 +85,7 @@ const createFakeProvider = (options: FakeProviderOptions = {}): FakeProvider => 
     removeListenerCalls,
     request(args, chain) {
       requests.push({ args, chain });
+
       // Deferred, so a throwing handler surfaces as a rejection.
       return Promise.resolve().then(() => options.request?.(args, chain) ?? null);
     },
@@ -97,4 +105,5 @@ const walletRequests = (provider: FakeProvider): Array<RequestCall> =>
   provider.requests.filter(({ args }) => args.method !== "eth_chainId");
 
 export type { FakeProvider };
+
 export { createFakeProvider, fakeUniversalProvider, walletRequests };

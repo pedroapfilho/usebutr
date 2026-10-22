@@ -49,4 +49,5 @@ const RootLayout = ({ children }: { children: ReactNode }) => (
 );
 
 export { metadata, viewport };
+
 export default RootLayout;

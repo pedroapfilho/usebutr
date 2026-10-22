@@ -35,6 +35,7 @@ const formatUnits = (value: bigint, decimals: number): string => {
   const base = 10n ** BigInt(decimals);
   const fraction = (value % base).toString().padStart(decimals, "0").replace(/0+$/v, "");
   const whole = (value / base).toString();
+
   return fraction === "" ? whole : `${whole}.${fraction}`;
 };
 
@@ -42,8 +43,10 @@ const formatUnits = (value: bigint, decimals: number): string => {
  *  never compare equal by accident. */
 const createByteSource = () => {
   let sequence = 0;
+
   return (length: number): Uint8Array => {
     sequence += 1;
+
     return Uint8Array.from({ length }, (_, index) => (sequence + index) % 256);
   };
 };

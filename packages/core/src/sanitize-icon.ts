@@ -7,7 +7,9 @@ const sanitizeIcon = (icon: string | undefined): string | undefined => {
   if (icon === undefined) {
     return undefined;
   }
+
   const trimmed = icon.trim();
+
   return trimmed.length > 0 ? trimmed : undefined;
 };
 

@@ -28,13 +28,16 @@ type Setup = {
 /** A started manager whose adapters are announced before hydration runs. */
 const startManager = async ({ adapters = [], config = {}, storage }: Setup = {}) => {
   const persistence = storage ?? createMemoryPersistence();
+
   const manager = createWalletManager({
     sources: [staticSource(...adapters)],
     storage: persistence,
     ...config,
   });
+
   const stop = manager.start();
   await flush();
+
   return { manager, stop };
 };
 
@@ -59,6 +62,7 @@ describe("createWalletManager", () => {
     it("registers every announced adapter once, the first announcement winning", async () => {
       const first = evmAdapter("metamask");
       const phantom = svmAdapter("phantom");
+
       const { manager } = await startManager({
         adapters: [first, phantom, evmAdapter("metamask")],
       });
@@ -69,10 +73,12 @@ describe("createWalletManager", () => {
     it("unsubscribes every source and wallet listener on stop", async () => {
       const manual = createManualSource();
       const adapter = evmAdapter("metamask");
+
       const manager = createWalletManager({
         sources: [manual.source],
         storage: createMemoryPersistence(),
       });
+
       const stop = manager.start();
       manual.announce(adapter);
       await manager.connect("metamask");
@@ -88,6 +94,7 @@ describe("createWalletManager", () => {
     it("survives a StrictMode start, stop, start without hydrating twice", async () => {
       const adapter = evmAdapter("metamask");
       const source = vi.fn(staticSource(adapter));
+
       const storage = createMemoryPersistence({
         pool: {
           metamask: {
@@ -99,6 +106,7 @@ describe("createWalletManager", () => {
           },
         },
       });
+
       const manager = createWalletManager({ sources: [source], storage });
 
       manager.start()();
@@ -116,6 +124,7 @@ describe("createWalletManager", () => {
       const error = vi.spyOn(console, "error").mockImplementation(() => {});
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const adapter = evmAdapter("metamask");
+
       const manager = createWalletManager({
         sources: [
           () => {
@@ -196,10 +205,12 @@ describe("createWalletManager", () => {
     it("rejects Timeout when the wallet never answers", async () => {
       vi.useFakeTimers();
       const adapter = evmAdapter("metamask", { connect: () => new Promise(() => {}) });
+
       const manager = createWalletManager({
         sources: [staticSource(adapter)],
         storage: createMemoryPersistence(),
       });
+
       manager.start();
 
       const attempt = rejectionOf(manager.connect("metamask"));
@@ -214,12 +225,14 @@ describe("createWalletManager", () => {
       const onSlowConnect = vi.fn<Callbacks["onSlowConnect"]>();
       const gate = createGate();
       const slow = evmAdapter("slow", { connect: () => gate.promise });
+
       const manager = createWalletManager({
         onSlowConnect,
         slowConnectThresholdMs: 1000,
         sources: [staticSource(slow, evmAdapter("fast"))],
         storage: createMemoryPersistence(),
       });
+
       manager.start();
 
       await manager.connect("fast");
@@ -235,6 +248,7 @@ describe("createWalletManager", () => {
       const landing = createGate();
       const failing = Promise.withResolvers<undefined>();
       const latest = createGate();
+
       const { manager } = await startManager({
         adapters: [
           evmAdapter("metamask", { connect: () => landing.promise }),
@@ -266,6 +280,7 @@ describe("createWalletManager", () => {
       const { manager } = await startManager({
         adapters: [evmAdapter("metamask"), evmAdapter("rabby")],
       });
+
       await manager.connect("metamask");
       await manager.connect("rabby");
       manager.setSelection("evm", "metamask");
@@ -290,6 +305,7 @@ describe("createWalletManager", () => {
 
     it("survives callbacks that throw", async () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
       const { manager } = await startManager({
         adapters: [evmAdapter("metamask")],
         config: {
@@ -330,10 +346,12 @@ describe("createWalletManager", () => {
     it("by the user tears the wallet down and forgets it", async () => {
       const onDisconnect = vi.fn<Callbacks["onDisconnect"]>();
       const adapter = evmAdapter("metamask");
+
       const { manager } = await startManager({
         adapters: [adapter, evmAdapter("rabby")],
         config: { onDisconnect },
       });
+
       const wallet = await manager.connect("metamask");
       await manager.connect("rabby");
 
@@ -380,10 +398,12 @@ describe("createWalletManager", () => {
       const onDisconnect = vi.fn<Callbacks["onDisconnect"]>();
       const metamask = evmAdapter("metamask");
       const phantom = svmAdapter("phantom");
+
       const { manager } = await startManager({
         adapters: [metamask, phantom],
         config: { onDisconnect },
       });
+
       await manager.connect("metamask");
       await manager.connect("phantom");
 
@@ -402,9 +422,11 @@ describe("createWalletManager", () => {
 
     it("logs a teardown that rejects", async () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
       const adapter = evmAdapter("metamask", {
         disconnect: () => Promise.reject(new Error("gone")),
       });
+
       const { manager } = await startManager({ adapters: [adapter] });
       await manager.connect("metamask");
 
@@ -435,14 +457,18 @@ describe("createWalletManager", () => {
 
     it("requestAccounts opens the picker, then refreshes the entry", async () => {
       let exposed: ReadonlyArray<Account> = [first];
+
       const requestAccounts = vi.fn(() => {
         exposed = [first, second];
+
         return Promise.resolve();
       });
+
       const adapter = evmAdapter("metamask", {
         getAccounts: () => Promise.resolve(exposed),
         requestAccounts,
       });
+
       const { manager } = await startManager({ adapters: [adapter] });
       await manager.connect("metamask");
 
@@ -455,13 +481,16 @@ describe("createWalletManager", () => {
 
     it("requestAccounts falls back to the first account once the active one is gone", async () => {
       let exposed: ReadonlyArray<Account> = [first];
+
       const adapter = evmAdapter("metamask", {
         getAccounts: () => Promise.resolve(exposed),
         requestAccounts: () => {
           exposed = [second];
+
           return Promise.resolve();
         },
       });
+
       const { manager } = await startManager({ adapters: [adapter] });
       await manager.connect("metamask");
 
@@ -472,13 +501,16 @@ describe("createWalletManager", () => {
 
     it("requestAccounts rejects NotConnected when the wallet then exposes none", async () => {
       let exposed: ReadonlyArray<Account> = [first];
+
       const adapter = evmAdapter("metamask", {
         getAccounts: () => Promise.resolve(exposed),
         requestAccounts: () => {
           exposed = [];
+
           return Promise.resolve();
         },
       });
+
       const { manager } = await startManager({ adapters: [adapter] });
       const wallet = await manager.connect("metamask");
 
@@ -505,6 +537,7 @@ describe("createWalletManager", () => {
       const { manager } = await startManager({
         adapters: [evmAdapter("metamask", { accounts: [first, second] })],
       });
+
       await manager.connect("metamask");
 
       manager.setAccount("metamask", second);
@@ -518,6 +551,7 @@ describe("createWalletManager", () => {
       const alice = buildAccount("Alice", POLKADOT_CHAINS.polkadot);
       const bob = buildAccount("Bob", POLKADOT_CHAINS.kusama);
       const accounts = [alice, bob];
+
       const adapter: PolkadotAdapter = {
         chainPlatform: "polkadot",
         connect: () => Promise.resolve(),
@@ -526,6 +560,7 @@ describe("createWalletManager", () => {
         id: "polkadot",
         name: "Polkadot",
       };
+
       const { manager } = await startManager({ adapters: [adapter] });
       await manager.connect(adapter.id);
 
@@ -545,6 +580,7 @@ describe("createWalletManager", () => {
       const { manager } = await startManager({
         adapters: [evmAdapter("metamask", { accounts: [first] })],
       });
+
       await manager.connect("metamask");
       const before = manager.getState();
 
@@ -561,6 +597,7 @@ describe("createWalletManager", () => {
       const { manager } = await startManager({
         adapters: [evmAdapter("metamask"), evmAdapter("rabby"), svmAdapter("phantom")],
       });
+
       await manager.connect("metamask");
       await manager.connect("rabby");
       await manager.connect("phantom");

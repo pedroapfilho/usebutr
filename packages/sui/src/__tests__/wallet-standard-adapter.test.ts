@@ -50,9 +50,11 @@ const adapterFor = (
   features: Features = {},
 ): SuiAdapter => {
   const adapter = buildSuiAdapter(buildWallet(overrides, features));
+
   if (adapter === null) {
     throw new Error("expected a sui adapter");
   }
+
   return adapter;
 };
 
@@ -62,6 +64,7 @@ const present = <T>(value: T | undefined, name: string): T => {
   if (value === undefined) {
     throw new Error(`expected ${name} to be defined`);
   }
+
   return value;
 };
 
@@ -87,15 +90,18 @@ const signTransactionFeature = (): SuiSignTransactionFeature => ({
 
 const eventsFeature = () => {
   const listeners = new Set<StandardEventsListener>();
+
   const feature: StandardEventsFeature = {
     on: vi.fn((_event: "change", listener: StandardEventsListener) => {
       listeners.add(listener);
+
       return () => {
         listeners.delete(listener);
       };
     }),
     version: "1.0.0",
   };
+
   return {
     emit: (changes: Parameters<StandardEventsListener>[0]) => {
       for (const listener of listeners) {
@@ -120,9 +126,11 @@ const listenerFn = () => vi.fn<(event: ConnectorEvent) => void>();
 
 const passedTransaction = (feature: SuiSignAndExecuteTransactionFeature) => {
   const [input] = vi.mocked(feature.signAndExecuteTransaction).mock.calls[0] ?? [];
+
   if (input === undefined) {
     throw new Error("signAndExecuteTransaction was not called");
   }
+
   return input.transaction;
 };
 
@@ -176,6 +184,7 @@ describe("buildSuiAdapter", () => {
         "sui:signTransaction": signTransactionFeature(),
       },
     );
+
     expect(full.sendTx).toBeTypeOf("function");
     expect(full.signMessage).toBeTypeOf("function");
     expect(full.signTransaction).toBeTypeOf("function");
@@ -197,6 +206,7 @@ describe("buildSuiAdapter session", () => {
     const disconnectFeature: StandardDisconnectFeature = {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
+
     const adapter = adapterFor({}, { "standard:disconnect": disconnectFeature });
     await present(adapter.disconnect, "disconnect")();
     expect(disconnectFeature.disconnect).toHaveBeenCalledTimes(1);
@@ -206,6 +216,7 @@ describe("buildSuiAdapter session", () => {
     const adapter = adapterFor({
       accounts: [walletAccount("0xSuiAddress1"), walletAccount("0xSuiAddress2")],
     });
+
     await expect(adapter.getAccounts()).resolves.toEqual([
       buildAccount("0xSuiAddress1", SUI_CHAINS.mainnet),
       buildAccount("0xSuiAddress2", SUI_CHAINS.mainnet),
@@ -220,14 +231,18 @@ describe("buildSuiAdapter session", () => {
 
   it("pushes disconnected through the discovery disconnector", () => {
     const emits: Array<() => void> = [];
+
     const adapter = buildSuiAdapter(buildWallet(), (emit) => {
       emits.push(emit);
     });
+
     const listener = listenerFn();
     present(adapter?.subscribe, "subscribe")(listener);
+
     for (const emit of emits) {
       emit();
     }
+
     expect(listener).toHaveBeenCalledWith({ type: "disconnected" });
   });
 });
@@ -307,6 +322,7 @@ describe("buildSuiAdapter.signTransaction", () => {
 
   it("routes options.chain and options.account to the wallet", async () => {
     const feature = signTransactionFeature();
+
     const adapter = adapterFor(
       {
         accounts: [walletAccount("0xSuiAddress1"), walletAccount("0xSuiAddress2")],
@@ -334,6 +350,7 @@ describe("buildSuiAdapter scoped signing", () => {
       const test = { ...walletAccount("TEST"), chains: ["sui:testnet"] };
       const execute = executeFeature();
       const sign = signTransactionFeature();
+
       const adapter = adapterFor(
         {
           accounts: [{ ...main, address: "SOL", chains: ["solana:mainnet"] }, main, test],
@@ -341,10 +358,13 @@ describe("buildSuiAdapter scoped signing", () => {
         },
         { "sui:signAndExecuteTransaction": execute, "sui:signTransaction": sign },
       );
+
       const call = present(adapter[method], method);
       await call("AQID", { chain: SUI_CHAINS.testnet });
+
       const feature =
         method === "sendTx" ? execute.signAndExecuteTransaction : sign.signTransaction;
+
       expect(feature).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({ account: test, chain: "sui:testnet" }),
       );
@@ -361,10 +381,12 @@ describe("buildSuiAdapter scoped signing", () => {
   it("requires personal-message support on the selected account", async () => {
     const feature = personalMessageFeature();
     const account = walletAccount("SUI");
+
     const adapter = adapterFor(
       { accounts: [{ ...account, address: "NO_FEATURE", features: [] }, account] },
       { "sui:signPersonalMessage": feature },
     );
+
     await present(adapter.signMessage, "signMessage")(new Uint8Array([1]));
     expect(feature.signPersonalMessage).toHaveBeenCalledWith(expect.objectContaining({ account }));
   });

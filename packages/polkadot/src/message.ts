@@ -9,6 +9,7 @@ const wrapBytes = (message: Uint8Array): Uint8Array => {
   out.set(BYTES_PREFIX, 0);
   out.set(message, BYTES_PREFIX.length);
   out.set(BYTES_SUFFIX, BYTES_PREFIX.length + message.length);
+
   return out;
 };
 

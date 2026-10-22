@@ -49,6 +49,7 @@ describe("createWalletConnectAdapters", () => {
         projectId: "test",
         universalProvider: fakeUniversalProvider(createFakeProvider()),
       });
+
       expect(adapters.map(({ chainPlatform, id }) => ({ chainPlatform, id }))).toEqual([
         { chainPlatform: platform, id: "walletconnect" },
       ]);
@@ -61,6 +62,7 @@ describe("createWalletConnectAdapters", () => {
       projectId: "test",
       universalProvider: fakeUniversalProvider(createFakeProvider()),
     });
+
     expect(adapters.map(({ id, name }) => ({ id, name }))).toEqual([
       { id: "walletconnect-evm", name: "WalletConnect (EVM)" },
       { id: "walletconnect-svm", name: "WalletConnect (SVM)" },
@@ -69,11 +71,13 @@ describe("createWalletConnectAdapters", () => {
 
   it("falls back to a namespace's default chains when an empty array is passed", async () => {
     const provider = createFakeProvider();
+
     const [adapter] = await createWalletConnectAdapters({
       namespaces: { evm: [] },
       projectId: "test",
       universalProvider: fakeUniversalProvider(provider),
     });
+
     await adapter?.connect();
     expect(provider.connectCalls[0]?.namespaces.eip155?.chains).toEqual(["eip155:1"]);
   });
@@ -87,10 +91,13 @@ const createEvmAndSvmAdapters = async (
     projectId: "test",
     universalProvider: fakeUniversalProvider(provider),
   });
+
   const [evm, svm] = adapters;
+
   if (evm?.chainPlatform !== "evm" || svm?.chainPlatform !== "svm") {
     throw new Error("expected one EVM and one SVM adapter");
   }
+
   return { evm, svm };
 };
 
@@ -110,6 +117,7 @@ describe("createWalletConnectAdapters (one session across namespaces)", () => {
 
   it("asks the wallet for genesis-hash ids when given butr's Solana chains", async () => {
     const provider = createFakeProvider();
+
     const [adapter] = await createWalletConnectAdapters({
       namespaces: { svm: [SVM_CHAINS.mainnet.id, SVM_CHAINS.devnet.id] },
       projectId: "test",
@@ -181,15 +189,19 @@ const connectBoth = async () => {
       if (args.method === "eth_chainId") {
         return 1;
       }
+
       if (args.method === "eth_accounts") {
         return [EVM_ADDRESS];
       }
+
       return args.method === "personal_sign" ? "0xdeadbeef" : { signature: "111" };
     },
   });
+
   const adapters = await createEvmAndSvmAdapters(provider);
   await adapters.evm.connect();
   await adapters.svm.connect();
+
   return { ...adapters, provider };
 };
 
@@ -203,6 +215,7 @@ describe("createWalletConnectAdapters (request routing)", () => {
     const routed = walletRequests(provider)
       .filter(({ args }) => args.method !== "eth_accounts")
       .map(({ args, chain }) => [args.method, chain]);
+
     expect(routed).toEqual([
       ["solana_signMessage", SOL_MAINNET_ID],
       ["personal_sign", "eip155:1"],
@@ -245,13 +258,16 @@ describe("createWalletConnectAdapters (EVM events in a mixed session)", () => {
         if (args.method === "eth_chainId") {
           return 1;
         }
+
         return args.method === "eth_accounts" ? [EVM_ADDRESS] : null;
       },
     });
+
     const { evm } = await createEvmAndSvmAdapters(provider);
     await evm.connect();
     const listener = vi.fn<(event: ConnectorEvent) => void>();
     const unsubscribe = evm.subscribe?.(listener);
+
     return { listener, provider, unsubscribe };
   };
 
@@ -264,6 +280,7 @@ describe("createWalletConnectAdapters (EVM events in a mixed session)", () => {
     provider.emit("chainChanged", "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp");
     provider.emit("chainChanged", "000000000019d6689c085ae165831e93");
     provider.emit("chainChanged", "mainnet");
+
     for (const chainId of [
       SOL_MAINNET_ID,
       "sui:mainnet",
@@ -280,6 +297,7 @@ describe("createWalletConnectAdapters (EVM events in a mixed session)", () => {
         params: { chainId, event: { data: 137, name: "chainChanged" } },
       });
     }
+
     await flush();
 
     expect(listener).not.toHaveBeenCalled();

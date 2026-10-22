@@ -6,10 +6,13 @@ const stringSchema = z.string();
 
 const readStringField = (value: Eip1193Value | undefined, key: string): string | undefined => {
   const response = walletResponseSchema.safeParse(value);
+
   if (!response.success) {
     return undefined;
   }
+
   const field = stringSchema.safeParse(response.data[key]);
+
   return field.success ? field.data : undefined;
 };
 
@@ -21,9 +24,11 @@ const readResultString = (
   method: string,
 ): string => {
   const value = typeof result === "string" ? result : readStringField(result, key);
+
   if (value === undefined || value === "") {
     throw new Error(`${method} returned no ${key}`);
   }
+
   return value;
 };
 

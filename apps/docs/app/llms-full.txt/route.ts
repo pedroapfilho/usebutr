@@ -7,6 +7,7 @@ const getLlmsFull = async () => {
   "use cache";
   cacheLife("max");
   const scanned = await Promise.all(source.getPages().map(getLLMText));
+
   return scanned.join("\n\n");
 };
 

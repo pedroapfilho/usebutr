@@ -91,33 +91,42 @@ const createWalletStandardCore = ({
   const prefix = `${namespace}:`;
   // Accounts and callers speak registry ids; the wallet hears its own.
   const toRegistryId = (chainId: string) => resolveChain(chainId, chains).id;
+
   const toWalletId = (chainId: string) =>
     wallet.chains.find((c) => toRegistryId(c) === chainId) ?? chainId;
+
   const preferred = new Set(preferredChainIds);
+
   const pickChain = (advertised: ReadonlyArray<string>): string | undefined =>
     advertised.find((c) => preferred.has(toRegistryId(c))) ??
     advertised.find((c) => c.startsWith(prefix));
 
   const initialChainId = pickChain(wallet.chains);
   const connect = getFeature<StandardConnectFeature>(wallet, "standard:connect", "connect");
+
   if (initialChainId === undefined || connect === undefined) {
     return null;
   }
+
   const disconnect = getFeature<StandardDisconnectFeature>(
     wallet,
     "standard:disconnect",
     "disconnect",
   );
+
   const events = getFeature<StandardEventsFeature>(wallet, "standard:events", "on");
 
   let currentChainId = initialChainId;
   const currentChain = () => resolveChain(currentChainId, chains);
+
   const accountsOn = (accounts: ReadonlyArray<WalletStandardWalletAccount>, chainId: string) =>
     accounts.filter((account) =>
       account.chains.some((chain) => toRegistryId(chain) === toRegistryId(chainId)),
     );
+
   const toAccounts = (accounts: ReadonlyArray<WalletStandardWalletAccount>) => {
     const chain = currentChain();
+
     return accountsOn(accounts, currentChainId).map((a) => buildAccount(a.address, chain));
   };
 
@@ -127,33 +136,40 @@ const createWalletStandardCore = ({
     namespace,
     wallet: wallet.name,
   });
+
   const routeChain = (chain?: ChainBase) =>
     toWalletId(target.chain(chain === undefined ? undefined : resolveChain(chain.id, chains)));
 
   const emitter = createConnectorEmitter();
+
   const toEvent = (accounts: ReadonlyArray<WalletStandardWalletAccount>): ConnectorEvent => ({
     accounts: toAccounts(accounts),
     type: "accountsChanged",
   });
+
   registerDisconnector?.(() => {
     emitter.emit({ type: "disconnected" });
   });
 
   const subscribe = (listener: (event: ConnectorEvent) => void) => {
     const unsubscribe = emitter.subscribe(listener);
+
     // Each subscriber owns a wallet listener, so it delivers to that
     // subscriber alone: broadcasting would repeat a change per subscriber.
     const off = events?.on("change", (changes) => {
       const next = trackChainChanges && changes.chains ? pickChain(changes.chains) : undefined;
+
       if (next !== undefined) {
         currentChainId = next;
       }
+
       if (changes.accounts !== undefined) {
         listener(toEvent(changes.accounts));
       } else if (next !== undefined) {
         listener(toEvent(wallet.accounts));
       }
     });
+
     return () => {
       unsubscribe();
       off?.();
@@ -202,9 +218,11 @@ const createWalletStandardCore = ({
     currentChain,
     resolveTarget: (feature, options) => {
       const chain = routeChain(options?.chain);
+
       const accounts = accountsOn(wallet.accounts, chain).filter((account) =>
         account.features.includes(feature),
       );
+
       return { account: target.account(accounts, options?.account), chain };
     },
     toAccount: (account) =>
@@ -213,4 +231,5 @@ const createWalletStandardCore = ({
 };
 
 export type { WalletStandardConnector, WalletStandardCore, WalletStandardCoreInput };
+
 export { createWalletStandardCore };

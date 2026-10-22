@@ -7,6 +7,7 @@ const RESTORE_TIMEOUT_MS = 15_000;
 
 const withTimeout = async <T>(promise: Promise<T>, ms: number): Promise<T> => {
   let timer: ReturnType<typeof setTimeout> | undefined;
+
   try {
     return await Promise.race([
       promise,
@@ -36,9 +37,11 @@ const readAccounts = async (
 ): Promise<Pick<ConnectedWallet, "account" | "accounts">> => {
   const accounts = await connector.getAccounts();
   const account = accounts.at(0);
+
   if (account === undefined) {
     throw new ConnectionError("NotConnected", `${connector.name} exposed no accounts`);
   }
+
   return { account, accounts };
 };
 
@@ -48,6 +51,7 @@ const closeAfterOpen = async (opening: Promise<void>, close: () => Promise<void>
   } catch {
     return;
   }
+
   await close();
 };
 
@@ -61,19 +65,24 @@ const openSession = async (
   { close, silent }: { close: () => Promise<void>; silent: boolean },
 ): Promise<ConnectedWallet> => {
   let opening: Promise<void> | undefined;
+
   try {
     opening = silent ? connector.connect({ silent }) : connector.connect();
     await withTimeout(opening, silent ? RESTORE_TIMEOUT_MS : CONNECT_TIMEOUT_MS);
   } catch (error) {
     const failure = toConnectionError(error);
+
     if (failure.kind === "Timeout" && opening !== undefined) {
       void closeAfterOpen(opening, close);
     }
+
     if (!silent || failure.kind === "Timeout") {
       await close();
     }
+
     throw failure;
   }
+
   try {
     return { ...(await readAccounts(connector)), connector };
   } catch (error) {

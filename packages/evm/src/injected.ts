@@ -38,6 +38,7 @@ const isEip1193Provider = (value: unknown): value is Eip1193Provider =>
 
 const readEthereum = (target: InjectedDiscoveryOptions["target"]): Eip1193Provider | null => {
   const host = target === undefined ? globalThis.window : target;
+
   return isEip1193Provider(host?.ethereum) ? host.ethereum : null;
 };
 
@@ -51,6 +52,7 @@ const discoverInjectedAdapter = (
   options: InjectedDiscoveryOptions = {},
 ): (() => void) => {
   const provider = readEthereum(options.target);
+
   if (provider !== null) {
     const info: Eip6963ProviderInfo = {
       icon: GENERIC_INJECTED_ICON,
@@ -58,10 +60,13 @@ const discoverInjectedAdapter = (
       rdns: "injected:legacy",
       uuid: "injected:legacy",
     };
+
     onAdapter(buildEvmAdapter(info, provider));
   }
+
   return () => {};
 };
 
 export type { InjectedDiscoveryOptions };
+
 export { GENERIC_INJECTED_ICON, discoverInjectedAdapter, isEip1193Provider };

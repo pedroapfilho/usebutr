@@ -28,19 +28,25 @@ const toCookieMap = (input: CookieSource): Map<string, string> => {
   if (!(Symbol.iterator in input)) {
     return new Map(Object.entries(input));
   }
+
   const out = new Map<string, string>();
+
   for (const entry of input) {
     if (Array.isArray(entry)) {
       const [name, value] = entry;
+
       if (typeof name === "string" && typeof value === "string") {
         out.set(name, value);
       }
+
       continue;
     }
+
     if (typeof entry.name === "string" && typeof entry.value === "string") {
       out.set(entry.name, entry.value);
     }
   }
+
   return out;
 };
 
@@ -54,14 +60,17 @@ const createCookieWalletStorage = ({
   ...cookie
 }: CookieWalletStorageOptions = {}): CookieWalletStorage => {
   const codec = createWalletStateCodec(keyPrefix);
+
   return {
     ...createWalletStorage({ keyPrefix, persistent: createCookieStorageDriver(cookie) }),
     readInitialState: (cookies) => {
       const jar = toCookieMap(cookies);
+
       return codec.decodeSnapshot((key) => jar.get(key));
     },
   };
 };
 
 export type { CookieSource, CookieWalletStorage, CookieWalletStorageOptions };
+
 export { createCookieWalletStorage };

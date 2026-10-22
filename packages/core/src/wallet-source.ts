@@ -26,20 +26,24 @@ const fromAdapters =
     void (async () => {
       try {
         const resolved = await adapters;
+
         for (const adapter of isIterable(resolved) ? resolved : [resolved]) {
           if (!active) {
             return;
           }
+
           onAdapter(adapter);
         }
       } catch (error) {
         logWarn("[butr] fromAdapters: adapters failed to load:", error);
       }
     })();
+
     return () => {
       active = false;
     };
   };
 
 export type { WalletSource };
+
 export { fromAdapters };

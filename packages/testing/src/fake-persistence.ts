@@ -30,6 +30,7 @@ const createFakePersistence = ({
     persistent: createMemoryStorageDriver(),
     session: createMemoryStorageDriver(),
   });
+
   const seeded = storage.save({
     activeConnectorId: active?.connector.id ?? null,
     isUserDisconnected,
@@ -38,11 +39,13 @@ const createFakePersistence = ({
     ),
     selection: {},
   });
+
   const saves: Array<PersistedWalletState> = [];
 
   return {
     load: async () => {
       await seeded;
+
       return storage.load();
     },
     save: async (state) => {
@@ -55,4 +58,5 @@ const createFakePersistence = ({
 };
 
 export type { FakePersistence };
+
 export { createFakePersistence };

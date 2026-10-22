@@ -23,6 +23,7 @@ describe("createFakePersistence", () => {
   it("loads the seeded wallets as a previous session saved them", async () => {
     const metamask = createFakeConnectedWallet({ id: "metamask", name: "MetaMask" });
     const rabby = createFakeConnectedWallet({ id: "rabby" });
+
     const persistence = createFakePersistence({
       active: rabby,
       isUserDisconnected: true,
@@ -43,6 +44,7 @@ describe("createFakePersistence", () => {
 
   it("records every save and loads the latest one", async () => {
     const persistence = createFakePersistence();
+
     const state = {
       activeConnectorId: null,
       isUserDisconnected: true,
@@ -59,6 +61,7 @@ describe("createFakePersistence", () => {
   it("restores a seeded connection through a manager and records what it saves", async () => {
     const wallet = createFakeConnectedWallet({ id: "metamask" });
     const persistence = createFakePersistence({ wallets: [wallet] });
+
     const manager = createWalletManager({
       sources: [fromAdapters([wallet.connector, createFakeAdapter({ id: "rabby" })])],
       storage: persistence,

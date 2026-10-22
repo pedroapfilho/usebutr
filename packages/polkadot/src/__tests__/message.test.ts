@@ -16,14 +16,18 @@ const injected = async () => {
   const signRaw = vi
     .fn<NonNullable<InjectedSigner["signRaw"]>>()
     .mockResolvedValue({ id: 1, signature: "0xdead" });
+
   const extension: Injected = {
     accounts: { get: () => Promise.resolve([{ address: ADDRESS }]) },
     signer: { signRaw },
   };
+
   const adapter = buildInjectedPolkadotAdapter("polkadot-js", "Polkadot{.js}", {
     enable: () => Promise.resolve(extension),
   });
+
   await adapter.connect();
+
   return { adapter, asked: () => hexToBytes(signRaw.mock.lastCall?.[0].data ?? "") };
 };
 
@@ -31,6 +35,7 @@ const walletStandard = () => {
   const signMessage = vi
     .fn<PolkadotSignMessageFeature["signMessage"]>()
     .mockResolvedValue({ signature: hexToBytes("dead") });
+
   const wallet: WalletStandardWallet = {
     accounts: [
       {
@@ -48,10 +53,13 @@ const walletStandard = () => {
     name: "Mock Polkadot Wallet",
     version: "1.0.0",
   };
+
   const adapter = buildPolkadotWalletStandardAdapter(wallet);
+
   if (adapter === null) {
     throw new Error("expected a Polkadot Wallet Standard adapter");
   }
+
   return { adapter, asked: () => signMessage.mock.lastCall?.[0].message };
 };
 
@@ -66,6 +74,7 @@ describe("Polkadot messages across transports", () => {
     const transports = [await injected(), walletStandard()];
 
     const results = [];
+
     for (const { adapter } of transports) {
       results.push(await adapter.signMessage?.(MESSAGE));
     }

@@ -11,19 +11,23 @@ const baseInfo = (rdns: string, name: string): Eip6963ProviderInfo => ({
 });
 
 type MockResponse = () => Eip1193Value | Promise<never> | undefined;
+
 type MockProvider = Eip1193Provider & { requests: Array<{ method: string }> };
 
 const createMockProvider = (responses: Record<string, MockResponse>): MockProvider => {
   const requests: Array<{ method: string }> = [];
+
   return {
     on() {},
     removeListener() {},
     request({ method }) {
       requests.push({ method });
       const handler = responses[method];
+
       if (handler === undefined) {
         return Promise.reject(new Error(`[test] unmocked: ${method}`));
       }
+
       return Promise.resolve(handler());
     },
     requests,
@@ -38,6 +42,7 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
       const provider = createMockProvider({
         wallet_requestPermissions: () => [{ parentCapability: "eth_accounts" }],
       });
+
       const adapter = buildEvmAdapter(info, provider);
       await adapter.requestAccounts?.();
       expect(provider.requests.map((r) => r.method)).toEqual(["wallet_requestPermissions"]);
@@ -58,6 +63,7 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
             }),
           ),
       });
+
       const adapter = buildEvmAdapter(info, provider);
       await adapter.requestAccounts?.();
       expect(provider.requests.map((r) => r.method)).toEqual([
@@ -76,6 +82,7 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
         wallet_requestPermissions: () =>
           Promise.reject(Object.assign(new Error("method not found"), { code: -32_601 })),
       });
+
       const adapter = buildEvmAdapter(info, provider);
       await adapter.requestAccounts?.();
       expect(provider.requests.map((r) => r.method)).toEqual([
@@ -90,6 +97,7 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
         wallet_requestPermissions: () =>
           Promise.reject(Object.assign(new Error("method not supported"), { code: 4200 })),
       });
+
       const adapter = buildEvmAdapter(info, provider);
       await adapter.requestAccounts?.();
       expect(provider.requests.map((r) => r.method)).toEqual([
@@ -106,6 +114,7 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
       const provider = createMockProvider({
         wallet_requestPermissions: () => [{ parentCapability: "eth_accounts" }],
       });
+
       const adapter = buildEvmAdapter(info, provider);
       await adapter.requestAccounts?.();
       expect(provider.requests.map((r) => r.method)).toEqual(["wallet_requestPermissions"]);
@@ -119,6 +128,7 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
         wallet_requestPermissions: () =>
           Promise.reject(Object.assign(new Error("method not found"), { code: -32_601 })),
       });
+
       const adapter = buildEvmAdapter(baseInfo("xyz.unknown", "Unknown"), provider);
       await adapter.requestAccounts?.();
       expect(provider.requests.map((r) => r.method)).toEqual([
@@ -132,6 +142,7 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
         wallet_requestPermissions: () =>
           Promise.reject(Object.assign(new Error("User rejected the request"), { code: 4001 })),
       });
+
       const adapter = buildEvmAdapter(baseInfo("io.metamask", "MetaMask"), provider);
       await expect(adapter.requestAccounts?.()).rejects.toMatchObject({ code: 4001 });
       expect(provider.requests.map((r) => r.method)).toEqual(["wallet_requestPermissions"]);
@@ -141,6 +152,7 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
       const provider = createMockProvider({
         wallet_requestPermissions: () => Promise.reject(new Error("generic failure")),
       });
+
       const adapter = buildEvmAdapter(baseInfo("io.metamask", "MetaMask"), provider);
       await expect(adapter.requestAccounts?.()).rejects.toThrow(/generic failure/v);
       expect(provider.requests.map((r) => r.method)).toEqual(["wallet_requestPermissions"]);

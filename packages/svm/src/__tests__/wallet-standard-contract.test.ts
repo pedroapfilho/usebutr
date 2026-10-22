@@ -27,32 +27,41 @@ describeAdapterContract<SvmAdapter>({
   connect: (addresses) => {
     const calls: Array<ObservedCall> = [];
     const listeners = new Set<StandardEventsListener>();
+
     const signAndSend: SolanaSignAndSendTransactionFeature = {
       signAndSendTransaction: ({ account, chain }) => {
         calls.push({ address: account.address, chain });
+
         return Promise.resolve([{ signature: new Uint8Array([1]) }]);
       },
     };
+
     const signMessage: SolanaSignMessageFeature = {
       signMessage: ({ account, message }) => {
         calls.push({ address: account.address });
+
         return Promise.resolve([{ signature: new Uint8Array([2]), signedMessage: message }]);
       },
     };
+
     const signTransaction: SolanaSignTransactionFeature = {
       signTransaction: ({ account, chain, transaction }) => {
         calls.push({ address: account.address, chain });
+
         return Promise.resolve([{ signedTransaction: transaction }]);
       },
     };
+
     const events: StandardEventsFeature = {
       on: (_event, listener) => {
         listeners.add(listener);
+
         return () => {
           listeners.delete(listener);
         };
       },
     };
+
     const adapter = buildSvmAdapter({
       accounts: addresses.map(walletAccount),
       chains: [SVM_CHAINS.mainnet.id, SVM_CHAINS.devnet.id],
@@ -67,9 +76,11 @@ describeAdapterContract<SvmAdapter>({
       name: "Contract Solana Wallet",
       version: "1.0.0",
     });
+
     if (adapter === null) {
       throw new Error("expected an svm adapter");
     }
+
     return Promise.resolve({
       adapter,
       lastCall: () => calls.at(-1),

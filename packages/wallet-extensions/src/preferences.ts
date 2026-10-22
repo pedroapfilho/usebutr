@@ -34,16 +34,19 @@ const writeExternalExtensionsPrefs = async (
       skipped.push(wallet);
       continue;
     }
+
     const manifestPath = join(dir, `${wallet.chromeWebStoreId}.json`);
     writes.push(
       writeFile(manifestPath, JSON.stringify({ external_update_url: WEB_STORE_UPDATE_URL })),
     );
     manifestPaths.push(manifestPath);
   }
+
   await Promise.all(writes);
 
   return { manifestPaths, skipped };
 };
 
 export type { WriteResult };
+
 export { WEB_STORE_UPDATE_URL, writeExternalExtensionsPrefs };

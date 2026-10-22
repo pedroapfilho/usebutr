@@ -104,9 +104,11 @@ describe("suiNamespace", () => {
 
   it("signMessage falls back to the input bytes when the wallet echoes none", async () => {
     const message = new Uint8Array([1, 2, 3]);
+
     const result = await buildAdapter(connectedProvider({ signature: "Zm9v" })).signMessage?.(
       message,
     );
+
     expect(result?.signedMessage).toEqual(message);
   });
 

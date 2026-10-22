@@ -14,20 +14,26 @@ const ADDRESS = "0x53d120cf09b21C2fcC67814CDF10C8Ca9Bcc7670";
  *  from its current chain, which `wallet_switchEthereumChain` moves. */
 const evmWallet = () => {
   let chainId = 1;
+
   return (args: Eip1193RequestArgs) => {
     if (args.method === "eth_chainId") {
       return chainId;
     }
+
     if (args.method === "eth_accounts") {
       return [ADDRESS];
     }
+
     if (args.method === "wallet_switchEthereumChain") {
       const [target] = Array.isArray(args.params) ? args.params : [];
+
       if (typeof target === "object" && target !== null && "chainId" in target) {
         chainId = Number(target.chainId);
       }
+
       return null;
     }
+
     return args.method === "eth_sendTransaction" ? "0xhash" : "0xdeadbeef";
   };
 };
@@ -42,9 +48,11 @@ const createEvmAdapter = async (
     projectId: "test",
     universalProvider: fakeUniversalProvider(provider),
   });
+
   if (adapter?.chainPlatform !== "evm") {
     throw new Error("expected one EVM adapter");
   }
+
   return adapter;
 };
 
@@ -117,9 +125,11 @@ describe("createWalletConnectAdapters (EVM namespace)", () => {
     await adapter.connect();
 
     const signer = await adapter.getSigner();
+
     if (signer.kind !== "eip1193") {
       throw new Error(`expected an eip1193 signer, got ${signer.kind}`);
     }
+
     // UniversalProvider answers a number; EIP-1193 wants hex.
     await expect(signer.provider.request({ method: "eth_chainId" })).resolves.toBe("0x1");
     await signer.provider.request({ method: "eth_blockNumber" });
@@ -200,6 +210,7 @@ describe("createWalletConnectAdapters (EVM namespace)", () => {
 
 const displayUriListeners = (provider: FakeProvider) =>
   provider.onCalls.filter(({ event }) => event === "display_uri");
+
 const removedDisplayUriListeners = (provider: FakeProvider) =>
   provider.removeListenerCalls.filter(({ event }) => event === "display_uri");
 
@@ -249,6 +260,7 @@ describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
     const provider = createFakeProvider({
       disconnect: () => Promise.reject(new Error("relay error")),
     });
+
     const adapter = await createEvmAdapter(provider, { onPairingUri: () => {} });
 
     await adapter.connect();

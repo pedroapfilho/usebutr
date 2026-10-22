@@ -15,6 +15,7 @@ const formatError = (error: Error | string): string => {
   if (error instanceof Error) {
     return error.message;
   }
+
   return error;
 };
 
@@ -47,6 +48,7 @@ const Connected = ({
     void (async () => {
       try {
         const result = await client.getBalance({ owner: addr });
+
         if (!cancelled) {
           const sui = Number(result.balance.balance) / 1_000_000_000;
           setBalance(`${sui} SUI`);
@@ -55,9 +57,11 @@ const Connected = ({
         if (!cancelled) {
           setBalance("error");
         }
+
         console.warn("getBalance failed:", error);
       }
     })();
+
     return () => {
       cancelled = true;
     };
@@ -65,10 +69,12 @@ const Connected = ({
 
   const handleSign = async () => {
     setErrorMsg(null);
+
     try {
       if (!wallet.connector.signMessage) {
         throw new Error(`${wallet.connector.name} does not support sui:signPersonalMessage`);
       }
+
       const message = new TextEncoder().encode("Hello from butr + @mysten/sui");
       const result = await wallet.connector.signMessage(message, { account: wallet.account });
       setSignature(bytesToHex(result.signature));
@@ -79,10 +85,12 @@ const Connected = ({
 
   const handleSendTx = async () => {
     setErrorMsg(null);
+
     try {
       if (!wallet.connector.sendTx) {
         throw new Error(`${wallet.connector.name} does not support sui:signAndExecuteTransaction`);
       }
+
       const tx = new Transaction();
       tx.setSender(addr);
       const [coin] = tx.splitCoins(tx.gas, [0]);
@@ -94,6 +102,7 @@ const Connected = ({
         account: wallet.account,
         chain: SUI_CHAINS.testnet,
       });
+
       setTxDigest(digest);
     } catch (error) {
       setErrorMsg(formatError(error instanceof Error ? error : String(error)));

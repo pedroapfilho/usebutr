@@ -12,6 +12,7 @@ const ConnectedWalletCard = ({ wallet }: { wallet: ConnectedWallet }) => {
   const { switchChain } = wallet.connector;
 
   let balanceText: string;
+
   if (balance.status === "success") {
     balanceText = `${balance.data.formatted} ${balance.data.symbol}`;
   } else if (balance.status === "loading") {

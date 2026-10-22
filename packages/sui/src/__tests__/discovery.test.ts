@@ -30,6 +30,7 @@ const loaderFor =
 describe("discoverSuiAdapters", () => {
   it("announces only wallets that speak Sui", async () => {
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
+
     const unsubscribe = discoverSuiAdapters(
       onAdapter,
       loaderFor([wallet("Suiet", ["sui:mainnet"]), wallet("Solflare", ["solana:mainnet"])]),

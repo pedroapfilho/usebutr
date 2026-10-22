@@ -7,9 +7,11 @@ import { evmAdapter, flush, svmAdapter } from "./helpers";
 
 const collect = (source: ReturnType<typeof fromAdapters>) => {
   const announced: Array<WalletAdapter> = [];
+
   const unsubscribe = source((adapter) => {
     announced.push(adapter);
   });
+
   return { announced, unsubscribe };
 };
 

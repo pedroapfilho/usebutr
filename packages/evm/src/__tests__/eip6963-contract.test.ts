@@ -12,6 +12,7 @@ const KNOWN_CHAINS = new Set(["0x1", "0x89"]);
 
 const switchParams = (params: Eip1193RequestArgs["params"]): string | undefined => {
   const [first] = Array.isArray(params) ? params : [];
+
   return typeof first === "object" && first !== null && "chainId" in first
     ? String(first.chainId)
     : undefined;
@@ -32,23 +33,29 @@ describeAdapterContract<EvmAdapter>({
     provider.setHandler("eth_chainId", () => chainIdHex);
     provider.setHandler("wallet_switchEthereumChain", (params) => {
       const chainId = switchParams(params);
+
       if (chainId === undefined || !KNOWN_CHAINS.has(chainId)) {
         throw Object.assign(new Error("Unrecognized chain ID"), { code: 4902 });
       }
+
       chainIdHex = chainId;
       provider.emit("chainChanged", chainId);
+
       return null;
     });
     provider.setHandler("personal_sign", (params) => {
       calls.push({ address: Array.isArray(params) ? String(params[1]) : undefined });
+
       return "0x01";
     });
     provider.setHandler("eth_sendTransaction", (params) => {
       const [tx] = Array.isArray(params) ? params : [];
       const from = typeof tx === "object" && tx !== null && "from" in tx ? tx.from : undefined;
       calls.push({ address: String(from), chain: currentChain() });
+
       return "0xhash";
     });
+
     return Promise.resolve({
       adapter: buildEvmAdapter(
         { icon: "", name: "Contract EVM Wallet", rdns: "io.contract.wallet", uuid: "uuid" },

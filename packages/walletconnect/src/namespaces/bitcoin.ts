@@ -51,6 +51,7 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder<BitcoinAdapter> = {
 
       async sendTx(transfer, options) {
         const { address, chainId } = resolveTarget(options);
+
         const result = await request(
           "sendTransfer",
           {
@@ -60,27 +61,33 @@ const bitcoinNamespace: WalletConnectNamespaceBuilder<BitcoinAdapter> = {
           },
           chainId,
         );
+
         return readResultString(result, "txid", "sendTransfer");
       },
 
       async signMessage(message, options) {
         const { address, chainId } = resolveTarget({ account: options?.account });
+
         const result = await request(
           "signMessage",
           { account: address, address, message: bitcoinMessageText(message, input.name) },
           chainId,
         );
+
         const signature = readResultString(result, "signature", "signMessage");
+
         return { signature: hexToBytes(signature), signedMessage: message };
       },
 
       async signTransaction(psbt, options) {
         const { address, chainId } = resolveTarget(options);
+
         const result = await request(
           "signPsbt",
           { account: address, broadcast: false, psbt: bytesToBase64(psbt), signInputs: [] },
           chainId,
         );
+
         return base64ToBytes(readResultString(result, "psbt", "signPsbt"));
       },
     };

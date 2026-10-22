@@ -4,25 +4,33 @@ import { createCookieStorageDriver } from "../cookie-storage-driver";
 
 const fakeDocument = (initial = ""): { cookie: string } => {
   let cookie = initial;
+
   return {
     get cookie() {
       return cookie;
     },
     set cookie(value: string) {
       const head = value.split(";")[0]?.trim() ?? "";
+
       if (!head) {
         return;
       }
+
       const [name] = head.split("=");
+
       if (name === undefined || name === "") {
         return;
       }
+
       const segments = cookie ? cookie.split("; ").filter(Boolean) : [];
       const filtered = segments.filter((s) => !s.startsWith(`${name}=`));
+
       if (/Max-Age=0(?:\b|$)/v.test(value)) {
         cookie = filtered.join("; ");
+
         return;
       }
+
       filtered.push(head);
       cookie = filtered.join("; ");
     },
@@ -73,12 +81,14 @@ describe("createCookieStorageDriver", () => {
         writes.push(value);
       },
     });
+
     const driver = createCookieStorageDriver({
       domain: ".example.com",
       path: "/app",
       sameSite: "strict",
       secure: true,
     });
+
     await driver.setItem("k", "v");
     const written = writes.at(-1) ?? "";
     expect(written).toContain("Domain=.example.com");

@@ -23,12 +23,16 @@ type ChainBase = {
  */
 const resolveChain = (id: string, known: ReadonlyArray<ChainBase> = []): ChainBase => {
   const match = known.find((chain) => chain.id === id || chain.aliases?.includes(id) === true);
+
   if (match !== undefined) {
     return match;
   }
+
   const [namespace = "", reference = ""] = id.split(":");
+
   return { id, name: id, namespace, reference };
 };
 
 export type { ChainBase };
+
 export { resolveChain };

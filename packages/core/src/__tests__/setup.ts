@@ -2,6 +2,7 @@ import { vi } from "vitest";
 
 const createMockStorage = (): Storage => {
   const store = new Map<string, string>();
+
   return {
     clear: vi.fn(() => {
       store.clear();
@@ -9,6 +10,7 @@ const createMockStorage = (): Storage => {
     getItem: vi.fn((key: string) => store.get(key) ?? null),
     key: vi.fn((index: number) => {
       const keys = [...store.keys()];
+
       return keys[index] ?? null;
     }),
     get length() {

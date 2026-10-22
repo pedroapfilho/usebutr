@@ -1,4 +1,5 @@
 "use client";
+
 import { usePathname } from "fumadocs-core/framework";
 import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import { Check, ChevronDown, Copy, ExternalLinkIcon, TextIcon } from "lucide-react";
@@ -23,27 +24,33 @@ const MarkdownCopyButton = ({
   markdownUrl: string;
 }) => {
   const [isPending, startTransition] = useTransition();
+
   const [checked, onClick] = useCopyButton(() => {
     startTransition(async () => {
       try {
         const cached = cache.get(markdownUrl);
+
         if (cached) {
           await navigator.clipboard.writeText(await cached);
+
           return;
         }
 
         const promise = (async () => {
           try {
             const res = await fetch(markdownUrl);
+
             if (!res.ok) {
               throw new Error(`Failed to fetch ${markdownUrl}: ${res.status}`);
             }
+
             return await res.text();
           } catch (error) {
             cache.delete(markdownUrl);
             throw error;
           }
         })();
+
         cache.set(markdownUrl, promise);
         await navigator.clipboard.write([
           new ClipboardItem({
@@ -96,9 +103,11 @@ const ViewOptionsPopover = ({
   markdownUrl?: string;
 }) => {
   const pathname = usePathname();
+
   const items = useMemo(() => {
     const pageUrl =
       typeof window === "undefined" ? pathname : new URL(pathname, window.location.origin);
+
     const q = `Read ${pageUrl}, I want to ask questions about it.`;
 
     return [

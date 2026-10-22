@@ -35,20 +35,25 @@ const getBalanceText = (balance: UseBalanceResult): string => {
   if (balance.status === "success") {
     return `${balance.data.formatted} ${balance.data.symbol}`;
   }
+
   if (balance.status === "loading") {
     return "…";
   }
+
   if (balance.status === "error") {
     return "error";
   }
+
   return "—";
 };
 
 const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand> => {
   const byName = new Map<string, WalletBrand>();
+
   for (const wallet of wallets) {
     const key = wallet.name.toLowerCase();
     const existing = byName.get(key);
+
     if (existing) {
       existing.adapters.push(wallet);
       existing.icon ??= wallet.icon;
@@ -60,6 +65,7 @@ const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand>
       });
     }
   }
+
   return [...byName.values()];
 };
 
@@ -70,6 +76,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
 
   const handleSign = async (sign: NonNullable<typeof signMessage>) => {
     setState({ kind: "signing" });
+
     try {
       const bytes = new TextEncoder().encode(SIGN_MESSAGE_TEXT);
       await sign(bytes, { account });
@@ -83,6 +90,7 @@ const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWa
   };
 
   let signStatusNode: React.ReactNode = null;
+
   if (state.kind === "ok") {
     signStatusNode = <Text className="native-sign-ok">✓ signed</Text>;
   } else if (state.kind === "error") {
@@ -142,6 +150,7 @@ const ChainPicker = ({
   // unhandled rejection would leave the tap looking like it did nothing.
   const handleSwitch = async (chain: ChainBase) => {
     setSwitchError(null);
+
     try {
       await switchChain(chain);
     } catch (error) {
@@ -153,6 +162,7 @@ const ChainPicker = ({
     <View className="native-chain-list">
       {chains.map((chain) => {
         const isCurrent = chain.id === wallet.account.chain.id;
+
         return (
           <Pressable
             className={
@@ -337,6 +347,7 @@ const WalletPicker = ({
       </View>
     );
   }
+
   if (available.length === 0) {
     return null;
   }

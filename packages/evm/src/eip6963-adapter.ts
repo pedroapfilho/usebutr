@@ -29,16 +29,21 @@ const encodeValue = (value: EvmTransactionValue): Eip1193Value => {
   if (typeof value === "bigint") {
     return `0x${value.toString(16)}`;
   }
+
   if (Array.isArray(value)) {
     return value.map(encodeValue);
   }
+
   if (typeof value !== "object" || value === null) {
     return value;
   }
+
   const result: Eip1193Object = {};
+
   for (const [key, nested] of Object.entries(value)) {
     result[key] = nested === undefined ? undefined : encodeValue(nested);
   }
+
   return result;
 };
 
@@ -64,14 +69,19 @@ const readAccounts = async (
 ): Promise<Array<Account>> => {
   const addresses =
     known.addresses ?? (await requestStringArray(provider, { method: "eth_accounts" }));
+
   if (addresses.length === 0) {
     return [];
   }
+
   const chainIdHex = known.chainIdHex ?? (await requestString(provider, { method: "eth_chainId" }));
+
   if (chainIdHex === null) {
     throw new Error("Wallet returned a malformed eth_chainId response");
   }
+
   const chain = evmChainFromHex(chainIdHex);
+
   return addresses.map((address) => buildAccount(address, chain));
 };
 
@@ -85,10 +95,12 @@ const UNRECOGNIZED_CHAIN_CODE = 4902;
 const errorCodes = (cause: unknown): Array<unknown> => {
   const outer = typeof cause === "object" && cause !== null ? cause : {};
   const data = "data" in outer ? outer.data : undefined;
+
   const inner =
     typeof data === "object" && data !== null && "originalError" in data
       ? data.originalError
       : undefined;
+
   return [outer, inner].flatMap((value) =>
     typeof value === "object" && value !== null && "code" in value ? [value.code] : [],
   );
@@ -104,6 +116,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     canSwitch: (chain) => /^\d+$/v.test(chain.reference),
     current: async () => {
       const chainIdHex = await requestString(provider, { method: "eth_chainId" });
+
       return chainIdHex === null
         ? undefined
         : `${EVM_NAMESPACE}:${chainIdHexToDecimal(chainIdHex)}`;
@@ -128,11 +141,14 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     async connect(options) {
       if (options?.silent === true) {
         const accounts = await requestStringArray(provider, { method: "eth_accounts" });
+
         if (accounts.length === 0) {
           throw new Error("No authorized accounts for silent reconnect");
         }
+
         return;
       }
+
       await provider.request({ method: "eth_requestAccounts" });
     },
 
@@ -161,10 +177,12 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         method: "eth_getTransactionReceipt",
         params: [hash],
       });
+
       // `null` is the RPC's answer for a transaction not yet mined.
       if (receipt === null || typeof receipt !== "object" || !("status" in receipt)) {
         return { status: "Pending" };
       }
+
       return { status: receipt.status === "0x1" ? "Success" : "Error" };
     },
 
@@ -182,6 +200,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
         if (!errorCodes(error).some((code) => METHOD_NOT_SUPPORTED_CODES.has(code))) {
           throw error;
         }
+
         await provider.request({ method: "eth_requestAccounts" });
       }
     },
@@ -192,25 +211,31 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
     async sendTx(tx, options) {
       const from = await resolveAddress(options?.account);
       await target.chain(options?.chain);
+
       const hash = await requestString(provider, {
         method: "eth_sendTransaction",
         params: [encodeValue({ ...tx, from })],
       });
+
       if (hash === null) {
         throw new Error("Wallet returned no transaction hash");
       }
+
       return hash;
     },
 
     async signMessage(message, options) {
       const address = await resolveAddress(options?.account);
+
       const signatureHex = await requestString(provider, {
         method: "personal_sign",
         params: [bytesToHexPrefixed(message), address],
       });
+
       if (signatureHex === null) {
         throw new Error("Wallet returned a malformed personal_sign response");
       }
+
       return { signature: hexToBytes(signatureHex), signedMessage: message };
     },
 
@@ -218,6 +243,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       const synchronize = async (known?: KnownAccountState) => {
         try {
           const accounts = await readAccounts(provider, known);
+
           if (accounts.length > 0) {
             listener({ accounts, type: "accountsChanged" });
           }
@@ -228,10 +254,13 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
 
       const onAccountsChanged: Eip1193Listener = (...args) => {
         const addresses = toStringArray(args[0]);
+
         if (addresses.length === 0) {
           listener({ accounts: [], type: "accountsChanged" });
+
           return;
         }
+
         void synchronize({ addresses });
       };
 
@@ -269,4 +298,5 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
 };
 
 export { formatEther } from "./evm-balance";
+
 export { buildEvmAdapter, chainIdDecimalToHex, chainIdHexToDecimal };

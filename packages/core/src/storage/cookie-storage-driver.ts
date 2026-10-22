@@ -36,26 +36,34 @@ const decode = (value: string): string => decodeURIComponent(value);
 const readCookies = (): Map<string, string> => {
   const out = new Map<string, string>();
   const cookieString = document.cookie;
+
   if (!cookieString) {
     return out;
   }
+
   for (const segment of cookieString.split(";")) {
     const trimmed = segment.trim();
+
     if (!trimmed) {
       continue;
     }
+
     const eq = trimmed.indexOf("=");
+
     if (eq === -1) {
       continue;
     }
+
     const name = trimmed.slice(0, eq);
     const raw = trimmed.slice(eq + 1);
+
     try {
       out.set(name, decode(raw));
     } catch {
       void 0;
     }
   }
+
   return out;
 };
 
@@ -66,19 +74,24 @@ const buildCookieString = (
   expired = false,
 ): string => {
   const parts: Array<string> = [`${name}=${encode(value)}`, `Path=${options.path ?? "/"}`];
+
   if (options.domain !== undefined && options.domain !== "") {
     parts.push(`Domain=${options.domain}`);
   }
+
   if (expired) {
     parts.push("Max-Age=0");
   } else {
     const maxAge = options.maxAgeSeconds ?? DEFAULT_MAX_AGE_SECONDS;
     parts.push(`Max-Age=${maxAge}`);
   }
+
   parts.push(`SameSite=${options.sameSite ?? "lax"}`);
+
   if (options.secure ?? true) {
     parts.push("Secure");
   }
+
   return parts.join("; ");
 };
 
@@ -102,4 +115,5 @@ const createCookieStorageDriver = (options: CookieDriverOptions = {}): StorageDr
 });
 
 export type { CookieDriverOptions };
+
 export { createCookieStorageDriver };

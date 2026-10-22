@@ -69,6 +69,7 @@ const DEFAULT_ICON =
 
 const initProvider = async (options: WalletConnectOptions): Promise<UniversalProviderLike> => {
   const UniversalProvider = options.universalProvider ?? (await loadUniversalProvider());
+
   return UniversalProvider.init({
     metadata: options.metadata
       ? {
@@ -111,14 +112,17 @@ const createWalletConnectAdapters = async (
   const unsupported = Object.keys(options.namespaces).filter(
     (key) => !isChainPlatform(key) || KNOWN_NAMESPACES[key] === undefined,
   );
+
   if (unsupported.length > 0) {
     throw new Error(
       `[butr/walletconnect] no namespace builder registered for: ${unsupported.join(", ")}. Today "evm", "svm", "sui", and "bitcoin" ship.`,
     );
   }
+
   const selected = CHAIN_PLATFORMS.flatMap((platform) => {
     const chains = options.namespaces[platform];
     const builder = KNOWN_NAMESPACES[platform];
+
     return chains === undefined || builder === undefined
       ? []
       : [
@@ -131,27 +135,33 @@ const createWalletConnectAdapters = async (
           },
         ];
   });
+
   const primary = selected.at(0);
   const secondary = selected.slice(1);
+
   if (primary === undefined) {
     throw new Error(
       "[butr/walletconnect] createWalletConnectAdapters needs at least one namespace",
     );
   }
+
   const namespaces: PairingRequest = {
     [primary.builder.caipPrefix]: namespaceRequest(primary.builder, primary.chains),
   };
+
   const optionalNamespaces: PairingRequest = Object.fromEntries(
     secondary.map(({ builder, chains }) => [builder.caipPrefix, namespaceRequest(builder, chains)]),
   );
 
   const provider = await initProvider(options);
+
   const session = createWalletConnectSession({
     namespaces,
     onPairingUri: options.onPairingUri,
     optionalNamespaces,
     provider,
   });
+
   const baseId = options.id ?? "walletconnect";
   const baseName = options.name ?? "WalletConnect";
   const icon = options.icon ?? DEFAULT_ICON;
@@ -170,12 +180,19 @@ const createWalletConnectAdapters = async (
 };
 
 export type { UniversalProviderConstructor, UniversalProviderLike } from "./loader";
+
 export type { WalletConnectNamespaceBuilder } from "./namespaces/types";
+
 export type { WalletConnectMetadata, WalletConnectOptions };
+
 export { bitcoinNamespace } from "./namespaces/bitcoin";
+
 export { evmNamespace } from "./namespaces/evm";
+
 export { solanaNamespace } from "./namespaces/svm";
+
 export { suiNamespace } from "./namespaces/sui";
+
 export {
   DEFAULT_ICON as WALLETCONNECT_DEFAULT_ICON,
   KNOWN_NAMESPACES,

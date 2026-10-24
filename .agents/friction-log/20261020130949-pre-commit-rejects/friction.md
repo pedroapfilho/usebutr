@@ -1,6 +1,7 @@
 ---
 title: 'Pre-commit rejects a commit containing only Frog metadata'
 severity: 'minor'
+issue: 'pedroapfilho/usebutr#234'
 ---
 
 ## Expected Behavior

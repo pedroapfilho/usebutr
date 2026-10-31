@@ -1,6 +1,7 @@
 ---
 title: 'Standy intent-to-add workflow blocks partial commits in lint-staged'
 severity: 'minor'
+issue: 'pedroapfilho/usebutr#233'
 ---
 
 ## Expected Behavior

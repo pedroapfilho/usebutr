@@ -13,5 +13,3 @@ const WalletProvider = ({ children }: { children: ReactNode }) => (
 );
 
 export { WalletProvider };
-
-export { useDiscoveredWallets } from "@usebutr/react";

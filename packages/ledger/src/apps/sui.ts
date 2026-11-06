@@ -1,5 +1,5 @@
 import type { SuiAdapter } from "@usebutr/core";
-import { bytesToHexPrefixed, SUI_CHAINS, SUI_CHAINS_LIST } from "@usebutr/core";
+import { bytesToHexPrefixed } from "@usebutr/core";
 import { prepareSuiTransaction, serializeEd25519Signature } from "@usebutr/sui/transaction";
 
 import type { LedgerBaseOptions, TransportLike } from "../adapter-core";
@@ -22,8 +22,8 @@ type SuiAppConstructor = new (transport: TransportLike) => SuiAppLike;
 
 type SuiLedgerOptions = LedgerBaseOptions & {
   platform: "sui";
-  /** DI override for the app class (tests). Default: a dynamic import of
-   *  `@ledgerhq/hw-app-sui`. */
+  /** The app class, for an app that already imports it. Default: a dynamic
+   *  import of `@ledgerhq/hw-app-sui`. */
   sui?: SuiAppConstructor;
 };
 
@@ -35,15 +35,13 @@ const TRANSACTION_INTENT_LENGTH = 3;
  * the user opens the Sui app. Signs built BCS bytes or their base64 only:
  * building a `Transaction` needs an RPC client, which Ledger does not have.
  */
-const createSuiLedgerAdapter = async (options: SuiLedgerOptions): Promise<SuiAdapter> => {
-  const core = await createLedgerAdapterCore<SuiAppLike>(options, {
+const createSuiLedgerAdapter = (options: SuiLedgerOptions): SuiAdapter => {
+  const core = createLedgerAdapterCore<SuiAppLike>(options, {
     addressAt: async (sui, path) => {
       const { address } = await sui.getPublicKey(path);
 
       return bytesToHexPrefixed(address);
     },
-    chains: SUI_CHAINS_LIST,
-    defaultChain: SUI_CHAINS.mainnet,
     // `44'/784'/account'/change'/address'`, all hardened, per Sui Wallet.
     defaultPathPrefix: "44'/784'/0'/0'",
     hardenedIndex: true,
@@ -58,6 +56,7 @@ const createSuiLedgerAdapter = async (options: SuiLedgerOptions): Promise<SuiAda
 
       return (transport) => new Sui(transport);
     },
+    platform: "sui",
     signer: (app) => ({ app, kind: "ledger-sui" }),
   });
 

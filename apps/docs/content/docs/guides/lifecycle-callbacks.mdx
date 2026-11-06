@@ -34,7 +34,7 @@ const config: WalletManagerConfig = {
 | `onDisconnect`   | `(wallet: ConnectedWallet, context: { byUser: boolean }) => void`      | a live wallet leaves the pool                              |
 | `onHydrated`     | `(outcome: HydrationOutcome) => void`                                  | once, after the start-up restore pass                      |
 | `onSlowConnect`  | `(connectorId: string) => void`                                        | a connect passes `slowConnectThresholdMs` without settling |
-| `onStorageError` | `(error: Error) => void`                                               | loading or saving persisted state fails                    |
+| `onStorageError` | `(error: Error) => void`                                               | saving persisted state fails, or a custom `load` rejects   |
 
 The manager reads the config once, when it is created, so define it at module
 scope. A callback that closes over component state sees only the values from
@@ -63,11 +63,14 @@ that first render.
   hasn't resolved or rejected by the threshold (default `5000` ms). Useful for
   a "still trying, check your wallet" hint or a slow-path metric. It is a hint,
   not a timeout: the attempt itself fails with `Timeout` after 90 seconds.
-- **`onStorageError`** is the only signal for otherwise-silent persistence
-  failures. With no callback the manager logs them with `console.warn`. See
+- **`onStorageError`** fires when a save fails and when a custom storage's
+  `load` rejects; the manager then hydrates as empty and saves nothing for the
+  rest of the session. The default storage logs a key it cannot read with
+  `console.warn`, loads the rest and never overwrites that key. With no
+  callback the manager logs failures with `console.warn`. See
   [persistence](/concepts/persistence).
 
 A callback that throws is caught and logged; it never breaks the manager.
 
-**Source:** `packages/core/src/types/manager.ts` (`WalletManagerConfig`),
+**Source:** `packages/core/src/store/types.ts` (`WalletManagerConfig`),
 `packages/core/src/store/wallet-manager.ts`.

@@ -46,6 +46,8 @@ real too, and demos rarely need cross-cutting changes.
   `apps/demo-*/src/**/*.tsx` via the per-file override in
   `oxlint.config.ts`. Other rules can be added there if the standalone
   posture justifies it.
+- fallow's clone detection skips `apps/demo-*/**` (`duplicates.ignore` in
+  `.fallowrc.json`), so moving demo code does not count as new duplication.
 - A future architecture review will see the duplication and may
   re-surface this as a candidate. This ADR is the rejection record.
 - If we ever ship a `@usebutr/components` package as a _product_ (not

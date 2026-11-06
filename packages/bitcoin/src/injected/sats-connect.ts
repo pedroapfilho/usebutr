@@ -125,7 +125,9 @@ const buildSatsConnectAdapter = (
     const response = await provider.request(method, params);
 
     if (response.error) {
-      throw new Error(`[butr/bitcoin] sats-connect ${method} failed: ${response.error.message}`);
+      throw new Error(`[butr/bitcoin] sats-connect ${method} failed: ${response.error.message}`, {
+        cause: response.error,
+      });
     }
 
     return schema.parse(response.result);
@@ -164,7 +166,7 @@ const buildSatsConnectAdapter = (
 
       return current.id;
     },
-    namespace: "bip122",
+    platform: "bitcoin",
     switchTo: async (to) => {
       const network = networkFor(to);
 

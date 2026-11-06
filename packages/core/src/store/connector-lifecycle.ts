@@ -35,7 +35,7 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
     try {
       subscription.unsubscribe();
     } catch (error) {
-      logWarn("[butr] unsubscribe threw:", error);
+      logWarn("unsubscribe threw:", error);
     }
   };
 
@@ -67,7 +67,7 @@ const createConnectorLifecycle = (handlers: LifecycleHandlers): ConnectorLifecyc
 
       live.set(connectorId, { connector, unsubscribe });
     } catch (error) {
-      logWarn(`[butr] subscribe failed for ${connectorId}:`, error);
+      logWarn(`subscribe failed for ${connectorId}:`, error);
     }
   };
 

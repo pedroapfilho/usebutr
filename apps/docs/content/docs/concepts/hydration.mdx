@@ -122,7 +122,9 @@ export const walletStorage = createCookieWalletStorage({ keyPrefix: "my-app" });
 
 ```tsx title="app/layout.tsx"
 import { cookies } from "next/headers";
+import type { ReactNode } from "react";
 
+import { WalletProvider } from "../wallet-provider";
 import { walletStorage } from "../wallet-storage";
 
 const RootLayout = async ({ children }: { children: ReactNode }) => {
@@ -131,6 +133,11 @@ const RootLayout = async ({ children }: { children: ReactNode }) => {
   return <WalletProvider initialState={initialState}>{children}</WalletProvider>;
 };
 ```
+
+`WalletProvider` is a `"use client"` wrapper that renders
+`<WalletManagerProvider config={config} initialState={initialState}>` with
+`walletStorage` as `config.storage`; the [SSR guide](/guides/ssr-no-flash)
+shows it in full.
 
 The snapshot's active id is the one the browser stored. If it names no pool
 entry, or one the pool does not hold, the manager falls back to the first
@@ -166,4 +173,4 @@ it again after its cleanup (a React StrictMode remount, for example) does not
 restore twice.
 
 **Source:** `packages/core/src/store/wallet-manager.ts`,
-`packages/core/src/store/reducer.ts`, `packages/core/src/types/manager.ts`.
+`packages/core/src/store/reducer.ts`, `packages/core/src/store/types.ts`.

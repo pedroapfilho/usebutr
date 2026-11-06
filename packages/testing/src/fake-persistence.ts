@@ -2,8 +2,8 @@ import type { ConnectedWallet, PersistedWalletState, WalletPersistence } from "@
 import { createMemoryStorageDriver, createWalletStorage, toStoredPoolEntry } from "@usebutr/core";
 
 type FakePersistenceSeed = {
-  /** The connection the previous session left active. Defaults to the
-   *  first of `wallets`. */
+  /** The connection the previous session left active. Omitted, none is
+   *  stored, so the manager makes the first restored wallet active. */
   active?: ConnectedWallet;
   /** A manual disconnect earlier in this session. */
   isUserDisconnected?: boolean;

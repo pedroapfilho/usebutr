@@ -32,7 +32,11 @@ Discovery scans at once and again at 250 ms and 750 ms for late-injecting
 extensions, and never prompts: only `connect()` calls `enable("butr")`. Known
 display names cover Enkrypt, Nova Wallet, `Polkadot{.js}`, SubWallet and
 Talisman; other registry keys get a name derived from the key. The adapter id
-is `injected:polkadot:<extension key>`.
+is `injected:polkadot:<kebab-cased extension key>`.
+
+An injected wallet does not reconnect silently after a reload: its silent
+`connect` rejects with `NotConnected` when it holds no session, so a persisted
+connection stays dormant until the user connects again.
 
 ## What the adapter defines
 

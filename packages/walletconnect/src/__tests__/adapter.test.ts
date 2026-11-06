@@ -265,7 +265,7 @@ describe("createWalletConnectAdapters (display_uri listener lifecycle)", () => {
 
     await adapter.connect();
 
-    await expect(adapter.disconnect?.()).resolves.toBeUndefined();
+    await expect(adapter.disconnect?.()).rejects.toThrow("relay error");
     expect(provider.disconnectCalls()).toBe(1);
     expect(removedDisplayUriListeners(provider)).toHaveLength(1);
   });

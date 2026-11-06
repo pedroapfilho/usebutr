@@ -5,11 +5,9 @@ import type {
   TransactionOptions,
   WalletAdapter,
 } from "@usebutr/core";
-import { BITCOIN_CHAINS, BITCOIN_CHAINS_LIST } from "@usebutr/core";
 import {
   createWalletStandardCore,
   discoverWalletStandard,
-  getFeature,
   slugify,
 } from "@usebutr/wallet-standard-shared";
 import type {
@@ -30,17 +28,11 @@ import type {
  */
 const buildBitcoinAdapter = (
   wallet: WalletStandardWallet,
-  /** Optional. Called with a function that pushes a synthetic
-   *  `disconnected` event to all current subscribers. The discovery
-   *  layer invokes it on Wallet Standard `unregister`. */
   registerDisconnector?: (emit: () => void) => void,
 ): BitcoinAdapter | null => {
   const core = createWalletStandardCore({
-    chains: BITCOIN_CHAINS_LIST,
     id: slugify("btc", wallet.name),
-    label: "Bitcoin",
-    namespace: "bip122",
-    preferredChainIds: [BITCOIN_CHAINS.mainnet.id],
+    platform: "bitcoin",
     registerDisconnector,
     trackChainChanges: true,
     wallet,
@@ -50,28 +42,23 @@ const buildBitcoinAdapter = (
     return null;
   }
 
-  const sendTransfer = getFeature<BitcoinSendTransferFeature>(
-    wallet,
+  const sendTransfer = core.feature<BitcoinSendTransferFeature>(
     "bitcoin:sendTransfer",
     "sendTransfer",
   );
 
-  const signMessage = getFeature<BitcoinSignMessageFeature>(
-    wallet,
-    "bitcoin:signMessage",
-    "signMessage",
-  );
+  const signMessage = core.feature<BitcoinSignMessageFeature>("bitcoin:signMessage", "signMessage");
 
-  const signPsbt = getFeature<BitcoinSignPsbtFeature>(wallet, "bitcoin:signPsbt", "signPsbt");
+  const signPsbt = core.feature<BitcoinSignPsbtFeature>("bitcoin:signPsbt", "signPsbt");
 
   return {
     ...core.base,
     chainPlatform: "bitcoin",
     ...(sendTransfer !== undefined && {
       async sendTx({ amount, recipient }: BitcoinTransfer, options?: TransactionOptions) {
-        const { account, chain } = core.resolveTarget("bitcoin:sendTransfer", options);
+        const { account, chain } = sendTransfer.target(options);
 
-        const output = await sendTransfer.sendTransfer({
+        const output = await sendTransfer.call.sendTransfer({
           account,
           amount,
           chain,
@@ -83,9 +70,9 @@ const buildBitcoinAdapter = (
     }),
     ...(signMessage !== undefined && {
       async signMessage(message: Uint8Array, options?: AccountOptions) {
-        const { account } = core.resolveTarget("bitcoin:signMessage", options);
+        const { account } = signMessage.target(options);
 
-        const output = await signMessage.signMessage({
+        const output = await signMessage.call.signMessage({
           account,
           message,
         });
@@ -95,9 +82,9 @@ const buildBitcoinAdapter = (
     }),
     ...(signPsbt !== undefined && {
       async signTransaction(psbt: Uint8Array, options?: TransactionOptions) {
-        const { account, chain } = core.resolveTarget("bitcoin:signPsbt", options);
+        const { account, chain } = signPsbt.target(options);
 
-        const output = await signPsbt.signPsbt({
+        const output = await signPsbt.call.signPsbt({
           account,
           chain,
           psbt,
@@ -109,7 +96,8 @@ const buildBitcoinAdapter = (
   };
 };
 
-/** Requires the optional `@wallet-standard/app` peer dep. */
+/** Requires the optional `@wallet-standard/app` peer dep; without it discovery
+ *  logs one warning and finds nothing. */
 const discoverBitcoinAdapters = (
   onAdapter: (adapter: WalletAdapter) => void,
   loadModule?: WalletStandardModuleLoader,

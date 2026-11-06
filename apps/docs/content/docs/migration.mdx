@@ -186,7 +186,13 @@ merges or diffs.
 
 ```ts
 const storage: WalletPersistence = {
-  load: async () => JSON.parse((await kv.get("wallets")) ?? "null") ?? EMPTY,
+  load: async () =>
+    JSON.parse((await kv.get("wallets")) ?? "null") ?? {
+      activeConnectorId: null,
+      isUserDisconnected: false,
+      pool: {},
+      selection: {},
+    },
   save: async (state) => {
     await kv.set("wallets", JSON.stringify(state));
   },

@@ -2,10 +2,13 @@ import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Transaction } from "@mysten/sui/transactions";
 import type { ConnectedWallet } from "@usebutr/core";
 import { bytesToHex, SUI_CHAINS } from "@usebutr/core";
-import { useConnect, useSelectedWallet, useWalletManager } from "@usebutr/react";
+import {
+  useConnect,
+  useDiscoveredWallets,
+  useSelectedWallet,
+  useWalletManager,
+} from "@usebutr/react";
 import { useEffect, useMemo, useState } from "react";
-
-import { useDiscoveredWallets } from "./wallet-provider";
 
 const RPC_URL = "https://fullnode.testnet.sui.io:443";
 

@@ -8,7 +8,7 @@ connection-state library. Your application owns the picker UI and chain client.
 ## Install
 
 ```bash
-npm install @usebutr/react @usebutr/wallets zustand
+npm install @usebutr/react @usebutr/wallets @usebutr/core zustand
 ```
 
 `autoDiscovery()` discovers all five platforms by default and installs `@wallet-standard/app` for Wallet Standard discovery.

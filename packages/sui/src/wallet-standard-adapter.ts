@@ -1,9 +1,8 @@
 import type { SuiAdapter, SuiTransactionInput, WalletAdapter } from "@usebutr/core";
-import { base64ToBytes, SUI_CHAINS_LIST } from "@usebutr/core";
+import { base64ToBytes } from "@usebutr/core";
 import {
   createWalletStandardCore,
   discoverWalletStandard,
-  getFeature,
   slugify,
 } from "@usebutr/wallet-standard-shared";
 import type {
@@ -36,16 +35,11 @@ const walletTransaction = async (
  */
 const buildSuiAdapter = (
   wallet: WalletStandardWallet,
-  /** Discovery passes this so a Wallet Standard `unregister` tears down the
-   *  connected pool entry. */
   registerDisconnector?: (emit: () => void) => void,
 ): SuiAdapter | null => {
   const core = createWalletStandardCore({
-    chains: SUI_CHAINS_LIST,
     id: slugify("sui", wallet.name),
-    label: "Sui",
-    namespace: "sui",
-    preferredChainIds: ["sui:mainnet"],
+    platform: "sui",
     registerDisconnector,
     trackChainChanges: true,
     wallet,
@@ -55,20 +49,17 @@ const buildSuiAdapter = (
     return null;
   }
 
-  const signAndExecute = getFeature<SuiSignAndExecuteTransactionFeature>(
-    wallet,
+  const signAndExecute = core.feature<SuiSignAndExecuteTransactionFeature>(
     "sui:signAndExecuteTransaction",
     "signAndExecuteTransaction",
   );
 
-  const signPersonalMessage = getFeature<SuiSignPersonalMessageFeature>(
-    wallet,
+  const signPersonalMessage = core.feature<SuiSignPersonalMessageFeature>(
     "sui:signPersonalMessage",
     "signPersonalMessage",
   );
 
-  const signTransaction = getFeature<SuiSignTransactionFeature>(
-    wallet,
+  const signTransaction = core.feature<SuiSignTransactionFeature>(
     "sui:signTransaction",
     "signTransaction",
   );
@@ -78,9 +69,9 @@ const buildSuiAdapter = (
     chainPlatform: "sui",
     ...(signAndExecute !== undefined && {
       async sendTx(tx, options) {
-        const { account, chain } = core.resolveTarget("sui:signAndExecuteTransaction", options);
+        const { account, chain } = signAndExecute.target(options);
 
-        const output = await signAndExecute.signAndExecuteTransaction({
+        const output = await signAndExecute.call.signAndExecuteTransaction({
           account,
           chain,
           transaction: await walletTransaction(tx),
@@ -91,9 +82,9 @@ const buildSuiAdapter = (
     }),
     ...(signPersonalMessage !== undefined && {
       async signMessage(message, options) {
-        const { account } = core.resolveTarget("sui:signPersonalMessage", options);
+        const { account } = signPersonalMessage.target(options);
 
-        const output = await signPersonalMessage.signPersonalMessage({
+        const output = await signPersonalMessage.call.signPersonalMessage({
           account,
           message,
         });
@@ -106,9 +97,9 @@ const buildSuiAdapter = (
     }),
     ...(signTransaction !== undefined && {
       async signTransaction(tx, options) {
-        const { account, chain } = core.resolveTarget("sui:signTransaction", options);
+        const { account, chain } = signTransaction.target(options);
 
-        const output = await signTransaction.signTransaction({
+        const output = await signTransaction.call.signTransaction({
           account,
           chain,
           transaction: await walletTransaction(tx),
@@ -122,7 +113,7 @@ const buildSuiAdapter = (
 
 /**
  * Requires the optional `@wallet-standard/app` peer dep; without it Sui
- * discovery silently does nothing.
+ * discovery logs one warning and finds nothing.
  * Spec: https://docs.sui.io/standards/wallet-standard
  */
 const discoverSuiAdapters = (

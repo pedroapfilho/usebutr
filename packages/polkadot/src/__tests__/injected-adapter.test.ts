@@ -206,10 +206,34 @@ describe("buildInjectedPolkadotAdapter", () => {
     stop();
   });
 
-  it("rejects connect when the extension exposes no account", async () => {
-    const adapter = build(makeExtension({ accounts: [] }));
-    await expect(adapter.connect()).rejects.toThrow(/exposed no accounts/v);
-    await expect(adapter.getAccounts()).resolves.toEqual([]);
+  it("fails a connect that exposes no account as NotConnected and closes it", async () => {
+    const extension = makeExtension({ accounts: [] });
+    const adapter = build(extension);
+
+    const manager = createWalletManager({
+      sources: [
+        (announce) => {
+          announce(adapter);
+
+          return () => {};
+        },
+      ],
+      storage: {
+        load: () =>
+          Promise.resolve({
+            activeConnectorId: null,
+            isUserDisconnected: false,
+            pool: {},
+            selection: {},
+          }),
+        save: () => Promise.resolve(),
+      },
+    });
+
+    const stop = manager.start();
+    await expect(manager.connect(adapter.id)).rejects.toMatchObject({ kind: "NotConnected" });
+    expect(adapter.signMessage).toBeUndefined();
+    stop();
   });
 
   describe("getAccounts", () => {

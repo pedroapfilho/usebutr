@@ -1,14 +1,12 @@
-import type { ChainBase } from "@usebutr/core";
+import type { ChainBase, ChainPlatform } from "@usebutr/core";
 import { EVM_CHAINS, SVM_CHAINS } from "@usebutr/core";
 import { type Chain, circle } from "@wormhole-foundation/sdk-connect";
-
-type ChainPlatform = "evm" | "svm";
 
 type ChainSpec = {
   chain: Chain;
   explorerTx: (hash: string) => string;
   label: string;
-  platform: ChainPlatform;
+  platform: Extract<ChainPlatform, "evm" | "svm">;
   rpcUrl: string;
   usdc: string;
   /** The chain as butr names it: where `switchChain` and `sendTx` route. */
@@ -16,6 +14,8 @@ type ChainSpec = {
 };
 
 const USDC_DECIMALS = 6;
+
+const SOLANA = "Solana" satisfies Chain;
 
 const usdcFor = (chain: Chain): string => {
   const address = circle.usdcContract.get("Testnet", chain);
@@ -96,12 +96,12 @@ const CHAIN_LIST: ReadonlyArray<ChainSpec> = [
     walletChain: evmTestnet(80_002, "Polygon Amoy"),
   },
   {
-    chain: "Solana",
+    chain: SOLANA,
     explorerTx: (hash: string) => `https://explorer.solana.com/tx/${hash}?cluster=devnet`,
     label: "Solana Devnet",
     platform: "svm",
     rpcUrl: "https://api.devnet.solana.com",
-    usdc: usdcFor("Solana"),
+    usdc: usdcFor(SOLANA),
     walletChain: SVM_CHAINS.devnet,
   },
 ];
@@ -124,4 +124,4 @@ const findChainSpec = (chain: string): ChainSpec | undefined => CHAINS[chain];
 
 export type { ChainSpec };
 
-export { CHAIN_LIST, USDC_DECIMALS, findChainSpec, getChainSpec };
+export { CHAIN_LIST, SOLANA, USDC_DECIMALS, findChainSpec, getChainSpec };

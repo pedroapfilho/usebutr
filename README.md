@@ -130,7 +130,7 @@ Twelve published packages, each with a single responsibility.
 | `@usebutr/ledger`                 | Ledger hardware-wallet adapter for EVM / SVM / Sui / Bitcoin over WebUSB.                             | `pnpm add @usebutr/ledger zustand @ledgerhq/hw-app-eth @ledgerhq/hw-transport-webusb` |
 | `@usebutr/testing`                | Fake adapters, fake persistence, and the adapter contract suite (`@usebutr/testing/contract`).        | `pnpm add -D @usebutr/testing zustand`                                                |
 
-> Workspace-internal packages (`@repo/typescript-config`, `@repo/config-vitest`, `@repo/wallet-extensions`) back the monorepo's tooling and tests and are not published.
+> Workspace-internal packages (`@repo/typescript-config`, `@repo/config-vitest`, `@repo/social-image`) back the monorepo's tooling and docs and are not published.
 
 ## Architecture
 

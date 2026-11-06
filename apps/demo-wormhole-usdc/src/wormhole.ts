@@ -9,6 +9,8 @@ import { ButrSvmWormholeSigner } from "./wormhole-svm-signer";
 
 const NETWORK: Network = "Testnet";
 
+const ATTESTATION_TIMEOUT_MS = 10 * 60 * 1000;
+
 /** The selected wallet for one side of the bridge. */
 type BridgeWallet = ConnectedWallet<"evm"> | ConnectedWallet<"svm">;
 
@@ -47,4 +49,4 @@ const makeSigner = async (spec: ChainSpec, { account, accounts, connector }: Bri
 
 export type { BridgeWallet };
 
-export { getWormhole, makeSigner };
+export { ATTESTATION_TIMEOUT_MS, getWormhole, makeSigner };

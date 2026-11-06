@@ -1,9 +1,9 @@
 import type { ChainBase } from "./types/chain";
-import type { ChainsByPlatform } from "./types/chains-by-platform";
+import type { ChainPlatform } from "./types/platform";
 
 /*
  * Every platform's chain registry, as plain data, so every transport names
- * a chain the same way through `resolveChain`. Unused ones tree-shake away.
+ * a chain the same way through `resolveChain`.
  */
 
 /** Common EVM chains. `switchChain` accepts any `ChainBase`, so a chain
@@ -128,6 +128,9 @@ const SUI_CHAINS_LIST: ReadonlyArray<ChainBase> = Object.values(SUI_CHAINS);
 const BITCOIN_CHAINS_LIST: ReadonlyArray<ChainBase> = Object.values(BITCOIN_CHAINS);
 const POLKADOT_CHAINS_LIST: ReadonlyArray<ChainBase> = Object.values(POLKADOT_CHAINS);
 
+/** An empty list opts that platform out of the consumer's chain UI. */
+type ChainsByPlatform = Readonly<Record<ChainPlatform, ReadonlyArray<ChainBase>>>;
+
 /** Every registry as a list, keyed by platform: the shape chain pickers want. */
 const CHAINS_BY_PLATFORM: ChainsByPlatform = {
   bitcoin: BITCOIN_CHAINS_LIST,
@@ -137,10 +140,23 @@ const CHAINS_BY_PLATFORM: ChainsByPlatform = {
   svm: SVM_CHAINS_LIST,
 };
 
+/** Each platform's mainnet: where a transport starts when the wallet names no
+ *  chain, and the chain butr labels a chain-agnostic account with. */
+const DEFAULT_CHAINS: Readonly<Record<ChainPlatform, ChainBase>> = {
+  bitcoin: BITCOIN_CHAINS.mainnet,
+  evm: EVM_CHAINS.ethereum,
+  polkadot: POLKADOT_CHAINS.polkadot,
+  sui: SUI_CHAINS.mainnet,
+  svm: SVM_CHAINS.mainnet,
+};
+
+export type { ChainsByPlatform };
+
 export {
   BITCOIN_CHAINS,
   BITCOIN_CHAINS_LIST,
   CHAINS_BY_PLATFORM,
+  DEFAULT_CHAINS,
   EVM_CHAINS,
   EVM_CHAINS_LIST,
   POLKADOT_CHAINS,

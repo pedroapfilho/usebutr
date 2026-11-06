@@ -1,13 +1,13 @@
 import { useConnect } from "@usebutr/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { renderSVG } from "uqr";
 
 import { clearPairingUri, usePairingUri } from "./pairing-store";
+import { useModalDialog } from "./use-modal-dialog";
 
 const PairingDialog = () => {
   const uri = usePairingUri();
   const { connectingId } = useConnect();
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const [copied, setCopied] = useState(false);
 
   const open = uri !== null;
@@ -18,19 +18,7 @@ const PairingDialog = () => {
     }
   }, [connectingId, uri]);
 
-  useEffect(() => {
-    const dialog = dialogRef.current;
-
-    if (dialog === null) {
-      return;
-    }
-
-    if (open) {
-      dialog.showModal();
-    } else {
-      dialog.close();
-    }
-  }, [open]);
+  const dialogRef = useModalDialog(open);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -49,7 +37,7 @@ const PairingDialog = () => {
     return () => {
       dialog.removeEventListener("close", handleClose);
     };
-  }, []);
+  }, [dialogRef]);
 
   const handleCopy = async () => {
     if (uri === null) {

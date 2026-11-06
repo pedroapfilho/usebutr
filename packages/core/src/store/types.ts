@@ -1,9 +1,6 @@
 import type { StoredPoolEntry, WalletPersistence } from "../storage/persistence";
+import type { ChainPlatform, ConnectedWallet, ConnectionError, WalletAdapter } from "../types";
 import type { WalletSource } from "../wallet-source";
-
-import type { ConnectionError } from "./errors";
-import type { ChainPlatform } from "./platform";
-import type { ConnectedWallet, WalletAdapter } from "./wallet";
 
 /** Status of the latest `connect` attempt, not of the connection itself;
  *  `useConnectionStatus` derives the latter. */
@@ -61,8 +58,8 @@ type WalletManagerConfig = {
   /** Fires at most once per attempt, once it passes `slowConnectThresholdMs`
    *  without settling. A hint, not a timeout. */
   onSlowConnect?: (connectorId: string) => void;
-  /** Persistence is fire-and-forget: a failed write never breaks state, it
-   *  only surfaces here. Defaults to `console.warn`. */
+  /** Persistence is fire-and-forget: a failed save or a `load` that rejects
+   *  never breaks state, it only surfaces here. Defaults to `console.warn`. */
   onStorageError?: (error: Error) => void;
   /** Threshold for `onSlowConnect`, in milliseconds. Defaults to 5_000. */
   slowConnectThresholdMs?: number;

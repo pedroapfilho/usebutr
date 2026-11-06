@@ -35,7 +35,7 @@ const buildFakeSuiCtor = (hooks: SuiHooks = {}): SuiAppConstructor =>
   };
 
 const connectedSui = async (hooks: SuiHooks = {}): Promise<SuiAdapter> => {
-  const adapter = await createSuiLedgerAdapter({
+  const adapter = createSuiLedgerAdapter({
     accountCount: 3,
     platform: "sui",
     sui: buildFakeSuiCtor(hooks),
@@ -48,8 +48,8 @@ const connectedSui = async (hooks: SuiHooks = {}): Promise<SuiAdapter> => {
 };
 
 describe("createSuiLedgerAdapter", () => {
-  it("has no signMessage: the adapter signs transactions only", async () => {
-    const adapter = await createSuiLedgerAdapter({
+  it("has no signMessage: the adapter signs transactions only", () => {
+    const adapter = createSuiLedgerAdapter({
       platform: "sui",
       sui: buildFakeSuiCtor(),
       transport: buildFakeTransport().factory,
@@ -151,7 +151,7 @@ describe("createSuiLedgerAdapter", () => {
   });
 
   it("createLedgerAdapter() dispatches platform sui on the configured network", async () => {
-    const adapter = await createLedgerAdapter({
+    const adapter = createLedgerAdapter({
       chainId: SUI_CHAINS.testnet.id,
       platform: "sui",
       sui: buildFakeSuiCtor(),
@@ -173,7 +173,7 @@ describeAdapterContract<SuiAdapter>({
   connect: async (addresses) => {
     const calls: Array<ObservedCall> = [];
 
-    const adapter = await createSuiLedgerAdapter({
+    const adapter = createSuiLedgerAdapter({
       accountCount: addresses.length,
       platform: "sui",
       sui: buildFakeSuiCtor({

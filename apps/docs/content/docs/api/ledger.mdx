@@ -3,10 +3,11 @@ title: "@usebutr/ledger"
 description: Per-platform Ledger factories (EVM, SVM, Sui, Bitcoin), their options, and the device-app signers.
 ---
 
-Ledger hardware wallets over WebUSB. Requires the optional peer dependency
-`@ledgerhq/hw-transport-webusb` plus the Ledger app package for each platform
-you use, loaded on first connect:
+Ledger hardware wallets over WebUSB. The manifest declares all five
+`@ledgerhq/*` packages as required peer dependencies, so install them all;
+each is loaded on first connect:
 
+- `@ledgerhq/hw-transport-webusb`, the default transport
 - `@ledgerhq/hw-app-eth` for EVM
 - `@ledgerhq/hw-app-solana` for SVM
 - `@ledgerhq/hw-app-sui` for Sui
@@ -14,7 +15,7 @@ you use, loaded on first connect:
 
 ## Factories
 
-### `createLedgerAdapter(options: LedgerOptions): Promise<WalletAdapterFor<"bitcoin" | "evm" | "sui" | "svm">>`
+### `createLedgerAdapter(options: LedgerOptions): WalletAdapterFor<"bitcoin" | "evm" | "sui" | "svm">`
 
 Dispatches on `options.platform` to the per-platform factory; import that
 factory directly for the narrower adapter type. The adapter is
@@ -35,14 +36,15 @@ const config: WalletManagerConfig = {
 };
 ```
 
-The factory rejects when `chainId` is outside the platform's namespace.
+Every factory is synchronous and returns the adapter. A `chainId` outside the
+platform's namespace throws a `ChainMismatch` `ConnectionError` at creation.
 
 ### Per-platform factories
 
-- `createEvmLedgerAdapter(options: EvmLedgerOptions): Promise<EvmAdapter>`
-- `createSvmLedgerAdapter(options: SvmLedgerOptions): Promise<SvmAdapter>`
-- `createSuiLedgerAdapter(options: SuiLedgerOptions): Promise<SuiAdapter>`
-- `createBitcoinLedgerAdapter(options: BitcoinLedgerOptions): Promise<BitcoinAdapter>`
+- `createEvmLedgerAdapter(options: EvmLedgerOptions): EvmAdapter`
+- `createSvmLedgerAdapter(options: SvmLedgerOptions): SvmAdapter`
+- `createSuiLedgerAdapter(options: SuiLedgerOptions): SuiAdapter`
+- `createBitcoinLedgerAdapter(options: BitcoinLedgerOptions): BitcoinAdapter`
 
 `LedgerOptions` is the union of the four.
 
@@ -50,28 +52,34 @@ The factory rejects when `chainId` is outside the platform's namespace.
 
 Every factory takes:
 
-| Field                  | Type                                   | Default                                                                                  |
-| ---------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `platform`             | `"evm" \| "svm" \| "sui" \| "bitcoin"` | Required.                                                                                |
-| `chainId`              | `string` (CAIP-2)                      | The platform's mainnet. Ledger apps have no network switch: build one adapter per chain. |
-| `accountCount`         | `number`                               | `1`. Addresses read during `connect()`, one device round trip each.                      |
-| `derivationPathPrefix` | `string`                               | Per platform, below. The account index is appended as the last segment.                  |
-| `id`                   | `string`                               | `"ledger"`                                                                               |
-| `name`                 | `string`                               | `"Ledger"`                                                                               |
-| `icon`                 | `string`                               | `LEDGER_DEFAULT_ICON`                                                                    |
-| `transport`            | `TransportFactory`                     | A dynamic import of `@ledgerhq/hw-transport-webusb` (replace it in tests).               |
+| Field                  | Type                                   | Default                                                                                                               |
+| ---------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `platform`             | `"evm" \| "svm" \| "sui" \| "bitcoin"` | Required.                                                                                                             |
+| `chainId`              | `string` (CAIP-2)                      | The platform's mainnet. Ledger apps have no network switch: build one adapter per chain.                              |
+| `accountCount`         | `number`                               | `1`. Addresses read during `connect()`, one device round trip each.                                                   |
+| `derivationPathPrefix` | `string`                               | Per platform, below. The account index is appended as the last segment.                                               |
+| `id`                   | `string`                               | `"ledger"`                                                                                                            |
+| `name`                 | `string`                               | `"Ledger"`                                                                                                            |
+| `icon`                 | `string`                               | `LEDGER_DEFAULT_ICON`                                                                                                 |
+| `transport`            | `TransportFactory`                     | A dynamic import of `@ledgerhq/hw-transport-webusb`. Pass another `@ledgerhq/hw-transport-*` factory, such as WebHID. |
 
-| Platform  | Default chain                             | Default prefix   | Index   | App override                    |
+| Platform  | Default chain                             | Default prefix   | Index   | App class                       |
 | --------- | ----------------------------------------- | ---------------- | ------- | ------------------------------- |
 | `evm`     | `eip155:1`                                | `44'/60'/0'/0`   | `/<n>`  | `eth?: EthAppConstructor`       |
 | `svm`     | `solana:mainnet`                          | `44'/501'/0'`    | `/<n>'` | `solana?: SolanaAppConstructor` |
 | `sui`     | `sui:mainnet`                             | `44'/784'/0'/0'` | `/<n>'` | `sui?: SuiAppConstructor`       |
 | `bitcoin` | `bip122:000000000019d6689c085ae165831e93` | `84'/0'/0'/0`    | `/<n>`  | `btc?: BtcAppConstructor`       |
 
+The app class option (`eth`, `solana`, `sui`, `btc`) is for an app that
+already imports it; by default each factory imports the app package
+dynamically.
+
 `BitcoinLedgerOptions` adds `addressFormat?: BitcoinAddressFormat`
-(`"legacy" | "p2sh" | "bech32" | "bech32m"`, default `"bech32"`), which must
-agree with the path's purpose. Bitcoin testnet needs the Bitcoin Test app, a
-`1'` coin type and `chainId: BITCOIN_CHAINS.testnet.id`.
+(`"legacy" | "p2sh" | "bech32" | "bech32m"`, default `"bech32"`). The default
+Bitcoin prefix follows it (purpose `44'`, `49'`, `84'` or `86'`) and the chain
+(coin type `0'` on mainnet, `1'` elsewhere); the table shows the bech32 mainnet
+one. A custom prefix must agree with the format. Bitcoin testnet needs the
+Bitcoin Test app and `chainId: BITCOIN_CHAINS.testnet.id`.
 
 ## What each adapter defines
 

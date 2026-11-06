@@ -44,8 +44,9 @@ wallet, an EIP-1193 `disconnect`. You never wire `accountsChanged` /
 
 ## Wallet: what your app calls
 
-butr never invokes these itself, apart from `getSigner` in `useSigner()` and
-`getBalance` in `useBalance()`. `Tx` is the platform's transaction type.
+butr never invokes these itself, apart from `getSigner` in `useSigner()`,
+`getBalance` in `useBalance()`, and `signIn` or `signMessage` in
+`createSignInFlow`. `Tx` is the platform's transaction type.
 
 ```ts
 type WalletBase<Tx> = {
@@ -121,7 +122,7 @@ What the hooks hand back:
 type ConnectedWallet<P extends ChainPlatform = ChainPlatform> = {
   account: Account; // the active account; always one of `accounts`
   accounts: ReadonlyArray<Account>; // every account the wallet exposed
-  connector: WalletAdapterFor<P>;
+  connector: AdapterByPlatform[P]; // the platform's adapter type
 };
 ```
 

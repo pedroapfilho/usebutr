@@ -7,12 +7,16 @@ import {
 } from "@solana/web3.js";
 import type { ConnectedWallet } from "@usebutr/core";
 import { bytesToBase58 } from "@usebutr/core";
-import { useConnect, useSelectedWallet, useSigner, useWalletManager } from "@usebutr/react";
+import {
+  useConnect,
+  useDiscoveredWallets,
+  useSelectedWallet,
+  useSigner,
+  useWalletManager,
+} from "@usebutr/react";
 import type { SolanaSignAndSendTransactionFeature, SolanaSignMessageFeature } from "@usebutr/svm";
 import { findAccount, getFeature } from "@usebutr/wallet-standard-shared";
 import { useEffect, useMemo, useState } from "react";
-
-import { useDiscoveredWallets } from "./wallet-provider";
 
 const DEVNET = "https://api.devnet.solana.com";
 const BURN_ADDRESS = new PublicKey("11111111111111111111111111111111");

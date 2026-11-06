@@ -60,10 +60,10 @@ if (wallet.connector.sendTx) {
 
 Wallet Standard wallets route `chain` per call and gain `switchChain` when they
 advertise more than one Bitcoin network. Injected wallets have one network for
-the whole wallet: they switch it before acting (Unisat through
-`switchNetwork`, Xverse through `wallet_changeNetwork`), or reject with a
-`ChainMismatch` `ConnectionError` when the provider cannot switch (OKX,
-`window.btc`). Unisat-style wallets sign with their active account only, and
+the whole wallet: they switch it before acting (Unisat, OKX and `window.btc`
+through `switchNetwork`, Xverse through `wallet_changeNetwork`), or reject with
+a `ChainMismatch` `ConnectionError` when the provider cannot switch, such as a
+Unisat-style provider without `switchNetwork`. Unisat-style wallets sign with their active account only, and
 Xverse sends from its payment address only; any other `account` rejects.
 
 Balances and receipts need an Esplora or Electrum client, which butr does not

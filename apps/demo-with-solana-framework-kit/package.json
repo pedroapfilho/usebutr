@@ -7,7 +7,7 @@
     "dev": "portless run --name usebutr.demo-with-solana-framework-kit vite",
     "build": "tsc -b && vite build",
     "start": "vite preview",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -b",
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {

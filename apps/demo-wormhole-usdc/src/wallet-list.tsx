@@ -7,7 +7,7 @@ import {
   useWalletManager,
 } from "@usebutr/react";
 
-const truncate = (a: string): string => (a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a);
+import { truncate } from "./format";
 
 const PLATFORMS: ReadonlyArray<{ label: string; platform: ChainPlatform }> = [
   { label: "EVM", platform: "evm" },
@@ -50,7 +50,7 @@ const WalletRow = ({
             <p className="text-foreground-primary text-sm font-medium">{connector.name}</p>
             {showSwitcher ? null : (
               <p className="text-foreground-muted truncate font-mono text-xs">
-                {truncate(wallet.account.walletAddress)}
+                {truncate(wallet.account.walletAddress, 6, 4)}
               </p>
             )}
           </div>
@@ -99,7 +99,7 @@ const WalletRow = ({
             >
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {truncate(a.walletAddress)}
+                  {truncate(a.walletAddress, 6, 4)}
                 </option>
               ))}
             </select>

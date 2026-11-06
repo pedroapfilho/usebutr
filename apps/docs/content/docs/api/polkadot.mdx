@@ -5,12 +5,12 @@ description: injectedWeb3 and Wallet Standard discovery, the adapter builders, a
 
 ## Discovery
 
-### `discoverInjectedPolkadotAdapters(onAdapter, options?): () => void`
+### `discoverInjectedPolkadotAdapters(onAdapter): () => void`
 
 Reads `window.injectedWeb3` without prompting: adapters are built without
-calling `enable()`. It scans at once and again on a poll schedule for
-late-injecting extensions; the returned function cancels pending polls. It is
-a `WalletSource` as-is:
+calling `enable()`. It reads it at once and again after 250 ms and 750 ms, for
+late-injecting extensions; the returned function cancels the pending reads. It
+is a `WalletSource` as-is:
 
 ```ts
 import type { WalletManagerConfig } from "@usebutr/core";
@@ -18,10 +18,6 @@ import { discoverInjectedPolkadotAdapters } from "@usebutr/polkadot";
 
 const config: WalletManagerConfig = { sources: [discoverInjectedPolkadotAdapters] };
 ```
-
-`InjectedPolkadotDiscoveryOptions`: `pollMs?: ReadonlyArray<number>` (offsets
-in milliseconds, default `[250, 750]`; `[]` for a single synchronous scan) and
-`target?` (overrides `window`).
 
 ### `discoverPolkadotWalletStandardAdapters(onAdapter, loadModule?): () => void`
 
@@ -38,7 +34,7 @@ wallets that no injectedWeb3 extension matches.
 ### `buildInjectedPolkadotAdapter(extensionName, displayName, provider): PolkadotAdapter`
 
 `provider` is the `window.injectedWeb3[extensionName]` entry. The id is
-`injected:polkadot:<extension-name>`. `connect()` calls `enable("butr")`,
+`injected:polkadot:<kebab-cased extensionName>`. `connect()` calls `enable("butr")`,
 which may prompt; construction does not. `connect({ silent: true })` reuses
 only an existing in-memory session, otherwise it rejects with `NotConnected`
 before calling `enable`. A persisted connection stays dormant until an explicit
@@ -61,15 +57,11 @@ ship.
 
 ## Signers
 
-Importing the package registers the `polkadot-injected` kind:
-
-```ts
-type PolkadotInjectedSigner = {
-  extension: Injected; // the object `enable()` resolved: `accounts` and `signer`
-  extensionName: string; // the `window.injectedWeb3` key
-  kind: "polkadot-injected";
-};
-```
+Importing the package registers the `polkadot-injected` kind.
+`WalletSignerOf<"polkadot-injected">` from `@usebutr/core` is
+`{ extension; extensionName; kind: "polkadot-injected" }`: `extension` is the
+object `enable()` resolved (`accounts` and `signer`), and `extensionName` the
+`window.injectedWeb3` key.
 
 It carries no address: sign as the connected wallet's `account`.
 `extensionName` is what polkadot-api's `connectInjectedExtension` takes. On an
@@ -84,8 +76,8 @@ Wallet Standard wallet reports it signed; verify against it.
 
 ## Types
 
-`InjectedPolkadotDiscoveryOptions`, `PolkadotSignMessageFeature`,
-`PolkadotSignMessageInput`, `PolkadotSignMessageOutput`.
+`PolkadotSignMessageFeature`, `PolkadotSignMessageInput`,
+`PolkadotSignMessageOutput`.
 
 The Polkadot chain registry (`POLKADOT_CHAINS`, `POLKADOT_CHAINS_LIST`) lives
 in `@usebutr/core`. Chain ids are `polkadot:` plus the first 32 hex characters

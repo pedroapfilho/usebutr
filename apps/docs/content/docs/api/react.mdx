@@ -149,7 +149,7 @@ type AsyncState<T> =
   | { data: null; error: null; status: "idle" }
   | { data: null; error: null; status: "loading" }
   | { data: T; error: null; status: "success" }
-  | { data: null; error: Error; status: "error" };
+  | { data: null; error: ConnectionError; status: "error" };
 ```
 
 A result shows only for the wallet that produced it, so switching wallets
@@ -176,14 +176,12 @@ const client = useMemo(
 );
 ```
 
-### `useBalance(wallet, options?): UseBalanceResult`
+### `useBalance(wallet, options?: BalanceOptions): UseBalanceResult`
+
+`options.account` defaults to the wallet's active account and `options.token`
+(an ERC-20 address on EVM) to the native asset.
 
 ```ts
-type UseBalanceOptions = {
-  account?: Account; // the wallet's active account when omitted
-  token?: string; // an ERC-20 address on EVM; the native asset when omitted
-};
-
 type UseBalanceResult = AsyncState<Balance> & { refetch: () => void };
 ```
 
@@ -201,7 +199,7 @@ reconnecting. See [balances](/guides/balances).
 ## Types
 
 `WalletManagerProviderProps`, `UseConnectResult`, `ConnectionStatus`,
-`AsyncState`, `UseBalanceOptions`, `UseBalanceResult`.
+`AsyncState`, `UseBalanceResult`.
 
 **Source:** `packages/react/src/index.ts`, `context.tsx`, `hooks/state.ts`,
 `hooks/connect.ts`, `hooks/grouped.ts`, `hooks/async-resources.ts`.

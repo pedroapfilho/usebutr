@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 
-const sitemap = (): MetadataRoute.Sitemap => [{ url: "https://www.usebutr.com" }];
+import { SITE_URL } from "@/lib/site";
+
+const sitemap = (): MetadataRoute.Sitemap => [{ url: SITE_URL }];
 
 export default sitemap;

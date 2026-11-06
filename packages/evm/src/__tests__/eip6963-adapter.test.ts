@@ -2,7 +2,7 @@ import type { ConnectorEvent } from "@usebutr/core";
 import { buildAccount, EVM_CHAINS } from "@usebutr/core";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Eip6963ProviderInfo } from "../eip1193";
+import type { EvmIdentity } from "../eip6963-adapter";
 import {
   buildEvmAdapter,
   chainIdDecimalToHex,
@@ -13,11 +13,10 @@ import {
 import type { MockProviderHandle } from "./mock-provider";
 import { createMockProvider } from "./mock-provider";
 
-const INFO: Eip6963ProviderInfo = {
+const INFO: EvmIdentity = {
   icon: "data:image/svg+xml;base64,...",
+  id: "io.mock.wallet",
   name: "Mock EIP-6963 Wallet",
-  rdns: "io.mock.wallet",
-  uuid: "uuid-1",
 };
 
 /** A wallet on Ethereum mainnet exposing `addresses`, active first. */
@@ -52,7 +51,7 @@ describe("EVM helpers", () => {
 });
 
 describe("buildEvmAdapter identity and lifecycle", () => {
-  it("uses rdns as the connector id and the EIP-6963 info as the name", () => {
+  it("takes its id, name and icon from the identity", () => {
     const adapter = buildEvmAdapter(INFO, createMockProvider());
     expect(adapter.id).toBe("io.mock.wallet");
     expect(adapter.name).toBe("Mock EIP-6963 Wallet");

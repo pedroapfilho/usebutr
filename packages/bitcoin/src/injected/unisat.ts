@@ -127,7 +127,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
 
       return chain.id;
     },
-    namespace: "bip122",
+    platform: "bitcoin",
     switchTo: async (to) => {
       const network = SWITCH_NETWORKS.get(to.id);
 
@@ -214,7 +214,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
           try {
             emit(await readAccounts());
           } catch (error) {
-            logWarn(`[butr] ${name} accounts could not be re-read after a network change:`, error);
+            logWarn(`${name} accounts could not be re-read after a network change:`, error);
           }
         };
 

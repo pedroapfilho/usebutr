@@ -55,8 +55,6 @@ const EMPTY_PERSISTED: PersistedWalletState = {
   selection: {},
 };
 
-const LABEL = "[butr]";
-
 const parseRecord = (raw: string | null | undefined, what: string) => {
   if (raw === null || raw === undefined || raw === "") {
     return {};
@@ -67,7 +65,7 @@ const parseRecord = (raw: string | null | undefined, what: string) => {
 
     return parsed.success ? parsed.data : {};
   } catch (error) {
-    logWarn(`${LABEL} failed to parse ${what} from storage:`, error);
+    logWarn(`failed to parse ${what} from storage:`, error);
 
     return {};
   }
@@ -82,7 +80,7 @@ const decodePool = (raw: string | null | undefined): StoredPoolRecord => {
     if (entry.success && entry.data.connectorId === key) {
       result[key] = entry.data;
     } else {
-      logWarn(`${LABEL} dropping invalid pool entry for ${key}`);
+      logWarn(`dropping invalid pool entry for ${key}`);
     }
   }
 

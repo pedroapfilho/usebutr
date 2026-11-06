@@ -1,11 +1,11 @@
 ---
 title: "@usebutr/walletconnect"
-description: createWalletConnectAdapters, the namespace builders, and the WalletConnect signer.
+description: createWalletConnectAdapters, the namespaces it pairs, and the WalletConnect signer.
 ---
 
 WalletConnect v2 for EVM, Solana, Sui and Bitcoin mobile wallets. Requires the
-optional peer dependency `@walletconnect/universal-provider`, imported on
-first use.
+peer dependency `@walletconnect/universal-provider`, imported on first use
+unless you pass `universalProvider`.
 
 ## Factory
 
@@ -40,53 +40,47 @@ With more than one namespace each adapter's id and name carry the platform
 `options.id ?? "walletconnect"` and `options.name ?? "WalletConnect"`. The
 promise rejects for an unknown namespace key or an empty `namespaces`.
 
+The pairing requires one namespace and marks the rest optional. The required
+one is the first selected platform in `CHAIN_PLATFORMS` order (`evm`, `svm`,
+`sui`, `bitcoin`), not the first key you write.
+
 ### `WalletConnectOptions`
 
-| Field               | Type                                                    | Notes                                                                                                                                                                                                             |
-| ------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `projectId`         | `string`                                                | Required. From [Reown Cloud](https://cloud.reown.com).                                                                                                                                                            |
-| `namespaces`        | `Partial<Record<ChainPlatform, ReadonlyArray<string>>>` | Required. CAIP-2 chains per platform (`SVM_CHAINS` ids work for Solana). Omit a key to skip it; an empty array uses the builder's `defaultChains`. The first namespace is required at pairing, the rest optional. |
-| `metadata`          | `WalletConnectMetadata`                                 | `{ description?; icons?; name?; url? }`. Some wallets refuse to pair without `name` and `url`.                                                                                                                    |
-| `onPairingUri`      | `(uri: string) => void`                                 | Render the QR code or deep link; butr ships no QR renderer.                                                                                                                                                       |
-| `id`                | `string`                                                | Default `"walletconnect"`.                                                                                                                                                                                        |
-| `name`              | `string`                                                | Default `"WalletConnect"`.                                                                                                                                                                                        |
-| `icon`              | `string`                                                | Default `WALLETCONNECT_DEFAULT_ICON`.                                                                                                                                                                             |
-| `universalProvider` | `UniversalProviderConstructor`                          | Replaces the dynamic import (tests).                                                                                                                                                                              |
+| Field               | Type                                                    | Notes                                                                                                                                                           |
+| ------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `projectId`         | `string`                                                | Required. From [Reown Cloud](https://cloud.reown.com).                                                                                                          |
+| `namespaces`        | `Partial<Record<ChainPlatform, ReadonlyArray<string>>>` | Required. CAIP-2 chains per platform (`SVM_CHAINS` ids work for Solana). Omit a key to skip it; an empty array means the platform's mainnet (`DEFAULT_CHAINS`). |
+| `metadata`          | `WalletConnectMetadata`                                 | `{ description?; icons?; name?; url? }`. Some wallets refuse to pair without `name` and `url`.                                                                  |
+| `onPairingUri`      | `(uri: string) => void`                                 | Render the QR code or deep link; butr ships no QR renderer.                                                                                                     |
+| `id`                | `string`                                                | Default `"walletconnect"`.                                                                                                                                      |
+| `name`              | `string`                                                | Default `"WalletConnect"`.                                                                                                                                      |
+| `icon`              | `string`                                                | Default `WALLETCONNECT_DEFAULT_ICON`.                                                                                                                           |
+| `universalProvider` | `UniversalProviderConstructor`                          | The UniversalProvider class, for an app that already imports it. Default: a dynamic import of `@walletconnect/universal-provider`.                              |
 
-## Namespace builders
+## Namespaces
 
-`evmNamespace`, `solanaNamespace`, `suiNamespace` and `bitcoinNamespace`, and
-`KNOWN_NAMESPACES: Partial<Record<ChainPlatform, WalletConnectNamespaceBuilder>>`,
-the table the factory dispatches through. Polkadot has no namespace yet.
+The factory pairs these namespaces. Polkadot has none yet.
 
-`WalletConnectNamespaceBuilder<Adapter>` has `buildAdapter(input)`,
-`caipPrefix`, `chainPlatform`, `defaultChains`, `defaultEvents`,
-`defaultMethods`, and `chainAliases?`: butr chain ids mapped to the ids
-sessions use where they differ. `solanaNamespace` maps `SVM_CHAINS` ids to
-the genesis-hash id each entry lists first in `aliases`, so callers pass
-`SVM_CHAINS` as on any other transport. `buildAdapter` takes `{ chains, icon, id, name, provider, session? }`;
-without a shared `session` the adapter pairs for its own namespace only.
+| Platform  | CAIP-2 namespace | Default chain                             | Methods                                                                                                                                            | Events                                          |
+| --------- | ---------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `evm`     | `eip155`         | `eip155:1`                                | `eth_sendTransaction`, `eth_accounts`, `eth_chainId`, `eth_getBalance`, `eth_getTransactionReceipt`, `personal_sign`, `wallet_switchEthereumChain` | `accountsChanged`, `chainChanged`, `disconnect` |
+| `svm`     | `solana`         | `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` | `solana_signMessage`, `solana_signTransaction`, `solana_signAndSendTransaction`                                                                    | `accountsChanged`, `chainChanged`, `disconnect` |
+| `sui`     | `sui`            | `sui:mainnet`                             | `sui_signTransaction`, `sui_signAndExecuteTransaction`, `sui_signPersonalMessage`                                                                  | `accountsChanged`, `chainChanged`, `disconnect` |
+| `bitcoin` | `bip122`         | `bip122:000000000019d6689c085ae165831e93` | `signMessage`, `signPsbt`, `sendTransfer`, `getAccountAddresses`                                                                                   | `bip122_addressesChanged`                       |
 
-| Builder            | `caipPrefix` | `defaultChains`                           | `defaultMethods`                                                                                                                                   |
-| ------------------ | ------------ | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `evmNamespace`     | `eip155`     | `eip155:1`                                | `eth_sendTransaction`, `eth_accounts`, `eth_chainId`, `eth_getBalance`, `eth_getTransactionReceipt`, `personal_sign`, `wallet_switchEthereumChain` |
-| `solanaNamespace`  | `solana`     | `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` | `solana_signMessage`, `solana_signTransaction`, `solana_signAndSendTransaction`                                                                    |
-| `suiNamespace`     | `sui`        | `sui:mainnet`                             | `sui_signTransaction`, `sui_signAndExecuteTransaction`, `sui_signPersonalMessage`                                                                  |
-| `bitcoinNamespace` | `bip122`     | `bip122:000000000019d6689c085ae165831e93` | `signMessage`, `signPsbt`, `sendTransfer`, `getAccountAddresses`                                                                                   |
+The default chain is the platform's entry in `DEFAULT_CHAINS`, used when its
+`namespaces` array is empty. Solana sessions name clusters by genesis hash, so
+the factory maps each `SVM_CHAINS` id to the genesis-hash id its entry lists
+first in `aliases`; pass `SVM_CHAINS` ids as on any other transport.
 
 ## Signers
 
 The EVM adapter resolves `{ kind: "eip1193", provider }`: an EIP-1193 shim over
 the session's `eip155` side. Importing the package registers the
-`walletconnect` kind the other namespaces resolve:
-
-```ts
-type WalletConnectSigner = {
-  chainId: string; // the session's id for the adapter's current chain
-  kind: "walletconnect";
-  provider: UniversalProviderLike;
-};
-```
+`walletconnect` kind the other namespaces resolve.
+`WalletSignerOf<"walletconnect">` from `@usebutr/core` is
+`{ chainId: string; kind: "walletconnect"; provider: UniversalProviderLike }`,
+where `chainId` is the session's id for the adapter's current chain.
 
 Pass `chainId` as `provider.request`'s second argument. Without it,
 UniversalProvider routes the call to the session's first namespace, so a
@@ -98,9 +92,8 @@ Solana request in an EVM + Solana session would reach the EVM wallet.
 
 ## Types
 
-`WalletConnectOptions`, `WalletConnectMetadata`,
-`WalletConnectNamespaceBuilder`, `WalletConnectSession`,
-`UniversalProviderLike`, `UniversalProviderConstructor`.
+`WalletConnectOptions`, `WalletConnectMetadata`, `UniversalProviderLike`,
+`UniversalProviderConstructor`.
 
 See the [WalletConnect connector](/connectors/walletconnect) for what each
 namespace defines and how it routes chains.

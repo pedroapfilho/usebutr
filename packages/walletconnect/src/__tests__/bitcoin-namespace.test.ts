@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { bitcoinNamespace } from "../namespaces/bitcoin";
 
 import type { FakeProvider } from "./fake-provider";
-import { createFakeProvider } from "./fake-provider";
+import { buildNamespaceAdapter, createFakeProvider } from "./fake-provider";
 
 const MAINNET = BITCOIN_CHAINS.mainnet.id;
 const TESTNET = BITCOIN_CHAINS.testnet.id;
@@ -15,7 +15,7 @@ const buildAdapter = (
   provider: FakeProvider,
   chains: ReadonlyArray<string> = [MAINNET],
 ): BitcoinAdapter =>
-  bitcoinNamespace.buildAdapter({
+  buildNamespaceAdapter(bitcoinNamespace, {
     chains,
     icon: "data:image/svg+xml;base64,Zm9v",
     id: "walletconnect-bitcoin",
@@ -30,17 +30,15 @@ const connectedProvider = (
   createFakeProvider({ request: () => answer, session: { namespaces: { bip122: { accounts } } } });
 
 describe("bitcoinNamespace", () => {
-  it("declares the right CAIP prefix, platform, chains, methods and events", () => {
-    expect(bitcoinNamespace.caipPrefix).toBe("bip122");
+  it("declares the right platform, methods and events", () => {
     expect(bitcoinNamespace.chainPlatform).toBe("bitcoin");
-    expect(bitcoinNamespace.defaultChains).toEqual([MAINNET]);
-    expect(bitcoinNamespace.defaultMethods).toEqual([
+    expect(bitcoinNamespace.methods).toEqual([
       "signMessage",
       "signPsbt",
       "sendTransfer",
       "getAccountAddresses",
     ]);
-    expect(bitcoinNamespace.defaultEvents).toEqual(["bip122_addressesChanged"]);
+    expect(bitcoinNamespace.events).toEqual(["bip122_addressesChanged"]);
   });
 
   it("defines only what WalletConnect can do", () => {

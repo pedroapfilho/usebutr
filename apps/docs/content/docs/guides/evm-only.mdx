@@ -86,10 +86,12 @@ separate source, it adopts `window.ethereum` whether or not EIP-6963 found
 anything, so a wallet on both lists twice; `autoDiscovery(["evm"])` pairs the
 two and lists `window.ethereum` only when no EIP-6963 wallet announced.
 
-Every EVM adapter defines `requestAccounts`, `switchChain`, `signMessage`,
-`sendTx`, `getBalance`, `getTransactionReceipt`, and `subscribe`, because
-EIP-1193 has a call for each; the wallet can still reject one it doesn't
-implement. `switchChain` and `sendTx`'s `chain` option switch the wallet for
+Every EIP-6963 and injected adapter defines `requestAccounts`, `switchChain`,
+`signMessage`, `sendTx`, `getBalance`, `getTransactionReceipt`, and
+`subscribe`, because EIP-1193 has a call for each; the wallet can still reject
+one it doesn't implement. Other EVM adapters define less: WalletConnect EVM
+has no `requestAccounts`, and a Ledger EVM adapter has only `signMessage`
+besides the connector members. `switchChain` and `sendTx`'s `chain` option switch the wallet for
 real via `wallet_switchEthereumChain`. `getSigner()` resolves
 `{ kind: "eip1193", provider }` for viem, ethers, or wagmi.
 

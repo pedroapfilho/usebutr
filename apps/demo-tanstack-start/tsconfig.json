@@ -3,10 +3,6 @@
   "extends": "@repo/typescript-config/vite.json",
   "compilerOptions": {
     "ignoreDeprecations": "6.0",
-    "paths": {
-      "#/*": ["./src/*"],
-      "@/*": ["./src/*"]
-    },
     "types": ["vite/client"],
     "skipLibCheck": true,
     "strict": true,
@@ -18,5 +14,5 @@
     "verbatimModuleSyntax": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", ".vinxi", ".output", "dist"]
+  "exclude": ["node_modules", ".output", "dist"]
 }

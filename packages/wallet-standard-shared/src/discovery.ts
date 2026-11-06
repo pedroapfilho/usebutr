@@ -128,7 +128,7 @@ const discoverWalletStandard = (
       if (!warnedMissingApp) {
         warnedMissingApp = true;
         logWarn(
-          "[butr] Wallet Standard wallet discovery is disabled: `@wallet-standard/app` could not be loaded. Install it (`npm i @wallet-standard/app`) to detect Wallet Standard wallets.",
+          "Wallet Standard wallet discovery is disabled: `@wallet-standard/app` could not be loaded. Install it (`npm i @wallet-standard/app`) to detect Wallet Standard wallets.",
           error,
         );
       }

@@ -1,5 +1,6 @@
 import walletsPackage from "../../../../packages/wallets/package.json";
 
+const SITE_URL = "https://www.usebutr.com";
 const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL ?? "https://docs.usebutr.com";
 const QUICKSTART_URL = `${DOCS_URL}/getting-started/quickstart`;
 const INSTALLATION_URL = `${DOCS_URL}/getting-started/installation`;
@@ -20,4 +21,5 @@ export {
   DEMO_URL,
   GITHUB_URL,
   NPM_URL,
+  SITE_URL,
 };

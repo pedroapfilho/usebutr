@@ -1,17 +1,20 @@
 import { defineConfig } from "@playwright/test";
 
+const PORT = 4010;
+const BASE_URL = `http://127.0.0.1:${PORT}`;
+
 const config = defineConfig({
   retries: 0,
   testDir: "./e2e",
   use: {
-    baseURL: "http://127.0.0.1:4010",
+    baseURL: BASE_URL,
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "EXPOSE_TESTING_API=1 pnpm build && EXPOSE_TESTING_API=1 pnpm exec next start -p 4010",
+    command: `EXPOSE_TESTING_API=1 pnpm build && EXPOSE_TESTING_API=1 pnpm exec next start -p ${PORT}`,
     reuseExistingServer: false,
     timeout: 120_000,
-    url: "http://127.0.0.1:4010",
+    url: BASE_URL,
   },
   workers: 1,
 });

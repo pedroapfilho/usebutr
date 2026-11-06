@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { solanaNamespace } from "../namespaces/svm";
 
 import type { FakeProvider } from "./fake-provider";
-import { createFakeProvider } from "./fake-provider";
+import { buildNamespaceAdapter, createFakeProvider } from "./fake-provider";
 
 // WalletConnect's CAIP-2 ids, which core's registry lists as aliases.
 // What the session calls each cluster, and what butr's accounts carry.
@@ -24,7 +24,7 @@ const buildAdapter = (
   provider: FakeProvider,
   chains: ReadonlyArray<string> = [MAINNET_ID],
 ): SvmAdapter =>
-  solanaNamespace.buildAdapter({
+  buildNamespaceAdapter(solanaNamespace, {
     chains,
     icon: "data:image/svg+xml;base64,Zm9v",
     id: "walletconnect-svm",
@@ -64,11 +64,9 @@ const unsignedTransaction = (versioned: boolean) =>
   ]);
 
 describe("solanaNamespace", () => {
-  it("declares the right CAIP prefix, platform, chains and methods", () => {
-    expect(solanaNamespace.caipPrefix).toBe("solana");
+  it("declares the right platform and methods", () => {
     expect(solanaNamespace.chainPlatform).toBe("svm");
-    expect(solanaNamespace.defaultChains).toEqual([MAINNET_ID]);
-    expect(solanaNamespace.defaultMethods).toEqual([
+    expect(solanaNamespace.methods).toEqual([
       "solana_signMessage",
       "solana_signTransaction",
       "solana_signAndSendTransaction",
@@ -149,6 +147,17 @@ describe("solanaNamespace", () => {
       signature: new Uint8Array([0, 0, 0]),
       signedMessage: new Uint8Array([1, 2, 3]),
     });
+  });
+
+  it("routes a call to the id the session approved the chain under", async () => {
+    const provider = createFakeProvider({
+      request: () => ({ signature: "111" }),
+      session: { namespaces: { solana: { accounts: [`solana:mainnet-beta:${SIGNER}`] } } },
+    });
+
+    await buildAdapter(provider, ["solana:mainnet-beta"]).signMessage?.(new Uint8Array([1]));
+
+    expect(provider.requests[0]?.chain).toBe("solana:mainnet-beta");
   });
 
   it("sendTx routes through solana_signAndSendTransaction and returns the signature", async () => {

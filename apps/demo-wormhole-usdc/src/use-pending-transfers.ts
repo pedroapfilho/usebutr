@@ -3,7 +3,7 @@ import { type Chain, Wormhole } from "@wormhole-foundation/sdk-connect";
 import { formatUnits } from "ethers";
 import { useCallback, useState } from "react";
 
-import { CHAIN_LIST, type ChainSpec, USDC_DECIMALS, findChainSpec } from "./chains";
+import { CHAIN_LIST, type ChainSpec, SOLANA, USDC_DECIMALS, findChainSpec } from "./chains";
 import {
   type DiscoveredBurn,
   EVM_LOOKBACK_BLOCKS,
@@ -109,11 +109,11 @@ const usePendingTransfers = (
         }
       }
 
-      const solanaUsdc = findChainSpec("Solana")?.usdc;
+      const solanaUsdc = findChainSpec(SOLANA)?.usdc;
 
       const activeSvmAtaUniversal =
         svmAddr !== undefined && svmAddr !== "" && solanaUsdc !== undefined && solanaUsdc !== ""
-          ? Wormhole.chainAddress("Solana", await deriveUsdcAta(svmAddr, solanaUsdc))
+          ? Wormhole.chainAddress(SOLANA, await deriveUsdcAta(svmAddr, solanaUsdc))
               .address.toUniversalAddress()
               .toString()
           : null;
@@ -140,7 +140,7 @@ const usePendingTransfers = (
             destAddress: message.to.address.toString(),
             destChain,
             destOwnedByActive:
-              destChain !== "Solana" ||
+              destChain !== SOLANA ||
               (activeSvmAtaUniversal !== null && recipientUniversal === activeSvmAtaUniversal),
             destSupported: findChainSpec(destChain) !== undefined,
             key: `${burn.sourceChain}:${burn.txid}`,

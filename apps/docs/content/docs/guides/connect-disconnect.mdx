@@ -116,7 +116,9 @@ const { disconnect, disconnectAll } = useWalletManager();
 ```
 
 Disconnecting one wallet leaves the rest of the pool intact and forgets that
-wallet, so it is not restored on the next load. The active wallet and the
+wallet, so it is not restored on the next load. Disconnecting the last live
+wallet also forgets every dormant persisted entry, the ones still waiting for
+their adapter or a retry. The active wallet and the
 platform's selection fall back to another connected wallet. `disconnectAll()`
 disconnects every wallet and forgets every persisted connection. Run any
 sign-out logic of your own (clearing auth tokens, say) right after calling it.

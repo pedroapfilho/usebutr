@@ -1,5 +1,4 @@
 import type { Connector } from "@usebutr/core";
-import { logWarn } from "@usebutr/core";
 import type { Eip1193Listener } from "@usebutr/evm";
 
 import type { UniversalProviderLike, WcNamespaceRequest } from "./loader";
@@ -9,10 +8,10 @@ type PairingRequest = Readonly<Record<string, WcNamespaceRequest>>;
 type SessionLifecycle = Pick<Connector, "connect"> & Required<Pick<Connector, "disconnect">>;
 
 type WalletConnectSession = {
-  /** `connect` / `disconnect` for one adapter of `namespace`. The first
-   *  `connect` pairs every namespace; the WC session ends only when the
+  /** `connect` / `disconnect` for the adapter `name` of `namespace`. The
+   *  first `connect` pairs every namespace; the WC session ends only when the
    *  last connected adapter disconnects. */
-  lifecycle: (namespace: string, label: string) => SessionLifecycle;
+  lifecycle: (namespace: string, name: string) => SessionLifecycle;
 };
 
 type CreateWalletConnectSessionInput = {
@@ -24,9 +23,9 @@ type CreateWalletConnectSessionInput = {
 
 /** Every request in a namespace the session does not carry fails at the
  *  relay, so the adapter refuses to report itself connected. */
-const missingNamespaceError = (namespace: string, label: string): Error =>
+const missingNamespaceError = (namespace: string, name: string): Error =>
   new Error(
-    `[butr/walletconnect] the WalletConnect session carries no "${namespace}" namespace, so ${label} requests cannot be routed. The wallet declined it at pairing time.`,
+    `[butr/walletconnect] the WalletConnect session carries no "${namespace}" namespace, so ${name} requests cannot be routed. The wallet declined it at pairing time.`,
   );
 
 /**
@@ -100,7 +99,7 @@ const createWalletConnectSession = ({
   };
 
   return {
-    lifecycle: (namespace, label) => {
+    lifecycle: (namespace, name) => {
       const member = Symbol(namespace);
 
       return {
@@ -113,7 +112,7 @@ const createWalletConnectSession = ({
             await ensurePaired();
 
             if (!hasNamespace(namespace)) {
-              throw missingNamespaceError(namespace, label);
+              throw missingNamespaceError(namespace, name);
             }
           }
 
@@ -133,37 +132,13 @@ const createWalletConnectSession = ({
             return;
           }
 
-          try {
-            await provider.disconnect();
-          } catch (error) {
-            logWarn("[butr/walletconnect] disconnect threw:", error);
-          }
+          await provider.disconnect();
         },
       };
     },
   };
 };
 
-/** Session for a namespace builder driven on its own, outside the
- *  factory: it pairs for the one namespace it serves. */
-const createSingleNamespaceSession = (input: {
-  chains: ReadonlyArray<string>;
-  events: ReadonlyArray<string>;
-  methods: ReadonlyArray<string>;
-  namespace: string;
-  provider: UniversalProviderLike;
-}): WalletConnectSession =>
-  createWalletConnectSession({
-    namespaces: {
-      [input.namespace]: {
-        chains: [...input.chains],
-        events: [...input.events],
-        methods: [...input.methods],
-      },
-    },
-    provider: input.provider,
-  });
-
 export type { PairingRequest, WalletConnectSession };
 
-export { createSingleNamespaceSession, createWalletConnectSession };
+export { createWalletConnectSession };

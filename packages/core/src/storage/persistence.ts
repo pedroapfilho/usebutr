@@ -44,8 +44,8 @@ type PersistedWalletState = WalletSnapshot & {
 
 /**
  * `save` receives the whole derived state after every change, so an
- * implementation never merges or diffs. A `load` rejection is reported
- * through `onStorageError` and treated as empty storage.
+ * implementation never merges or diffs. A `load` rejection reaches
+ * `onStorageError`, and nothing is saved over it that session.
  */
 type WalletPersistence = {
   load: () => Promise<PersistedWalletState>;

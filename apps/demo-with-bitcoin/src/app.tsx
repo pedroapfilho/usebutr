@@ -1,10 +1,13 @@
 import type { ConnectedWallet } from "@usebutr/core";
 import { bytesToHex, hexToBytes } from "@usebutr/core";
-import { useConnect, useSelectedWallet, useWalletManager } from "@usebutr/react";
+import {
+  useConnect,
+  useDiscoveredWallets,
+  useSelectedWallet,
+  useWalletManager,
+} from "@usebutr/react";
 import { networks } from "bitcoinjs-lib";
 import { useMemo, useState } from "react";
-
-import { useDiscoveredWallets } from "./wallet-provider";
 
 const NETWORK_BY_CHAIN_REF = new Map<string, typeof networks.bitcoin>([
   ["000000000019d6689c085ae165831e93", networks.bitcoin],

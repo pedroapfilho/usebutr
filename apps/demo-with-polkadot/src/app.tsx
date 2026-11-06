@@ -1,13 +1,16 @@
 import { MultiAddress, paseo } from "@polkadot-api/descriptors";
 import type { ConnectedWallet } from "@usebutr/core";
 import { bytesToHex } from "@usebutr/core";
-import { useConnect, useSelectedWallet, useWalletManager } from "@usebutr/react";
+import {
+  useConnect,
+  useDiscoveredWallets,
+  useSelectedWallet,
+  useWalletManager,
+} from "@usebutr/react";
 import { createClient } from "polkadot-api";
 import { connectInjectedExtension } from "polkadot-api/pjs-signer";
 import { getWsProvider } from "polkadot-api/ws";
 import { useEffect, useRef, useState } from "react";
-
-import { useDiscoveredWallets } from "./wallet-provider";
 
 const PASEO_WS = "wss://paseo.rpc.amforc.com";
 const PASEO_DECIMALS = 10;

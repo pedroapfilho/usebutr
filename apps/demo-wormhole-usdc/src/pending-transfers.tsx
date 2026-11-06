@@ -3,16 +3,9 @@ import { CircleTransfer } from "@wormhole-foundation/sdk-connect";
 import { useState } from "react";
 
 import { findChainSpec, getChainSpec } from "./chains";
+import { formatError, truncate } from "./format";
 import { type ResumableTransfer, usePendingTransfers } from "./use-pending-transfers";
-import { getWormhole, makeSigner } from "./wormhole";
-
-const ATTESTATION_TIMEOUT_MS = 10 * 60 * 1000;
-
-const formatError = (error: Error | string): string => {
-  return error instanceof Error ? error.message : error;
-};
-
-const truncate = (a: string): string => (a.length > 14 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a);
+import { ATTESTATION_TIMEOUT_MS, getWormhole, makeSigner } from "./wormhole";
 
 const chainLabel = (chain: string): string => findChainSpec(chain)?.label ?? chain;
 
@@ -56,7 +49,7 @@ const DestHint = ({
   if (!ownedByActive) {
     return (
       <p className="text-warning-foreground text-xs">
-        Wrong wallet: this transfer was sent to {truncate(recipient)}, which the active{" "}
+        Wrong wallet: this transfer was sent to {truncate(recipient, 8, 6)}, which the active{" "}
         {destPlatform?.toUpperCase() ?? ""} wallet doesn’t own. Switch to that account, then Scan
         again.
       </p>
@@ -180,7 +173,7 @@ const PendingTransfers = () => {
               <p className="text-foreground-primary font-mono text-sm">{item.amount} USDC</p>
             </div>
             <p className="text-foreground-muted font-mono text-xs break-all">
-              to {truncate(item.destAddress)}
+              to {truncate(item.destAddress, 8, 6)}
             </p>
             <a
               className="text-info-accent block font-mono text-xs break-all hover:underline"
@@ -188,7 +181,7 @@ const PendingTransfers = () => {
               rel="noreferrer noopener"
               target="_blank"
             >
-              {srcSpec.label} burn: {truncate(item.sourceTxid)}
+              {srcSpec.label} burn: {truncate(item.sourceTxid, 8, 6)}
             </a>
 
             {row.kind === "done" ? (
@@ -203,7 +196,7 @@ const PendingTransfers = () => {
                     rel="noreferrer noopener"
                     target="_blank"
                   >
-                    {destSpec.label} mint: {truncate(row.destTxHash)}
+                    {destSpec.label} mint: {truncate(row.destTxHash, 8, 6)}
                   </a>
                 ) : null}
                 <button

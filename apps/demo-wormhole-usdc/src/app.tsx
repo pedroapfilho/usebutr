@@ -3,12 +3,11 @@ import { type Chain, type Network, Wormhole, amount } from "@wormhole-foundation
 import { type ReactNode, useState } from "react";
 
 import { type ChainSpec, CHAIN_LIST, USDC_DECIMALS, getChainSpec } from "./chains";
+import { formatError } from "./format";
 import { PendingTransfers } from "./pending-transfers";
 import { type UsdcBalance, useUsdcBalance } from "./token-balance";
 import { WalletList } from "./wallet-list";
-import { type BridgeWallet, getWormhole, makeSigner } from "./wormhole";
-
-const ATTESTATION_TIMEOUT_MS = 10 * 60 * 1000;
+import { ATTESTATION_TIMEOUT_MS, type BridgeWallet, getWormhole, makeSigner } from "./wormhole";
 
 type CircleTransfer = Awaited<ReturnType<Wormhole<Network>["circleTransfer"]>>;
 
@@ -26,10 +25,6 @@ type Phase =
   | { destTxHash: string; kind: "complete"; sourceTxHash: string };
 
 type Transfer = { error: string | null; phase: Phase };
-
-const formatError = (e: Error | string): string => {
-  return e instanceof Error ? e.message : e;
-};
 
 const formatBalance = (b: UsdcBalance): string => {
   if (b.status === "loading" || b.status === "idle") {

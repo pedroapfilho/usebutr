@@ -11,36 +11,9 @@ export default defineConfig({
   ],
   overrides: [
     {
-      files: ["apps/demo-tanstack-start/src/components/**/*.tsx"],
-      rules: {
-        "filename-case": "off",
-      },
-    },
-    {
-      files: [
-        "apps/demo-vite/src/**/*.tsx",
-        "apps/demo-tanstack-start/src/**/*.tsx",
-        "apps/demo-with-viem/src/**/*.tsx",
-        "apps/demo-with-wagmi/src/**/*.tsx",
-        "apps/demo-with-solana-web3js/src/**/*.tsx",
-        "apps/demo-with-solana-kit/src/**/*.tsx",
-        "apps/demo-with-solana-wallet-adapter/src/**/*.tsx",
-        "apps/demo-with-gill/src/**/*.tsx",
-        "apps/demo-with-solana-framework-kit/src/**/*.tsx",
-        "apps/demo-with-sui/src/**/*.tsx",
-        "apps/demo-with-bitcoin/src/**/*.tsx",
-        "apps/demo-wormhole-usdc/src/**/*.tsx",
-        "apps/demo-with-polkadot/src/**/*.tsx",
-      ],
+      files: ["apps/demo-{vite,tanstack-start,with-*,wormhole-usdc}/src/**/*.tsx"],
       rules: {
         "no-img-element": "off",
-      },
-    },
-    {
-      files: ["apps/demo-expo-web/metro.config.js"],
-      rules: {
-        "no-require-imports": "off",
-        "prefer-node-protocol": "off",
       },
     },
     {

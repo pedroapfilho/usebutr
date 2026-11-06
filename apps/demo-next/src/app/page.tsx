@@ -7,13 +7,12 @@ import {
   useConnect,
   useConnectedWallets,
   useConnectionStatus,
+  useDiscoveredWallets,
   useWallet,
   useWalletManager,
 } from "@usebutr/react";
 import Image from "next/image";
 import { type ChangeEvent, type ReactNode, useState } from "react";
-
-import { useDiscoveredWallets } from "../wallet-provider";
 
 type SignState =
   | { kind: "idle" }

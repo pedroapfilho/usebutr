@@ -5,11 +5,12 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import { SearchDialog } from "@/components/search-dialog";
+import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   description:
     "Documentation for butr: multi-chain (EVM, Solana, Sui, Bitcoin, Polkadot) wallet management primitives for React.",
-  metadataBase: new URL("https://docs.usebutr.com"),
+  metadataBase: new URL(SITE_URL),
   openGraph: { siteName: "butr docs", type: "website", url: "/" },
   title: {
     default: "butr: multi-chain wallet management for React",

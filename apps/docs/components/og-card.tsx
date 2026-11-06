@@ -3,6 +3,8 @@ import { join } from "node:path";
 
 import { svgText } from "@repo/social-image";
 
+import { SITE_URL } from "@/lib/site";
+
 const logo = await readFile(join(process.cwd(), "public/butr-logo-light.svg"), "base64");
 const COLORS = { accent: "#fdd754", ink: "#171717", muted: "#525252", paper: "#ffffff" };
 
@@ -20,7 +22,7 @@ const OgCard = ({ description, title }: { description?: string; title: string })
       x: 72,
       y: 408,
     })}
-    {svgText("docs.usebutr.com", { color: COLORS.muted, size: 22, x: 72, y: 560 })}
+    {svgText(new URL(SITE_URL).host, { color: COLORS.muted, size: 22, x: 72, y: 560 })}
   </svg>
 );
 

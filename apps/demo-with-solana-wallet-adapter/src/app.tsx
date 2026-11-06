@@ -7,11 +7,15 @@ import {
 import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import type { ConnectedWallet } from "@usebutr/core";
 import { bytesToBase58 } from "@usebutr/core";
-import { useConnect, useSelectedWallet, useWalletManager } from "@usebutr/react";
+import {
+  useConnect,
+  useDiscoveredWallets,
+  useSelectedWallet,
+  useWalletManager,
+} from "@usebutr/react";
 import { useEffect, useMemo, useState } from "react";
 
 import { ButrAdapterBridge } from "./butr-adapter-bridge";
-import { useDiscoveredWallets } from "./wallet-provider";
 
 const DEVNET = "https://api.devnet.solana.com";
 const BURN_ADDRESS = new PublicKey("11111111111111111111111111111111");

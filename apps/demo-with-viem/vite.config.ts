@@ -8,6 +8,5 @@ export default defineConfig({
   server: {
     allowedHosts: [".localhost"],
     host: true,
-    port: 5175,
   },
 });

@@ -36,7 +36,6 @@
     "coverage/**",
     ".expo/**",
     ".output/**",
-    ".vinxi/**",
     "**/routeTree.gen.ts",
     "pnpm-lock.yaml",
     "apps/demo-with-polkadot/.papi/**",

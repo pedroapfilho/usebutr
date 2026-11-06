@@ -21,7 +21,7 @@ const Page = async ({ params }: PageProps) => {
   }
 
   const MDXContent = page.data.body;
-  const markdownUrl = `${page.url}.md`;
+  const markdownUrl = page.url === "/" ? "/index.md" : `${page.url}.md`;
   const githubUrl = `${GITHUB_DOCS_BASE}/${page.path}`;
 
   return (

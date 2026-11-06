@@ -1,20 +1,21 @@
 import type {
   Account,
   ChainBase,
+  ChainPlatform,
   Connector,
   TransactionOptions,
   WalletSigner,
 } from "@usebutr/core";
 import {
   buildAccount,
+  CHAIN_NAMESPACES,
+  CHAINS_BY_PLATFORM,
   createConnectorEmitter,
   createRoutedChainTarget,
   logWarn,
   resolveChain,
 } from "@usebutr/core";
 import type { Eip1193Listener, Eip1193Object, Eip1193Value } from "@usebutr/evm";
-
-import { createSingleNamespaceSession } from "../session";
 
 import type { NamespaceAdapterInput } from "./types";
 
@@ -42,18 +43,8 @@ const parseCaip10 = (caip10: string): { address: string; chainId: string } | nul
 };
 
 type CaipAdapterCoreInput = NamespaceAdapterInput & {
-  /** butr chain id → session chain id, where the two schemes differ. */
-  chainAliases?: ReadonlyMap<string, string>;
-  /** Chain when `chains` is empty. */
-  defaultChainId: string;
-  events: ReadonlyArray<string>;
-  /** The platform's chain registry, for chain names. */
-  knownChains: ReadonlyArray<ChainBase>;
-  /** How the platform reads in session errors: `Solana`, `Sui`, `Bitcoin`. */
-  label: string;
-  methods: ReadonlyArray<string>;
-  /** CAIP-2 prefix without its colon (`solana`, `sui`, `bip122`). */
-  namespace: string;
+  /** Picks the CAIP-2 namespace and the chain registry. */
+  platform: ChainPlatform;
 };
 
 type CaipConnector = Pick<Connector, "connect" | "getAccounts" | "icon" | "id" | "name"> &
@@ -83,35 +74,17 @@ type CaipAdapterCore = {
  * CAIP-10 accounts are the single source for both accounts and chains.
  */
 const createCaipAdapterCore = ({
-  chainAliases = new Map(),
-  chains: requestedChains,
-  defaultChainId,
-  events,
+  chains,
   icon,
   id,
-  knownChains,
-  label,
-  methods,
   name,
-  namespace,
+  platform,
   provider,
   session,
 }: CaipAdapterCoreInput): CaipAdapterCore => {
-  // The session speaks its own chain ids; butr's accounts and callers speak
-  // the registry's, so translate at this boundary only.
-  const toSessionId = (chainId: string) => chainAliases.get(chainId) ?? chainId;
-
-  const fromSessionId = new Map(
-    [...chainAliases].map(([butrId, sessionId]) => [sessionId, butrId]),
-  );
-
-  const toButrId = (sessionId: string) => fromSessionId.get(sessionId) ?? sessionId;
-  const chains = requestedChains.map(toSessionId);
-
-  const wc =
-    session ?? createSingleNamespaceSession({ chains, events, methods, namespace, provider });
-
-  let currentChainId = chains[0] ?? defaultChainId;
+  const namespace = CHAIN_NAMESPACES[platform];
+  const knownChains = CHAINS_BY_PLATFORM[platform];
+  let [currentChainId] = chains;
 
   const sessionAccounts = () => {
     const parsed: Array<{ address: string; chainId: string }> = [];
@@ -120,7 +93,7 @@ const createCaipAdapterCore = ({
       const account = parseCaip10(caip10);
 
       if (account === null) {
-        logWarn(`[butr/walletconnect] ignoring malformed CAIP-10 account "${caip10}"`);
+        logWarn(`WalletConnect: ignoring malformed CAIP-10 account "${caip10}"`);
       } else {
         parsed.push(account);
       }
@@ -130,7 +103,7 @@ const createCaipAdapterCore = ({
   };
 
   const accountsOn = (chainId: string): Array<Account> => {
-    const chain = resolveChain(toButrId(chainId), knownChains);
+    const chain = resolveChain(chainId, knownChains);
     const accounts: Array<Account> = [];
 
     for (const account of sessionAccounts()) {
@@ -143,13 +116,23 @@ const createCaipAdapterCore = ({
   };
 
   const target = createRoutedChainTarget({
-    advertised: () => sessionAccounts().map((account) => toButrId(account.chainId)),
-    current: () => toButrId(currentChainId),
-    namespace,
+    advertised: () => sessionAccounts().map((account) => account.chainId),
+    current: () => currentChainId,
+    platform,
     wallet: name,
   });
 
-  const resolveChainId = (chain?: ChainBase) => toSessionId(target.chain(chain));
+  // The target speaks registry ids; a call goes out under the id the session
+  // approved that chain by, which may be an alias.
+  const resolveChainId = (chain?: ChainBase) => {
+    const registryId = target.chain(chain);
+
+    return (
+      sessionAccounts().find(
+        (account) => resolveChain(account.chainId, knownChains).id === registryId,
+      )?.chainId ?? registryId
+    );
+  };
 
   const resolveTarget = (options?: TransactionOptions) => {
     const chainId = resolveChainId(options?.chain);
@@ -161,7 +144,7 @@ const createCaipAdapterCore = ({
   const emitter = createConnectorEmitter();
 
   const base: CaipConnector = {
-    ...wc.lifecycle(namespace, label),
+    ...session.lifecycle(namespace, name),
     // Accounts on other approved chains surface after `switchChain`: the
     // pool keeps one chain per wallet.
     getAccounts: () => Promise.resolve(accountsOn(currentChainId)),

@@ -62,7 +62,7 @@ const connectedBitcoin = async (
   hooks: BtcHooks = {},
   options: Partial<BitcoinLedgerOptions> = {},
 ): Promise<BitcoinAdapter> => {
-  const adapter = await createBitcoinLedgerAdapter({
+  const adapter = createBitcoinLedgerAdapter({
     accountCount: 3,
     btc: buildFakeBtcCtor(hooks),
     transport: buildFakeTransport().factory,
@@ -76,8 +76,8 @@ const connectedBitcoin = async (
 };
 
 describe("createBitcoinLedgerAdapter", () => {
-  it("defines signing only: no RPC, events or chain switch", async () => {
-    const adapter = await createBitcoinLedgerAdapter({
+  it("defines signing only: no RPC, events or chain switch", () => {
+    const adapter = createBitcoinLedgerAdapter({
       btc: buildFakeBtcCtor(),
       platform: "bitcoin",
       transport: buildFakeTransport().factory,
@@ -130,6 +130,21 @@ describe("createBitcoinLedgerAdapter", () => {
     expect(accounts).toEqual([buildAccount("1fakeaddr0", BITCOIN_CHAINS.testnet)]);
   });
 
+  it("derives the default path from the address format and the chain's coin type", async () => {
+    const seen: Array<string> = [];
+
+    await connectedBitcoin(
+      {
+        onGetWalletPublicKey: (path) => {
+          seen.push(path);
+        },
+      },
+      { accountCount: 1, addressFormat: "bech32m", chainId: BITCOIN_CHAINS.testnet.id },
+    );
+
+    expect(seen).toEqual(["86'/1'/0'/0/0"]);
+  });
+
   it("signMessage() returns a BIP-137 compact signature: header, then padded r and s", async () => {
     const signed: Array<string> = [];
 
@@ -172,8 +187,8 @@ describe("createBitcoinLedgerAdapter", () => {
     await expect(adapter.getSigner()).resolves.toMatchObject({ kind: "ledger-bitcoin" });
   });
 
-  it("createLedgerAdapter() dispatches platform bitcoin", async () => {
-    const adapter = await createLedgerAdapter({
+  it("createLedgerAdapter() dispatches platform bitcoin", () => {
+    const adapter = createLedgerAdapter({
       btc: buildFakeBtcCtor(),
       platform: "bitcoin",
       transport: buildFakeTransport().factory,
@@ -189,7 +204,7 @@ describeAdapterContract<BitcoinAdapter>({
   connect: async (addresses) => {
     const calls: Array<ObservedCall> = [];
 
-    const adapter = await createBitcoinLedgerAdapter({
+    const adapter = createBitcoinLedgerAdapter({
       accountCount: addresses.length,
       btc: buildFakeBtcCtor({
         onSignMessage: (path) => {

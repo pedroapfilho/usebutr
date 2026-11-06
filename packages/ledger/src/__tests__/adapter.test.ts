@@ -51,7 +51,7 @@ const buildFakeEthCtor = (hooks: EthHooks = {}): EthAppConstructor =>
 const connectedEvm = async (
   options: { accountCount?: number; hooks?: EthHooks } = {},
 ): Promise<EvmAdapter> => {
-  const adapter = await createEvmLedgerAdapter({
+  const adapter = createEvmLedgerAdapter({
     accountCount: options.accountCount,
     eth: buildFakeEthCtor(options.hooks),
     platform: "evm",
@@ -66,8 +66,8 @@ const connectedEvm = async (
 const hello = new TextEncoder().encode("hello");
 
 describe("createEvmLedgerAdapter", () => {
-  it("defines only what a device that signs without RPC can do", async () => {
-    const adapter = await createEvmLedgerAdapter({
+  it("defines only what a device that signs without RPC can do", () => {
+    const adapter = createEvmLedgerAdapter({
       eth: buildFakeEthCtor(),
       platform: "evm",
       transport: buildFakeTransport().factory,
@@ -111,7 +111,7 @@ describe("createEvmLedgerAdapter", () => {
   });
 
   it("reports accounts on the configured chain", async () => {
-    const onSepolia = await createEvmLedgerAdapter({
+    const onSepolia = createEvmLedgerAdapter({
       chainId: EVM_CHAINS.sepolia.id,
       eth: buildFakeEthCtor(),
       platform: "evm",
@@ -122,7 +122,7 @@ describe("createEvmLedgerAdapter", () => {
     const [account] = await onSepolia.getAccounts();
     expect(account?.chain).toEqual(EVM_CHAINS.sepolia);
 
-    const onAnvil = await createEvmLedgerAdapter({
+    const onAnvil = createEvmLedgerAdapter({
       chainId: "eip155:31337",
       eth: buildFakeEthCtor(),
       platform: "evm",
@@ -134,20 +134,20 @@ describe("createEvmLedgerAdapter", () => {
     expect(anvilAccount?.chain.name).toBe("eip155:31337");
   });
 
-  it("rejects a chainId from another namespace", async () => {
-    await expect(
+  it("refuses a chainId from another namespace", () => {
+    expect(() =>
       createEvmLedgerAdapter({
         chainId: SVM_CHAINS.mainnet.id,
         eth: buildFakeEthCtor(),
         platform: "evm",
       }),
-    ).rejects.toMatchObject({ kind: "ChainMismatch" });
+    ).toThrow(expect.objectContaining({ kind: "ChainMismatch" }));
   });
 
   it("rejects a silent connect instead of prompting", async () => {
     const fake = buildFakeTransport();
 
-    const adapter = await createEvmLedgerAdapter({
+    const adapter = createEvmLedgerAdapter({
       eth: buildFakeEthCtor(),
       platform: "evm",
       transport: fake.factory,
@@ -160,7 +160,7 @@ describe("createEvmLedgerAdapter", () => {
   it("disconnect() closes the transport and empties the accounts", async () => {
     const fake = buildFakeTransport();
 
-    const adapter = await createEvmLedgerAdapter({
+    const adapter = createEvmLedgerAdapter({
       eth: buildFakeEthCtor(),
       platform: "evm",
       transport: fake.factory,
@@ -176,7 +176,7 @@ describe("createEvmLedgerAdapter", () => {
   it("a failed connect closes the transport and leaves the adapter disconnected", async () => {
     const fake = buildFakeTransport();
 
-    const adapter = await createEvmLedgerAdapter({
+    const adapter = createEvmLedgerAdapter({
       eth: buildFakeEthCtor({
         getAddress: () => Promise.reject(new Error("Ledger device is locked")),
       }),
@@ -199,7 +199,7 @@ describe("createEvmLedgerAdapter", () => {
       release = resolve;
     });
 
-    const adapter = await createEvmLedgerAdapter({
+    const adapter = createEvmLedgerAdapter({
       eth: buildFakeEthCtor({
         getAddress: async () => {
           await pending;
@@ -223,7 +223,7 @@ describe("createEvmLedgerAdapter", () => {
   it("two concurrent connect() calls open exactly one transport", async () => {
     const fake = buildFakeTransport();
 
-    const adapter = await createEvmLedgerAdapter({
+    const adapter = createEvmLedgerAdapter({
       eth: buildFakeEthCtor(),
       platform: "evm",
       transport: fake.factory,
@@ -331,8 +331,8 @@ describe("loadPeer", () => {
 });
 
 describe("createLedgerAdapter", () => {
-  it("dispatches on platform", async () => {
-    const adapter = await createLedgerAdapter({
+  it("dispatches on platform", () => {
+    const adapter = createLedgerAdapter({
       eth: buildFakeEthCtor(),
       platform: "evm",
       transport: buildFakeTransport().factory,
@@ -348,7 +348,7 @@ describeAdapterContract<EvmAdapter>({
   connect: async (addresses) => {
     const calls: Array<ObservedCall> = [];
 
-    const adapter = await createEvmLedgerAdapter({
+    const adapter = createEvmLedgerAdapter({
       accountCount: addresses.length,
       eth: buildFakeEthCtor({
         onSign: (path) => {

@@ -1,15 +1,18 @@
 import type { WalletAdapter } from "@usebutr/core";
-import { assert, describe, expect, it, vi } from "vitest";
+import { afterEach, assert, describe, expect, it, vi } from "vitest";
 
 import { discoverInjectedBitcoinAdapter, discoverLegacyBitcoinAdapter } from "../injected";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("discoverInjectedBitcoinAdapter", () => {
   it("skips emission when no provider is present", () => {
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
 
-    const unsubscribe = discoverInjectedBitcoinAdapter(onAdapter, {
-      target: {},
-    });
+    vi.stubGlobal("window", {});
+    const unsubscribe = discoverInjectedBitcoinAdapter(onAdapter);
 
     unsubscribe();
     expect(onAdapter).not.toHaveBeenCalled();
@@ -26,9 +29,8 @@ describe("discoverInjectedBitcoinAdapter", () => {
       signPsbt: vi.fn(),
     };
 
-    const unsubscribe = discoverInjectedBitcoinAdapter(onAdapter, {
-      target: { unisat },
-    });
+    vi.stubGlobal("window", { unisat });
+    const unsubscribe = discoverInjectedBitcoinAdapter(onAdapter);
 
     unsubscribe();
     expect(onAdapter).toHaveBeenCalledTimes(1);
@@ -50,9 +52,8 @@ describe("discoverInjectedBitcoinAdapter", () => {
 
     const xverse = { request: vi.fn() };
 
-    const unsubscribe = discoverInjectedBitcoinAdapter(onAdapter, {
-      target: { unisat, XverseProviders: { BitcoinProvider: xverse } },
-    });
+    vi.stubGlobal("window", { unisat, XverseProviders: { BitcoinProvider: xverse } });
+    const unsubscribe = discoverInjectedBitcoinAdapter(onAdapter);
 
     unsubscribe();
     expect(onAdapter).toHaveBeenCalledTimes(2);
@@ -71,9 +72,8 @@ describe("discoverInjectedBitcoinAdapter", () => {
       signPsbt: vi.fn(),
     };
 
-    const unsubscribe = discoverInjectedBitcoinAdapter(onAdapter, {
-      target: { okxwallet: { bitcoin } },
-    });
+    vi.stubGlobal("window", { okxwallet: { bitcoin } });
+    const unsubscribe = discoverInjectedBitcoinAdapter(onAdapter);
 
     unsubscribe();
     expect(onAdapter.mock.calls.map((call) => call[0].id)).toEqual(["injected:bitcoin:okx"]);
@@ -90,20 +90,18 @@ describe("discoverInjectedBitcoinAdapter", () => {
       signPsbt: vi.fn(),
     };
 
-    const unsubscribe = discoverInjectedBitcoinAdapter(onAdapter, {
-      target: { okxwallet: { bitcoin: shared }, unisat: shared },
-    });
+    vi.stubGlobal("window", { okxwallet: { bitcoin: shared }, unisat: shared });
+    const unsubscribe = discoverInjectedBitcoinAdapter(onAdapter);
 
     unsubscribe();
     expect(onAdapter.mock.calls.map((call) => call[0].id)).toEqual(["injected:bitcoin:unisat"]);
   });
 
-  it("skips emission when the host is explicitly absent", () => {
+  it("skips emission outside a browser", () => {
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
 
-    const unsubscribe = discoverInjectedBitcoinAdapter(onAdapter, {
-      target: null,
-    });
+    vi.stubGlobal("window", undefined);
+    const unsubscribe = discoverInjectedBitcoinAdapter(onAdapter);
 
     unsubscribe();
     expect(onAdapter).not.toHaveBeenCalled();
@@ -120,7 +118,8 @@ const provider = () => ({
 describe("discoverLegacyBitcoinAdapter", () => {
   it("emits a legacy adapter from window.btc", () => {
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
-    const unsubscribe = discoverLegacyBitcoinAdapter(onAdapter, { target: { btc: provider() } });
+    vi.stubGlobal("window", { btc: provider() });
+    const unsubscribe = discoverLegacyBitcoinAdapter(onAdapter);
     unsubscribe();
     expect(onAdapter.mock.calls.map((call) => call[0].id)).toEqual(["injected:bitcoin:legacy"]);
     expect(onAdapter.mock.calls[0]?.[0].name).toBe("Browser Bitcoin wallet");
@@ -129,16 +128,17 @@ describe("discoverLegacyBitcoinAdapter", () => {
   it("skips window.btc when it aliases a named wallet", () => {
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
     const shared = provider();
-    discoverLegacyBitcoinAdapter(onAdapter, { target: { btc: shared, unisat: shared } });
-    discoverLegacyBitcoinAdapter(onAdapter, {
-      target: { btc: shared, okxwallet: { bitcoin: shared } },
-    });
+    vi.stubGlobal("window", { btc: shared, unisat: shared });
+    discoverLegacyBitcoinAdapter(onAdapter);
+    vi.stubGlobal("window", { btc: shared, okxwallet: { bitcoin: shared } });
+    discoverLegacyBitcoinAdapter(onAdapter);
     expect(onAdapter).not.toHaveBeenCalled();
   });
 
-  it("skips emission when the host is explicitly absent", () => {
+  it("skips emission outside a browser", () => {
     const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
-    discoverLegacyBitcoinAdapter(onAdapter, { target: null });
+    vi.stubGlobal("window", undefined);
+    discoverLegacyBitcoinAdapter(onAdapter);
     expect(onAdapter).not.toHaveBeenCalled();
   });
 });

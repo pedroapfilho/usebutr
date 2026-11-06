@@ -9,10 +9,10 @@ import type {
 } from "../storage/persistence";
 import { toStoredPoolEntry } from "../storage/wallet-state-codec";
 import type { ChainPlatform, ConnectedWallet } from "../types";
-import type { WalletState } from "../types/manager";
 import { isChainPlatform } from "../types/platform";
 
 import { createShadowAdapter } from "./shadow-adapter";
+import type { WalletState } from "./types";
 
 const storedEntries = (record: StoredPoolRecord): Array<[string, StoredPoolEntry]> =>
   Object.entries(record).flatMap(([connectorId, entry]) =>

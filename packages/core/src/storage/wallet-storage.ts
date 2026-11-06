@@ -30,22 +30,27 @@ const createWalletStorage = (options: WalletStorageOptions = {}): WalletPersiste
   };
 
   const written = new Map<string, string | null>();
+  /** Keys whose last read failed: what they hold is unknown, so a save must
+   *  not replace it with state that never saw it. */
+  const unreadable = new Set<string>();
 
   const read = async (key: string, slot: StorageSlot): Promise<string | null> => {
     try {
       const value = await drivers[slot].getItem(key);
       written.set(key, value);
+      unreadable.delete(key);
 
       return value;
     } catch (error) {
-      logWarn(`[butr] failed to read ${key} from storage:`, error);
+      unreadable.add(key);
+      logWarn(`failed to read ${key} from storage; it stays untouched:`, error);
 
       return null;
     }
   };
 
   const write = async (key: string, slot: StorageSlot, value: string | null) => {
-    if (written.get(key) === value) {
+    if (unreadable.has(key) || written.get(key) === value) {
       return;
     }
 

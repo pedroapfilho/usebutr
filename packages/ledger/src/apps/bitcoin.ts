@@ -1,14 +1,19 @@
 import type { BitcoinAdapter } from "@usebutr/core";
-import { BITCOIN_CHAINS, BITCOIN_CHAINS_LIST, bytesToHex } from "@usebutr/core";
+import { BITCOIN_CHAINS, bytesToHex, DEFAULT_CHAINS } from "@usebutr/core";
 
 import type { LedgerBaseOptions, TransportLike } from "../adapter-core";
 import { createLedgerAdapterCore, isClassWith, loadPeer, rsBytes } from "../adapter-core";
 
-/**
- * Mirrors `@ledgerhq/hw-app-btc`'s `AddressFormat`. Each maps to a BIP path
- * convention: legacy 44', p2sh 49', bech32 84', bech32m 86'.
- */
+/** Mirrors `@ledgerhq/hw-app-btc`'s `AddressFormat`. */
 type BitcoinAddressFormat = "legacy" | "p2sh" | "bech32" | "bech32m";
+
+/** The BIP-44/49/84/86 purpose each format derives under. */
+const PURPOSES: Readonly<Record<BitcoinAddressFormat, number>> = {
+  bech32: 84,
+  bech32m: 86,
+  legacy: 44,
+  p2sh: 49,
+};
 
 type BitcoinSignPsbtOptions = {
   /** BIP-32 account-level path, e.g. `"84'/0'/0'"`. */
@@ -40,11 +45,11 @@ type BtcAppLike = {
 type BtcAppConstructor = new (args: { currency?: string; transport: TransportLike }) => BtcAppLike;
 
 type BitcoinLedgerOptions = LedgerBaseOptions & {
-  /** Must agree with `derivationPathPrefix` per BIP convention; the device
-   *  errors when they disagree. Default: `"bech32"`. */
+  /** The default `derivationPathPrefix` follows it; a custom prefix must
+   *  agree with it, or the device errors. Default: `"bech32"`. */
   addressFormat?: BitcoinAddressFormat;
-  /** DI override for the app class (tests). Default: a dynamic import of
-   *  `@ledgerhq/hw-app-btc`. */
+  /** The app class, for an app that already imports it. Default: a dynamic
+   *  import of `@ledgerhq/hw-app-btc`. */
   btc?: BtcAppConstructor;
   platform: "bitcoin";
 };
@@ -55,23 +60,20 @@ const COMPRESSED_KEY_HEADER = 31;
 
 /**
  * Un-paired until `connect()`, when the browser asks for WebUSB access and
- * the user opens the Bitcoin app. Testnet needs the Bitcoin Test app, a
- * `1'` coin type and `chainId: BITCOIN_CHAINS.testnet.id`.
+ * the user opens the Bitcoin app. Testnet needs the Bitcoin Test app and
+ * `chainId: BITCOIN_CHAINS.testnet.id`; the default path follows the chain.
  */
-const createBitcoinLedgerAdapter = async (
-  options: BitcoinLedgerOptions,
-): Promise<BitcoinAdapter> => {
+const createBitcoinLedgerAdapter = (options: BitcoinLedgerOptions): BitcoinAdapter => {
   const addressFormat = options.addressFormat ?? "bech32";
+  const mainnet = (options.chainId ?? DEFAULT_CHAINS.bitcoin.id) === BITCOIN_CHAINS.mainnet.id;
 
-  const core = await createLedgerAdapterCore<BtcAppLike>(options, {
+  const core = createLedgerAdapterCore<BtcAppLike>(options, {
     addressAt: async (btc, path) => {
       const { bitcoinAddress } = await btc.getWalletPublicKey(path, { format: addressFormat });
 
       return bitcoinAddress;
     },
-    chains: BITCOIN_CHAINS_LIST,
-    defaultChain: BITCOIN_CHAINS.mainnet,
-    defaultPathPrefix: "84'/0'/0'/0",
+    defaultPathPrefix: `${PURPOSES[addressFormat]}'/${mainnet ? 0 : 1}'/0'/0`,
     hardenedIndex: false,
     loadApp: async () => {
       const Btc =
@@ -84,6 +86,7 @@ const createBitcoinLedgerAdapter = async (
 
       return (transport) => new Btc({ currency: "bitcoin", transport });
     },
+    platform: "bitcoin",
     signer: (app) => ({ app, kind: "ledger-bitcoin" }),
   });
 

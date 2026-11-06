@@ -1,9 +1,8 @@
 import type { SvmAdapter, WalletAdapter } from "@usebutr/core";
-import { bytesToBase58, SVM_CHAINS, SVM_CHAINS_LIST } from "@usebutr/core";
+import { bytesToBase58 } from "@usebutr/core";
 import {
   createWalletStandardCore,
   discoverWalletStandard,
-  getFeature,
   slugify,
 } from "@usebutr/wallet-standard-shared";
 import type {
@@ -37,16 +36,11 @@ const firstOutput = <Output>(outputs: ReadonlyArray<Output>, method: string): Ou
  */
 const buildSvmAdapter = (
   wallet: WalletStandardWallet,
-  /** Discovery passes this so a Wallet Standard `unregister` tears down the
-   *  connected pool entry. */
   registerDisconnector?: (emit: () => void) => void,
 ): SvmAdapter | null => {
   const core = createWalletStandardCore({
-    chains: SVM_CHAINS_LIST,
     id: slugify("svm", wallet.name),
-    label: "Solana",
-    namespace: "solana",
-    preferredChainIds: [SVM_CHAINS.mainnet.id],
+    platform: "svm",
     registerDisconnector,
     trackChainChanges: true,
     wallet,
@@ -56,35 +50,29 @@ const buildSvmAdapter = (
     return null;
   }
 
-  const signAndSend = getFeature<SolanaSignAndSendTransactionFeature>(
-    wallet,
+  const signAndSend = core.feature<SolanaSignAndSendTransactionFeature>(
     "solana:signAndSendTransaction",
     "signAndSendTransaction",
   );
 
-  const signMessage = getFeature<SolanaSignMessageFeature>(
-    wallet,
-    "solana:signMessage",
-    "signMessage",
-  );
+  const signMessage = core.feature<SolanaSignMessageFeature>("solana:signMessage", "signMessage");
 
-  const signTransaction = getFeature<SolanaSignTransactionFeature>(
-    wallet,
+  const signTransaction = core.feature<SolanaSignTransactionFeature>(
     "solana:signTransaction",
     "signTransaction",
   );
 
-  const signIn = getFeature<SolanaSignInFeature>(wallet, "solana:signIn", "signIn");
+  const signIn = core.feature<SolanaSignInFeature>("solana:signIn", "signIn");
 
   return {
     ...core.base,
     chainPlatform: "svm",
     ...(signAndSend !== undefined && {
       async sendTx(tx, options) {
-        const { account, chain } = core.resolveTarget("solana:signAndSendTransaction", options);
+        const { account, chain } = signAndSend.target(options);
 
         const output = firstOutput(
-          await signAndSend.signAndSendTransaction({
+          await signAndSend.call.signAndSendTransaction({
             account,
             chain,
             transaction: tx,
@@ -97,10 +85,10 @@ const buildSvmAdapter = (
     }),
     ...(signMessage !== undefined && {
       async signMessage(message, options) {
-        const { account } = core.resolveTarget("solana:signMessage", options);
+        const { account } = signMessage.target(options);
 
         const output = firstOutput(
-          await signMessage.signMessage({
+          await signMessage.call.signMessage({
             account,
             message,
           }),
@@ -112,10 +100,10 @@ const buildSvmAdapter = (
     }),
     ...(signTransaction !== undefined && {
       async signTransaction(tx, options) {
-        const { account, chain } = core.resolveTarget("solana:signTransaction", options);
+        const { account, chain } = signTransaction.target(options);
 
         const output = firstOutput(
-          await signTransaction.signTransaction({
+          await signTransaction.call.signTransaction({
             account,
             chain,
             transaction: tx,
@@ -128,7 +116,7 @@ const buildSvmAdapter = (
     }),
     ...(signIn !== undefined && {
       async signIn(input) {
-        const output = firstOutput(await signIn.signIn(input), "signIn");
+        const output = firstOutput(await signIn.call.signIn(input), "signIn");
 
         return {
           account: core.toAccount(output.account),
@@ -142,8 +130,8 @@ const buildSvmAdapter = (
 
 /**
  * Requires the optional `@wallet-standard/app` peer dep; without it SVM
- * discovery silently does nothing. The returned unsubscribe is safe to call
- * before the dynamic import has resolved.
+ * discovery logs one warning and finds nothing. The returned unsubscribe is
+ * safe to call before the dynamic import has resolved.
  */
 const discoverSvmAdapters = (
   onAdapter: (adapter: WalletAdapter) => void,

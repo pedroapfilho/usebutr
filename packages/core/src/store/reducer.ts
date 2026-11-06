@@ -6,11 +6,11 @@ import type {
 import { toStoredPoolEntry } from "../storage/wallet-state-codec";
 import type { Account, ChainPlatform, ConnectedWallet, WalletAdapter } from "../types";
 import type { ConnectionError } from "../types/errors";
-import type { WalletState } from "../types/manager";
 import { accountsEqual } from "../wallet-equal";
 
 import { applyStoredSelection, snapshotState, storedEntries } from "./persisted-state";
 import { isShadowAdapter } from "./shadow-adapter";
+import type { WalletState } from "./types";
 
 /** The store's state: `WalletState` plus what only the reducer reads. */
 type StoreState = WalletState & {

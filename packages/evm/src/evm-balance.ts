@@ -1,10 +1,11 @@
-import { hexToBytes } from "@usebutr/core";
+import type { Balance } from "@usebutr/core";
+import { buildBalance, hexToBytes } from "@usebutr/core";
 
 import type { Eip1193Provider } from "./eip1193";
 import { requestString } from "./eip1193";
 
 const HEX_PREFIX = "0x";
-const ETH_DECIMALS = 18n;
+const ETH_DECIMALS = 18;
 const ERC20_BALANCE_OF_SELECTOR = "0x70a08231";
 const ERC20_DECIMALS_SELECTOR = "0x313ce567";
 const ERC20_SYMBOL_SELECTOR = "0x95d89b41";
@@ -18,25 +19,7 @@ const requireHex = (hex: string | null, label: string): string => {
   return hex;
 };
 
-const formatUnits = (raw: bigint, decimals: number): string => {
-  if (decimals === 0) {
-    return raw.toString();
-  }
-
-  const unit = 10n ** BigInt(decimals);
-  const integer = raw / unit;
-  const remainder = raw % unit;
-
-  if (remainder === 0n) {
-    return integer.toString();
-  }
-
-  const fraction = remainder.toString().padStart(decimals, "0").replace(/0+$/v, "");
-
-  return `${integer}.${fraction}`;
-};
-
-const formatEther = (wei: bigint): string => formatUnits(wei, Number(ETH_DECIMALS));
+const formatEther = (wei: bigint): string => buildBalance(wei, ETH_DECIMALS, "ETH").formatted;
 
 const padAddressForCall = (address: string): string =>
   address.replace(/^0x/v, "").toLowerCase().padStart(64, "0");
@@ -71,21 +54,14 @@ const readEvmBalance = async (
   provider: Eip1193Provider,
   address: string,
   tokenAddress?: string,
-) => {
+): Promise<Balance> => {
   if (tokenAddress === undefined || tokenAddress === "") {
     const balanceHex = await requestString(provider, {
       method: "eth_getBalance",
       params: [address, "latest"],
     });
 
-    const value = BigInt(requireHex(balanceHex, "eth_getBalance"));
-
-    return {
-      decimals: Number(ETH_DECIMALS),
-      formatted: formatEther(value),
-      symbol: "ETH",
-      value,
-    };
+    return buildBalance(BigInt(requireHex(balanceHex, "eth_getBalance")), ETH_DECIMALS, "ETH");
   }
 
   const [balanceHex, decimalsHex, symbolHex] = await Promise.all([
@@ -109,12 +85,7 @@ const readEvmBalance = async (
   const value = BigInt(requireHex(balanceHex, "balanceOf()"));
   const decimals = Number(BigInt(requireHex(decimalsHex, "decimals()")));
 
-  return {
-    decimals,
-    formatted: formatUnits(value, decimals),
-    symbol: decodeAbiString(symbolHex ?? ""),
-    value,
-  };
+  return buildBalance(value, decimals, decodeAbiString(symbolHex ?? ""));
 };
 
 export { formatEther, readEvmBalance };

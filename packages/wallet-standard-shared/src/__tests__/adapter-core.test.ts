@@ -1,5 +1,5 @@
 import type { ChainBase, ConnectorEvent } from "@usebutr/core";
-import { buildAccount, SVM_CHAINS, SVM_CHAINS_LIST } from "@usebutr/core";
+import { buildAccount, SVM_CHAINS } from "@usebutr/core";
 import { describe, expect, it, vi } from "vitest";
 
 import type { WalletStandardCore } from "../adapter-core";
@@ -44,7 +44,11 @@ const buildWallet = (overrides: WalletOverrides = {}): WalletStandardWallet => (
   name: "Mock Solana Wallet",
   version: "1.0.0",
   ...overrides,
-  features: { "standard:connect": buildConnectFeature(), ...overrides.features },
+  features: {
+    "solana:signMessage": { signMessage: vi.fn() },
+    "standard:connect": buildConnectFeature(),
+    ...overrides.features,
+  },
 });
 
 /** A `standard:events` feature plus a handle that drives its `change`
@@ -100,11 +104,8 @@ const buildCore = (
   overrides: CoreOverrides = {},
 ): WalletStandardCore | null =>
   createWalletStandardCore({
-    chains: SVM_CHAINS_LIST,
     id: "wallet-standard:svm-mock",
-    label: "Solana",
-    namespace: "solana",
-    preferredChainIds: ["solana:mainnet"],
+    platform: "svm",
     trackChainChanges: true,
     wallet,
     ...overrides,
@@ -134,6 +135,13 @@ const present = <T>(value: T | undefined, name: string): T => {
 
   return value;
 };
+
+/** The call target of `solana:signMessage`, which every test wallet has. */
+const signTarget = (core: WalletStandardCore) =>
+  present(
+    core.feature<{ signMessage: () => void }>("solana:signMessage", "signMessage"),
+    "signMessage",
+  ).target;
 
 const subscribeTo = (core: WalletStandardCore) => present(core.base.subscribe, "subscribe");
 const switchChainOf = (core: WalletStandardCore) => present(core.base.switchChain, "switchChain");
@@ -214,13 +222,9 @@ describe("createWalletStandardCore chain resolution", () => {
 
   it("routes a registry chain to the alias the wallet advertises", () => {
     const core = coreFor({ chains: ["solana:mainnet-beta", "solana:devnet"] });
-    expect(core.resolveTarget("solana:signMessage").chain).toBe("solana:mainnet-beta");
-    expect(core.resolveTarget("solana:signMessage", { chain: SVM_CHAINS.mainnet }).chain).toBe(
-      "solana:mainnet-beta",
-    );
-    expect(core.resolveTarget("solana:signMessage", { chain: SVM_CHAINS.devnet }).chain).toBe(
-      "solana:devnet",
-    );
+    expect(signTarget(core)().chain).toBe("solana:mainnet-beta");
+    expect(signTarget(core)({ chain: SVM_CHAINS.mainnet }).chain).toBe("solana:mainnet-beta");
+    expect(signTarget(core)({ chain: SVM_CHAINS.devnet }).chain).toBe("solana:devnet");
   });
 });
 
@@ -286,8 +290,7 @@ describe("createWalletStandardCore disconnect", () => {
     expect(coreFor().base.disconnect).toBeUndefined();
   });
 
-  it("swallows a throwing standard:disconnect and warns", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  it("passes a throwing standard:disconnect through for the manager to report", async () => {
     const failure = new Error("wallet locked");
 
     const disconnectFeature: StandardDisconnectFeature = {
@@ -295,9 +298,7 @@ describe("createWalletStandardCore disconnect", () => {
     };
 
     const core = coreFor({ features: { "standard:disconnect": disconnectFeature } });
-    await expect(present(core.base.disconnect, "disconnect")()).resolves.toBeUndefined();
-    expect(warn).toHaveBeenCalledWith("[butr] Solana Wallet Standard disconnect threw:", failure);
-    warn.mockRestore();
+    await expect(present(core.base.disconnect, "disconnect")()).rejects.toBe(failure);
   });
 });
 
@@ -344,14 +345,14 @@ describe("createWalletStandardCore switchChain", () => {
     await switchChainOf(core)(SVM_CHAINS.devnet);
     await switchChainOf(core)(SVM_CHAINS.mainnet);
     expect(core.currentChain()).toBe(SVM_CHAINS.mainnet);
-    expect(core.resolveTarget("solana:signMessage").chain).toBe("solana:mainnet-beta");
+    expect(signTarget(core)().chain).toBe("solana:mainnet-beta");
   });
 
   it("re-points the current chain, and later reads, on success", async () => {
     const core = coreFor({ chains: ["solana:mainnet", "solana:devnet"] });
     await switchChainOf(core)(SVM_CHAINS.devnet);
     expect(core.currentChain()).toBe(SVM_CHAINS.devnet);
-    expect(core.resolveTarget("solana:signMessage").chain).toBe("solana:devnet");
+    expect(signTarget(core)().chain).toBe("solana:devnet");
     await expect(core.base.getAccounts()).resolves.toEqual([
       buildAccount("So1Address1", SVM_CHAINS.devnet),
     ]);
@@ -494,8 +495,8 @@ describe("createWalletStandardCore scoped targets", () => {
     await expect(core.base.getAccounts()).resolves.toEqual([
       buildAccount("MAIN", SVM_CHAINS.mainnet),
     ]);
-    expect(core.resolveTarget("solana:signMessage").account).toBe(mainnet);
-    expect(core.resolveTarget("solana:signMessage", { chain: SVM_CHAINS.devnet })).toEqual({
+    expect(signTarget(core)().account).toBe(mainnet);
+    expect(signTarget(core)({ chain: SVM_CHAINS.devnet })).toEqual({
       account: devnet,
       chain: "solana:devnet",
     });
@@ -503,7 +504,7 @@ describe("createWalletStandardCore scoped targets", () => {
     await expect(core.base.getAccounts()).resolves.toEqual([
       buildAccount("DEV", SVM_CHAINS.devnet),
     ]);
-    expect(core.resolveTarget("solana:signMessage").account).toBe(devnet);
+    expect(signTarget(core)().account).toBe(devnet);
   });
 
   it("rejects an explicitly requested account on an unsupported chain", () => {
@@ -513,13 +514,13 @@ describe("createWalletStandardCore scoped targets", () => {
     });
 
     expect(() =>
-      core.resolveTarget("solana:signMessage", {
+      signTarget(core)({
         account: buildAccount("MAIN", SVM_CHAINS.mainnet),
         chain: SVM_CHAINS.devnet,
       }),
     ).toThrow(expect.objectContaining({ kind: "AccountNotExposed" }));
     expect(() =>
-      core.resolveTarget("solana:signMessage", {
+      signTarget(core)({
         account: buildAccount("SUI", SVM_CHAINS.mainnet),
       }),
     ).toThrow(expect.objectContaining({ kind: "AccountNotExposed" }));
@@ -529,7 +530,7 @@ describe("createWalletStandardCore scoped targets", () => {
     const alias = buildWalletAccount("ALIAS", ["solana:mainnet-beta"]);
     const core = coreFor({ accounts: [alias], chains: ["solana:mainnet-beta"] });
     expect(
-      core.resolveTarget("solana:signMessage", {
+      signTarget(core)({
         account: buildAccount("ALIAS", SVM_CHAINS.mainnet),
         chain: { ...SVM_CHAINS.mainnet, id: "solana:mainnet-beta" },
       }),
@@ -539,9 +540,9 @@ describe("createWalletStandardCore scoped targets", () => {
   it("selects only accounts that support the operation and rejects an explicit unsupported account", () => {
     const unsupported = { ...mainnet, address: "NO_FEATURE", features: [] };
     const core = coreFor({ accounts: [unsupported, mainnet] });
-    expect(core.resolveTarget("solana:signMessage").account).toBe(mainnet);
+    expect(signTarget(core)().account).toBe(mainnet);
     expect(() =>
-      core.resolveTarget("solana:signMessage", {
+      signTarget(core)({
         account: buildAccount("NO_FEATURE", SVM_CHAINS.mainnet),
       }),
     ).toThrow(expect.objectContaining({ kind: "AccountNotExposed" }));

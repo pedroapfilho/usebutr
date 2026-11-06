@@ -28,6 +28,20 @@ type Balance = {
   value: bigint;
 };
 
+/** `value` in base units: 1500000000n at 9 decimals formats as "1.5". */
+const buildBalance = (value: bigint, decimals: number, symbol: string): Balance => {
+  const unit = 10n ** BigInt(decimals);
+  const fraction = (value % unit).toString().padStart(decimals, "0").replace(/0+$/v, "");
+  const integer = (value / unit).toString();
+
+  return {
+    decimals,
+    formatted: fraction === "" ? integer : `${integer}.${fraction}`,
+    symbol,
+    value,
+  };
+};
+
 export type { Account, Balance };
 
-export { buildAccount };
+export { buildAccount, buildBalance };

@@ -14,6 +14,7 @@ import { EMPTY_PERSISTED, toStoredPoolEntry } from "../wallet-state-codec";
 import { createWalletStorage } from "../wallet-storage";
 
 const metamask = toStoredPoolEntry(walletOf(evmAdapter("metamask")));
+const phantom = toStoredPoolEntry(walletOf(evmAdapter("phantom")));
 
 const connectedState: PersistedWalletState = {
   activeConnectorId: "metamask",
@@ -134,17 +135,22 @@ describe("createWalletStorage", () => {
     expect(JSON.parse(persistent.entries.get("test-pool") ?? "")).toEqual({ metamask });
   });
 
-  it("treats a driver that throws on read as empty", async () => {
+  it("loads an unreadable key as empty and never overwrites it", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const persistent = createSyncDriver();
+    persistent.entries.set("test-pool", JSON.stringify({ metamask }));
     persistent.getItem = () => {
       throw new Error("denied");
     };
 
     const { storage } = setup({ persistent });
+    const loaded = await storage.load();
 
-    expect(await storage.load()).toEqual(EMPTY_PERSISTED);
+    expect(loaded).toEqual(EMPTY_PERSISTED);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("failed to read"), expect.any(Error));
+
+    await storage.save({ ...loaded, pool: { phantom } });
+    expect(JSON.parse(persistent.entries.get("test-pool") ?? "")).toEqual({ metamask });
   });
 
   it("rejects a failed write and retries it on the next save", async () => {

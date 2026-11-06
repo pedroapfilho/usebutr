@@ -35,7 +35,7 @@ const fromAdapters =
           onAdapter(adapter);
         }
       } catch (error) {
-        logWarn("[butr] fromAdapters: adapters failed to load:", error);
+        logWarn("fromAdapters: adapters failed to load:", error);
       }
     })();
 

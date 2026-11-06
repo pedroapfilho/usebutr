@@ -3,6 +3,7 @@ import { vi } from "vitest";
 import { EVM_CHAINS, SVM_CHAINS } from "../chains";
 import type { PersistedWalletState, StorageDriver } from "../storage/persistence";
 import { EMPTY_PERSISTED } from "../storage/wallet-state-codec";
+import type { WalletManagerConfig } from "../store";
 import type {
   Account,
   ConnectedWallet,
@@ -10,7 +11,6 @@ import type {
   EvmAdapter,
   SvmAdapter,
   WalletAdapter,
-  WalletManagerConfig,
 } from "../types";
 import { buildAccount } from "../types";
 import type { WalletSource } from "../wallet-source";

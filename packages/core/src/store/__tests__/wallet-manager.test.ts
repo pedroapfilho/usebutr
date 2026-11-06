@@ -14,9 +14,10 @@ import {
 } from "../../__tests__/helpers";
 import { EVM_CHAINS, POLKADOT_CHAINS } from "../../chains";
 import type { WalletPersistence } from "../../storage/persistence";
-import type { Account, PolkadotAdapter, WalletAdapter, WalletManagerConfig } from "../../types";
+import type { Account, PolkadotAdapter, WalletAdapter } from "../../types";
 import { buildAccount, ConnectionError } from "../../types";
 import type { WalletSource } from "../../wallet-source";
+import type { WalletManagerConfig } from "../types";
 import { createWalletManager } from "../wallet-manager";
 
 type Setup = {
@@ -518,6 +519,22 @@ describe("createWalletManager", () => {
         kind: "NotConnected",
       });
       expect(manager.getState().pool.get("metamask")).toBe(wallet);
+    });
+
+    it("requestAccounts rejects a declined picker as a typed ConnectionError", async () => {
+      const declined = Object.assign(new Error("User rejected the request."), { code: 4001 });
+
+      const adapter = evmAdapter("metamask", {
+        requestAccounts: () => Promise.reject(declined),
+      });
+
+      const { manager } = await startManager({ adapters: [adapter] });
+      await manager.connect("metamask");
+
+      await expect(manager.requestAccounts("metamask")).rejects.toMatchObject({
+        cause: declined,
+        kind: "UserRejected",
+      });
     });
 
     it("requestAccounts is a no-op for a wallet without it", async () => {

@@ -1,8 +1,6 @@
-import type { WalletAdapter } from "@usebutr/core";
+import type { WalletSource } from "@usebutr/core";
 
 import { buildInjectedPolkadotAdapter } from "./adapter";
-import type { InjectedWindow } from "./injected-web3";
-import { readInjectedWindow } from "./injected-web3";
 
 const knownDisplayNameFor = (key: string): string | undefined => {
   switch (key) {
@@ -39,28 +37,16 @@ const displayNameFor = (key: string): string =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 
-type InjectedPolkadotDiscoveryOptions = {
-  /** Poll schedule (ms offsets) for late-injecting extensions. Defaults
-   *  to a few short polls; pass `[]` in tests for a single sync read. */
-  pollMs?: ReadonlyArray<number>;
-  /** Override the global host (tests, iframes). */
-  target?: InjectedWindow | null;
-};
-
-const DEFAULT_POLLS: ReadonlyArray<number> = [250, 750];
+/** Extensions inject at different points during page load, so discovery
+ *  reads `window.injectedWeb3` now and again after these delays (ms). */
+const RESCAN_DELAYS: ReadonlyArray<number> = [250, 750];
 
 /**
  * Adapters are built without calling `enable()`, which would raise the
- * extension's authorization prompt at discovery time. Extensions inject at
- * different points during page load, hence the poll schedule.
+ * extension's authorization prompt at discovery time.
  */
-const discoverInjectedPolkadotAdapters = (
-  onAdapter: (adapter: WalletAdapter) => void,
-  options: InjectedPolkadotDiscoveryOptions = {},
-): (() => void) => {
-  const polls = options.pollMs ?? DEFAULT_POLLS;
+const discoverInjectedPolkadotAdapters: WalletSource = (onAdapter) => {
   const seen = new Set<string>();
-  const timers: Array<ReturnType<typeof setTimeout>> = [];
   let cancelled = false;
 
   const scan = () => {
@@ -68,8 +54,7 @@ const discoverInjectedPolkadotAdapters = (
       return;
     }
 
-    const host = readInjectedWindow(options.target);
-    const registry = host?.injectedWeb3;
+    const registry = typeof window === "undefined" ? undefined : window.injectedWeb3;
 
     if (!registry) {
       return;
@@ -86,14 +71,7 @@ const discoverInjectedPolkadotAdapters = (
   };
 
   scan();
-
-  for (const offset of polls) {
-    if (offset === 0) {
-      continue;
-    }
-
-    timers.push(setTimeout(scan, offset));
-  }
+  const timers = RESCAN_DELAYS.map((delay) => setTimeout(scan, delay));
 
   return () => {
     cancelled = true;
@@ -103,7 +81,5 @@ const discoverInjectedPolkadotAdapters = (
     }
   };
 };
-
-export type { InjectedPolkadotDiscoveryOptions };
 
 export { discoverInjectedPolkadotAdapters };

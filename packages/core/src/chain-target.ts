@@ -1,13 +1,18 @@
+import { CHAINS_BY_PLATFORM } from "./chains";
 import type { Account } from "./types/account";
 import type { ChainBase } from "./types/chain";
+import { resolveChain } from "./types/chain";
 import { ConnectionError } from "./types/errors";
+import type { ChainPlatform } from "./types/platform";
+import { CHAIN_NAMESPACES } from "./types/platform";
 
 /** An exposed address, or a transport's account record that carries one. */
 type ExposedAccount = string | { readonly address: string };
 
 type ChainTargetInput = {
-  /** CAIP-2 namespace the transport speaks: `eip155`, `solana`, `bip122`. */
-  namespace: string;
+  /** The platform the transport speaks; its chains are in that platform's
+   *  CAIP-2 namespace. */
+  platform: ChainPlatform;
   /** The wallet's name, for error messages. */
   wallet: string;
 };
@@ -36,9 +41,10 @@ type ChainTarget<Reach> = AccountTarget & {
 
 type RoutedChainTargetInput = ChainTargetInput & {
   /** CAIP-2 ids a call can name: the chains a Wallet Standard wallet
-   *  advertises, or the chains a WalletConnect session approved. */
+   *  advertises, or the chains a WalletConnect session approved. Aliases
+   *  count as the registry chain they name. */
   advertised: () => ReadonlyArray<string>;
-  /** The chain a call without `chain` goes to. */
+  /** The chain a call without `chain` goes to, by id or alias. */
   current: () => string;
 };
 
@@ -60,21 +66,28 @@ type FixedChainTargetInput = ChainTargetInput & {
 const mismatch = (message: string, cause?: unknown) =>
   new ConnectionError("ChainMismatch", message, cause === undefined ? undefined : { cause });
 
-const inNamespace = ({ namespace, wallet }: ChainTargetInput, chain: ChainBase): ChainBase => {
+/** The registry id of a chain a caller or wallet may name by an alias. */
+const toRegistryId = (platform: ChainPlatform, id: string): string =>
+  resolveChain(id, CHAINS_BY_PLATFORM[platform]).id;
+
+/** `chain`'s registry id; rejects a chain outside the platform's namespace. */
+const registryId = ({ platform, wallet }: ChainTargetInput, chain: ChainBase): string => {
+  const namespace = CHAIN_NAMESPACES[platform];
+
   if (chain.namespace !== namespace) {
     throw mismatch(`Wallet ${wallet} takes "${namespace}" chains, not "${chain.id}"`);
   }
 
-  return chain;
+  return toRegistryId(platform, chain.id);
 };
 
 /**
  * The account half of a chain target, for a transport where no call takes a
  * chain (injected Polkadot extensions).
  */
-const createAccountTarget = ({ namespace, wallet }: ChainTargetInput): AccountTarget => {
+const createAccountTarget = ({ platform, wallet }: ChainTargetInput): AccountTarget => {
   const sameAddress =
-    namespace === "eip155"
+    platform === "evm"
       ? (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
       : (a: string, b: string) => a === b;
 
@@ -129,11 +142,15 @@ const createRoutedChainTarget = ({
     ...createAccountTarget(input),
     chain: (requested) => {
       if (requested === undefined) {
-        return current();
+        return toRegistryId(input.platform, current());
       }
 
-      const { id } = inNamespace(input, requested);
-      const chains = advertised().filter((chain) => chain.startsWith(`${input.namespace}:`));
+      const id = registryId(input, requested);
+      const prefix = `${CHAIN_NAMESPACES[input.platform]}:`;
+
+      const chains = advertised().flatMap((chain) =>
+        chain.startsWith(prefix) ? [toRegistryId(input.platform, chain)] : [],
+      );
 
       if (!chains.includes(id)) {
         throw mismatch(
@@ -164,10 +181,10 @@ const createSwitchingChainTarget = ({
         return;
       }
 
-      const { id } = inNamespace(input, requested);
+      const id = registryId(input, requested);
       const from = await current();
 
-      if (from === id) {
+      if (from !== undefined && toRegistryId(input.platform, from) === id) {
         return;
       }
 
@@ -192,18 +209,18 @@ const createSwitchingChainTarget = ({
 
 /**
  * A transport bound to one chain (Ledger device apps): a call naming any other
- * chain is refused. Throws at construction for a chain outside `namespace`.
+ * chain is refused. Throws at construction for a chain outside `platform`.
  */
 const createFixedChainTarget = ({
   chain,
   ...input
 }: FixedChainTargetInput): ChainTarget<string> => {
-  inNamespace(input, chain);
+  const id = registryId(input, chain);
 
   return {
     ...createAccountTarget(input),
     chain: (requested) => {
-      if (requested !== undefined && inNamespace(input, requested).id !== chain.id) {
+      if (requested !== undefined && registryId(input, requested) !== id) {
         throw mismatch(
           `Wallet ${input.wallet} signs for "${chain.id}" only, not "${requested.id}"`,
         );

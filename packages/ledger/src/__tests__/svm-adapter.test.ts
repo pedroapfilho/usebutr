@@ -59,7 +59,7 @@ const buildFakeSolanaCtor = (hooks: SolanaHooks = {}): SolanaAppConstructor =>
   };
 
 const connectedSvm = async (hooks: SolanaHooks = {}): Promise<SvmAdapter> => {
-  const adapter = await createSvmLedgerAdapter({
+  const adapter = createSvmLedgerAdapter({
     accountCount: 2,
     platform: "svm",
     solana: buildFakeSolanaCtor(hooks),
@@ -72,8 +72,8 @@ const connectedSvm = async (hooks: SolanaHooks = {}): Promise<SvmAdapter> => {
 };
 
 describe("createSvmLedgerAdapter", () => {
-  it("defines signing only: no RPC, events or chain switch", async () => {
-    const adapter = await createSvmLedgerAdapter({
+  it("defines signing only: no RPC, events or chain switch", () => {
+    const adapter = createSvmLedgerAdapter({
       platform: "svm",
       solana: buildFakeSolanaCtor(),
       transport: buildFakeTransport().factory,
@@ -105,7 +105,7 @@ describe("createSvmLedgerAdapter", () => {
   });
 
   it("reports accounts on the configured cluster", async () => {
-    const adapter = await createSvmLedgerAdapter({
+    const adapter = createSvmLedgerAdapter({
       chainId: SVM_CHAINS.devnet.id,
       platform: "svm",
       solana: buildFakeSolanaCtor(),
@@ -195,8 +195,8 @@ describe("createSvmLedgerAdapter", () => {
     await expect(adapter.getSigner()).resolves.toMatchObject({ kind: "ledger-svm" });
   });
 
-  it("createLedgerAdapter() dispatches platform svm", async () => {
-    const adapter = await createLedgerAdapter({
+  it("createLedgerAdapter() dispatches platform svm", () => {
+    const adapter = createLedgerAdapter({
       platform: "svm",
       solana: buildFakeSolanaCtor(),
       transport: buildFakeTransport().factory,
@@ -217,7 +217,7 @@ describeAdapterContract<SvmAdapter>({
       calls.push({ address: bytesToBase58(key), chain: SVM_CHAINS.mainnet.id });
     };
 
-    const adapter = await createSvmLedgerAdapter({
+    const adapter = createSvmLedgerAdapter({
       accountCount: addresses.length,
       platform: "svm",
       solana: buildFakeSolanaCtor({ onSignOffchainMessage: record, onSignTransaction: record }),

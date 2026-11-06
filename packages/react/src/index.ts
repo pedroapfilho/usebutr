@@ -22,6 +22,6 @@ export { useConnect } from "./hooks/connect";
 
 export { useConnectedWalletsByPlatform, useDiscoveredWalletsByPlatform } from "./hooks/grouped";
 
-export type { AsyncState, UseBalanceOptions, UseBalanceResult } from "./hooks/async-resources";
+export type { AsyncState, UseBalanceResult } from "./hooks/async-resources";
 
 export { useBalance, useSigner } from "./hooks/async-resources";

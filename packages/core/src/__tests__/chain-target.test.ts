@@ -16,11 +16,11 @@ const routed = () =>
   createRoutedChainTarget({
     advertised: () => [SVM_CHAINS.mainnet.id, SVM_CHAINS.devnet.id, "sui:mainnet"],
     current: () => SVM_CHAINS.mainnet.id,
-    namespace: "solana",
+    platform: "svm",
     wallet: "Phantom",
   });
 
-const solanaAccounts = () => createAccountTarget({ namespace: "solana", wallet: "Phantom" });
+const solanaAccounts = () => createAccountTarget({ platform: "svm", wallet: "Phantom" });
 
 describe("account target account", () => {
   it("acts as the active account when none is requested", () => {
@@ -46,7 +46,7 @@ describe("account target account", () => {
   });
 
   it("compares eip155 addresses case-insensitively and hands back the wallet's casing", () => {
-    const target = createAccountTarget({ namespace: "eip155", wallet: "Ledger" });
+    const target = createAccountTarget({ platform: "evm", wallet: "Ledger" });
     const requested = buildAccount(EVM_ADDRESS.toLowerCase(), EVM_CHAINS.ethereum);
     expect(target.account([EVM_ADDRESS], requested)).toBe(EVM_ADDRESS);
   });
@@ -76,6 +76,14 @@ describe("routed chain target", () => {
     expect(routed().chain(SVM_CHAINS.devnet)).toBe(SVM_CHAINS.devnet.id);
   });
 
+  it("routes a chain named by its alias to the registry id", () => {
+    const [genesisId] = SVM_CHAINS.devnet.aliases;
+
+    expect(
+      routed().chain({ ...SVM_CHAINS.devnet, aliases: undefined, id: genesisId, reference: "" }),
+    ).toBe(SVM_CHAINS.devnet.id);
+  });
+
   it("rejects a chain from another namespace with ChainMismatch", () => {
     expect(() => routed().chain(EVM_CHAINS.ethereum)).toThrow(
       expect.objectContaining({ kind: "ChainMismatch" }),
@@ -95,7 +103,7 @@ const switching = (overrides: { current?: string; unknownChain?: boolean } = {})
   const target = createSwitchingChainTarget({
     canSwitch: (chain) => chain.id !== BITCOIN_CHAINS.signet.id,
     current: () => Promise.resolve(overrides.current ?? BITCOIN_CHAINS.mainnet.id),
-    namespace: "bip122",
+    platform: "bitcoin",
     switchTo,
     unknownChain: () => overrides.unknownChain ?? false,
     wallet: "Unisat",
@@ -158,7 +166,7 @@ describe("switching chain target", () => {
 });
 
 const fixed = () =>
-  createFixedChainTarget({ chain: SVM_CHAINS.devnet, namespace: "solana", wallet: "Ledger" });
+  createFixedChainTarget({ chain: SVM_CHAINS.devnet, platform: "svm", wallet: "Ledger" });
 
 describe("fixed chain target", () => {
   it("accepts its own chain, requested or not", () => {
@@ -177,7 +185,7 @@ describe("fixed chain target", () => {
 
   it("refuses to be built for a chain outside its namespace", () => {
     expect(() =>
-      createFixedChainTarget({ chain: EVM_CHAINS.ethereum, namespace: "solana", wallet: "Ledger" }),
+      createFixedChainTarget({ chain: EVM_CHAINS.ethereum, platform: "svm", wallet: "Ledger" }),
     ).toThrow(expect.objectContaining({ kind: "ChainMismatch" }));
   });
 });

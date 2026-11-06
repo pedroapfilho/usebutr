@@ -2,6 +2,7 @@ import type { Account, ChainBase, EvmAdapter, EvmTransactionValue } from "@usebu
 import {
   buildAccount,
   bytesToHexPrefixed,
+  CHAIN_NAMESPACES,
   createSwitchingChainTarget,
   EVM_CHAINS_LIST,
   hexToBytes,
@@ -9,20 +10,9 @@ import {
   sanitizeIcon,
 } from "@usebutr/core";
 
-import type {
-  Eip1193Listener,
-  Eip1193Object,
-  Eip1193Provider,
-  Eip1193Value,
-  Eip6963ProviderInfo,
-} from "./eip1193";
-import { requestString, requestStringArray } from "./eip1193";
+import type { Eip1193Listener, Eip1193Object, Eip1193Provider, Eip1193Value } from "./eip1193";
+import { requestString, requestStringArray, toStringArray } from "./eip1193";
 import { readEvmBalance } from "./evm-balance";
-
-const EVM_NAMESPACE = "eip155";
-
-const toStringArray = (value: Eip1193Value | undefined): Array<string> =>
-  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
 /** JSON-RPC cannot carry a `bigint`, so quantities go out as `0x` hex. */
 const encodeValue = (value: EvmTransactionValue): Eip1193Value => {
@@ -50,8 +40,11 @@ const encodeValue = (value: EvmTransactionValue): Eip1193Value => {
 const chainIdHexToDecimal = (hex: string): string => BigInt(hex).toString(10);
 const chainIdDecimalToHex = (dec: string): string => `0x${BigInt(dec).toString(16)}`;
 
+const evmChainId = (chainIdHex: string): string =>
+  `${CHAIN_NAMESPACES.evm}:${chainIdHexToDecimal(chainIdHex)}`;
+
 const evmChainFromHex = (chainIdHex: string): ChainBase =>
-  resolveChain(`${EVM_NAMESPACE}:${chainIdHexToDecimal(chainIdHex)}`, EVM_CHAINS_LIST);
+  resolveChain(evmChainId(chainIdHex), EVM_CHAINS_LIST);
 
 /** An event may already carry the addresses or the chain; only the missing
  *  half is read back from the wallet. */
@@ -106,22 +99,22 @@ const errorCodes = (cause: unknown): Array<unknown> => {
   );
 };
 
-/**
- * `disconnect` calls `wallet_revokePermissions`, which many wallets don't
- * implement and silently ignore, so their own auto-reconnect may outlive it.
- * `getBalance()` labels the native balance `"ETH"` on every EVM chain.
- */
-const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): EvmAdapter => {
+type EvmIdentity = { icon?: string; id: string; name: string };
+
+/** Every member an EIP-1193 provider backs except the session itself:
+ *  `connect`, `disconnect` and `requestAccounts` belong to whoever owns it. */
+type Eip1193Core = Omit<EvmAdapter, "connect" | "disconnect" | "requestAccounts">;
+
+/** `getBalance()` labels the native balance `"ETH"` on every EVM chain. */
+const createEip1193Core = (identity: EvmIdentity, provider: Eip1193Provider): Eip1193Core => {
   const target = createSwitchingChainTarget({
     canSwitch: (chain) => /^\d+$/v.test(chain.reference),
     current: async () => {
       const chainIdHex = await requestString(provider, { method: "eth_chainId" });
 
-      return chainIdHex === null
-        ? undefined
-        : `${EVM_NAMESPACE}:${chainIdHexToDecimal(chainIdHex)}`;
+      return chainIdHex === null ? undefined : evmChainId(chainIdHex);
     },
-    namespace: EVM_NAMESPACE,
+    platform: "evm",
     switchTo: async (chain) => {
       await provider.request({
         method: "wallet_switchEthereumChain",
@@ -129,7 +122,7 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       });
     },
     unknownChain: (error) => errorCodes(error).includes(UNRECOGNIZED_CHAIN_CODE),
-    wallet: info.name,
+    wallet: identity.name,
   });
 
   const resolveAddress = async (account?: Account): Promise<string> =>
@@ -137,32 +130,6 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
 
   return {
     chainPlatform: "evm",
-
-    async connect(options) {
-      if (options?.silent === true) {
-        const accounts = await requestStringArray(provider, { method: "eth_accounts" });
-
-        if (accounts.length === 0) {
-          throw new Error("No authorized accounts for silent reconnect");
-        }
-
-        return;
-      }
-
-      await provider.request({ method: "eth_requestAccounts" });
-    },
-
-    async disconnect() {
-      try {
-        await provider.request({
-          method: "wallet_revokePermissions",
-          params: [{ eth_accounts: {} }],
-        });
-      } catch {
-        // Many wallets don't implement wallet_revokePermissions yet;
-        // not a failure.
-      }
-    },
 
     getAccounts: () => readAccounts(provider),
 
@@ -186,24 +153,9 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
       return { status: receipt.status === "0x1" ? "Success" : "Error" };
     },
 
-    icon: sanitizeIcon(info.icon),
-    id: info.rdns,
-    name: info.name,
-
-    async requestAccounts() {
-      try {
-        await provider.request({
-          method: "wallet_requestPermissions",
-          params: [{ eth_accounts: {} }],
-        });
-      } catch (error) {
-        if (!errorCodes(error).some((code) => METHOD_NOT_SUPPORTED_CODES.has(code))) {
-          throw error;
-        }
-
-        await provider.request({ method: "eth_requestAccounts" });
-      }
-    },
+    icon: sanitizeIcon(identity.icon),
+    id: identity.id,
+    name: identity.name,
 
     // EVM wallets have one global network, so a `chain` switches it before
     // the send rather than routing the one call. `from` is always the
@@ -297,6 +249,58 @@ const buildEvmAdapter = (info: Eip6963ProviderInfo, provider: Eip1193Provider): 
   };
 };
 
+/**
+ * The injected wallet owns its session: `disconnect` calls
+ * `wallet_revokePermissions`, which many wallets don't implement and silently
+ * ignore, so their own auto-reconnect may outlive it.
+ */
+const buildEvmAdapter = (identity: EvmIdentity, provider: Eip1193Provider): EvmAdapter => ({
+  ...createEip1193Core(identity, provider),
+
+  async connect(options) {
+    if (options?.silent === true) {
+      const accounts = await requestStringArray(provider, { method: "eth_accounts" });
+
+      if (accounts.length === 0) {
+        throw new Error("No authorized accounts for silent reconnect");
+      }
+
+      return;
+    }
+
+    await provider.request({ method: "eth_requestAccounts" });
+  },
+
+  async disconnect() {
+    try {
+      await provider.request({
+        method: "wallet_revokePermissions",
+        params: [{ eth_accounts: {} }],
+      });
+    } catch {
+      // Many wallets don't implement wallet_revokePermissions yet;
+      // not a failure.
+    }
+  },
+
+  async requestAccounts() {
+    try {
+      await provider.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }],
+      });
+    } catch (error) {
+      if (!errorCodes(error).some((code) => METHOD_NOT_SUPPORTED_CODES.has(code))) {
+        throw error;
+      }
+
+      await provider.request({ method: "eth_requestAccounts" });
+    }
+  },
+});
+
 export { formatEther } from "./evm-balance";
 
-export { buildEvmAdapter, chainIdDecimalToHex, chainIdHexToDecimal };
+export type { Eip1193Core, EvmIdentity };
+
+export { buildEvmAdapter, chainIdDecimalToHex, chainIdHexToDecimal, createEip1193Core };

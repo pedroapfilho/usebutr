@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import { suiNamespace } from "../namespaces/sui";
 
-import { createFakeProvider } from "./fake-provider";
+import { buildNamespaceAdapter, createFakeProvider } from "./fake-provider";
 import type { Transport } from "./payload-transports";
 import { ledgerTransport, requestParam, walletStandardWallet } from "./payload-transports";
 
@@ -47,7 +47,7 @@ const walletConnect = (): Transport<SuiAdapter> => {
     session: { namespaces: { sui: { accounts: [`${SUI_CHAINS.mainnet.id}:${ADDRESS}`] } } },
   });
 
-  const adapter = suiNamespace.buildAdapter({
+  const adapter = buildNamespaceAdapter(suiNamespace, {
     chains: [SUI_CHAINS.mainnet.id],
     icon: "data:image/svg+xml;base64,AAA",
     id: "walletconnect-sui",
@@ -72,7 +72,7 @@ const ledger = async (): Promise<Transport<SuiAdapter>> => {
     }
   };
 
-  const adapter = await createSuiLedgerAdapter({
+  const adapter = createSuiLedgerAdapter({
     platform: "sui",
     sui: FakeSui,
     transport: ledgerTransport,

@@ -1,7 +1,7 @@
 {
   "name": "@usebutr/testing",
   "version": "3.0.1",
-  "description": "Test helpers for butr: fake adapters, fake persistence, mock storage, and the adapter contract suite.",
+  "description": "Test helpers for butr: fake adapters, fake persistence and the adapter contract suite.",
   "keywords": [
     "butr",
     "dapp",

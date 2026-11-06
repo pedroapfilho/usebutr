@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import { bitcoinNamespace } from "../namespaces/bitcoin";
 
-import { createFakeProvider } from "./fake-provider";
+import { buildNamespaceAdapter, createFakeProvider } from "./fake-provider";
 import type { Transport } from "./payload-transports";
 import { ledgerTransport, requestParam, walletStandardWallet } from "./payload-transports";
 
@@ -20,7 +20,7 @@ const walletConnect = (): Transport<BitcoinAdapter> => {
     session: { namespaces: { bip122: { accounts: [`${BITCOIN_CHAINS.mainnet.id}:${ADDRESS}`] } } },
   });
 
-  const adapter = bitcoinNamespace.buildAdapter({
+  const adapter = buildNamespaceAdapter(bitcoinNamespace, {
     chains: [BITCOIN_CHAINS.mainnet.id],
     icon: "data:image/svg+xml;base64,AAA",
     id: "walletconnect-bitcoin",
@@ -48,7 +48,7 @@ const ledger = async (): Promise<Transport<BitcoinAdapter>> => {
     }
   };
 
-  const adapter = await createBitcoinLedgerAdapter({
+  const adapter = createBitcoinLedgerAdapter({
     btc: FakeBtc,
     platform: "bitcoin",
     transport: ledgerTransport,

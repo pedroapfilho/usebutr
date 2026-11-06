@@ -12,7 +12,7 @@ class ShadowConnectorError extends Error {
 
   constructor(method: string, connectorId: string) {
     super(
-      `[butr] ${method} called on "${connectorId}" while it is still reconnecting. Check useIsReconnecting(id) before calling it.`,
+      `[butr] ${method} called on "${connectorId}" while it is still reconnecting. Wait until it leaves reconnectingIds.`,
     );
     this.name = "ShadowConnectorError";
     this.connectorId = connectorId;

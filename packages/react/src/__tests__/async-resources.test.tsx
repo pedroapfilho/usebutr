@@ -82,7 +82,7 @@ describe("useSigner", () => {
     expect(result.current.value.data).toBe(signer);
   });
 
-  it("surfaces a signer that fails", async () => {
+  it("surfaces a signer that fails as a typed ConnectionError", async () => {
     const failure = new Error("locked");
 
     const adapter = createFakeAdapter({
@@ -98,7 +98,11 @@ describe("useSigner", () => {
     await act(() => result.current.manager.connect("metamask"));
 
     await waitFor(() => {
-      expect(result.current.value).toEqual({ data: null, error: failure, status: "error" });
+      expect(result.current.value).toMatchObject({
+        data: null,
+        error: { cause: failure, kind: "WalletLocked", message: "locked" },
+        status: "error",
+      });
     });
   });
 });

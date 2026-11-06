@@ -1,9 +1,9 @@
 import type { ChainBase, ChainPlatform, ConnectedWallet } from "@usebutr/core";
-import { buildAccount } from "@usebutr/core";
+import { buildAccount, DEFAULT_CHAINS } from "@usebutr/core";
 
 import type { FakeAdapter, FakeAdapterOptions } from "./fake-adapter";
 import { buildFakeAdapter } from "./fake-adapter";
-import { DEFAULT_ADDRESSES, DEFAULT_CHAINS } from "./fake-values";
+import { DEFAULT_ADDRESSES } from "./fake-values";
 
 type FakeConnectedWallet<P extends ChainPlatform> = Omit<ConnectedWallet<P>, "connector"> & {
   connector: FakeAdapter<P>;

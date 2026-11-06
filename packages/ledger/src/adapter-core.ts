@@ -1,17 +1,12 @@
-import type {
-  ChainBase,
-  ChainTarget,
-  Connector,
-  TransactionOptions,
-  WalletSigner,
-} from "@usebutr/core";
+import type { ChainPlatform, Connector, TransactionOptions, WalletSigner } from "@usebutr/core";
 import {
   buildAccount,
+  CHAINS_BY_PLATFORM,
   createFixedChainTarget,
+  DEFAULT_CHAINS,
   hexToBytes,
   logWarn,
   resolveChain,
-  toConnectionError,
 } from "@usebutr/core";
 
 /** Generic Ledger device glyph, shared by every app adapter. */
@@ -44,23 +39,22 @@ type LedgerBaseOptions = {
   id?: string;
   /** Default: `"Ledger"`. */
   name?: string;
-  /** DI override for the WebUSB transport (tests). Default: a dynamic import
-   *  of `@ledgerhq/hw-transport-webusb`. */
+  /** Another `@ledgerhq/hw-transport-*` factory, such as WebHID. Default: a
+   *  dynamic import of `@ledgerhq/hw-transport-webusb`. */
   transport?: TransportFactory;
 };
 
 type LedgerAppSpec<TApp> = {
   /** Every app has its own address instruction and encoding. */
   addressAt: (app: TApp, path: string) => Promise<string>;
-  /** The platform's registry, for chain names. */
-  chains: ReadonlyArray<ChainBase>;
-  defaultChain: ChainBase;
   defaultPathPrefix: string;
   /** ed25519 (SLIP-0010) derives hardened indices only. */
   hardenedIndex: boolean;
   /** Resolves the app class, then binds it to the opened transport. Two
    *  phases so a missing peer fails before the browser's WebUSB picker. */
   loadApp: () => Promise<(transport: TransportLike) => TApp>;
+  /** Picks the chain registry and the default chain. */
+  platform: ChainPlatform;
   signer: (app: TApp) => WalletSigner;
 };
 
@@ -138,7 +132,7 @@ const closeTransport = async (transport: TransportLike): Promise<void> => {
   try {
     await transport.close();
   } catch (error) {
-    logWarn("[butr/ledger] transport.close threw:", error);
+    logWarn("Ledger transport.close threw:", error);
   }
 };
 
@@ -150,20 +144,14 @@ const closeTransport = async (transport: TransportLike): Promise<void> => {
 const createLedgerAdapterCore = <TApp>(
   options: LedgerBaseOptions,
   spec: LedgerAppSpec<TApp>,
-): Promise<LedgerAdapterCore<TApp>> => {
-  const chain = resolveChain(options.chainId ?? spec.defaultChain.id, spec.chains);
-  const name = options.name ?? "Ledger";
-  let target: ChainTarget<string>;
+): LedgerAdapterCore<TApp> => {
+  const chain = resolveChain(
+    options.chainId ?? DEFAULT_CHAINS[spec.platform].id,
+    CHAINS_BY_PLATFORM[spec.platform],
+  );
 
-  try {
-    target = createFixedChainTarget({
-      chain,
-      namespace: spec.defaultChain.namespace,
-      wallet: name,
-    });
-  } catch (error) {
-    return Promise.reject(toConnectionError(error));
-  }
+  const name = options.name ?? "Ledger";
+  const target = createFixedChainTarget({ chain, platform: spec.platform, wallet: name });
 
   const accountCount = Math.max(1, options.accountCount ?? 1);
   const prefix = options.derivationPathPrefix ?? spec.defaultPathPrefix;
@@ -212,7 +200,7 @@ const createLedgerAdapterCore = <TApp>(
     }
   };
 
-  return Promise.resolve({
+  return {
     base: {
       async connect(connectOptions) {
         if (connectOptions?.silent === true) {
@@ -265,7 +253,7 @@ const createLedgerAdapterCore = <TApp>(
 
       return { address, app, path: pathAt(addresses.indexOf(address)) };
     },
-  });
+  };
 };
 
 export type { LedgerBaseOptions, TransportFactory, TransportLike };

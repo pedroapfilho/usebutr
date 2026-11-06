@@ -67,7 +67,7 @@ const autoDiscovery =
   (onAdapter) => {
     if (platforms.length === 0) {
       logWarn(
-        "[butr] autoDiscovery was given an empty platform list, so no wallets will be discovered. Omit it to discover every platform.",
+        "autoDiscovery was given an empty platform list, so no wallets will be discovered. Omit it to discover every platform.",
       );
     }
 
@@ -104,7 +104,7 @@ const autoDiscovery =
         try {
           unsubscribe();
         } catch (error) {
-          logWarn("[butr] discovery unsubscribe threw:", error);
+          logWarn("discovery unsubscribe threw:", error);
         }
       }
     };

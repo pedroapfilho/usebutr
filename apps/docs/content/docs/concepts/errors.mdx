@@ -101,10 +101,24 @@ try {
 It returns a `ConnectionError` unchanged, wraps any other `Error` with its
 classified kind, and turns a non-`Error` value into `Unknown`.
 
+## Errors that are not `ConnectionError`
+
+Two other classes from `@usebutr/core` signal a misuse rather than a wallet
+failure. Match them with `instanceof`; both carry `connectorId`.
+
+- `ShadowConnectorError` is thrown by a shadow adapter's `connect`,
+  `getAccounts` and `getSigner` while a wallet seeded from `initialState` is
+  still reconnecting. It also carries `method`. Check `useIsReconnecting(id)`
+  before calling them; see [hydration](/concepts/hydration).
+- `SignInUnsupportedError` is thrown by `createSignInFlow` when the wallet
+  cannot sign, before the nonce request; see the
+  [sign-in guide](/guides/sign-in).
+
 <Callout type="warn">
   Classification is best-effort. A wallet that throws an unrecognised shape lands in `Unknown`. butr
   does no retrying; you decide whether to retry based on `kind`.
 </Callout>
 
 **Source:** `packages/core/src/types/errors.ts`, `packages/core/src/chain-target.ts`,
-`packages/core/src/store/wallet-manager.ts`.
+`packages/core/src/store/wallet-manager.ts`, `packages/core/src/store/shadow-adapter.ts`,
+`packages/core/src/sign-in/sign-in-flow.ts`.

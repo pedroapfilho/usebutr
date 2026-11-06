@@ -3,9 +3,12 @@ title: Standards compliance
 description: "How butr follows the Wallet Standard, EIP-6963, and EIP-1193: what is covered, and the deliberate edges."
 ---
 
-butr discovers wallets through the published standards only. There is no
-`window.solana` poking, no `isMetaMask` branching, no hardcoded wallet list.
-Solana goes through the [Wallet
+butr discovers wallets through the published standards wherever a chain has
+one. There is no `window.solana` poking and no `isMetaMask` branching. Two
+fallbacks do know names: injected Bitcoin probes named globals
+(`window.unisat`, `window.okxwallet.bitcoin`, `window.XverseProviders`,
+`window.btc`), and injected Polkadot keeps display names for known
+`window.injectedWeb3` keys. Solana goes through the [Wallet
 Standard](https://github.com/wallet-standard/wallet-standard); EVM goes through
 [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963) over
 [EIP-1193](https://eips.ethereum.org/EIPS/eip-1193). Every chain identifier is
@@ -83,7 +86,8 @@ These are intentional boundaries, not gaps:
   `getSigner()` for that.
 
 <Callout type="info">
-  **Source:** `packages/svm/src` (Wallet Standard), `packages/evm/src` (EIP-6963 / EIP-1193),
+  **Source:** `packages/wallet-standard-shared/src` (Wallet Standard: `discovery.ts`,
+  `adapter-core.ts`), `packages/evm/src` (EIP-6963 / EIP-1193),
   `packages/core/src/store/wallet-manager.ts` (silent reconnect),
   `packages/core/src/types/errors.ts` (error mapping). Behaviour is exercised by the package test
   suites and the runnable `apps/demo-with-*` demos.

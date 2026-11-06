@@ -15,8 +15,8 @@ hands them to the manager. One pairing serves every namespace you request
 npm install @usebutr/walletconnect @walletconnect/universal-provider
 ```
 
-`@walletconnect/universal-provider` is an optional peer dependency, imported
-on first use.
+`@walletconnect/universal-provider` is a peer dependency, imported on first
+use unless you pass `universalProvider`.
 
 ## Register it
 
@@ -54,10 +54,12 @@ export const Providers = ({ children }: { children: React.ReactNode }) => (
 The adapters then appear in `useDiscoveredWallets()` next to the browser
 wallets: `walletconnect-evm`, `walletconnect-svm` and so on, named
 `WalletConnect (EVM)`. With a single namespace the id and name stay
-`walletconnect` and `WalletConnect`. An empty array uses the namespace's
-default chain; an omitted key skips the namespace. The first namespace is
-required at pairing, the rest are optional, and an adapter whose namespace the
-wallet declined rejects on `connect()`.
+`walletconnect` and `WalletConnect`. An empty array means the platform's
+mainnet (`DEFAULT_CHAINS`); an omitted key skips the namespace. One namespace
+is required at pairing, the first selected platform in `CHAIN_PLATFORMS` order
+(`evm`, `svm`, `sui`, `bitcoin`) rather than the first key you write. The rest
+are optional, and an adapter whose namespace the wallet declined rejects on
+`connect()`.
 
 <Callout type="warn">
   `createWalletConnectAdapters` starts loading the provider as soon as it is called. In a
@@ -67,15 +69,16 @@ wallet declined rejects on `connect()`.
 
 ### Options
 
-| Option         | Type                                                    | Notes                                                                                                |
-| -------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `projectId`    | `string` (required)                                     | From [Reown Cloud](https://cloud.reown.com).                                                         |
-| `namespaces`   | `Partial<Record<ChainPlatform, ReadonlyArray<string>>>` | CAIP-2 chains per platform. Polkadot has no namespace.                                               |
-| `metadata`     | `{ name?; url?; description?; icons? }`                 | Shown in the mobile wallet during pairing. **Some wallets refuse to pair without `name` and `url`.** |
-| `onPairingUri` | `(uri: string) => void`                                 | Fires when a QR code or deep link must be shown.                                                     |
-| `id`           | `string`                                                | Adapter id base. Default `"walletconnect"`.                                                          |
-| `name`         | `string`                                                | Display name. Default `"WalletConnect"`.                                                             |
-| `icon`         | `string`                                                | Default `WALLETCONNECT_DEFAULT_ICON`.                                                                |
+| Option              | Type                                                    | Notes                                                                                                |
+| ------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `projectId`         | `string` (required)                                     | From [Reown Cloud](https://cloud.reown.com).                                                         |
+| `namespaces`        | `Partial<Record<ChainPlatform, ReadonlyArray<string>>>` | CAIP-2 chains per platform. Polkadot has no namespace.                                               |
+| `metadata`          | `{ name?; url?; description?; icons? }`                 | Shown in the mobile wallet during pairing. **Some wallets refuse to pair without `name` and `url`.** |
+| `onPairingUri`      | `(uri: string) => void`                                 | Fires when a QR code or deep link must be shown.                                                     |
+| `id`                | `string`                                                | Adapter id base. Default `"walletconnect"`.                                                          |
+| `name`              | `string`                                                | Display name. Default `"WalletConnect"`.                                                             |
+| `icon`              | `string`                                                | Default `WALLETCONNECT_DEFAULT_ICON`.                                                                |
+| `universalProvider` | `UniversalProviderConstructor`                          | The UniversalProvider class, for an app that already imports it. Default: a dynamic import.          |
 
 ## Pairing and reconnecting
 
@@ -172,14 +175,10 @@ if (signer.kind === "walletconnect") {
 }
 ```
 
-## Namespace builders
+## Namespaces
 
-Each platform's RPC shape lives in its own builder, exported so you can
-compose your own factory: `evmNamespace`, `solanaNamespace`, `suiNamespace`,
-`bitcoinNamespace`, and `KNOWN_NAMESPACES`, the table
-`createWalletConnectAdapters` dispatches through. See the
-[API reference](/api/walletconnect#namespace-builders) for their default
-chains and methods.
+See the [API reference](/api/walletconnect#namespaces) for the default chain,
+methods and events the factory pairs for each namespace.
 
 <Callout type="info">
   **Source:** `packages/walletconnect/src` (`adapter.ts`, `session.ts`,

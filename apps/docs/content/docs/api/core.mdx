@@ -46,8 +46,9 @@ A read-only zustand store plus actions. Every action is a stable reference.
 | `clearConnectionError()`                   | Clears `connectionError` and returns `connectionStatus` to `"idle"`.                                                                  |
 
 A failed `connect` closes the session it opened, unless the wallet was
-already connected. `requestAccounts` rejects with a `NotConnected`
-`ConnectionError` when the wallet exposes no accounts afterwards.
+already connected. `requestAccounts` rejects with a `ConnectionError`:
+`UserRejected` when the user closes the picker, `NotConnected` when the wallet
+exposes no accounts afterwards.
 
 ### `WalletManagerConfig`
 
@@ -63,7 +64,7 @@ Read once, when the manager is created. Define it at module scope.
 | `onHydrated`             | `(outcome: HydrationOutcome) => void`           | Once, after the start-up hydration pass.                                                                             |
 | `onSlowConnect`          | `(connectorId) => void`                         | At most once per attempt, after `slowConnectThresholdMs`.                                                            |
 | `slowConnectThresholdMs` | `number`                                        | Default `5000`.                                                                                                      |
-| `onStorageError`         | `(error: Error) => void`                        | A failed persistence read or write. Defaults to `console.warn`.                                                      |
+| `onStorageError`         | `(error: Error) => void`                        | A failed save, or a custom `load` that rejects. Defaults to `console.warn`.                                          |
 
 ### `WalletState`
 
@@ -201,9 +202,13 @@ network first, and a transport that can do neither rejects with
 type ConnectedWallet<P extends ChainPlatform = ChainPlatform> = {
   account: Account; // the active account, always one of `accounts`
   accounts: ReadonlyArray<Account>;
-  connector: WalletAdapterFor<P>;
+  connector: AdapterByPlatform[P];
 };
 ```
+
+`connector` is the platform's adapter type: `ConnectedWallet<"svm">` holds an
+`SvmAdapter`. It is an indexed access rather than `WalletAdapterFor<P>` so
+TypeScript measures `P` covariant.
 
 ### `isPlatformWallet(wallet, platform)`
 
@@ -246,12 +251,14 @@ chain:
 | `createFixedChainTarget`     | Ledger                                          | Rejected.                                               |
 | `createAccountTarget`        | Polkadot injectedWeb3                           | Not applicable: no call takes a chain.                  |
 
-Every factory takes `{ namespace, wallet }`: the CAIP-2 namespace and the
-wallet's name for messages. The routed one adds `advertised()` and `current()`,
+Every factory takes `{ platform, wallet }`: the `ChainPlatform` whose CAIP-2
+namespace the transport speaks, and the wallet's name for messages. The routed one adds `advertised()` and `current()`,
 both CAIP-2 ids. The switching one adds `canSwitch(chain)`, `current()`
 resolving the wallet's network, `switchTo(chain)` and an optional
 `unknownChain(error)` that marks a `switchTo` rejection as an unknown chain
-(EIP-3326 `4902`). The fixed one adds the `chain` it signs for.
+(EIP-3326 `4902`). The fixed one adds the `chain` it signs for. A chain
+named by an alias, requested, advertised or current, counts as the registry
+chain it names, and `chain()` returns the registry id.
 
 Each target has these members, and each throws a `ConnectionError` of a kind
 below when its rule fails:
@@ -259,8 +266,8 @@ below when its rule fails:
 - `account(exposed, requested?)` returns the exposed entry to act as, an
   address or a record with an `address`: `requested` when given, rejecting
   with `AccountNotExposed` when the wallet does not expose it, else the active
-  (first) entry. `eip155` addresses compare case-insensitively, since
-  EIP-55 casing is only a checksum; every other namespace compares exactly.
+  (first) entry. EVM addresses compare case-insensitively, since EIP-55
+  casing is only a checksum; every other platform compares exactly.
 - `connected(session)` returns the transport's session, or throws when it has
   none.
 - `chain(requested?)`, except on `createAccountTarget`: the CAIP-2 id the call
@@ -283,7 +290,7 @@ import { createRoutedChainTarget } from "@usebutr/core";
 const target = createRoutedChainTarget({
   advertised: () => wallet.chains,
   current: () => currentChainId,
-  namespace: "solana",
+  platform: "svm",
   wallet: wallet.name,
 });
 
@@ -343,10 +350,16 @@ app that imports neither `@usebutr/evm` nor `@usebutr/wallets` has no
 - `ChainPlatform`: `"evm" | "svm" | "sui" | "bitcoin" | "polkadot"`.
   `CHAIN_PLATFORMS` is the same list at runtime; `isChainPlatform(value)`
   narrows a string.
+- `CHAIN_NAMESPACES`: each platform's CAIP-2 namespace (`evm` is `eip155`,
+  `svm` is `solana`, `sui` is `sui`, `bitcoin` is `bip122`, `polkadot` is
+  `polkadot`).
 - `ChainsByPlatform`: `Readonly<Record<ChainPlatform, ReadonlyArray<ChainBase>>>`.
 - `Account`: `{ chain: ChainBase; id: string; walletAddress: string }`.
 - `buildAccount(address, chain): Account` builds the `<chain id>:<address>`
   id the manager compares accounts by. Hand-rolled adapters must use it.
+- `buildBalance(value, decimals, symbol): Balance` formats `value`, in base
+  units, with trailing zeros trimmed: `buildBalance(1500000000n, 9, "SOL")`
+  formats as `"1.5"`.
 - `resolveChain(id, known?): ChainBase` looks a CAIP-2 id or alias up in a
   registry, and names a chain outside it by its id. Every transport builds
   accounts through it, so one cluster yields one `ChainBase` and one
@@ -363,7 +376,9 @@ app that imports neither `@usebutr/evm` nor `@usebutr/wallets` has no
 | `POLKADOT_CHAINS` | `POLKADOT_CHAINS_LIST` | `kusama`, `paseo`, `polkadot`, `westend`                                |
 
 `CHAINS_BY_PLATFORM` holds every list, keyed by platform: the shape a chain
-picker wants. The platform packages export no chain registries; an app that
+picker wants. `DEFAULT_CHAINS` holds each platform's mainnet `ChainBase`
+(`EVM_CHAINS.ethereum`, `SVM_CHAINS.mainnet`, and so on): where a transport
+starts when the wallet names no chain. The platform packages export no chain registries; an app that
 imports none of these bundles none of them.
 
 ## Errors
@@ -473,7 +488,7 @@ Solana wallets with `signIn` take the Sign In With Solana path unless
 | `walletEqual(a, b)`                   | Same adapter object, same active account, same account list.                                              |
 | `accountsEqual(a, b)`                 | Same account ids in the same order.                                                                       |
 | `sanitizeIcon(icon)`                  | Trims a wallet icon; an all-whitespace one becomes `undefined`. Discovery already applies it.             |
-| `logWarn`, `logError`                 | butr's console sink, for adapter authors.                                                                 |
+| `logWarn(message, ...details)`        | butr's `console.warn` sink, for adapter authors. Adds the `[butr]` prefix.                                |
 
 ### Encoding
 

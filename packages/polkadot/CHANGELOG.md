@@ -1,5 +1,36 @@
 # @usebutr/polkadot
 
+## 4.0.0
+
+### Major Changes
+
+- [#241](https://github.com/pedroapfilho/usebutr/pull/241) [`4608394`](https://github.com/pedroapfilho/usebutr/commit/4608394e57870638d1f20e6556f4923166fffcae) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - The injected discovery functions are plain wallet sources that read `window`. `discoverEvmAdapters`, `discoverInjectedAdapter`, `discoverInjectedBitcoinAdapter`, `discoverLegacyBitcoinAdapter` and `discoverInjectedPolkadotAdapters` take only `onAdapter`.
+
+  - The `target` option is gone from all five, along with `InjectedDiscoveryOptions`, `InjectedBitcoinDiscoveryOptions` and `InjectedPolkadotDiscoveryOptions`. Tests stub `window` instead.
+  - `discoverInjectedPolkadotAdapters` loses `pollMs`; it reads `window.injectedWeb3` at once and again after 250 ms and 750 ms.
+  - The `discoverEvmAdapters` callback no longer receives the EIP-6963 `info` as a second argument.
+
+### Patch Changes
+
+- [#241](https://github.com/pedroapfilho/usebutr/pull/241) [`4608394`](https://github.com/pedroapfilho/usebutr/commit/4608394e57870638d1f20e6556f4923166fffcae) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - - `buildEvmAdapter` takes an identity `{ icon?, id, name }` instead of EIP-6963 info, and `createEip1193Core` is every member it builds except `connect`, `disconnect` and `requestAccounts`. WalletConnect's EVM namespace builds on the core instead of stripping members off the injected adapter.
+  - `createWalletStandardCore` returns `feature(name, method)`, which binds a feature and its call target to one name, in place of `resolveTarget(feature, options)`. A Wallet Standard adapter's `disconnect` and the WalletConnect session's now reject when the wallet's own disconnect fails; the manager already logs that.
+  - Ledger Bitcoin's default derivation path follows `addressFormat` and the chain: `86'/1'/0'/0` for bech32m on testnet instead of `84'/0'/0'/0`, which the device refused.
+  - sats-connect errors keep the wallet's error as `cause`, and injected Polkadot reports a connect that exposes no account as `NotConnected`.
+
+- [#241](https://github.com/pedroapfilho/usebutr/pull/241) [`4608394`](https://github.com/pedroapfilho/usebutr/commit/4608394e57870638d1f20e6556f4923166fffcae) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - Each platform's chain facts have one source. `CHAIN_NAMESPACES` maps a platform to its CAIP-2 namespace and `DEFAULT_CHAINS` maps it to its mainnet, and every adapter reads them instead of restating the namespace string and the default chain.
+
+  - The chain targets (`createAccountTarget`, `createRoutedChainTarget`, `createSwitchingChainTarget`, `createFixedChainTarget`) take `platform` instead of `namespace`: `createSwitchingChainTarget({ platform: "evm", … })`.
+  - `createWalletStandardCore` takes `platform` instead of `chains`, `namespace` and `label`, and `preferredChainIds` defaults to the platform's mainnet.
+  - `buildBalance(value, decimals, symbol)` builds a `Balance` with its `formatted` string, the rule EVM balances and the fake adapter already followed.
+  - `logWarn` adds the `[butr]` prefix itself, and `logError` is no longer exported.
+  - The chain targets resolve a chain named by an alias to its registry id, so a Solana cluster named by its genesis hash routes over WalletConnect as it already did over Wallet Standard.
+  - A key the default storage cannot read loads as empty and is never written for the rest of the session; before, the first save deleted it. After a custom `load` rejects, the manager saves nothing for the session instead of overwriting the storage with the empty state that stood in for it.
+  - `manager.requestAccounts` rejects with a `ConnectionError`, like `connect`.
+
+- Updated dependencies [[`4608394`](https://github.com/pedroapfilho/usebutr/commit/4608394e57870638d1f20e6556f4923166fffcae), [`4608394`](https://github.com/pedroapfilho/usebutr/commit/4608394e57870638d1f20e6556f4923166fffcae)]:
+  - @usebutr/wallet-standard-shared@5.0.0
+  - @usebutr/core@5.0.0
+
 ## 3.0.1
 
 ### Patch Changes

@@ -38,10 +38,6 @@ type InjectedWindowProvider = {
   version?: string;
 };
 
-type InjectedWindow = {
-  injectedWeb3?: Record<string, InjectedWindowProvider>;
-};
-
 declare global {
   // oxlint-disable-next-line typescript/consistent-type-definitions -- DOM globals require interface merging.
   interface Window {
@@ -49,20 +45,4 @@ declare global {
   }
 }
 
-const readInjectedWindow = (target?: InjectedWindow | null): InjectedWindow | null => {
-  if (target !== undefined) {
-    return target;
-  }
-
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  return window;
-};
-
-export type { Injected, InjectedAccount, InjectedSigner, InjectedWindow, InjectedWindowProvider };
-
-export { bytesToHexPrefixed as bytesToHex, hexToBytes } from "@usebutr/core";
-
-export { readInjectedWindow };
+export type { Injected, InjectedAccount, InjectedSigner, InjectedWindowProvider };

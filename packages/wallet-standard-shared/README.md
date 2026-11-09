@@ -17,17 +17,13 @@ For adapter authors. The package supplies discovery, the session plumbing every 
 
 ```ts
 import type { SvmAdapter } from "@usebutr/core";
-import { SVM_CHAINS_LIST } from "@usebutr/core";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 import { createWalletStandardCore, slugify } from "@usebutr/wallet-standard-shared";
 
 export const buildAdapter = (wallet: WalletStandardWallet): SvmAdapter | null => {
   const core = createWalletStandardCore({
-    chains: SVM_CHAINS_LIST,
     id: slugify("svm", wallet.name),
-    label: "Solana",
-    namespace: "solana",
-    preferredChainIds: ["solana:mainnet"],
+    platform: "svm",
     trackChainChanges: true,
     wallet,
   });
@@ -36,9 +32,9 @@ export const buildAdapter = (wallet: WalletStandardWallet): SvmAdapter | null =>
 ```
 
 `base.getAccounts()` exposes only accounts advertising the selected chain.
-Platform signing methods use `core.resolveTarget(feature, options)` to obtain
-`{ account, chain }` together, with the account advertising both the chain and
-the operation feature. Chain aliases are normalized for matching; the wallet
+Platform signing methods bind each feature once with `core.feature(name, method)`,
+whose `target(options)` returns `{ account, chain }` together, with the account
+advertising both the chain and the feature. Chain aliases are normalized for matching; the wallet
 receives its advertised chain id. Use `core.toAccount(rawAccount)` to validate
 a sign-in result against the current chain.
 

@@ -1,5 +1,5 @@
 import type { SvmAdapter } from "@usebutr/core";
-import { bytesToBase58, SVM_CHAINS, SVM_CHAINS_LIST } from "@usebutr/core";
+import { bytesToBase58 } from "@usebutr/core";
 import { prepareSolanaTransaction } from "@usebutr/svm/transaction";
 
 import type { LedgerBaseOptions, TransportLike } from "../adapter-core";
@@ -20,8 +20,8 @@ type SolanaAppConstructor = new (transport: TransportLike) => SolanaAppLike;
 
 type SvmLedgerOptions = LedgerBaseOptions & {
   platform: "svm";
-  /** DI override for the app class (tests). Default: a dynamic import of
-   *  `@ledgerhq/hw-app-solana`. */
+  /** The app class, for an app that already imports it. Default: a dynamic
+   *  import of `@ledgerhq/hw-app-solana`. */
   solana?: SolanaAppConstructor;
 };
 
@@ -30,15 +30,13 @@ type SvmLedgerOptions = LedgerBaseOptions & {
  * the user opens the Solana app. Ledger has no RPC, so `signTransaction`
  * hands back the signed transaction for the consumer to broadcast.
  */
-const createSvmLedgerAdapter = async (options: SvmLedgerOptions): Promise<SvmAdapter> => {
-  const core = await createLedgerAdapterCore<SolanaAppLike>(options, {
+const createSvmLedgerAdapter = (options: SvmLedgerOptions): SvmAdapter => {
+  const core = createLedgerAdapterCore<SolanaAppLike>(options, {
     addressAt: async (solana, path) => {
       const { address } = await solana.getAddress(path);
 
       return bytesToBase58(address);
     },
-    chains: SVM_CHAINS_LIST,
-    defaultChain: SVM_CHAINS.mainnet,
     defaultPathPrefix: "44'/501'/0'",
     hardenedIndex: true,
     loadApp: async () => {
@@ -52,6 +50,7 @@ const createSvmLedgerAdapter = async (options: SvmLedgerOptions): Promise<SvmAda
 
       return (transport) => new Solana(transport);
     },
+    platform: "svm",
     signer: (app) => ({ app, kind: "ledger-svm" }),
   });
 

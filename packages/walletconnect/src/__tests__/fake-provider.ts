@@ -1,7 +1,11 @@
+import type { WalletAdapter } from "@usebutr/core";
+import { CHAIN_NAMESPACES } from "@usebutr/core";
 import type { Eip1193Listener, Eip1193RequestArgs, Eip1193Value } from "@usebutr/evm";
 import { vi } from "vitest";
 
-import type { UniversalProviderConstructor, UniversalProviderLike } from "../adapter";
+import type { UniversalProviderConstructor, UniversalProviderLike } from "../loader";
+import type { NamespaceAdapterInput, WalletConnectNamespaceBuilder } from "../namespaces/types";
+import { createWalletConnectSession } from "../session";
 
 type ConnectArgs = Parameters<UniversalProviderLike["connect"]>[0];
 
@@ -104,6 +108,38 @@ const fakeUniversalProvider = (provider: UniversalProviderLike): UniversalProvid
 const walletRequests = (provider: FakeProvider): Array<RequestCall> =>
   provider.requests.filter(({ args }) => args.method !== "eth_chainId");
 
+/** One builder's adapter on a session that pairs for its namespace alone. */
+const buildNamespaceAdapter = <A extends WalletAdapter>(
+  builder: WalletConnectNamespaceBuilder<A>,
+  {
+    chains: [first, ...rest],
+    ...input
+  }: Omit<NamespaceAdapterInput, "chains" | "session"> & {
+    chains: ReadonlyArray<string>;
+  },
+): A => {
+  if (first === undefined) {
+    throw new Error("A namespace adapter needs a chain");
+  }
+
+  const chains: NamespaceAdapterInput["chains"] = [first, ...rest];
+
+  return builder.buildAdapter({
+    ...input,
+    chains,
+    session: createWalletConnectSession({
+      namespaces: {
+        [CHAIN_NAMESPACES[builder.chainPlatform]]: {
+          chains,
+          events: builder.events,
+          methods: builder.methods,
+        },
+      },
+      provider: input.provider,
+    }),
+  });
+};
+
 export type { FakeProvider };
 
-export { createFakeProvider, fakeUniversalProvider, walletRequests };
+export { buildNamespaceAdapter, createFakeProvider, fakeUniversalProvider, walletRequests };

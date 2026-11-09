@@ -1,9 +1,8 @@
 import type { AccountOptions, PolkadotAdapter, WalletAdapter } from "@usebutr/core";
-import { POLKADOT_CHAINS, POLKADOT_CHAINS_LIST } from "@usebutr/core";
+import { POLKADOT_CHAINS } from "@usebutr/core";
 import {
   createWalletStandardCore,
   discoverWalletStandard,
-  getFeature,
   slugify,
 } from "@usebutr/wallet-standard-shared";
 import type {
@@ -16,16 +15,11 @@ import type { PolkadotSignMessageFeature } from "./wallet-standard-types";
 
 const buildPolkadotWalletStandardAdapter = (
   wallet: WalletStandardWallet,
-  /** Optional. Called with a function that pushes a synthetic
-   *  `disconnected` event to all current subscribers. The discovery
-   *  layer invokes it on Wallet Standard `unregister`. */
   registerDisconnector?: (emit: () => void) => void,
 ): PolkadotAdapter | null => {
   const core = createWalletStandardCore({
-    chains: POLKADOT_CHAINS_LIST,
     id: slugify("polkadot", wallet.name),
-    label: "Polkadot",
-    namespace: "polkadot",
+    platform: "polkadot",
     // Kusama sits alongside Polkadot because it carries real value; Westend
     // and Paseo are faucet testnets and must never win the default.
     preferredChainIds: [POLKADOT_CHAINS.polkadot.id, POLKADOT_CHAINS.kusama.id],
@@ -38,21 +32,17 @@ const buildPolkadotWalletStandardAdapter = (
     return null;
   }
 
-  const signer = getFeature<PolkadotSignMessageFeature>(
-    wallet,
-    "polkadot:signMessage",
-    "signMessage",
-  );
+  const signer = core.feature<PolkadotSignMessageFeature>("polkadot:signMessage", "signMessage");
 
   return {
     ...core.base,
     chainPlatform: "polkadot",
     ...(signer !== undefined && {
       signMessage: async (message: Uint8Array, options?: AccountOptions) => {
-        const { account } = core.resolveTarget("polkadot:signMessage", options);
+        const { account } = signer.target(options);
         const wrapped = wrapBytes(message);
 
-        const output = await signer.signMessage({
+        const output = await signer.call.signMessage({
           account,
           message: wrapped,
         });
@@ -63,7 +53,8 @@ const buildPolkadotWalletStandardAdapter = (
   };
 };
 
-/** Requires the optional `@wallet-standard/app` peer dep and no-ops without it. */
+/** Requires the optional `@wallet-standard/app` peer dep; without it discovery
+ *  logs one warning and finds nothing. */
 const discoverPolkadotWalletStandardAdapters = (
   onAdapter: (adapter: WalletAdapter) => void,
   loadModule?: WalletStandardModuleLoader,

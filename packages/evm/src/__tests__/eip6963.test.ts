@@ -1,7 +1,7 @@
-import type { EvmAdapter, WalletSource } from "@usebutr/core";
-import { describe, expect, it, vi } from "vitest";
+import type { WalletAdapter, WalletSource } from "@usebutr/core";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { Eip1193Provider, Eip6963ProviderDetail, Eip6963ProviderInfo } from "../eip1193";
+import type { Eip1193Provider, Eip6963ProviderDetail } from "../eip1193";
 import { ANNOUNCE_EVENT, REQUEST_EVENT, discoverEvmAdapters } from "../eip6963";
 
 const noopProvider: Eip1193Provider = {
@@ -16,29 +16,41 @@ const announce = (target: EventTarget, detail: Eip6963ProviderDetail) => {
   target.dispatchEvent(new CustomEvent(ANNOUNCE_EVENT, { detail }));
 };
 
+/** A browser window: the event target EIP-6963 wallets announce on. */
+const fakeWindow = () => {
+  const target = new EventTarget();
+  vi.stubGlobal("window", target);
+
+  return target;
+};
+
 describe("discoverEvmAdapters", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("is a wallet source as-is", () => {
     const source: WalletSource = discoverEvmAdapters;
     expect(source).toBe(discoverEvmAdapters);
   });
 
   it("dispatches a requestProvider event on subscribe", () => {
-    const target = new EventTarget();
+    const target = fakeWindow();
     let sawRequest = false;
     target.addEventListener(REQUEST_EVENT, () => {
       sawRequest = true;
     });
 
-    const unsub = discoverEvmAdapters(() => {}, { target });
+    const unsub = discoverEvmAdapters(() => {});
     expect(sawRequest).toBe(true);
 
     unsub();
   });
 
   it("invokes the callback for each unique rdns", () => {
-    const target = new EventTarget();
-    const callback = vi.fn<(adapter: EvmAdapter, info: Eip6963ProviderInfo) => void>();
-    const unsub = discoverEvmAdapters(callback, { target });
+    const target = fakeWindow();
+    const callback = vi.fn<(adapter: WalletAdapter) => void>();
+    const unsub = discoverEvmAdapters(callback);
 
     announce(target, {
       info: {
@@ -67,9 +79,9 @@ describe("discoverEvmAdapters", () => {
   });
 
   it("deduplicates re-announces by rdns", () => {
-    const target = new EventTarget();
-    const callback = vi.fn<(adapter: EvmAdapter, info: Eip6963ProviderInfo) => void>();
-    const unsub = discoverEvmAdapters(callback, { target });
+    const target = fakeWindow();
+    const callback = vi.fn<(adapter: WalletAdapter) => void>();
+    const unsub = discoverEvmAdapters(callback);
 
     const detail: Eip6963ProviderDetail = {
       info: {
@@ -89,9 +101,9 @@ describe("discoverEvmAdapters", () => {
   });
 
   it("ignores announcements with missing or empty rdns", () => {
-    const target = new EventTarget();
-    const callback = vi.fn<(adapter: EvmAdapter, info: Eip6963ProviderInfo) => void>();
-    const unsub = discoverEvmAdapters(callback, { target });
+    const target = fakeWindow();
+    const callback = vi.fn<(adapter: WalletAdapter) => void>();
+    const unsub = discoverEvmAdapters(callback);
 
     announce(target, {
       info: {
@@ -108,9 +120,9 @@ describe("discoverEvmAdapters", () => {
   });
 
   it("ignores wallets announced after unsubscribe", () => {
-    const target = new EventTarget();
-    const callback = vi.fn<(adapter: EvmAdapter, info: Eip6963ProviderInfo) => void>();
-    const unsub = discoverEvmAdapters(callback, { target });
+    const target = fakeWindow();
+    const callback = vi.fn<(adapter: WalletAdapter) => void>();
+    const unsub = discoverEvmAdapters(callback);
     unsub();
 
     announce(target, {
@@ -127,7 +139,8 @@ describe("discoverEvmAdapters", () => {
   });
 
   it("returns a noop in environments without a window", () => {
-    const callback = vi.fn<(adapter: EvmAdapter, info: Eip6963ProviderInfo) => void>();
+    vi.stubGlobal("window", undefined);
+    const callback = vi.fn<(adapter: WalletAdapter) => void>();
     const unsub = discoverEvmAdapters(callback);
     unsub();
     expect(callback).not.toHaveBeenCalled();

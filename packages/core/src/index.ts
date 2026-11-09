@@ -8,7 +8,6 @@ export type {
   BitcoinWallet,
   ChainBase,
   ChainPlatform,
-  ChainsByPlatform,
   ConnectedWallet,
   ConnectionErrorKind,
   Connector,
@@ -17,7 +16,6 @@ export type {
   EvmTransactionRequest,
   EvmTransactionValue,
   EvmWallet,
-  HydrationOutcome,
   PolkadotAdapter,
   PolkadotWallet,
   SignedMessage,
@@ -34,7 +32,6 @@ export type {
   WalletAdapter,
   WalletAdapterFor,
   WalletBase,
-  WalletManagerConfig,
   WalletSigner,
   WalletSignerKind,
   WalletSignerOf,
@@ -43,6 +40,8 @@ export type {
 
 export {
   buildAccount,
+  buildBalance,
+  CHAIN_NAMESPACES,
   CHAIN_PLATFORMS,
   ConnectionError,
   isChainPlatform,
@@ -51,10 +50,13 @@ export {
   toConnectionError,
 } from "./types";
 
+export type { ChainsByPlatform } from "./chains";
+
 export {
   BITCOIN_CHAINS,
   BITCOIN_CHAINS_LIST,
   CHAINS_BY_PLATFORM,
+  DEFAULT_CHAINS,
   EVM_CHAINS,
   EVM_CHAINS_LIST,
   POLKADOT_CHAINS,
@@ -82,7 +84,13 @@ export type { WalletSource } from "./wallet-source";
 
 export { fromAdapters } from "./wallet-source";
 
-export type { ConnectStatus, WalletManager, WalletState } from "./store";
+export type {
+  ConnectStatus,
+  HydrationOutcome,
+  WalletManager,
+  WalletManagerConfig,
+  WalletState,
+} from "./store";
 
 export { createWalletManager, isShadowAdapter, ShadowConnectorError } from "./store";
 
@@ -118,7 +126,7 @@ export { SignInUnsupportedError, createSignInFlow } from "./sign-in";
 
 export { accountsEqual, walletEqual } from "./wallet-equal";
 
-export { logError, logWarn } from "./logger";
+export { logWarn } from "./logger";
 
 export { sanitizeIcon } from "./sanitize-icon";
 

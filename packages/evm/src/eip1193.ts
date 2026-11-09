@@ -48,6 +48,23 @@ type Eip6963ProviderDetail = {
 
 type Eip6963AnnounceEvent = CustomEvent<Eip6963ProviderDetail>;
 
+/** Structural check for code that holds a provider of unknown origin, such
+ *  as `window.ethereum`. A butr signer narrows on `kind === "eip1193"`
+ *  instead. */
+const isEip1193Provider = (value: unknown): value is Eip1193Provider =>
+  typeof value === "object" &&
+  value !== null &&
+  "on" in value &&
+  typeof value.on === "function" &&
+  "removeListener" in value &&
+  typeof value.removeListener === "function" &&
+  "request" in value &&
+  typeof value.request === "function";
+
+/** The string members of a list-shaped RPC result or event argument. */
+const toStringArray = (value: Eip1193Value | undefined): Array<string> =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+
 /** `provider.request` is typed `unknown` by design; these helpers narrow
  *  the well-known EVM RPC shapes at the boundary with runtime guards so
  *  call sites stay assertion-free. A malformed response is reported as
@@ -65,15 +82,9 @@ const requestString = async (
 const requestStringArray = async (
   provider: Eip1193Provider,
   args: Eip1193RequestArgs,
-): Promise<Array<string>> => {
-  const result = await provider.request(args);
+): Promise<Array<string>> => toStringArray(await provider.request(args));
 
-  return Array.isArray(result)
-    ? result.filter((item): item is string => typeof item === "string")
-    : [];
-};
-
-export { requestString, requestStringArray };
+export { isEip1193Provider, requestString, requestStringArray, toStringArray };
 
 export type {
   Eip1193Listener,

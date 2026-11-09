@@ -1,9 +1,9 @@
-const logWarn = (...args: ReadonlyArray<unknown>): void => {
-  console.warn(...args);
+const logWarn = (message: string, ...details: ReadonlyArray<unknown>): void => {
+  console.warn(`[butr] ${message}`, ...details);
 };
 
-const logError = (...args: ReadonlyArray<unknown>): void => {
-  console.error(...args);
+const logError = (message: string, ...details: ReadonlyArray<unknown>): void => {
+  console.error(`[butr] ${message}`, ...details);
 };
 
 export { logError, logWarn };

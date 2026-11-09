@@ -58,7 +58,7 @@ describeAdapterContract<EvmAdapter>({
 
     return Promise.resolve({
       adapter: buildEvmAdapter(
-        { icon: "", name: "Contract EVM Wallet", rdns: "io.contract.wallet", uuid: "uuid" },
+        { icon: "", id: "io.contract.wallet", name: "Contract EVM Wallet" },
         provider,
       ),
       lastCall: () => calls.at(-1),

@@ -1,6 +1,7 @@
 import type {
   Account,
   ChainBase,
+  ChainPlatform,
   Connector,
   ConnectorEvent,
   TransactionOptions,
@@ -8,9 +9,11 @@ import type {
 } from "@usebutr/core";
 import {
   buildAccount,
+  CHAIN_NAMESPACES,
+  CHAINS_BY_PLATFORM,
   createConnectorEmitter,
   createRoutedChainTarget,
-  logWarn,
+  DEFAULT_CHAINS,
   resolveChain,
   sanitizeIcon,
 } from "@usebutr/core";
@@ -20,25 +23,22 @@ import type {
   StandardConnectFeature,
   StandardDisconnectFeature,
   StandardEventsFeature,
+  WalletStandardFeature,
   WalletStandardWallet,
   WalletStandardWalletAccount,
 } from "./types";
 
 type WalletStandardCoreInput = {
-  /** The platform's chain registry, for chain names. A chain outside it is
-   *  named by its CAIP-2 id. */
-  chains: ReadonlyArray<ChainBase>;
   /** Stable adapter id. Each platform package owns its own slug prefix. */
   id: string;
-  /** How the platform reads in warnings: `Solana`, `Sui`, `Bitcoin`. */
-  label: string;
-  /** CAIP-2 namespace without its colon: `solana`, `sui`, `bip122`. */
-  namespace: string;
+  /** Picks the CAIP-2 namespace and the chain registry; a chain outside the
+   *  registry is named by its CAIP-2 id. */
+  platform: ChainPlatform;
   /** Registry chain ids worth preferring over the first advertised one; a
    *  wallet naming one by an alias counts. Matched in the wallet's own
    *  order, so a wallet listing devnet before mainnet keeps devnet when
-   *  both are preferred. */
-  preferredChainIds: ReadonlyArray<string>;
+   *  both are preferred. Defaults to the platform's mainnet. */
+  preferredChainIds?: ReadonlyArray<string>;
   /** Called with a function that pushes a synthetic `disconnected` event to
    *  all current subscribers. Discovery invokes it on `unregister`. */
   registerDisconnector?: (emit: () => void) => void;
@@ -57,38 +57,42 @@ type WalletStandardConnector = Pick<
   switchChain?: (chain: ChainBase) => Promise<void>;
 };
 
+type WalletStandardTarget = (options?: TransactionOptions) => {
+  account: WalletStandardWalletAccount;
+  chain: string;
+};
+
 type WalletStandardCore = {
   /** Spread into the adapter. `disconnect`, `subscribe` and `switchChain` are
    *  present only when the wallet supports them. */
   base: WalletStandardConnector;
   /** The active chain, for results that mint their own `Account`. */
   currentChain: () => ChainBase;
-  resolveTarget: (
-    feature: string,
-    options?: TransactionOptions,
-  ) => {
-    account: WalletStandardWalletAccount;
-    chain: string;
-  };
+  /** The wallet's `name` feature when it has `method`, and `target`: the
+   *  chain a call goes to and the account it acts as, among the accounts that
+   *  list the feature. `undefined` when the wallet lacks it. */
+  feature: <Feature extends object>(
+    name: string,
+    method: keyof Feature & string,
+  ) => { call: WalletStandardFeature & Feature; target: WalletStandardTarget } | undefined;
   toAccount: (account: WalletStandardWalletAccount) => Account;
 };
 
 /**
- * `null` when the wallet advertises no chain in `namespace` or lacks
+ * `null` when the wallet advertises no chain on `platform` or lacks
  * `standard:connect`, so a multi-chain wallet yields one adapter per
  * platform it actually speaks.
  */
 const createWalletStandardCore = ({
-  chains,
   id,
-  label,
-  namespace,
-  preferredChainIds,
+  platform,
+  preferredChainIds = [DEFAULT_CHAINS[platform].id],
   registerDisconnector,
   trackChainChanges,
   wallet,
 }: WalletStandardCoreInput): WalletStandardCore | null => {
-  const prefix = `${namespace}:`;
+  const chains = CHAINS_BY_PLATFORM[platform];
+  const prefix = `${CHAIN_NAMESPACES[platform]}:`;
   // Accounts and callers speak registry ids; the wallet hears its own.
   const toRegistryId = (chainId: string) => resolveChain(chainId, chains).id;
 
@@ -131,14 +135,13 @@ const createWalletStandardCore = ({
   };
 
   const target = createRoutedChainTarget({
-    advertised: () => wallet.chains.map(toRegistryId),
-    current: () => toRegistryId(currentChainId),
-    namespace,
+    advertised: () => wallet.chains,
+    current: () => currentChainId,
+    platform,
     wallet: wallet.name,
   });
 
-  const routeChain = (chain?: ChainBase) =>
-    toWalletId(target.chain(chain === undefined ? undefined : resolveChain(chain.id, chains)));
+  const routeChain = (chain?: ChainBase) => toWalletId(target.chain(chain));
 
   const emitter = createConnectorEmitter();
 
@@ -191,11 +194,7 @@ const createWalletStandardCore = ({
     name: wallet.name,
     ...(disconnect !== undefined && {
       async disconnect() {
-        try {
-          await disconnect.disconnect();
-        } catch (error) {
-          logWarn(`[butr] ${label} Wallet Standard disconnect threw:`, error);
-        }
+        await disconnect.disconnect();
       },
     }),
     // Discovery wires `unregister` through the same listeners, so a wallet
@@ -213,17 +212,25 @@ const createWalletStandardCore = ({
     }),
   };
 
+  const resolveTarget = (feature: string, options?: TransactionOptions) => {
+    const chain = routeChain(options?.chain);
+
+    const accounts = accountsOn(wallet.accounts, chain).filter((account) =>
+      account.features.includes(feature),
+    );
+
+    return { account: target.account(accounts, options?.account), chain };
+  };
+
   return {
     base,
     currentChain,
-    resolveTarget: (feature, options) => {
-      const chain = routeChain(options?.chain);
+    feature: (name, method) => {
+      const call = getFeature(wallet, name, method);
 
-      const accounts = accountsOn(wallet.accounts, chain).filter((account) =>
-        account.features.includes(feature),
-      );
-
-      return { account: target.account(accounts, options?.account), chain };
+      return call === undefined
+        ? undefined
+        : { call, target: (options) => resolveTarget(name, options) };
     },
     toAccount: (account) =>
       buildAccount(target.account(accountsOn([account], currentChainId)).address, currentChain()),

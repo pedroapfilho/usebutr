@@ -1,5 +1,5 @@
 import type { EvmAdapter } from "@usebutr/core";
-import { bytesToHex, EVM_CHAINS, EVM_CHAINS_LIST } from "@usebutr/core";
+import { bytesToHex } from "@usebutr/core";
 
 import type { LedgerBaseOptions, TransportLike } from "../adapter-core";
 import { createLedgerAdapterCore, isClassWith, loadPeer, rsBytes } from "../adapter-core";
@@ -29,8 +29,8 @@ type EthAppLike = {
 type EthAppConstructor = new (transport: TransportLike) => EthAppLike;
 
 type EvmLedgerOptions = LedgerBaseOptions & {
-  /** DI override for the app class (tests). Default: a dynamic import of
-   *  `@ledgerhq/hw-app-eth`. */
+  /** The app class, for an app that already imports it. Default: a dynamic
+   *  import of `@ledgerhq/hw-app-eth`. */
   eth?: EthAppConstructor;
   platform: "evm";
 };
@@ -40,15 +40,13 @@ type EvmLedgerOptions = LedgerBaseOptions & {
  * the user opens the Ethereum app. No `switchChain`: personal-message
  * signatures carry no chain id, so switching would change nothing.
  */
-const createEvmLedgerAdapter = async (options: EvmLedgerOptions): Promise<EvmAdapter> => {
-  const core = await createLedgerAdapterCore<EthAppLike>(options, {
+const createEvmLedgerAdapter = (options: EvmLedgerOptions): EvmAdapter => {
+  const core = createLedgerAdapterCore<EthAppLike>(options, {
     addressAt: async (eth, path) => {
       const { address } = await eth.getAddress(path);
 
       return address;
     },
-    chains: EVM_CHAINS_LIST,
-    defaultChain: EVM_CHAINS.ethereum,
     defaultPathPrefix: "44'/60'/0'/0",
     hardenedIndex: false,
     loadApp: async () => {
@@ -62,6 +60,7 @@ const createEvmLedgerAdapter = async (options: EvmLedgerOptions): Promise<EvmAda
 
       return (transport) => new Eth(transport);
     },
+    platform: "evm",
     signer: (app) => ({ app, kind: "ledger-evm" }),
   });
 

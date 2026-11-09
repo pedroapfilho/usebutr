@@ -68,13 +68,13 @@ if (isPlatformWallet(wallet, "svm") && wallet.connector.sendTx) {
 
 What `chain` does depends on the transport, and no adapter ignores it:
 
-| Transport                                         | With `chain`                                                                                                                                        |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Wallet Standard (Solana, Sui, Bitcoin)            | routes this one call; the wallet stays where it is. Rejects a chain the wallet doesn't advertise.                                                   |
-| EVM (injected, and WalletConnect's EVM namespace) | an EVM wallet has one global network, so it switches first (`wallet_switchEthereumChain`, which may prompt), then sends. The wallet stays switched. |
-| WalletConnect Solana, Sui, Bitcoin                | routes this one call. Rejects a chain the session didn't approve.                                                                                   |
-| Injected Bitcoin                                  | Unisat and Xverse switch the wallet's network first; OKX and `window.btc` reject with `ChainMismatch`.                                              |
-| Ledger                                            | signs for the chain it was built for; any other `chain` rejects with `ChainMismatch`.                                                               |
+| Transport                                         | With `chain`                                                                                                                                                                                                   |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wallet Standard (Solana, Sui, Bitcoin)            | routes this one call; the wallet stays where it is. Rejects a chain the wallet doesn't advertise.                                                                                                              |
+| EVM (injected, and WalletConnect's EVM namespace) | an EVM wallet has one global network, so it switches first (`wallet_switchEthereumChain`, which may prompt), then sends. The wallet stays switched.                                                            |
+| WalletConnect Solana, Sui, Bitcoin                | routes this one call. Rejects a chain the session didn't approve.                                                                                                                                              |
+| Injected Bitcoin                                  | Xverse switches the wallet's network first. Unisat, OKX and `window.btc` share the Unisat adapter: it switches first when the provider has `switchNetwork`, and rejects with `ChainMismatch` when it lacks it. |
+| Ledger                                            | signs for the chain it was built for; any other `chain` rejects with `ChainMismatch`.                                                                                                                          |
 
 The same rules apply to `signTransaction`'s `chain`, which is the only one a
 Ledger has. A `chain` from another platform's namespace always rejects.

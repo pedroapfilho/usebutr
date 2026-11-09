@@ -7,20 +7,21 @@ import type {
 } from "@usebutr/core";
 import {
   buildAccount,
+  bytesToHexPrefixed,
+  CHAIN_NAMESPACES,
   createAccountTarget,
   createConnectorEmitter,
+  DEFAULT_CHAINS,
+  hexToBytes,
   logWarn,
-  POLKADOT_CHAINS,
   POLKADOT_CHAINS_LIST,
   resolveChain,
-  sanitizeIcon,
 } from "@usebutr/core";
 
 import { wrapBytes } from "../message";
 
 import { GENERIC_POLKADOT_ICON } from "./icon";
 import type { Injected, InjectedAccount, InjectedWindowProvider } from "./injected-web3";
-import { bytesToHex, hexToBytes } from "./injected-web3";
 
 const DAPP_NAME = "butr";
 
@@ -39,13 +40,13 @@ const toKebab = (name: string): string =>
 /**
  * An account works on any Substrate chain unless the extension pins it to
  * one through `genesisHash`, whose first 16 bytes are the CAIP-2 reference.
- * Unpinned accounts are labelled Polkadot, butr's default network.
+ * Unpinned accounts are labelled with the platform's default chain.
  */
 const chainOf = ({ genesisHash }: InjectedAccount): ChainBase =>
   genesisHash === undefined || genesisHash === null || genesisHash === ""
-    ? POLKADOT_CHAINS.polkadot
+    ? DEFAULT_CHAINS.polkadot
     : resolveChain(
-        `polkadot:${genesisHash.replace(/^0x/v, "").slice(0, 32)}`,
+        `${CHAIN_NAMESPACES.polkadot}:${genesisHash.replace(/^0x/v, "").slice(0, 32)}`,
         POLKADOT_CHAINS_LIST,
       );
 
@@ -72,7 +73,7 @@ const buildInjectedPolkadotAdapter = (
 ): PolkadotAdapter => {
   let session: InjectedSession | null = null;
   const emitter = createConnectorEmitter();
-  const target = createAccountTarget({ namespace: "polkadot", wallet: displayName });
+  const target = createAccountTarget({ platform: "polkadot", wallet: displayName });
 
   const closeSession = (): void => {
     session?.unsubscribe?.();
@@ -91,7 +92,7 @@ const buildInjectedPolkadotAdapter = (
     try {
       opened.unsubscribe = injected.accounts.subscribe?.(forwardAccounts) ?? null;
     } catch (error) {
-      logWarn(`[butr/polkadot] ${displayName} accounts.subscribe threw:`, error);
+      logWarn(`${displayName} accounts.subscribe threw:`, error);
     }
   };
 
@@ -110,7 +111,7 @@ const buildInjectedPolkadotAdapter = (
 
     const result = await injected.signer.signRaw({
       address: match.address,
-      data: bytesToHex(wrapped),
+      data: bytesToHexPrefixed(wrapped),
       type: "bytes",
     });
 
@@ -127,14 +128,7 @@ const buildInjectedPolkadotAdapter = (
         return;
       }
 
-      const injected = await provider.enable(DAPP_NAME);
-      const accounts = await injected.accounts.get();
-
-      if (accounts.length === 0) {
-        throw new Error(`Wallet ${displayName} exposed no accounts`);
-      }
-
-      openSession(injected);
+      openSession(await provider.enable(DAPP_NAME));
     },
 
     async disconnect() {
@@ -159,7 +153,7 @@ const buildInjectedPolkadotAdapter = (
       return { extension, extensionName, kind: "polkadot-injected" };
     },
 
-    icon: sanitizeIcon(GENERIC_POLKADOT_ICON),
+    icon: GENERIC_POLKADOT_ICON,
     id: `injected:polkadot:${toKebab(extensionName)}`,
     name: displayName,
 

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import type { Eip1193Provider, Eip1193Value, Eip6963ProviderInfo } from "../eip1193";
+import type { Eip1193Provider, Eip1193Value } from "../eip1193";
+import type { EvmIdentity } from "../eip6963-adapter";
 import { buildEvmAdapter } from "../eip6963-adapter";
 
-const baseInfo = (rdns: string, name: string): Eip6963ProviderInfo => ({
+const baseInfo = (id: string, name: string): EvmIdentity => ({
   icon: "data:image/svg+xml;base64,Zm9v",
+  id,
   name,
-  rdns,
-  uuid: `${rdns}-uuid`,
 });
 
 type MockResponse = () => Eip1193Value | Promise<never> | undefined;

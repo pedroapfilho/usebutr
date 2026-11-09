@@ -12,7 +12,7 @@ type ConnectorEvent =
 /**
  * What butr itself calls during connect, disconnect and hydration. Optional
  * members are defined only when they work for this wallet, so presence is
- * the capability check.
+ * the capability check; it may change once `connect()` resolves.
  */
 type Connector<P extends ChainPlatform = ChainPlatform> = {
   /** Discriminant: which chain platform this adapter speaks. */

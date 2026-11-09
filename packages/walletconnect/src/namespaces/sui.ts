@@ -1,23 +1,18 @@
 import type { SuiAdapter } from "@usebutr/core";
-import { SUI_CHAINS_LIST, base64ToBytes, bytesToBase64 } from "@usebutr/core";
+import { base64ToBytes, bytesToBase64 } from "@usebutr/core";
 import { prepareSuiTransaction } from "@usebutr/sui/transaction";
 
 import { createCaipAdapterCore } from "./caip";
 import type { WalletConnectNamespaceBuilder } from "./types";
 import { readResultString, readStringField } from "./wallet-response";
 
-const SUI_NAMESPACE = "sui";
-const SUI_MAINNET = "sui:mainnet";
-
-const DEFAULT_CHAINS: ReadonlyArray<string> = [SUI_MAINNET];
-
-const DEFAULT_METHODS: ReadonlyArray<string> = [
+const METHODS: ReadonlyArray<string> = [
   "sui_signTransaction",
   "sui_signAndExecuteTransaction",
   "sui_signPersonalMessage",
 ];
 
-const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged", "disconnect"];
+const EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged", "disconnect"];
 
 /**
  * Wallets drift on the Sui WC response keys (`transactionBytes` vs
@@ -26,15 +21,7 @@ const DEFAULT_EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged"
  */
 const suiNamespace: WalletConnectNamespaceBuilder<SuiAdapter> = {
   buildAdapter(input) {
-    const { base, request, resolveTarget } = createCaipAdapterCore({
-      ...input,
-      defaultChainId: SUI_MAINNET,
-      events: DEFAULT_EVENTS,
-      knownChains: SUI_CHAINS_LIST,
-      label: "Sui",
-      methods: DEFAULT_METHODS,
-      namespace: SUI_NAMESPACE,
-    });
+    const { base, request, resolveTarget } = createCaipAdapterCore({ ...input, platform: "sui" });
 
     return {
       ...base,
@@ -101,11 +88,9 @@ const suiNamespace: WalletConnectNamespaceBuilder<SuiAdapter> = {
       },
     };
   },
-  caipPrefix: SUI_NAMESPACE,
   chainPlatform: "sui",
-  defaultChains: DEFAULT_CHAINS,
-  defaultEvents: DEFAULT_EVENTS,
-  defaultMethods: DEFAULT_METHODS,
+  events: EVENTS,
+  methods: METHODS,
 };
 
 export { suiNamespace };

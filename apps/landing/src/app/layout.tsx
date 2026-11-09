@@ -4,6 +4,8 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 
+import { SITE_URL } from "@/lib/site";
+
 const geist = Geist({
   display: "swap",
   subsets: ["latin"],
@@ -20,14 +22,14 @@ const metadata: Metadata = {
   alternates: { canonical: "/" },
   description:
     "butr discovers EVM, Solana, Sui, Bitcoin, and Polkadot wallets and manages their connection state through one React hook surface. Bring your own chain library.",
-  metadataBase: new URL("https://www.usebutr.com"),
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     description:
       "Discover and manage EVM, Solana, Sui, Bitcoin, and Polkadot wallets through one React hook surface.",
     siteName: "butr",
     title: "butr: multi-chain wallet management for React",
     type: "website",
-    url: "https://www.usebutr.com",
+    url: SITE_URL,
   },
   title: {
     default: "butr: multi-chain wallet management for React",

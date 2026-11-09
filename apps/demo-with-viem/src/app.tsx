@@ -1,5 +1,11 @@
 import type { ConnectedWallet } from "@usebutr/core";
-import { useConnect, useSigner, useWallet, useWalletManager } from "@usebutr/react";
+import {
+  useConnect,
+  useDiscoveredWallets,
+  useSigner,
+  useWallet,
+  useWalletManager,
+} from "@usebutr/react";
 import { useEffect, useMemo, useState } from "react";
 import {
   type Address,
@@ -12,8 +18,6 @@ import {
   parseEther,
 } from "viem";
 import { sepolia } from "viem/chains";
-
-import { useDiscoveredWallets } from "./wallet-provider";
 
 const BURN_ADDRESS: Address = "0x000000000000000000000000000000000000dEaD";
 

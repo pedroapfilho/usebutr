@@ -1,33 +1,27 @@
-import type { Account, Balance, ConnectedWallet, WalletSigner } from "@usebutr/core";
-import { isShadowAdapter } from "@usebutr/core";
+import type {
+  Balance,
+  BalanceOptions,
+  ConnectedWallet,
+  ConnectionError,
+  WalletSigner,
+} from "@usebutr/core";
+import { isShadowAdapter, toConnectionError } from "@usebutr/core";
 import { useEffect, useMemo, useReducer, useState } from "react";
 
 type AsyncState<T> =
   | { data: null; error: null; status: "idle" }
   | { data: null; error: null; status: "loading" }
   | { data: T; error: null; status: "success" }
-  | { data: null; error: Error; status: "error" };
+  | { data: null; error: ConnectionError; status: "error" };
 
 const IDLE: AsyncState<never> = { data: null, error: null, status: "idle" };
 const LOADING: AsyncState<never> = { data: null, error: null, status: "loading" };
-
-/** Wallets throw strings and bare objects too; consumers get an `Error`
- *  either way, with the original value as its `cause`. */
-const toError = (cause: unknown): Error => {
-  if (cause instanceof Error) {
-    return cause;
-  }
-
-  const message = typeof cause === "string" && cause !== "" ? cause : "Request failed";
-
-  return new Error(message, { cause });
-};
 
 const settle = async <T>(fn: () => Promise<T>): Promise<AsyncState<T>> => {
   try {
     return { data: await fn(), error: null, status: "success" };
   } catch (error) {
-    return { data: null, error: toError(error), status: "error" };
+    return { data: null, error: toConnectionError(error), status: "error" };
   }
 };
 
@@ -83,14 +77,6 @@ const useSigner = (wallet: ConnectedWallet | undefined): AsyncState<WalletSigner
   return useAsyncResource(fn);
 };
 
-type UseBalanceOptions = {
-  /** Which account to read; the wallet's active account when omitted. */
-  account?: Account;
-  /** Chain-specific token id (an ERC-20 address on EVM); the native asset
-   *  when omitted. */
-  token?: string;
-};
-
 type UseBalanceResult = AsyncState<Balance> & { refetch: () => void };
 
 /**
@@ -100,7 +86,7 @@ type UseBalanceResult = AsyncState<Balance> & { refetch: () => void };
  */
 const useBalance = (
   wallet: ConnectedWallet | undefined,
-  options: UseBalanceOptions = {},
+  options: BalanceOptions = {},
 ): UseBalanceResult => {
   const { account, token } = options;
   const [counter, refetch] = useReducer((n: number) => n + 1, 0);
@@ -129,6 +115,6 @@ const useBalance = (
   return { ...state, refetch };
 };
 
-export type { AsyncState, UseBalanceOptions, UseBalanceResult };
+export type { AsyncState, UseBalanceResult };
 
 export { useBalance, useSigner };

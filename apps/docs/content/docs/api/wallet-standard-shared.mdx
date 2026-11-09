@@ -66,20 +66,20 @@ per platform.
 ### `createWalletStandardCore(input): WalletStandardCore | null`
 
 The members every Wallet Standard adapter shares. `null` when the wallet
-advertises no chain in `input.namespace` or lacks `standard:connect`.
+advertises no chain on `input.platform` or lacks `standard:connect`.
 
-`WalletStandardCoreInput`: `chains` (the platform's registry, for names),
-`id`, `label` (`"Solana"`, for errors), `namespace` (`"solana"`),
-`preferredChainIds`, `registerDisconnector?`, `trackChainChanges`, `wallet`.
+`WalletStandardCoreInput`: `id`, `platform` (picks the CAIP-2 namespace and
+the chain registry, for names), `preferredChainIds?` (default: the platform's
+mainnet), `registerDisconnector?`, `trackChainChanges`, `wallet`.
 
 `WalletStandardCore`:
 
-| Member                             | Notes                                                                                                                                                                                                                                 |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `base`                             | Spread into the adapter: `connect`, `getAccounts`, `getSigner`, `icon`, `id`, `name`, plus `disconnect`, `subscribe` and `switchChain` when supported. Account reads and events include only accounts advertising the selected chain. |
-| `resolveTarget(feature, options?)` | Returns `{ account, chain }` together. Selects the requested account, or the first account supporting the target chain and operation feature. Rejects unsupported targets.                                                            |
-| `toAccount(rawAccount)`            | Builds an `Account` on the current chain after checking the raw account advertises it, including sign-in results.                                                                                                                     |
-| `currentChain()`                   | The active registry chain.                                                                                                                                                                                                            |
+| Member                  | Notes                                                                                                                                                                                                                                                      |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `base`                  | Spread into the adapter: `connect`, `getAccounts`, `getSigner`, `icon`, `id`, `name`, plus `disconnect`, `subscribe` and `switchChain` when supported. Account reads and events include only accounts advertising the selected chain.                      |
+| `feature(name, method)` | The wallet's `name` feature when it has `method`, as `{ call, target }`. `target(options?)` returns `{ account, chain }`: the requested account, or the first account advertising the call's chain and this feature. `undefined` when the wallet lacks it. |
+| `toAccount(rawAccount)` | Builds an `Account` on the current chain after checking the raw account advertises it, including sign-in results.                                                                                                                                          |
+| `currentChain()`        | The active registry chain.                                                                                                                                                                                                                                 |
 
 `options` accepts `account` and `chain`. Chain matching recognizes registry aliases;
 returned accounts retain their original Wallet Standard records, and `chain` uses
@@ -87,17 +87,13 @@ the wallet's advertised spelling. Switching changes the scoped account view.
 
 ```ts
 import type { SvmAdapter } from "@usebutr/core";
-import { SVM_CHAINS_LIST } from "@usebutr/core";
 import type { WalletStandardWallet } from "@usebutr/wallet-standard-shared";
 import { createWalletStandardCore, slugify } from "@usebutr/wallet-standard-shared";
 
 export const buildAdapter = (wallet: WalletStandardWallet): SvmAdapter | null => {
   const core = createWalletStandardCore({
-    chains: SVM_CHAINS_LIST,
     id: slugify("svm", wallet.name),
-    label: "Solana",
-    namespace: "solana",
-    preferredChainIds: ["solana:mainnet"],
+    platform: "svm",
     trackChainChanges: true,
     wallet,
   });

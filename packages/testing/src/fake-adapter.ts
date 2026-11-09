@@ -20,6 +20,7 @@ import type {
 } from "@usebutr/core";
 import {
   buildAccount,
+  buildBalance,
   bytesToBase58,
   bytesToHex,
   bytesToHexPrefixed,
@@ -27,15 +28,10 @@ import {
   createConnectorEmitter,
   createRoutedChainTarget,
   createSwitchingChainTarget,
+  DEFAULT_CHAINS,
 } from "@usebutr/core";
 
-import {
-  createByteSource,
-  DEFAULT_ADDRESSES,
-  DEFAULT_CHAINS,
-  formatUnits,
-  NATIVE_ASSETS,
-} from "./fake-values";
+import { createByteSource, DEFAULT_ADDRESSES, NATIVE_ASSETS } from "./fake-values";
 
 /** A signing or sending request the fake wallet accepted. */
 type FakeRequest = {
@@ -124,7 +120,7 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
   const targetInput = {
     /** The registry's chains, and whatever chain the accounts are on. */
     advertised: () => [...CHAINS_BY_PLATFORM[platform].map((chain) => chain.id), currentChain().id],
-    namespace: DEFAULT_CHAINS[platform].namespace,
+    platform,
     wallet: name,
   };
 
@@ -168,7 +164,7 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
     const { decimals, symbol } = NATIVE_ASSETS[platform];
     const value = options.balance ?? 10n ** BigInt(decimals);
 
-    return { decimals, formatted: formatUnits(value, decimals), symbol, value };
+    return buildBalance(value, decimals, symbol);
   };
 
   const signMessage = (message: Uint8Array, signOptions?: AccountOptions) =>

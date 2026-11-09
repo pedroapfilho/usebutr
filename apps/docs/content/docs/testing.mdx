@@ -3,8 +3,9 @@ title: Testing
 description: "@usebutr/testing: fake adapters, fake connected wallets, fake persistence, and the contract suite every adapter runs."
 ---
 
-`@usebutr/testing` provides test doubles that behave like real wallets on
-each platform. Install it as a dev dependency:
+`@usebutr/testing` provides test doubles for each platform's adapters. They
+raise the same errors real adapters do, but carry a fixed set of members per
+platform (see the table below). Install it as a dev dependency:
 
 ```npm
 npm install --save-dev @usebutr/testing
@@ -72,6 +73,10 @@ is a `FakeAdapter<"svm">`, an `SvmAdapter` plus the test controls.
 | `sui`      | `disconnect`, `sendTx`, `signMessage`, `signTransaction`, `subscribe`                                                       |
 | `bitcoin`  | `disconnect`, `sendTx`, `signMessage`, `signTransaction`, `subscribe`                                                       |
 | `polkadot` | `disconnect`, `signMessage`, `subscribe`                                                                                    |
+
+Only the EVM fake has `switchChain`. A real Wallet Standard adapter on `svm`,
+`sui`, `bitcoin` or `polkadot` has it when the wallet advertises more than one
+chain; pass it through `overrides` to test that path.
 
 It passes the [adapter contract suite](#adapter-contract-suite), so code under
 test meets the same failures it would in production:
@@ -261,7 +266,7 @@ describeAdapterContract<EvmAdapter>({
 | `addresses`    | Two addresses the wallet can expose on `chain`, each with a letter, so a case-changed copy differs.                                          |
 | `chain`        | The chain the adapter is on once connected.                                                                                                  |
 | `connect`      | Builds an adapter whose wallet exposes `addresses`, active first, connected where the transport allows it. `[]` builds one exposing nothing. |
-| `move`         | `"route"` (Wallet Standard, WalletConnect), `"switch"` (injected EVM, UniSat, sats-connect) or `"fixed"` (Ledger).                           |
+| `move`         | `"route"` (Wallet Standard, WalletConnect), `"switch"` (injected EVM, UniSat, sats-connect) or `"fixed"` (Ledger, injected Polkadot).        |
 | `reachable`    | A chain in the namespace the transport reaches. Omit for `"fixed"`.                                                                          |
 | `unreachable`  | A chain in the namespace the transport cannot reach.                                                                                         |
 | `transactions` | Every method the adapter defines that takes `chain`, as a call with a payload the fake accepts.                                              |

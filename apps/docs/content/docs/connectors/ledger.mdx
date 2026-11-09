@@ -10,24 +10,17 @@ broadcast, read chain state or push events.
 ## Install
 
 ```npm
-npm install @usebutr/ledger @ledgerhq/hw-transport-webusb
+npm install @usebutr/ledger @ledgerhq/hw-transport-webusb @ledgerhq/hw-app-eth @ledgerhq/hw-app-solana @ledgerhq/hw-app-sui @ledgerhq/hw-app-btc
 ```
 
-Then add the Ledger app package for each platform you use; each is an
-optional peer loaded on first connect:
-
-```npm
-npm install @ledgerhq/hw-app-eth      # EVM
-npm install @ledgerhq/hw-app-solana   # Solana
-npm install @ledgerhq/hw-app-sui      # Sui
-npm install @ledgerhq/hw-app-btc      # Bitcoin
-```
+The package declares all five `@ledgerhq/*` packages as required peer
+dependencies, so install them all. Each device app (`hw-app-eth` for EVM,
+`hw-app-solana`, `hw-app-sui`, `hw-app-btc`) is loaded on first connect.
 
 ## Register it
 
-`createLedgerAdapter` resolves an un-paired adapter; `fromAdapters` takes the
-promise and hands the adapter to the manager, and it appears in
-`useDiscoveredWallets()`:
+`createLedgerAdapter` returns an un-paired adapter; `fromAdapters` hands it to
+the manager, and it appears in `useDiscoveredWallets()`:
 
 ```tsx
 import type { WalletManagerConfig } from "@usebutr/core";
@@ -66,14 +59,16 @@ addresses, active first.
 
 ### Options
 
-| Option                 | Default                                         | Notes                                                                                       |
-| ---------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `platform`             | required                                        | `"evm"`, `"svm"`, `"sui"` or `"bitcoin"`.                                                   |
-| `chainId`              | the platform's mainnet                          | CAIP-2, e.g. `EVM_CHAINS.sepolia.id`. The accounts are reported on this chain.              |
-| `accountCount`         | `1`                                             | Each address is a device round trip (1-2 s); keep it small.                                 |
-| `derivationPathPrefix` | per platform                                    | The account index is appended as the last segment.                                          |
-| `id` / `name` / `icon` | `"ledger"` / `"Ledger"` / `LEDGER_DEFAULT_ICON` |                                                                                             |
-| `addressFormat`        | `"bech32"`                                      | Bitcoin only: `"legacy"`, `"p2sh"`, `"bech32"` or `"bech32m"`, matching the path's purpose. |
+| Option                           | Default                                         | Notes                                                                                         |
+| -------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `platform`                       | required                                        | `"evm"`, `"svm"`, `"sui"` or `"bitcoin"`.                                                     |
+| `chainId`                        | the platform's mainnet                          | CAIP-2, e.g. `EVM_CHAINS.sepolia.id`. The accounts are reported on this chain.                |
+| `accountCount`                   | `1`                                             | Each address is a device round trip (1-2 s); keep it small.                                   |
+| `derivationPathPrefix`           | per platform                                    | The account index is appended as the last segment.                                            |
+| `id` / `name` / `icon`           | `"ledger"` / `"Ledger"` / `LEDGER_DEFAULT_ICON` |                                                                                               |
+| `transport`                      | a dynamic import of WebUSB                      | Another `@ledgerhq/hw-transport-*` factory, such as WebHID.                                   |
+| `eth` / `solana` / `sui` / `btc` | a dynamic import of the device app              | The app class, for an app that already imports it.                                            |
+| `addressFormat`                  | `"bech32"`                                      | Bitcoin only: `"legacy"`, `"p2sh"`, `"bech32"` or `"bech32m"`; the default prefix follows it. |
 
 | Platform  | Default prefix   | Account `n`         |
 | --------- | ---------------- | ------------------- |
@@ -81,6 +76,10 @@ addresses, active first.
 | `svm`     | `44'/501'/0'`    | `44'/501'/0'/n'`    |
 | `sui`     | `44'/784'/0'/0'` | `44'/784'/0'/0'/n'` |
 | `bitcoin` | `84'/0'/0'/0`    | `84'/0'/0'/0/n`     |
+
+The Bitcoin row is the bech32 mainnet default: the purpose follows
+`addressFormat` (`44'`, `49'`, `84'`, `86'`) and the coin type is `1'` off
+mainnet.
 
 ## What each adapter defines
 
@@ -118,10 +117,11 @@ message bytes as hex, so any bytes sign, not only UTF-8 text.
 ## Chains and accounts
 
 A Ledger app has no network to switch, so each adapter signs for the one
-chain in `chainId`. A call whose `chain` differs rejects with a
-`ChainMismatch` `ConnectionError`: build one adapter per chain, with distinct
-ids. Bitcoin testnet needs the Bitcoin Test app, a `1'` coin type
-(`derivationPathPrefix: "84'/1'/0'/0"`) and `chainId: BITCOIN_CHAINS.testnet.id`.
+chain in `chainId`. A `chainId` outside the platform's namespace throws a
+`ChainMismatch` `ConnectionError` when the factory runs, and a call whose
+`chain` differs rejects with one: build one adapter per chain, with distinct
+ids. Bitcoin testnet needs the Bitcoin Test app and
+`chainId: BITCOIN_CHAINS.testnet.id`; the default path then uses coin type `1'`.
 
 Pass `{ account }` to sign as another address the device exposed; one it did
 not expose rejects.
@@ -129,8 +129,8 @@ not expose rejects.
 ## Caveats
 
 <Callout type="warn">
-  **WebUSB only.** Works in Chromium browsers (Chrome, Edge, Brave, Arc), not Firefox or Safari.
-  Gate the Ledger button accordingly.
+  **Chromium only.** WebUSB, the default transport, works in Chromium browsers (Chrome, Edge, Brave,
+  Arc), not Firefox or Safari. Gate the Ledger button accordingly.
 </Callout>
 
 <Callout type="warn">

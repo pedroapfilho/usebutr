@@ -9,6 +9,7 @@ import type {
 import {
   BITCOIN_CHAINS,
   bytesToBase58,
+  CHAIN_NAMESPACES,
   bytesToBase64,
   EVM_CHAINS,
   SUI_CHAINS,
@@ -25,7 +26,7 @@ import { solanaNamespace } from "../namespaces/svm";
 import type { WalletConnectNamespaceBuilder } from "../namespaces/types";
 
 import type { FakeProvider } from "./fake-provider";
-import { createFakeProvider } from "./fake-provider";
+import { buildNamespaceAdapter, createFakeProvider } from "./fake-provider";
 
 type CaipFixture<A extends WalletAdapter> = Pick<
   AdapterContractFixture<A>,
@@ -85,14 +86,14 @@ const caipContract = <A extends WalletAdapter>({
 
       const provider = createFakeProvider({
         request: (args) => answer(args.method),
-        session: { namespaces: { [builder.caipPrefix]: { accounts } } },
+        session: { namespaces: { [CHAIN_NAMESPACES[builder.chainPlatform]]: { accounts } } },
       });
 
-      const adapter = builder.buildAdapter({
+      const adapter = buildNamespaceAdapter(builder, {
         chains,
         icon: "",
-        id: `walletconnect-${builder.caipPrefix}`,
-        name: `WalletConnect (${builder.caipPrefix})`,
+        id: `walletconnect-${CHAIN_NAMESPACES[builder.chainPlatform]}`,
+        name: `WalletConnect (${CHAIN_NAMESPACES[builder.chainPlatform]})`,
         provider,
       });
 
@@ -232,7 +233,7 @@ describeAdapterContract<EvmAdapter>({
     });
 
     return Promise.resolve({
-      adapter: evmNamespace.buildAdapter({
+      adapter: buildNamespaceAdapter(evmNamespace, {
         chains: [EVM_CHAINS.ethereum.id, EVM_CHAINS.polygon.id],
         icon: "",
         id: "walletconnect-evm",

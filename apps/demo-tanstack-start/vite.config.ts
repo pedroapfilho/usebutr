@@ -7,15 +7,7 @@ import { defineConfig } from "vite";
 import zodCompiler from "zod-compiler/vite";
 
 const config = defineConfig({
-  plugins: [
-    zodCompiler(),
-    devtools(),
-    nitro({ rollupConfig: { external: (id: string) => id.startsWith("@sentry/") } }),
-    tailwindcss(),
-    tanstackStart(),
-    viteReact(),
-  ],
-  resolve: { tsconfigPaths: true },
+  plugins: [zodCompiler(), devtools(), nitro(), tailwindcss(), tanstackStart(), viteReact()],
   server: { allowedHosts: [".localhost"] },
 });
 

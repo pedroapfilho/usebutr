@@ -246,14 +246,16 @@ a Ledger hands back `ledger-evm`, not `eip1193`. See the
 Adding a sixth `ChainPlatform` is a fixed-shape change:
 
 1. **Extend** `CHAIN_PLATFORMS` in `@usebutr/core` (the `ChainPlatform` type
-   and the storage validators derive from it), add the platform's `*Wallet`
-   type to the `WalletAdapter` union, and add its chain registry to
-   `CHAINS_BY_PLATFORM`.
+   and the storage validators derive from it), add the platform's `*Adapter`
+   type to the `WalletAdapter` union and to `AdapterByPlatform`, and add its
+   chain registry to `CHAINS_BY_PLATFORM`, its CAIP-2 namespace to
+   `CHAIN_NAMESPACES` and its mainnet to `DEFAULT_CHAINS`.
 2. **Implement** `@usebutr/<platform>`: a `discover*Adapters` source and a
    `build*Adapter` that defines only the methods the wallet supports.
 3. **Register** its channels in `@usebutr/wallets`. The channel map is typed
-   `Record<ChainPlatform, …>`, as is `CHAINS_BY_PLATFORM`, so TypeScript flags
-   each missing entry the moment the union grows.
+   `Record<ChainPlatform, …>`, as are `CHAINS_BY_PLATFORM`, `CHAIN_NAMESPACES`
+   and `DEFAULT_CHAINS`, so TypeScript flags each missing entry the moment the
+   union grows.
 4. **(Optional)** Add a WalletConnect namespace under
    `packages/walletconnect/src/namespaces/<platform>.ts` and a Ledger app under
    `packages/ledger/src/apps/<platform>.ts`.

@@ -35,7 +35,7 @@ This repo follows the fleet's shared standards, checked by `standy` (`~/dev/stan
 apps/                 # 17 apps: 4 framework demos + 11 integration demos + docs + landing
 packages/             # @usebutr/* library packages + 2 @repo/* configs + 1 @repo/* internal
 .changeset/           # Changesets — version bumps + release notes
-.github/workflows/    # 8 workflows: build, lint, typecheck, test, e2e, publish-checks, react-doctor, release
+.github/workflows/    # 9 workflows: build, lint, typecheck, test, e2e, publish-checks, react-doctor, release, friction-log
 .fallow/              # Fallow cache + reports
 .husky/               # Pre-commit hooks (lint-staged)
 oxlint.config.ts      # Repo-wide oxlint config (TS-based)
@@ -50,7 +50,7 @@ docs/                 # Repo-level design notes (not the Fumadocs site)
 
 | App                   | Framework                       | Dev URL                                         |
 | --------------------- | ------------------------------- | ----------------------------------------------- |
-| `demo-vite`           | Vite 7 + React 19 (SPA)         | `https://usebutr.demo-vite.localhost`           |
+| `demo-vite`           | Vite 8 + React 19 (SPA)         | `https://usebutr.demo-vite.localhost`           |
 | `demo-next`           | Next.js 16 (App Router)         | `https://usebutr.demo-next.localhost`           |
 | `demo-tanstack-start` | TanStack Start (Vite SSR)       | `https://usebutr.demo-tanstack-start.localhost` |
 | `demo-expo-web`       | Expo (React Native, web target) | `https://usebutr.demo-expo-web.localhost`       |
@@ -77,23 +77,23 @@ docs/                 # Repo-level design notes (not the Fumadocs site)
 
 ### Packages
 
-| Package                           | Published? | Purpose                                                                           |
-| --------------------------------- | ---------- | --------------------------------------------------------------------------------- |
-| `@usebutr/core`                   | yes        | Types, store, storage, discovery seam. No React, no protocols.                    |
-| `@usebutr/react`                  | yes        | `WalletManagerProvider`, hooks, persisted connections.                            |
-| `@usebutr/evm`                    | yes        | EIP-6963 discovery + EVM connector.                                               |
-| `@usebutr/svm`                    | yes        | Wallet Standard discovery + Solana connector.                                     |
-| `@usebutr/sui`                    | yes        | Wallet Standard discovery + Sui connector.                                        |
-| `@usebutr/bitcoin`                | yes        | Injected fallbacks (Unisat, Xverse, `window.btc`) + Bitcoin connector.            |
-| `@usebutr/polkadot`               | yes        | injectedWeb3 + Wallet Standard discovery + Polkadot connector.                    |
-| `@usebutr/wallets`                | yes        | `autoDiscovery()` — the one-call discovery source.                                |
-| `@usebutr/walletconnect`          | yes        | WalletConnect connector.                                                          |
-| `@usebutr/ledger`                 | yes        | Ledger connector.                                                                 |
-| `@usebutr/wallet-standard-shared` | yes        | Shared Wallet Standard helpers.                                                   |
-| `@usebutr/testing`                | yes        | Testing helpers for consumer apps.                                                |
-| `@repo/typescript-config`         | no         | Shared tsconfig bases: `base/nextjs/react-library/vite/expo.json`.                |
-| `@repo/config-vitest`             | no         | Shared Vitest config (`react.ts`, `node.ts`).                                     |
-| `@repo/wallet-extensions`         | no         | Internal registry + Playwright helpers for extension fixtures (not for e2e here). |
+| Package                           | Published? | Purpose                                                                |
+| --------------------------------- | ---------- | ---------------------------------------------------------------------- |
+| `@usebutr/core`                   | yes        | Types, store, storage, discovery seam. No React, no protocols.         |
+| `@usebutr/react`                  | yes        | `WalletManagerProvider`, hooks, persisted connections.                 |
+| `@usebutr/evm`                    | yes        | EIP-6963 discovery + EVM connector.                                    |
+| `@usebutr/svm`                    | yes        | Wallet Standard discovery + Solana connector.                          |
+| `@usebutr/sui`                    | yes        | Wallet Standard discovery + Sui connector.                             |
+| `@usebutr/bitcoin`                | yes        | Injected fallbacks (Unisat, Xverse, `window.btc`) + Bitcoin connector. |
+| `@usebutr/polkadot`               | yes        | injectedWeb3 + Wallet Standard discovery + Polkadot connector.         |
+| `@usebutr/wallets`                | yes        | `autoDiscovery()` — the one-call discovery source.                     |
+| `@usebutr/walletconnect`          | yes        | WalletConnect connector.                                               |
+| `@usebutr/ledger`                 | yes        | Ledger connector.                                                      |
+| `@usebutr/wallet-standard-shared` | yes        | Shared Wallet Standard helpers.                                        |
+| `@usebutr/testing`                | yes        | Testing helpers for consumer apps.                                     |
+| `@repo/typescript-config`         | no         | Shared tsconfig bases: `base/nextjs/react-library/vite/expo.json`.     |
+| `@repo/config-vitest`             | no         | Shared Vitest config (`react.ts`, `node.ts`).                          |
+| `@repo/social-image`              | no         | Open Graph image renderer shared by `apps/docs` and `apps/landing`.    |
 
 ## Dev workflow
 
@@ -123,7 +123,7 @@ This is a library + demo repo, with no Docker or Prisma. Vitest covers the libra
 ## Conventions & gotchas
 
 - **Library profile.** This repo is `library` in standy. SaaS checks (auth-config, prisma-config, e2e, i18n-leak, theme, primitives, dev, base-styles) intentionally skip here. The applicable set is profile-aware and compared against the `library` base, `acme-package`; run `standy verify --repo usebutr` for the current list.
-- **CI shape.** Eight workflows: `test`, `lint` (formatting, dead code and oxlint as steps of one job), `typecheck`, `build`, `e2e` (the four Playwright suites), `publish-checks`, `react-doctor` (advisory), and `release`. Validation runs on pull requests, a weekly schedule and manual dispatch, never on pushes to main.
+- **CI shape.** Nine workflows: `test`, `lint` (formatting, dead code and oxlint as steps of one job), `typecheck`, `build`, `e2e` (the four Playwright suites), `publish-checks`, `react-doctor` (advisory), `release`, and `friction-log` (files Frog entries as issues). Validation runs on pull requests, a weekly schedule and manual dispatch, never on pushes to main.
 - **Per-app gitignores allowed.** Unlike SaaS repos, library demos may carry their own `.gitignore` files (the `gitignore` check is lenient here).
 - **Path aliases.** `@/*` → `src/*` in most apps; TanStack Start also maps `app/*`. Demo apps consume the library via workspace deps (`"@usebutr/core": "workspace:*"`) and tsconfig via `@repo/typescript-config`.
 - **Stable portless URLs.** `scripts/dev.mjs` resolves app links through Portless and forwards CLI arguments to Turbo. `pnpm dev --filter=<app>` includes dependency builds; direct `pnpm --filter=<app> dev` does not. Worktrees add a branch prefix to the listed URLs. Expo native iOS/Android use Metro/Expo Go on their own transport.
@@ -139,7 +139,6 @@ This is a library + demo repo, with no Docker or Prisma. Vitest covers the libra
 - **`@usebutr/*` published, `@repo/*` private.** The `@repo/*` namespace is a workspace-internal convention shared with the SaaS repos; only the public connector packages live under `@usebutr/*`.
 - **`tsdown` over `tsup`/`unbuild`.** Faster builds, ESM-first, matches the React 19 + Node 24 baseline.
 - **Fumadocs over plain Next.js content.** `apps/docs` is the source of `docs.usebutr.com`; content lives as MDX under that app.
-- **`@repo/wallet-extensions`** ships Playwright + registry helpers for _consumer_ apps that want to drive real wallet extensions in their own e2e suites. This repo doesn't run those e2e tests itself.
 
 ## References
 

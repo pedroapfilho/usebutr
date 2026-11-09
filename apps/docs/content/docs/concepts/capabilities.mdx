@@ -22,18 +22,18 @@ one, no receipt that stays pending forever, no `subscribe` that never fires, no
 Every adapter has `chainPlatform`, `id`, `name`, `icon?`, `connect`,
 `getAccounts`, and `getSigner`. Everything else is optional:
 
-| Method                  | Platforms              | Present when                                                       |
-| ----------------------- | ---------------------- | ------------------------------------------------------------------ |
-| `disconnect`            | all                    | the wallet has a teardown call                                     |
-| `subscribe`             | all                    | the wallet emits account or chain events                           |
-| `requestAccounts`       | all                    | the wallet has an account picker (EVM `wallet_requestPermissions`) |
-| `switchChain`           | all                    | the wallet can move to another chain, or advertises more than one  |
-| `signMessage`           | all                    | the wallet can sign bytes                                          |
-| `sendTx`                | EVM, SVM, Sui, Bitcoin | the wallet can sign and broadcast                                  |
-| `signTransaction`       | SVM, Sui, Bitcoin      | the wallet can sign without broadcasting                           |
-| `signIn`                | SVM                    | the wallet advertises `solana:signIn` (Sign In With Solana)        |
-| `getBalance`            | EVM                    | the adapter can read through the wallet's provider                 |
-| `getTransactionReceipt` | EVM                    | the adapter can read through the wallet's provider                 |
+| Method                  | Platforms              | Present when                                                                           |
+| ----------------------- | ---------------------- | -------------------------------------------------------------------------------------- |
+| `disconnect`            | all                    | the wallet has a teardown call                                                         |
+| `subscribe`             | all                    | the wallet emits account or chain events                                               |
+| `requestAccounts`       | EVM                    | the adapter is EIP-1193 (injected or EIP-6963); WalletConnect EVM and Ledger have none |
+| `switchChain`           | all                    | the wallet can move to another chain, or advertises more than one                      |
+| `signMessage`           | all                    | the wallet can sign bytes                                                              |
+| `sendTx`                | EVM, SVM, Sui, Bitcoin | the wallet can sign and broadcast                                                      |
+| `signTransaction`       | SVM, Sui, Bitcoin      | the wallet can sign without broadcasting                                               |
+| `signIn`                | SVM                    | the wallet advertises `solana:signIn` (Sign In With Solana)                            |
+| `getBalance`            | EVM                    | the adapter can read through the wallet's provider                                     |
+| `getTransactionReceipt` | EVM                    | the adapter can read through the wallet's provider                                     |
 
 `getBalance` and `getTransactionReceipt` need an RPC. EVM wallets expose one
 through their provider; butr ships none for Wallet Standard chains, so those

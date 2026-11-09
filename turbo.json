@@ -12,7 +12,6 @@
         ".next/**",
         "!.next/cache/**",
         ".output/**",
-        ".vinxi/**",
         ".expo/**",
         "src/routeTree.gen.ts"
       ]

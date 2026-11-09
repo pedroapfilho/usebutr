@@ -5,22 +5,15 @@ import { logError, logWarn } from "../logger";
 import type { WalletSnapshot } from "../storage/persistence";
 import { EMPTY_PERSISTED } from "../storage/wallet-state-codec";
 import { createWalletStorage } from "../storage/wallet-storage";
-import type {
-  Account,
-  ChainPlatform,
-  ConnectedWallet,
-  HydrationOutcome,
-  WalletAdapter,
-  WalletManagerConfig,
-} from "../types";
+import type { Account, ChainPlatform, ConnectedWallet, WalletAdapter } from "../types";
 import { ConnectionError, toConnectionError } from "../types/errors";
-import type { WalletState } from "../types/manager";
 
 import { createConnectorLifecycle } from "./connector-lifecycle";
 import { openSession, readAccounts, teardown } from "./connector-session";
 import { persistedStateChanged, toPersistedState } from "./persisted-state";
 import type { StoreState, WalletEvent } from "./reducer";
 import { initialState, reducer, seededState } from "./reducer";
+import type { HydrationOutcome, WalletManagerConfig, WalletState } from "./types";
 
 const DEFAULT_SLOW_CONNECT_THRESHOLD_MS = 5000;
 
@@ -33,8 +26,8 @@ type WalletManager = Pick<StoreApi<WalletState>, "getInitialState" | "getState" 
   /** Disconnects every wallet and forgets every persisted connection. */
   disconnectAll: () => void;
   /** Opens the wallet's account picker, then refreshes the pool entry. A no-op
-   *  for wallets without `requestAccounts`. Rejects with a `NotConnected`
-   *  `ConnectionError` when the wallet then exposes no accounts. */
+   *  for wallets without `requestAccounts`. Rejects with a `ConnectionError`:
+   *  `NotConnected` when the wallet then exposes no accounts. */
   requestAccounts: (connectorId: string) => Promise<void>;
   /** Selects an exposed account without changing its chain or the account
    *  list. Unknown wallets and accounts are ignored. */
@@ -70,7 +63,7 @@ const safely = <Args extends ReadonlyArray<unknown>>(
   try {
     callback?.(...args);
   } catch (error) {
-    logWarn(`[butr] ${name} threw:`, error);
+    logWarn(`${name} threw:`, error);
   }
 };
 
@@ -133,11 +126,14 @@ const createWalletManager = (
     if (config.onStorageError) {
       safely("onStorageError", config.onStorageError, toError(cause));
     } else {
-      logWarn("[butr] wallet persistence failed:", cause);
+      logWarn("wallet persistence failed:", cause);
     }
   };
 
   let hydration: HydrationPhase = "idle";
+  /** False after a `load` that rejected: storage that could not be read is
+   *  never overwritten with the empty state standing in for it. */
+  let storageLoaded = false;
 
   // Persistence: a pure function of state, written after every change once
   // hydration is done. Saves are coalesced so an async driver never writes
@@ -167,7 +163,7 @@ const createWalletManager = (
   };
 
   store.subscribe((state, prev) => {
-    if (hydration === "done" && persistedStateChanged(state, prev)) {
+    if (hydration === "done" && storageLoaded && persistedStateChanged(state, prev)) {
       void persist();
     }
   });
@@ -265,7 +261,7 @@ const createWalletManager = (
     const result = await restore(connectorId);
 
     if (result?.ok === false) {
-      logWarn(`[butr] silent reconnect failed for ${connectorId}:`, result.error);
+      logWarn(`silent reconnect failed for ${connectorId}:`, result.error);
     }
   };
 
@@ -275,6 +271,7 @@ const createWalletManager = (
 
     try {
       persisted = await storage.load();
+      storageLoaded = true;
     } catch (error) {
       reportStorageError(error);
     }
@@ -298,7 +295,10 @@ const createWalletManager = (
       type: "HYDRATED",
     });
     hydration = "done";
-    void persist();
+
+    if (storageLoaded) {
+      void persist();
+    }
 
     const outcome: HydrationOutcome = {
       dropped: results.flatMap((result) =>
@@ -312,7 +312,7 @@ const createWalletManager = (
       safely("onHydrated", config.onHydrated, outcome);
     } else {
       for (const { connectorId, reason } of outcome.dropped) {
-        logWarn(`[butr] silent reconnect failed for ${connectorId}:`, reason);
+        logWarn(`silent reconnect failed for ${connectorId}:`, reason);
       }
     }
   };
@@ -329,7 +329,7 @@ const createWalletManager = (
     try {
       return source(register);
     } catch (error) {
-      logError("[butr] a wallet source threw on subscribe:", error);
+      logError("a wallet source threw on subscribe:", error);
 
       return () => {};
     }
@@ -422,9 +422,13 @@ const createWalletManager = (
         return;
       }
 
-      await connector.requestAccounts();
-      const { accounts } = await readAccounts(connector);
-      dispatch({ accounts, connectorId, type: "ACCOUNTS_CHANGED" });
+      try {
+        await connector.requestAccounts();
+        const { accounts } = await readAccounts(connector);
+        dispatch({ accounts, connectorId, type: "ACCOUNTS_CHANGED" });
+      } catch (error) {
+        throw toConnectionError(error);
+      }
     },
 
     setAccount: (connectorId, account) => {
@@ -465,7 +469,7 @@ const createWalletManager = (
           try {
             unsubscribe();
           } catch (error) {
-            logWarn("[butr] a wallet source threw on unsubscribe:", error);
+            logWarn("a wallet source threw on unsubscribe:", error);
           }
         }
 

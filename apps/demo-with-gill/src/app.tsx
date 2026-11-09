@@ -1,6 +1,12 @@
 import type { ConnectedWallet } from "@usebutr/core";
 import { bytesToBase58 } from "@usebutr/core";
-import { useConnect, useSelectedWallet, useSigner, useWalletManager } from "@usebutr/react";
+import {
+  useConnect,
+  useDiscoveredWallets,
+  useSelectedWallet,
+  useSigner,
+  useWalletManager,
+} from "@usebutr/react";
 import type { SolanaSignAndSendTransactionFeature, SolanaSignMessageFeature } from "@usebutr/svm";
 import { findAccount, getFeature } from "@usebutr/wallet-standard-shared";
 import {
@@ -14,8 +20,6 @@ import {
 } from "gill";
 import { getTransferSolInstruction } from "gill/programs";
 import { useEffect, useMemo, useState } from "react";
-
-import { useDiscoveredWallets } from "./wallet-provider";
 
 const BURN_ADDRESS = address("11111111111111111111111111111111");
 

@@ -1,6 +1,12 @@
 import type { ConnectedWallet } from "@usebutr/core";
 import type { Eip1193Provider } from "@usebutr/evm";
-import { useConnect, useSigner, useWallet, useWalletManager } from "@usebutr/react";
+import {
+  useConnect,
+  useDiscoveredWallets,
+  useSigner,
+  useWallet,
+  useWalletManager,
+} from "@usebutr/react";
 import { injected } from "@wagmi/connectors";
 import {
   type Config,
@@ -13,8 +19,6 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { type Address, type EIP1193Provider, formatEther, http, isAddress, parseEther } from "viem";
 import { sepolia } from "viem/chains";
-
-import { useDiscoveredWallets } from "./wallet-provider";
 
 const BURN_ADDRESS: Address = "0x000000000000000000000000000000000000dEaD";
 

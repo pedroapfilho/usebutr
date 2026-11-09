@@ -26,7 +26,7 @@ const teardown = async (connector: WalletAdapter) => {
   try {
     await connector.disconnect?.();
   } catch (error) {
-    logWarn(`[butr] disconnect of ${connector.id} failed:`, error);
+    logWarn(`disconnect of ${connector.id} failed:`, error);
   }
 };
 

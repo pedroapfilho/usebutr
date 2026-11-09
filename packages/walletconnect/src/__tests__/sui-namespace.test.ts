@@ -6,13 +6,13 @@ import { describe, expect, it } from "vitest";
 import { suiNamespace } from "../namespaces/sui";
 
 import type { FakeProvider } from "./fake-provider";
-import { createFakeProvider } from "./fake-provider";
+import { buildNamespaceAdapter, createFakeProvider } from "./fake-provider";
 
 const buildAdapter = (
   provider: FakeProvider,
   chains: ReadonlyArray<string> = ["sui:mainnet"],
 ): SuiAdapter =>
-  suiNamespace.buildAdapter({
+  buildNamespaceAdapter(suiNamespace, {
     chains,
     icon: "data:image/svg+xml;base64,Zm9v",
     id: "walletconnect-sui",
@@ -26,16 +26,14 @@ const connectedProvider = (
 ) => createFakeProvider({ request: () => answer, session: { namespaces: { sui: { accounts } } } });
 
 describe("suiNamespace", () => {
-  it("declares the right CAIP prefix, platform, chains, methods and events", () => {
-    expect(suiNamespace.caipPrefix).toBe("sui");
+  it("declares the right platform, methods and events", () => {
     expect(suiNamespace.chainPlatform).toBe("sui");
-    expect(suiNamespace.defaultChains).toEqual(["sui:mainnet"]);
-    expect(suiNamespace.defaultMethods).toEqual([
+    expect(suiNamespace.methods).toEqual([
       "sui_signTransaction",
       "sui_signAndExecuteTransaction",
       "sui_signPersonalMessage",
     ]);
-    expect(suiNamespace.defaultEvents).toContain("accountsChanged");
+    expect(suiNamespace.events).toContain("accountsChanged");
   });
 
   it("defines only what WalletConnect can do", () => {

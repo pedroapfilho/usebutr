@@ -13,9 +13,10 @@ import {
 } from "../../__tests__/helpers";
 import type { PersistedWalletState } from "../../storage/persistence";
 import { toStoredPoolEntry } from "../../storage/wallet-state-codec";
-import type { WalletAdapter, WalletManagerConfig } from "../../types";
+import type { WalletAdapter } from "../../types";
 import { ConnectionError } from "../../types";
 import { ShadowConnectorError } from "../shadow-adapter";
+import type { WalletManagerConfig } from "../types";
 import { createWalletManager } from "../wallet-manager";
 
 const storedEntry = (adapter: WalletAdapter) => toStoredPoolEntry(walletOf(adapter));
@@ -396,7 +397,7 @@ describe("hydration", () => {
     expect(onConnect).toHaveBeenCalledExactlyOnceWith(wallet, { reconnected: false });
   });
 
-  it("hydrates as empty and reports a load that rejects", async () => {
+  it("hydrates as empty, reports a load that rejects and never overwrites it", async () => {
     const onStorageError = vi.fn<Callbacks["onStorageError"]>();
     const storage = createMemoryPersistence();
     storage.load.mockRejectedValueOnce("disk on fire");
@@ -406,6 +407,10 @@ describe("hydration", () => {
 
     expect(manager.getState().isHydrated).toBe(true);
     expect(onStorageError).toHaveBeenCalledExactlyOnceWith(new Error("disk on fire"));
+
+    manager.disconnectAll();
+    await flush();
+    expect(storage.save).not.toHaveBeenCalled();
   });
 });
 

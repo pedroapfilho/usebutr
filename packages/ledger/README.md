@@ -8,14 +8,14 @@ connection-state library. Your application owns the picker UI and chain client.
 ## Install
 
 ```bash
-npm install @usebutr/core @usebutr/ledger @ledgerhq/hw-transport-webusb @ledgerhq/hw-app-eth zustand
+npm install @usebutr/core @usebutr/ledger @ledgerhq/hw-transport-webusb @ledgerhq/hw-app-eth @ledgerhq/hw-app-solana @ledgerhq/hw-app-sui @ledgerhq/hw-app-btc zustand
 ```
 
-WebUSB needs a Chromium browser and a user gesture for device access. Each platform's Ledger app package is an optional peer loaded on first connect: `@ledgerhq/hw-app-eth` (EVM), `@ledgerhq/hw-app-solana` (SVM), `@ledgerhq/hw-app-sui` (Sui) or `@ledgerhq/hw-app-btc` (Bitcoin). Install the ones you use.
+WebUSB needs a Chromium browser and a user gesture for device access. All five `@ledgerhq/*` packages are required peer dependencies, so install them all. Each platform's device app is loaded on first connect: `@ledgerhq/hw-app-eth` (EVM), `@ledgerhq/hw-app-solana` (SVM), `@ledgerhq/hw-app-sui` (Sui) and `@ledgerhq/hw-app-btc` (Bitcoin). `transport` takes another `@ledgerhq/hw-transport-*` factory, such as WebHID, and `eth`, `solana`, `sui` and `btc` take the app class for an app that already imports it.
 
 ## Usage
 
-Factories resolve an adapter, so hand them to the manager through `fromAdapters`:
+Factories return an adapter, so hand them to the manager through `fromAdapters`:
 
 ```tsx
 import { EVM_CHAINS, fromAdapters } from "@usebutr/core";
@@ -26,17 +26,15 @@ import { autoDiscovery } from "@usebutr/wallets";
 const config: WalletManagerConfig = {
   sources: [
     autoDiscovery(),
-    fromAdapters(
-      Promise.all([
-        createLedgerAdapter({ chainId: EVM_CHAINS.sepolia.id, id: "ledger-evm", platform: "evm" }),
-        createLedgerAdapter({ accountCount: 3, id: "ledger-svm", platform: "svm" }),
-      ]),
-    ),
+    fromAdapters([
+      createLedgerAdapter({ chainId: EVM_CHAINS.sepolia.id, id: "ledger-evm", platform: "evm" }),
+      createLedgerAdapter({ accountCount: 3, id: "ledger-svm", platform: "svm" }),
+    ]),
   ],
 };
 ```
 
-`connect()` opens the WebUSB prompt and reads `accountCount` addresses from the device, active first. `chainId` is a CAIP-2 id and defaults to the platform's mainnet. Ledger apps have no network switch, so there is no `switchChain`: build one adapter per chain.
+`connect()` opens the WebUSB prompt and reads `accountCount` addresses from the device, active first. `chainId` is a CAIP-2 id and defaults to the platform's mainnet; one outside the platform's namespace throws a `ChainMismatch` `ConnectionError` at creation. Ledger apps have no network switch, so there is no `switchChain`: build one adapter per chain.
 
 A Ledger signs; your chain client owns RPC and broadcast. There is no `sendTx`, `getBalance` or `subscribe`. What each adapter defines:
 

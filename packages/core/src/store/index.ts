@@ -1,4 +1,4 @@
-export type { ConnectStatus, WalletState } from "../types/manager";
+export type { ConnectStatus, HydrationOutcome, WalletManagerConfig, WalletState } from "./types";
 
 export { isShadowAdapter, ShadowConnectorError } from "./shadow-adapter";
 

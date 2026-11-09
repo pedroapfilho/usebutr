@@ -25,6 +25,7 @@ import {
   GITHUB_URL,
   INTEGRATIONS_URL,
   QUICKSTART_URL,
+  SITE_URL,
   WALLETS_VERSION,
 } from "@/lib/site";
 
@@ -135,7 +136,7 @@ const JSON_LD = {
   license: `${GITHUB_URL}/blob/main/LICENSE`,
   name: "butr",
   programmingLanguage: "TypeScript",
-  url: "https://www.usebutr.com",
+  url: SITE_URL,
 };
 
 const Page = () => (

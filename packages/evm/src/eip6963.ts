@@ -1,67 +1,35 @@
-import type { EvmAdapter } from "@usebutr/core";
+import type { WalletSource } from "@usebutr/core";
 
 import type { Eip6963AnnounceEvent, Eip6963ProviderInfo } from "./eip1193";
+import { isEip1193Provider } from "./eip1193";
 import { buildEvmAdapter } from "./eip6963-adapter";
 
 const ANNOUNCE_EVENT = "eip6963:announceProvider";
 const REQUEST_EVENT = "eip6963:requestProvider";
 
-type AdapterCallback = (adapter: EvmAdapter, info: Eip6963ProviderInfo) => void;
+const PROVIDER_INFO_KEYS = ["icon", "name", "rdns", "uuid"] as const;
 
-type DiscoverOptions = {
-  /** Event target to listen on. Defaults to `window` in browser/RN/
-   *  SSR'd environments; tests can pass a fresh `new EventTarget()` to
-   *  exercise the discovery loop without a DOM. */
-  target?: EventTarget;
+const isProviderInfo = (value: unknown): value is Eip6963ProviderInfo => {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const fields = new Map(Object.entries(value));
+
+  return PROVIDER_INFO_KEYS.every((key) => typeof fields.get(key) === "string");
 };
 
 const isEip6963AnnounceEvent = (event: Event): event is Eip6963AnnounceEvent => {
-  if (!("detail" in event)) {
-    return false;
-  }
-
-  const detail: unknown = event.detail;
-
-  if (typeof detail !== "object" || detail === null) {
-    return false;
-  }
-
-  if (!("info" in detail) || !("provider" in detail)) {
-    return false;
-  }
-
-  const { info, provider } = detail;
+  const detail: unknown = "detail" in event ? event.detail : undefined;
 
   return (
-    typeof info === "object" &&
-    info !== null &&
-    "icon" in info &&
-    typeof info.icon === "string" &&
-    "name" in info &&
-    typeof info.name === "string" &&
-    "rdns" in info &&
-    typeof info.rdns === "string" &&
-    "uuid" in info &&
-    typeof info.uuid === "string" &&
-    typeof provider === "object" &&
-    provider !== null &&
-    "on" in provider &&
-    typeof provider.on === "function" &&
-    "removeListener" in provider &&
-    typeof provider.removeListener === "function" &&
-    "request" in provider &&
-    typeof provider.request === "function"
+    typeof detail === "object" &&
+    detail !== null &&
+    "info" in detail &&
+    isProviderInfo(detail.info) &&
+    "provider" in detail &&
+    isEip1193Provider(detail.provider)
   );
-};
-
-const windowGlobal: Partial<Pick<typeof globalThis, "window">> = globalThis;
-
-const resolveTarget = (target?: EventTarget): EventTarget | null => {
-  if (target !== undefined) {
-    return target;
-  }
-
-  return windowGlobal.window ?? null;
 };
 
 /**
@@ -69,13 +37,8 @@ const resolveTarget = (target?: EventTarget): EventTarget | null => {
  * because `info.uuid` is regenerated per page load. The listener stays
  * attached for the session so wallets that boot late still register.
  */
-const discoverEvmAdapters = (
-  onAdapter: AdapterCallback,
-  options: DiscoverOptions = {},
-): (() => void) => {
-  const target = resolveTarget(options.target);
-
-  if (!target) {
+const discoverEvmAdapters: WalletSource = (onAdapter) => {
+  if (typeof window === "undefined") {
     return () => {};
   }
 
@@ -97,14 +60,14 @@ const discoverEvmAdapters = (
     }
 
     seen.add(info.rdns);
-    onAdapter(buildEvmAdapter(info, provider), info);
+    onAdapter(buildEvmAdapter({ icon: info.icon, id: info.rdns, name: info.name }, provider));
   };
 
-  target.addEventListener(ANNOUNCE_EVENT, handler);
-  target.dispatchEvent(new Event(REQUEST_EVENT));
+  window.addEventListener(ANNOUNCE_EVENT, handler);
+  window.dispatchEvent(new Event(REQUEST_EVENT));
 
   return () => {
-    target.removeEventListener(ANNOUNCE_EVENT, handler);
+    window.removeEventListener(ANNOUNCE_EVENT, handler);
   };
 };
 

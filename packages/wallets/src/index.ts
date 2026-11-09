@@ -7,4 +7,4 @@ export { autoDiscovery } from "./auto-discovery";
 import "@usebutr/bitcoin";
 import "@usebutr/evm";
 import "@usebutr/polkadot";
-import "@usebutr/svm";
+import "@usebutr/wallet-standard-shared";

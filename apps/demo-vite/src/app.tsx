@@ -18,9 +18,10 @@ import {
 } from "@usebutr/react";
 import { type ReactNode, useState } from "react";
 
+import { groupByBrand } from "./group-by-brand";
 import { PairingDialog } from "./pairing-dialog";
 import { SiteFooter, SiteHeader } from "./site-chrome";
-import { groupByBrand, WalletBrandRow } from "./wallet-brand-row";
+import { WalletBrandRow } from "./wallet-brand-row";
 import { WalletConnectDialog } from "./wallet-connect-dialog";
 
 type SignState =

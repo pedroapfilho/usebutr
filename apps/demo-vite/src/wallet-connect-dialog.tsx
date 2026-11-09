@@ -1,7 +1,8 @@
 import type { WalletAdapter } from "@usebutr/core";
 
+import { groupByBrand } from "./group-by-brand";
 import { useModalDialog } from "./use-modal-dialog";
-import { groupByBrand, WalletBrandRow } from "./wallet-brand-row";
+import { WalletBrandRow } from "./wallet-brand-row";
 
 const WalletConnectDialog = ({
   available,

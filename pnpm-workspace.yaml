@@ -2,14 +2,18 @@ overrides:
   # expo-router depends on ^6.9.1, which resolves to 6.10.0: the 7.0.0 release
   # published as a minor and deprecated. One jest-dom line serves the whole tree.
   "@testing-library/jest-dom": "^7.0.1"
+  # shortcut: @expo/cli 57 depends on zod 3, which has no release patched for
+  # GHSA-mrhx-c7xc-m3w5; drop this once demo-expo-web moves to Expo SDK 58,
+  # whose @expo/cli (58.1.18+) no longer depends on zod.
+  "@expo/cli>zod": "^4.6.7"
   # Security: force patched transitive releases to clear pnpm audit advisories.
   # Each pin is the lowest release that carries the fix.
   axios: "^1.20.0"
-  decode-uri-component: "^0.5.0"
+  decode-uri-component: "^0.5.1"
   deepmerge-ts: "^8.0.0"
   "lodash-es@<4.18.0": "^4.18.0"
   stream-json: "^3.5.0"
-  toml: "^4.2.0"
+  toml: "^5.0.1"
   "uuid@<11.1.1": "^11.1.1"
 
 packages:

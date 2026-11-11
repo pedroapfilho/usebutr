@@ -16,12 +16,12 @@ Supply your Reown project ID and render the pairing URI with your own QR UI. One
 ## Usage
 
 ```tsx
-import type { ReactNode } from "react";
 import type { WalletManagerConfig } from "@usebutr/core";
 import { fromAdapters } from "@usebutr/core";
 import { WalletManagerProvider } from "@usebutr/react";
-import { autoDiscovery } from "@usebutr/wallets";
 import { createWalletConnectAdapters } from "@usebutr/walletconnect";
+import { autoDiscovery } from "@usebutr/wallets";
+import type { ReactNode } from "react";
 
 const config: WalletManagerConfig = {
   sources: [

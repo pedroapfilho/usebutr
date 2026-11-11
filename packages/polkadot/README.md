@@ -16,10 +16,10 @@ React 19 is a peer dependency of the provider. Discovery does not render a conne
 ## Usage
 
 ```tsx
-import type { ReactNode } from "react";
 import type { WalletManagerConfig } from "@usebutr/core";
 import { discoverInjectedPolkadotAdapters } from "@usebutr/polkadot";
 import { WalletManagerProvider } from "@usebutr/react";
+import type { ReactNode } from "react";
 
 const config: WalletManagerConfig = { sources: [discoverInjectedPolkadotAdapters] };
 

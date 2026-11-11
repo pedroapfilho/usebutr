@@ -32,14 +32,14 @@
     "fallow": "^3.42.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
-    "oxfmt": "^0.70.0",
+    "oxfmt": "^0.78.0",
     "oxlint": "^1.93.0",
     "oxlint-config-awesomeness": "^4.9.1",
     "oxlint-plugin-react-doctor": "^0.9.22",
     "oxlint-tsgolint": "^7.0.2006",
     "tsdown": "^0.23.7",
     "turbo": "^2.11.10",
-    "zod-compiler": "^1.28.0"
+    "zod-compiler": "^2.0.8"
   },
   "lint-staged": {
     "!(*.d).{ts,tsx,mts,cts,js,jsx,mjs,cjs}": [

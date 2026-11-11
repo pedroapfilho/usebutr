@@ -364,8 +364,8 @@ The client persists and the server reads through one storage, one key prefix and
 ```tsx
 import type { WalletManagerConfig } from "@usebutr/core";
 import { fromAdapters } from "@usebutr/core";
-import { autoDiscovery } from "@usebutr/wallets";
 import { createWalletConnectAdapters } from "@usebutr/walletconnect";
+import { autoDiscovery } from "@usebutr/wallets";
 
 const config: WalletManagerConfig = {
   sources: [

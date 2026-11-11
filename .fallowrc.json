@@ -96,5 +96,6 @@
   },
   "duplicates": {
     "ignore": ["apps/demo-*/**"]
-  }
+  },
+  "ignoreBinaries": ["portless"]
 }

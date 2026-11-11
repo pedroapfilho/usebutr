@@ -41,7 +41,7 @@ const signer = await wallet.connector.getSigner();
 if (signer.kind === "polkadot-injected") {
   const extension = await connectInjectedExtension(signer.extensionName);
   const account = extension.getAccounts().find((a) => a.address === wallet.account.walletAddress);
-  // tx.signSubmitAndWatch(account.polkadotSigner)
+  // tx.createSubmitAndWatch(account.txCreator)
 }
 ```
 

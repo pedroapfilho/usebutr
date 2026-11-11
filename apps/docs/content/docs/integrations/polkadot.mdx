@@ -78,7 +78,7 @@ const tx = api.tx.Balances.transfer_keep_alive({
   value: 1_000_000_000n,
 });
 
-tx.signSubmitAndWatch(account.polkadotSigner).subscribe({
+tx.createSubmitAndWatch(account.txCreator).subscribe({
   complete: () => console.log("Finalized"),
   error: (error) => console.error("Tx error:", error),
   next: (event) => console.log("Tx:", event.type),

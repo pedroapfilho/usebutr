@@ -1,5 +1,16 @@
 # @usebutr/react
 
+## 3.0.0
+
+### Major Changes
+
+- [#241](https://github.com/pedroapfilho/usebutr/pull/241) [`4608394`](https://github.com/pedroapfilho/usebutr/commit/4608394e57870638d1f20e6556f4923166fffcae) Thanks [@pedroapfilho](https://github.com/pedroapfilho)! - `useSigner` and `useBalance` report failures as a `ConnectionError`, the same type `useConnect` does, so `error.kind` works everywhere and `error.cause` keeps the wallet's original error. `UseBalanceOptions` is gone; `useBalance` takes core's `BalanceOptions`. `use-sync-external-store` is now a declared peer dependency: zustand's equality-checked selectors import it, and an app that did not install it failed at import.
+
+### Patch Changes
+
+- Updated dependencies [[`4608394`](https://github.com/pedroapfilho/usebutr/commit/4608394e57870638d1f20e6556f4923166fffcae)]:
+  - @usebutr/core@5.0.0
+
 ## 2.0.3
 
 ### Patch Changes

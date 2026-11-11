@@ -61,9 +61,9 @@
     "@repo/typescript-config": "workspace:*",
     "@usebutr/ledger": "workspace:*",
     "@usebutr/testing": "workspace:*",
-    "@walletconnect/universal-provider": "^2.25.0",
+    "@walletconnect/universal-provider": "^2.26.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.1"
+    "vitest": "^5.1.0"
   },
   "peerDependencies": {
     "@walletconnect/universal-provider": "^2.0.0"

@@ -57,30 +57,28 @@ const FOOTER_LINKS = [
   { href: NPM_URL, label: "npm" },
 ];
 
-const SiteFooter = () => {
-  const currentYear = new Date().getFullYear();
+const currentYear = () => new Date().getFullYear();
 
-  return (
-    <footer className="border-border-default mt-16 border-t">
-      <div className="text-foreground-muted mx-auto flex max-w-2xl flex-col gap-3 px-6 py-8 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <p>© {currentYear} butr</p>
-        <ul className="flex items-center gap-5">
-          {FOOTER_LINKS.map((link) => (
-            <li key={link.label}>
-              <a
-                className="text-foreground-subtle hover:text-foreground-primary font-normal transition-colors"
-                href={link.href}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                {link.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </footer>
-  );
-};
+const SiteFooter = () => (
+  <footer className="border-border-default mt-16 border-t">
+    <div className="text-foreground-muted mx-auto flex max-w-2xl flex-col gap-3 px-6 py-8 text-sm sm:flex-row sm:items-center sm:justify-between">
+      <p>© {currentYear()} butr</p>
+      <ul className="flex items-center gap-5">
+        {FOOTER_LINKS.map((link) => (
+          <li key={link.label}>
+            <a
+              className="text-foreground-subtle hover:text-foreground-primary font-normal transition-colors"
+              href={link.href}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </footer>
+);
 
 export { SiteHeader, SiteFooter };

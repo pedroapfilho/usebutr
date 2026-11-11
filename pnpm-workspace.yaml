@@ -39,8 +39,6 @@ minimumReleaseAgeExclude:
 
 auditConfig:
   ignoreGhsas:
-    - GHSA-3gc7-fjrx-p6mg
-    - GHSA-86w9-cpqp-85rv
     - GHSA-vfj7-8cjw-p6xm
 
 trustPolicy: no-downgrade

@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
-    "@solana/kit": "^7.1.1",
+    "@solana/kit": "^8.6.0",
     "@tailwindcss/vite": "^4.3.5",
     "@tanstack/react-query": "^5.107.1",
     "@usebutr/core": "workspace:*",

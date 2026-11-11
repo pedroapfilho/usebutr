@@ -32,7 +32,7 @@ This repo follows the fleet's shared standards, checked by `standy` (`~/dev/stan
 ## Layout
 
 ```
-apps/                 # 17 apps: 4 framework demos + 11 integration demos + docs + landing
+apps/                 # 16 apps: 4 framework demos + 10 integration demos + docs + landing
 packages/             # @usebutr/* library packages + 2 @repo/* configs + 1 @repo/* internal
 .changeset/           # Changesets — version bumps + release notes
 .github/workflows/    # 9 workflows: build, lint, typecheck, test, e2e, publish-checks, react-doctor, release, friction-log
@@ -68,7 +68,6 @@ docs/                 # Repo-level design notes (not the Fumadocs site)
 | `demo-with-bitcoin`               | `bitcoinjs-lib`                | `https://usebutr.demo-with-bitcoin.localhost`               |
 | `demo-with-gill`                  | gill                           | `https://usebutr.demo-with-gill.localhost`                  |
 | `demo-with-solana-framework-kit`  | `@solana/react-hooks`          | `https://usebutr.demo-with-solana-framework-kit.localhost`  |
-| `demo-wormhole-usdc`              | `@wormhole-foundation/sdk`     | `https://usebutr.demo-wormhole-usdc.localhost`              |
 | `demo-with-polkadot`              | `polkadot-api`                 | `https://usebutr.demo-with-polkadot.localhost`              |
 
 **Docs:** `apps/docs` — Fumadocs (Next.js 16 + Turbopack) on `https://usebutr.docs.localhost`.
@@ -118,7 +117,7 @@ pnpm version-packages                   # bump versions from changesets
 pnpm release                            # build + changeset publish (CI runs this)
 ```
 
-This is a library + demo repo, with no Docker or Prisma. Vitest covers the library. Playwright covers docs navigation and the wallet flows of `demo-next`, `demo-vite` and `demo-wormhole-usdc` against a mock EIP-6963 wallet (`tests/mock-eip6963.ts`); `e2e.yml` runs all four suites.
+This is a library + demo repo, with no Docker or Prisma. Vitest covers the library. Playwright covers docs navigation and the wallet flows of `demo-next` and `demo-vite` against a mock EIP-6963 wallet (`tests/mock-eip6963.ts`); `e2e.yml` runs all three suites.
 
 ## Conventions & gotchas
 

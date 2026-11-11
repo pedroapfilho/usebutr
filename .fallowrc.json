@@ -39,7 +39,6 @@
     "@walletconnect/universal-provider",
     "@vitest/coverage-v8",
     "@wallet-standard/app",
-    "@wormhole-foundation/sdk-evm-tokenbridge",
     "expo-status-bar",
     "jsdom",
     "nitro-nightly",
@@ -48,12 +47,6 @@
     "react-native-web",
     "wagmi",
     "zustand"
-  ],
-  "usedClassMembers": [
-    {
-      "implements": "SignAndSendSigner",
-      "members": ["address", "chain", "signAndSend"]
-    }
   ],
   "typeAware": {
     "enabled": true,

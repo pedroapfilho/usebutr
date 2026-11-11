@@ -11,7 +11,7 @@ export default defineConfig({
   ],
   overrides: [
     {
-      files: ["apps/demo-{vite,tanstack-start,with-*,wormhole-usdc}/src/**/*.tsx"],
+      files: ["apps/demo-{vite,tanstack-start,with-*}/src/**/*.tsx"],
       rules: {
         "no-img-element": "off",
       },

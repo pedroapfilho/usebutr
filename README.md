@@ -564,19 +564,18 @@ Each one exercises every public hook in `@usebutr/react` against discovered wall
 
 Each integration demo shows butr composing with a library you may already be using. butr handles wallet discovery and connection state; the integration library handles chain reads, signing, and submission. EVM/SVM/Sui demos cover **connect → read balance → sign message → send transaction**; the Bitcoin demo covers **connect → sign message → sign PSBT** (`bitcoinjs-lib` builds transactions but doesn't broadcast; pair it with an Esplora/Electrum client).
 
-| App                               | Library                               | Network                  | Dev URL                                                     |
-| --------------------------------- | ------------------------------------- | ------------------------ | ----------------------------------------------------------- |
-| `demo-with-viem`                  | viem                                  | EVM, Sepolia             | `https://usebutr.demo-with-viem.localhost`                  |
-| `demo-with-wagmi`                 | wagmi + `@wagmi/core`                 | EVM, Sepolia             | `https://usebutr.demo-with-wagmi.localhost`                 |
-| `demo-with-solana-web3js`         | `@solana/web3.js` (legacy v1)         | SVM, Devnet              | `https://usebutr.demo-with-solana-web3js.localhost`         |
-| `demo-with-solana-wallet-adapter` | `@solana/wallet-adapter-react`        | SVM, Devnet              | `https://usebutr.demo-with-solana-wallet-adapter.localhost` |
-| `demo-with-solana-kit`            | `@solana/kit`                         | SVM, Devnet              | `https://usebutr.demo-with-solana-kit.localhost`            |
-| `demo-with-sui`                   | `@mysten/sui`                         | Sui, Testnet             | `https://usebutr.demo-with-sui.localhost`                   |
-| `demo-with-bitcoin`               | `bitcoinjs-lib`                       | Bitcoin                  | `https://usebutr.demo-with-bitcoin.localhost`               |
-| `demo-with-gill`                  | `gill`                                | SVM, Devnet              | `https://usebutr.demo-with-gill.localhost`                  |
-| `demo-with-solana-framework-kit`  | framework-kit (`@solana/react-hooks`) | SVM, Devnet              | `https://usebutr.demo-with-solana-framework-kit.localhost`  |
-| `demo-wormhole-usdc`              | Wormhole SDK (CCTP USDC bridging)     | EVM Sepolia + SVM Devnet | `https://usebutr.demo-wormhole-usdc.localhost`              |
-| `demo-with-polkadot`              | `polkadot-api` (PAPI)                 | Polkadot, Paseo          | `https://usebutr.demo-with-polkadot.localhost`              |
+| App                               | Library                               | Network         | Dev URL                                                     |
+| --------------------------------- | ------------------------------------- | --------------- | ----------------------------------------------------------- |
+| `demo-with-viem`                  | viem                                  | EVM, Sepolia    | `https://usebutr.demo-with-viem.localhost`                  |
+| `demo-with-wagmi`                 | wagmi + `@wagmi/core`                 | EVM, Sepolia    | `https://usebutr.demo-with-wagmi.localhost`                 |
+| `demo-with-solana-web3js`         | `@solana/web3.js` (legacy v1)         | SVM, Devnet     | `https://usebutr.demo-with-solana-web3js.localhost`         |
+| `demo-with-solana-wallet-adapter` | `@solana/wallet-adapter-react`        | SVM, Devnet     | `https://usebutr.demo-with-solana-wallet-adapter.localhost` |
+| `demo-with-solana-kit`            | `@solana/kit`                         | SVM, Devnet     | `https://usebutr.demo-with-solana-kit.localhost`            |
+| `demo-with-sui`                   | `@mysten/sui`                         | Sui, Testnet    | `https://usebutr.demo-with-sui.localhost`                   |
+| `demo-with-bitcoin`               | `bitcoinjs-lib`                       | Bitcoin         | `https://usebutr.demo-with-bitcoin.localhost`               |
+| `demo-with-gill`                  | `gill`                                | SVM, Devnet     | `https://usebutr.demo-with-gill.localhost`                  |
+| `demo-with-solana-framework-kit`  | framework-kit (`@solana/react-hooks`) | SVM, Devnet     | `https://usebutr.demo-with-solana-framework-kit.localhost`  |
+| `demo-with-polkadot`              | `polkadot-api` (PAPI)                 | Polkadot, Paseo | `https://usebutr.demo-with-polkadot.localhost`              |
 
 Portless assigns each web demo a stable URL. Worktrees add a branch prefix; use the URL printed by `pnpm dev`. React examples require React 18+ in the consuming app.
 
@@ -617,7 +616,7 @@ pnpm dev --filter=demo-vite
 #   demo-with-solana-web3js, demo-with-solana-wallet-adapter, demo-with-solana-kit,
 #   demo-with-sui, demo-with-bitcoin,
 #   demo-with-gill, demo-with-solana-framework-kit,
-#   demo-with-polkadot, demo-wormhole-usdc
+#   demo-with-polkadot
 ```
 
 Open the URL printed by Portless. The root dev wrapper forwards filters to Turbo and builds workspace dependencies. Direct `pnpm --filter=<app> dev` commands bypass that wrapper, so build packages first.

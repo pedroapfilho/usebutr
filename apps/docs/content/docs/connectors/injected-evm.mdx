@@ -48,7 +48,7 @@ Every injected EVM adapter defines the same members:
 | `sendTx`                | `eth_sendTransaction`; resolves the hash. `bigint` quantities are encoded as hex; `from` is always the resolved account.                                                    |
 | `switchChain`           | `wallet_switchEthereumChain`. Rejects a chain outside `eip155`.                                                                                                             |
 | `requestAccounts`       | `wallet_requestPermissions`, falling back to `eth_requestAccounts` where unsupported. Call it through `useWalletManager().requestAccounts(id)` so the pool entry refreshes. |
-| `getBalance`            | `eth_getBalance`, or an ERC-20 `balanceOf` when `token` is set. The native balance is labelled `"ETH"` on every chain.                                                      |
+| `getBalance`            | `eth_getBalance`, or an ERC-20 `balanceOf` when `token` is set. The native symbol is the chain's own for the chains in `EVM_CHAINS`, `"ETH"` otherwise.                     |
 | `getTransactionReceipt` | `eth_getTransactionReceipt`; `"Pending"` until mined.                                                                                                                       |
 | `subscribe`             | Bridges `accountsChanged`, `chainChanged`, `connect` and `disconnect`.                                                                                                      |
 | `disconnect`            | `wallet_revokePermissions`. Many wallets ignore it, so their own auto-reconnect may outlive it.                                                                             |

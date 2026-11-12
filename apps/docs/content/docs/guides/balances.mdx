@@ -40,9 +40,9 @@ const usdc = useBalance(wallet, { token: USDC_ADDRESS });
 
 ```ts
 type Balance = {
-  decimals: number; // 18 for ETH, or the token's decimals
+  decimals: number; // 18 for the native asset, or the token's decimals
   formatted: string; // human-readable, trailing zeros trimmed
-  symbol: string; // "ETH", or the token's symbol
+  symbol: string; // the chain's native symbol, or the token's symbol
   value: bigint; // raw integer amount
 };
 ```
@@ -54,7 +54,8 @@ refetches when the wallet, account, or token changes.
   Only EVM adapters define `getBalance`: they read through the wallet's own provider
   (`eth_getBalance`, or `balanceOf` for a token). butr ships no RPC for Solana, Sui, Bitcoin, or
   Polkadot, and a Ledger has none either, so for those wallets `useBalance` stays `"idle"`. Query
-  your own RPC for them. The native balance is labelled `"ETH"` on every EVM chain.
+  your own RPC for them. The native balance carries its chain's own symbol for the chains in
+  `EVM_CHAINS` (`"POL"` on Polygon, `"BNB"` on BNB Smart Chain) and `"ETH"` on any other chain.
 </Callout>
 
 To call it without the hook, check for the method first:

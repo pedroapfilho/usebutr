@@ -15,24 +15,24 @@
     "@solana/wallet-adapter-base": "^0.9.28",
     "@solana/wallet-adapter-react": "^0.15.40",
     "@solana/web3.js": "^1.99.0",
-    "@tailwindcss/vite": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.5",
     "@usebutr/core": "workspace:*",
     "@usebutr/react": "workspace:*",
     "@usebutr/svm": "workspace:*",
     "@usebutr/wallet-standard-shared": "workspace:*",
     "@wallet-standard/app": "^1.1.1",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "tailwindcss": "^4.3.3",
-    "zustand": "^5.0.15"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.5",
+    "zustand": "^5.1.0"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.1",
+    "@vitejs/plugin-react": "^6.3.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.1",
-    "zod-compiler": "^1.28.0"
+    "vite": "^8.3.7",
+    "zod-compiler": "^2.0.8"
   }
 }

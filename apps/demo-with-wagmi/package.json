@@ -12,27 +12,27 @@
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
-    "@tailwindcss/vite": "^4.3.3",
-    "@tanstack/react-query": "^5.103.2",
+    "@tailwindcss/vite": "^4.3.5",
+    "@tanstack/react-query": "^5.107.1",
     "@usebutr/core": "workspace:*",
     "@usebutr/evm": "workspace:*",
     "@usebutr/react": "workspace:*",
-    "@wagmi/connectors": "^8.2.0",
-    "@wagmi/core": "^3.6.5",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "tailwindcss": "^4.3.3",
-    "viem": "^2.56.8",
-    "wagmi": "^3.7.7",
-    "zustand": "^5.0.15"
+    "@wagmi/connectors": "^8.2.4",
+    "@wagmi/core": "^3.6.9",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.5",
+    "viem": "^2.57.17",
+    "wagmi": "^3.7.11",
+    "zustand": "^5.1.0"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.1",
+    "@vitejs/plugin-react": "^6.3.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.1",
-    "zod-compiler": "^1.28.0"
+    "vite": "^8.3.7",
+    "zod-compiler": "^2.0.8"
   }
 }

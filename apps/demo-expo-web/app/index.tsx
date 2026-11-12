@@ -1,6 +1,6 @@
 import { ScrollView, Text, View } from "react-native";
 
-import { Content } from "./_components";
+import { Content } from "../src/content";
 
 const Index = () => (
   <ScrollView className="native-root">

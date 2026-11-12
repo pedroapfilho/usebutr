@@ -16,10 +16,10 @@ React 19 is a peer dependency of the provider. Discovery does not render a conne
 ## Usage
 
 ```tsx
-import type { ReactNode } from "react";
 import type { WalletManagerConfig } from "@usebutr/core";
-import { discoverSuiAdapters } from "@usebutr/sui";
 import { WalletManagerProvider } from "@usebutr/react";
+import { discoverSuiAdapters } from "@usebutr/sui";
+import type { ReactNode } from "react";
 
 // Every `discover*Adapters` export is a wallet source as-is.
 const config: WalletManagerConfig = { sources: [discoverSuiAdapters] };

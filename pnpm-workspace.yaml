@@ -1,15 +1,9 @@
 overrides:
-  # expo-router depends on ^6.9.1, which resolves to 6.10.0: the 7.0.0 release
-  # published as a minor and deprecated. One jest-dom line serves the whole tree.
-  "@testing-library/jest-dom": "^7.0.1"
   # Security: force patched transitive releases to clear pnpm audit advisories.
   # Each pin is the lowest release that carries the fix.
   axios: "^1.20.0"
-  decode-uri-component: "^0.5.0"
   deepmerge-ts: "^8.0.0"
-  "lodash-es@<4.18.0": "^4.18.0"
   stream-json: "^3.5.0"
-  toml: "^4.2.0"
   "uuid@<11.1.1": "^11.1.1"
 
 packages:
@@ -45,8 +39,6 @@ minimumReleaseAgeExclude:
 
 auditConfig:
   ignoreGhsas:
-    - GHSA-3gc7-fjrx-p6mg
-    - GHSA-86w9-cpqp-85rv
     - GHSA-vfj7-8cjw-p6xm
 
 trustPolicy: no-downgrade

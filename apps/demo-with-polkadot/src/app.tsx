@@ -136,7 +136,7 @@ const Connected = ({
       });
 
       txSubRef.current?.unsubscribe();
-      txSubRef.current = tx.signSubmitAndWatch(account.polkadotSigner).subscribe({
+      txSubRef.current = tx.createSubmitAndWatch(account.txCreator).subscribe({
         complete: () => {
           setTxStatus("Finalized");
         },

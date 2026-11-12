@@ -77,7 +77,7 @@ as the connected wallet's `account`:
 import type { ConnectedWallet } from "@usebutr/core";
 import { connectInjectedExtension } from "polkadot-api/pjs-signer";
 
-export const getPapiSigner = async (wallet: ConnectedWallet<"polkadot">) => {
+export const getPapiTxCreator = async (wallet: ConnectedWallet<"polkadot">) => {
   const signer = await wallet.connector.getSigner();
   if (signer.kind !== "polkadot-injected") {
     throw new Error("Select an injectedWeb3 wallet for this PAPI bridge");
@@ -89,7 +89,7 @@ export const getPapiSigner = async (wallet: ConnectedWallet<"polkadot">) => {
   if (account === undefined) {
     throw new Error("The extension no longer exposes this account");
   }
-  return account.polkadotSigner;
+  return account.txCreator;
 };
 ```
 

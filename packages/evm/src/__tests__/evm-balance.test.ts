@@ -33,16 +33,39 @@ const selectorOf = (params: Eip1193RequestArgs["params"]): string => {
 
 describe("readEvmBalance", () => {
   it("reads the native balance", async () => {
-    const provider = createProvider({ eth_getBalance: () => "0x0de0b6b3a7640000" });
+    const provider = createProvider({
+      eth_chainId: () => "0x1",
+      eth_getBalance: () => "0x0de0b6b3a7640000",
+    });
+
     const balance = await readEvmBalance(provider, ADDRESS);
 
     expect(balance.value).toBe(1_000_000_000_000_000_000n);
     expect(balance.formatted).toBe("1");
   });
 
+  it.each([
+    ["Ethereum", "0x1", "ETH"],
+    ["Polygon", "0x89", "POL"],
+    ["BNB Smart Chain", "0x38", "BNB"],
+    ["a chain outside the registry", "0xe708", "ETH"],
+  ])("labels the native balance on %s with its own asset", async (_name, chainIdHex, symbol) => {
+    const provider = createProvider({
+      eth_chainId: () => chainIdHex,
+      eth_getBalance: () => "0x0",
+    });
+
+    await expect(readEvmBalance(provider, ADDRESS)).resolves.toMatchObject({ symbol });
+  });
+
   it("throws instead of reporting 0 when eth_getBalance returns a non-string", async () => {
-    const provider = createProvider({ eth_getBalance: () => null });
+    const provider = createProvider({ eth_chainId: () => "0x1", eth_getBalance: () => null });
     await expect(readEvmBalance(provider, ADDRESS)).rejects.toThrow("malformed eth_getBalance");
+  });
+
+  it("throws instead of guessing the asset when eth_chainId returns a non-string", async () => {
+    const provider = createProvider({ eth_chainId: () => 137, eth_getBalance: () => "0x0" });
+    await expect(readEvmBalance(provider, ADDRESS)).rejects.toThrow("malformed eth_chainId");
   });
 
   it("throws when the token's decimals() call returns a non-string", async () => {

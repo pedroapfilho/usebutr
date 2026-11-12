@@ -105,7 +105,6 @@ type EvmIdentity = { icon?: string; id: string; name: string };
  *  `connect`, `disconnect` and `requestAccounts` belong to whoever owns it. */
 type Eip1193Core = Omit<EvmAdapter, "connect" | "disconnect" | "requestAccounts">;
 
-/** `getBalance()` labels the native balance `"ETH"` on every EVM chain. */
 const createEip1193Core = (identity: EvmIdentity, provider: Eip1193Provider): Eip1193Core => {
   const target = createSwitchingChainTarget({
     canSwitch: (chain) => /^\d+$/v.test(chain.reference),

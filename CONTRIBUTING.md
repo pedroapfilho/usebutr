@@ -18,8 +18,8 @@ pnpm build --filter="./packages/*"
 pnpm dev --filter=demo-vite
 ```
 
-The root dev wrapper forwards filters to Turbo, builds workspace dependencies,
-and resolves local links through Portless. Apps use stable URLs such as
+`pnpm dev` runs Turbo, which takes the filter and builds workspace dependencies.
+Each app resolves the local links it reads through Portless. Apps use stable URLs such as
 `https://usebutr.demo-vite.localhost`, `https://usebutr.docs.localhost`, and
 `https://usebutr.landing.localhost`. Worktrees add a branch prefix; use the URL
 printed by Portless. Explicit URL environment overrides are preserved.

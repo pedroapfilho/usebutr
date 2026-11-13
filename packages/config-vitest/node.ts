@@ -1,8 +1,6 @@
 import { defineConfig } from "vitest/config";
-import zodCompiler from "zod-compiler/vite";
 
 const nodeConfig = defineConfig({
-  plugins: [zodCompiler()],
   test: {
     coverage: {
       exclude: [
@@ -12,13 +10,6 @@ const nodeConfig = defineConfig({
         "**/*.d.ts",
         "**/dist/**",
         "**/node_modules/**",
-        // Nothing below emits executable JS, so a coverage percentage over it is
-        // not a statement about tested behaviour: barrels are re-exports,
-        // signer-augmentation is a bare `declare module`, and the
-        // wallet-standard-types modules are type declarations.
-        "**/src/index.ts",
-        "**/src/signer-augmentation.ts",
-        "**/src/wallet-standard-types.ts",
       ],
       include: ["src/**/*.{ts,tsx}"],
       provider: "v8",

@@ -124,36 +124,36 @@ describe("createBrowserStorageDriver", () => {
       sessionSpy.mockRestore();
     });
 
-    it("returns null when storage.getItem throws", () => {
+    it("lets a storage.getItem failure reach the caller", () => {
       const spy = vi.spyOn(window.localStorage, "getItem").mockImplementation(() => {
         throw new Error("SecurityError");
       });
 
       const { persistent } = createBrowserStorageDriver();
 
-      expect(persistent.getItem("key")).toBeNull();
+      expect(() => persistent.getItem("key")).toThrow("SecurityError");
       spy.mockRestore();
     });
 
-    it("does not throw when storage.setItem throws", () => {
+    it("lets a storage.setItem failure reach the caller", () => {
       const spy = vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
         throw new Error("QuotaExceededError");
       });
 
       const { persistent } = createBrowserStorageDriver();
 
-      expect(() => persistent.setItem("key", "value")).not.toThrow();
+      expect(() => persistent.setItem("key", "value")).toThrow("QuotaExceededError");
       spy.mockRestore();
     });
 
-    it("does not throw when storage.removeItem throws", () => {
+    it("lets a storage.removeItem failure reach the caller", () => {
       const spy = vi.spyOn(window.sessionStorage, "removeItem").mockImplementation(() => {
         throw new Error("SecurityError");
       });
 
       const { session } = createBrowserStorageDriver();
 
-      expect(() => session.removeItem("key")).not.toThrow();
+      expect(() => session.removeItem("key")).toThrow("SecurityError");
       spy.mockRestore();
     });
   });

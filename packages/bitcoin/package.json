@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/bitcoin",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "description": "Wallet Standard + injected (sats-connect / Unisat / OKX) wallet discovery and adapters for butr (Bitcoin).",
   "keywords": [
     "bitcoin",

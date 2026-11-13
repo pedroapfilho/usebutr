@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/walletconnect",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "description": "WalletConnect v2 adapter for butr.",
   "keywords": [
     "butr",

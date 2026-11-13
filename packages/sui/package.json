@@ -44,9 +44,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown src/index.ts src/transaction.ts --platform browser",
     "clean": "rm -rf dist",
-    "dev": "tsdown --watch",
+    "dev": "tsdown src/index.ts src/transaction.ts --platform browser --watch",
     "prepack": "pnpm run build",
     "test": "vitest run --passWithNoTests",
     "test:coverage": "vitest run --coverage --passWithNoTests",

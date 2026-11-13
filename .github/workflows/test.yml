@@ -1,9 +1,10 @@
+# Written by `standy sync` from the library template and `.github/ci/policy.json`. Change those, never this file.
 name: Test
 on:
   pull_request:
   workflow_dispatch:
   schedule:
-    - cron: 50 4 * * 1
+    - cron: 23 4 * * 1
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -33,9 +34,8 @@ jobs:
           restore-keys: |
             turbo-${{ runner.os }}-${{ runner.arch }}-node24-test-${{ github.event.pull_request.number || github.ref_name }}-
             turbo-${{ runner.os }}-${{ runner.arch }}-node24-test-main-
-      # test:coverage, not test: the shared vitest config declares coverage
-      # thresholds, and only this script produces the report they gate on.
-      - run: node .github/ci/ci.mjs run test -- pnpm test:coverage
+      - name: Unit tests
+        run: node .github/ci/ci.mjs run test -- pnpm test:coverage
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         name: Upload CI evidence
         if: ${{ !cancelled() }}

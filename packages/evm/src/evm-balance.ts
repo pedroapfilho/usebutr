@@ -1,14 +1,21 @@
 import type { Balance } from "@usebutr/core";
-import { buildBalance, hexToBytes } from "@usebutr/core";
+import { buildBalance, EVM_CHAINS, hexToBytes } from "@usebutr/core";
 
 import type { Eip1193Provider } from "./eip1193";
 import { requestString } from "./eip1193";
 
 const HEX_PREFIX = "0x";
 const ETH_DECIMALS = 18;
+const ETH_SYMBOL = "ETH";
 const ERC20_BALANCE_OF_SELECTOR = "0x70a08231";
 const ERC20_DECIMALS_SELECTOR = "0x313ce567";
 const ERC20_SYMBOL_SELECTOR = "0x95d89b41";
+
+// shortcut: only the registry chains whose native asset is not ether are named, read the symbol from the chain definition once the registry carries native assets
+const NATIVE_SYMBOLS = new Map<string, string>([
+  [EVM_CHAINS.bsc.reference, "BNB"],
+  [EVM_CHAINS.polygon.reference, "POL"],
+]);
 
 /** A failed read must not render as a confident zero balance. */
 const requireHex = (hex: string | null, label: string): string => {
@@ -19,7 +26,7 @@ const requireHex = (hex: string | null, label: string): string => {
   return hex;
 };
 
-const formatEther = (wei: bigint): string => buildBalance(wei, ETH_DECIMALS, "ETH").formatted;
+const formatEther = (wei: bigint): string => buildBalance(wei, ETH_DECIMALS, ETH_SYMBOL).formatted;
 
 const padAddressForCall = (address: string): string =>
   address.replace(/^0x/v, "").toLowerCase().padStart(64, "0");
@@ -56,12 +63,18 @@ const readEvmBalance = async (
   tokenAddress?: string,
 ): Promise<Balance> => {
   if (tokenAddress === undefined || tokenAddress === "") {
-    const balanceHex = await requestString(provider, {
-      method: "eth_getBalance",
-      params: [address, "latest"],
-    });
+    const [balanceHex, chainIdHex] = await Promise.all([
+      requestString(provider, { method: "eth_getBalance", params: [address, "latest"] }),
+      requestString(provider, { method: "eth_chainId" }),
+    ]);
 
-    return buildBalance(BigInt(requireHex(balanceHex, "eth_getBalance")), ETH_DECIMALS, "ETH");
+    const reference = BigInt(requireHex(chainIdHex, "eth_chainId")).toString(10);
+
+    return buildBalance(
+      BigInt(requireHex(balanceHex, "eth_getBalance")),
+      ETH_DECIMALS,
+      NATIVE_SYMBOLS.get(reference) ?? ETH_SYMBOL,
+    );
   }
 
   const [balanceHex, decimalsHex, symbolHex] = await Promise.all([

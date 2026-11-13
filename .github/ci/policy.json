@@ -1,5 +1,16 @@
 {
   "version": 1,
   "profile": "library",
-  "mode": "affected"
+  "mode": "affected",
+  "lint": {
+    "setup": [
+      {
+        "name": "Build the demos for the TanStack route tree",
+        "run": "pnpm build"
+      }
+    ]
+  },
+  "test": {
+    "coverage": true
+  }
 }

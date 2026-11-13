@@ -1,9 +1,10 @@
+# Written by `standy sync` from the library template and `.github/ci/policy.json`. Change those, never this file.
 name: Publish Checks
 on:
   pull_request:
   workflow_dispatch:
   schedule:
-    - cron: 0 4 * * 1
+    - cron: 23 4 * * 1
 
 permissions:
   contents: read
@@ -14,7 +15,7 @@ concurrency:
 jobs:
   packaging:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -35,38 +36,24 @@ jobs:
           restore-keys: |
             turbo-${{ runner.os }}-${{ runner.arch }}-node24-publish-checks-${{ github.event.pull_request.number || github.ref_name }}-
             turbo-${{ runner.os }}-${{ runner.arch }}-node24-publish-checks-main-
-      - run: node .github/ci/ci.mjs run packaging -- pnpm build --filter="./packages/*"
-      - name: Resolve publishable packages
-        id: packages
+      - run: node .github/ci/ci.mjs run packaging -- pnpm build:packages
+      # Derived rather than listed: a package copied from packages/core is
+      # checked without editing this workflow.
+      - name: Discover publishable packages
         run: |
-          node --input-type=module <<'JS'
-          import { appendFileSync, readdirSync, readFileSync } from "node:fs";
-          const dirs = readdirSync("packages", { withFileTypes: true })
-            .filter((entry) => entry.isDirectory())
-            .map((entry) => `packages/${entry.name}`)
-            .filter((dir) => !JSON.parse(readFileSync(`${dir}/package.json`, "utf8")).private)
-            .sort();
-          if (dirs.length === 0) throw new Error("No publishable packages found");
-          appendFileSync(process.env.GITHUB_OUTPUT, `dirs=${dirs.join(" ")}\n`);
-          JS
+          set -euo pipefail
+          dirs=$(jq -rn '[inputs | select(.private != true) | input_filename | rtrimstr("/package.json")] | join(" ")' packages/*/package.json)
+          if [ -z "$dirs" ]; then
+            echo "::error::found no publishable package under packages/"
+            exit 1
+          fi
+          echo "publishable: $dirs"
+          echo "PUBLISHABLE_PACKAGES=$dirs" >> "$GITHUB_ENV"
+      # Packaging hygiene for the published packages (ESM-only).
       - name: publint
-        env:
-          DIRS: ${{ steps.packages.outputs.dirs }}
-        run: |-
-          node .github/ci/ci.mjs run packaging -- bash -e -o pipefail -c 'set -euo pipefail
-          for dir in $DIRS; do
-            (cd "$dir" && pnpm dlx publint --strict)
-          done
-          '
+        run: node .github/ci/ci.mjs run packaging -- bash -e -o pipefail -c 'for dir in $PUBLISHABLE_PACKAGES; do (cd "$dir" && pnpm dlx publint --strict); done'
       - name: are-the-types-wrong
-        env:
-          DIRS: ${{ steps.packages.outputs.dirs }}
-        run: |-
-          node .github/ci/ci.mjs run packaging -- bash -e -o pipefail -c 'set -euo pipefail
-          for dir in $DIRS; do
-            (cd "$dir" && pnpm dlx @arethetypeswrong/cli --pack --profile esm-only)
-          done
-          '
+        run: node .github/ci/ci.mjs run packaging -- bash -e -o pipefail -c 'for dir in $PUBLISHABLE_PACKAGES; do (cd "$dir" && pnpm dlx @arethetypeswrong/cli --pack --profile esm-only); done'
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         name: Upload CI evidence
         if: ${{ !cancelled() }}

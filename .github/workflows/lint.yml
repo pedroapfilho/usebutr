@@ -1,9 +1,10 @@
+# Written by `standy sync` from the library template and `.github/ci/policy.json`. Change those, never this file.
 name: Lint
 on:
   pull_request:
   workflow_dispatch:
   schedule:
-    - cron: 45 4 * * 1
+    - cron: 23 4 * * 1
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -33,10 +34,12 @@ jobs:
           restore-keys: |
             turbo-${{ runner.os }}-${{ runner.arch }}-node24-lint-${{ github.event.pull_request.number || github.ref_name }}-
             turbo-${{ runner.os }}-${{ runner.arch }}-node24-lint-main-
-      # Type-aware linting reads types off disk, and they only exist after a
-      # build: the workspace .d.ts files, plus demo-tanstack-start's generated
-      # route tree. Narrowing this to ./packages/* breaks that demo's lint.
-      - run: pnpm build
+      # Type-aware linting resolves built workspace .d.ts files. Only the
+      # publishable packages are lint dependencies; the apps are lint targets.
+      - run: pnpm build:packages
+      - name: Build the demos for the TanStack route tree
+        if: ${{ !cancelled() }}
+        run: pnpm build
       - name: Check formatting
         run: node .github/ci/ci.mjs run lint -- pnpm format:check
       - name: Check dead code

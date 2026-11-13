@@ -1,7 +1,10 @@
+import { applyPortlessUrls } from "@repo/portless-env";
 import type { NextConfig } from "next";
 
+applyPortlessUrls(["NEXT_PUBLIC_DEMO_URL", "NEXT_PUBLIC_DOCS_URL"]);
+
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["usebutr.landing.localhost", "*.usebutr.landing.localhost"],
+  agentRules: false,
   headers: () =>
     Promise.resolve([
       {

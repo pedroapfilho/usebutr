@@ -2,5 +2,5 @@
 # unresolved cross-package types as lint violations. Scoped to the packages
 # rather than the full build lint.yml runs, because building all 15 demo apps
 # on a cold cache costs more than a commit hook is worth; CI covers the rest.
-pnpm build --filter="./packages/*" --output-logs=errors-only
+pnpm build:packages --output-logs=errors-only
 pnpm lint-staged

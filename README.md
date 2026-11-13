@@ -619,7 +619,7 @@ pnpm dev --filter=demo-vite
 #   demo-with-polkadot
 ```
 
-Open the URL printed by Portless. The root dev wrapper forwards filters to Turbo and builds workspace dependencies. Direct `pnpm --filter=<app> dev` commands bypass that wrapper, so build packages first.
+Open the URL printed by Portless. `pnpm dev` runs Turbo, which takes the filter and builds workspace dependencies. Direct `pnpm --filter=<app> dev` commands skip Turbo, so build packages first.
 
 ## Scripts
 

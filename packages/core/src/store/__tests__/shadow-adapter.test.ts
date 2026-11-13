@@ -13,6 +13,7 @@ const entry = {
   connectorId: "metamask",
   icon: "data:image/svg+xml,mm",
   name: "MetaMask",
+  walletKey: "metamask",
 };
 
 describe("createShadowAdapter", () => {
@@ -22,6 +23,7 @@ describe("createShadowAdapter", () => {
       icon: "data:image/svg+xml,mm",
       id: "metamask",
       name: "MetaMask",
+      walletKey: "metamask",
     });
   });
 
@@ -34,6 +36,7 @@ describe("createShadowAdapter", () => {
       "icon",
       "id",
       "name",
+      "walletKey",
     ]);
   });
 

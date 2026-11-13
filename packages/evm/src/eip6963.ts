@@ -1,3 +1,4 @@
+import { toWalletKey } from "@usebutr/adapter-kit";
 import type { WalletSource } from "@usebutr/core";
 
 import type { Eip6963AnnounceEvent, Eip6963ProviderInfo } from "./eip1193";
@@ -60,7 +61,12 @@ const discoverEvmAdapters: WalletSource = (onAdapter) => {
     }
 
     seen.add(info.rdns);
-    onAdapter(buildEvmAdapter({ icon: info.icon, id: info.rdns, name: info.name }, provider));
+    onAdapter(
+      buildEvmAdapter(
+        { icon: info.icon, id: info.rdns, name: info.name, walletKey: toWalletKey(info.name) },
+        provider,
+      ),
+    );
   };
 
   window.addEventListener(ANNOUNCE_EVENT, handler);

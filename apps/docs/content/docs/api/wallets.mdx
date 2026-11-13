@@ -37,10 +37,11 @@ autoDiscovery(undefined, { fallbacks: false }); // every platform, standards onl
 Every platform shares one Wallet Standard subscription. Primary channels list
 a wallet as soon as it announces. Fallback channels wait until Wallet Standard
 has loaded and read the wallets already registered, then 150 ms more, and list
-a wallet unless a channel already listed one with the same platform and name.
-Names match without case, punctuation, a parenthesised suffix or the word
-"wallet", so `OKX Wallet (Bitcoin)` matches `OKX Wallet`. A primary wallet that
-announces after its fallback listed is dropped.
+a wallet unless a channel already listed one with the same platform and
+`walletKey`. Each adapter gets its key where it is built, from the wallet's
+name without case, punctuation or the word "wallet", so the injected OKX
+adapter and the Wallet Standard `OKX Wallet` are both `okx`. A primary wallet
+that announces after its fallback listed is dropped.
 
 - A Bitcoin Wallet Standard wallet hides only its own injected entry: Xverse
   on both channels lists once, and Unisat still lists next to Phantom.

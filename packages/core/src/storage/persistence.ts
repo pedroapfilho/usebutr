@@ -19,6 +19,7 @@ type StoredPoolEntry = {
   connectorId: string;
   icon?: string;
   name: string;
+  walletKey: string;
 };
 
 type StoredPoolRecord = Partial<Record<string, StoredPoolEntry>>;

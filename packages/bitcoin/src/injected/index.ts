@@ -24,21 +24,36 @@ const probeProviders = (host: Window): Array<BitcoinAdapter> => {
 
   if (host.unisat && !seen.has(host.unisat)) {
     seen.add(host.unisat);
-    adapters.push(buildUnisatAdapter("injected:bitcoin:unisat", "Unisat", host.unisat));
+    adapters.push(
+      buildUnisatAdapter(
+        { id: "injected:bitcoin:unisat", name: "Unisat", walletKey: "unisat" },
+        host.unisat,
+      ),
+    );
   }
 
   const okxBitcoin = host.okxwallet?.bitcoin;
 
   if (okxBitcoin && !seen.has(okxBitcoin)) {
     seen.add(okxBitcoin);
-    adapters.push(buildUnisatAdapter("injected:bitcoin:okx", "OKX Wallet (Bitcoin)", okxBitcoin));
+    adapters.push(
+      buildUnisatAdapter(
+        { id: "injected:bitcoin:okx", name: "OKX Wallet", walletKey: "okx" },
+        okxBitcoin,
+      ),
+    );
   }
 
   const xverse = host.XverseProviders?.BitcoinProvider;
 
   if (xverse && !seen.has(xverse)) {
     seen.add(xverse);
-    adapters.push(buildSatsConnectAdapter("injected:bitcoin:xverse", "Xverse", xverse));
+    adapters.push(
+      buildSatsConnectAdapter(
+        { id: "injected:bitcoin:xverse", name: "Xverse", walletKey: "xverse" },
+        xverse,
+      ),
+    );
   }
 
   return adapters;
@@ -68,7 +83,12 @@ const discoverLegacyBitcoinAdapter: WalletSource = (onAdapter) => {
   const btc = host?.btc;
 
   if (btc !== undefined && btc !== host?.unisat && btc !== host?.okxwallet?.bitcoin) {
-    onAdapter(buildUnisatAdapter("injected:bitcoin:legacy", "Browser Bitcoin wallet", btc));
+    onAdapter(
+      buildUnisatAdapter(
+        { id: "injected:bitcoin:legacy", name: "Browser Bitcoin wallet", walletKey: "browser" },
+        btc,
+      ),
+    );
   }
 
   return () => {};

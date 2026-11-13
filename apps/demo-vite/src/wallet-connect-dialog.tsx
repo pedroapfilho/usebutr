@@ -1,6 +1,6 @@
 import type { WalletAdapter } from "@usebutr/core";
+import { groupByWallet } from "@usebutr/core";
 
-import { groupByBrand } from "./group-by-brand";
 import { useModalDialog } from "./use-modal-dialog";
 import { WalletBrandRow } from "./wallet-brand-row";
 
@@ -15,7 +15,7 @@ const WalletConnectDialog = ({
 }) => {
   const dialogRef = useModalDialog(open);
 
-  const brands = groupByBrand(available);
+  const brands = groupByWallet(available);
 
   return (
     <dialog
@@ -39,7 +39,7 @@ const WalletConnectDialog = ({
       </div>
       <ul className="divide-divider divide-y">
         {brands.map((brand) => (
-          <li key={brand.name}>
+          <li key={brand.walletKey}>
             <div className="px-4 py-3">
               <WalletBrandRow brand={brand} />
             </div>

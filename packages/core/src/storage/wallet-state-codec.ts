@@ -22,10 +22,14 @@ type EntryReader = (key: string) => string | null | undefined;
 
 const chainPlatformSchema = z.enum(CHAIN_PLATFORMS);
 
+// Declared in the order a registry chain serializes, so an entry decodes to
+// the bytes it was stored as and the next save has nothing to rewrite.
 const chainSchema = z.looseObject({
+  aliases: z.array(z.string()).optional(),
   id: z.string(),
   name: z.string(),
   namespace: z.string(),
+  nativeCurrency: z.object({ decimals: z.number(), symbol: z.string() }).optional(),
   reference: z.string(),
 });
 
@@ -42,6 +46,7 @@ const storedPoolEntrySchema = z.looseObject({
   connectorId: z.string(),
   icon: z.string().optional(),
   name: z.string().min(1),
+  walletKey: z.string().min(1),
 });
 
 const recordSchema = z.record(z.string(), z.unknown());
@@ -115,6 +120,7 @@ const toStoredPoolEntry = (wallet: ConnectedWallet): StoredPoolEntry => ({
   connectorId: wallet.connector.id,
   icon: wallet.connector.icon,
   name: wallet.connector.name,
+  walletKey: wallet.connector.walletKey,
 });
 
 /**

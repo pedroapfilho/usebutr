@@ -6,6 +6,11 @@ import type { ChainPlatform } from "./types/platform";
  * a chain the same way through `resolveChain`.
  */
 
+const ETHER = { decimals: 18, symbol: "ETH" };
+const SOL = { decimals: 9, symbol: "SOL" };
+const SUI = { decimals: 9, symbol: "SUI" };
+const BITCOIN = { decimals: 8, symbol: "BTC" };
+
 /** Common EVM chains. `switchChain` accepts any `ChainBase`, so a chain
  *  missing here still works; it is just named by its CAIP-2 id. */
 const EVM_CHAINS = {
@@ -13,14 +18,51 @@ const EVM_CHAINS = {
     id: "eip155:42161",
     name: "Arbitrum One",
     namespace: "eip155",
+    nativeCurrency: ETHER,
     reference: "42161",
   },
-  base: { id: "eip155:8453", name: "Base", namespace: "eip155", reference: "8453" },
-  bsc: { id: "eip155:56", name: "BNB Smart Chain", namespace: "eip155", reference: "56" },
-  ethereum: { id: "eip155:1", name: "Ethereum", namespace: "eip155", reference: "1" },
-  optimism: { id: "eip155:10", name: "Optimism", namespace: "eip155", reference: "10" },
-  polygon: { id: "eip155:137", name: "Polygon", namespace: "eip155", reference: "137" },
-  sepolia: { id: "eip155:11155111", name: "Sepolia", namespace: "eip155", reference: "11155111" },
+  base: {
+    id: "eip155:8453",
+    name: "Base",
+    namespace: "eip155",
+    nativeCurrency: ETHER,
+    reference: "8453",
+  },
+  bsc: {
+    id: "eip155:56",
+    name: "BNB Smart Chain",
+    namespace: "eip155",
+    nativeCurrency: { decimals: 18, symbol: "BNB" },
+    reference: "56",
+  },
+  ethereum: {
+    id: "eip155:1",
+    name: "Ethereum",
+    namespace: "eip155",
+    nativeCurrency: ETHER,
+    reference: "1",
+  },
+  optimism: {
+    id: "eip155:10",
+    name: "Optimism",
+    namespace: "eip155",
+    nativeCurrency: ETHER,
+    reference: "10",
+  },
+  polygon: {
+    id: "eip155:137",
+    name: "Polygon",
+    namespace: "eip155",
+    nativeCurrency: { decimals: 18, symbol: "POL" },
+    reference: "137",
+  },
+  sepolia: {
+    id: "eip155:11155111",
+    name: "Sepolia",
+    namespace: "eip155",
+    nativeCurrency: ETHER,
+    reference: "11155111",
+  },
 } as const satisfies Record<string, ChainBase>;
 
 /** Ids are the cluster names Wallet Standard uses. Each cluster's first alias
@@ -31,6 +73,7 @@ const SVM_CHAINS = {
     id: "solana:devnet",
     name: "Solana Devnet",
     namespace: "solana",
+    nativeCurrency: SOL,
     reference: "devnet",
   },
   mainnet: {
@@ -38,6 +81,7 @@ const SVM_CHAINS = {
     id: "solana:mainnet",
     name: "Solana Mainnet",
     namespace: "solana",
+    nativeCurrency: SOL,
     reference: "mainnet",
   },
   testnet: {
@@ -45,25 +89,40 @@ const SVM_CHAINS = {
     id: "solana:testnet",
     name: "Solana Testnet",
     namespace: "solana",
+    nativeCurrency: SOL,
     reference: "testnet",
   },
 } as const satisfies Record<string, ChainBase>;
 
 const SUI_CHAINS = {
-  devnet: { id: "sui:devnet", name: "Sui Devnet", namespace: "sui", reference: "devnet" },
+  devnet: {
+    id: "sui:devnet",
+    name: "Sui Devnet",
+    namespace: "sui",
+    nativeCurrency: SUI,
+    reference: "devnet",
+  },
   localnet: {
     id: "sui:localnet",
     name: "Sui Localnet",
     namespace: "sui",
+    nativeCurrency: SUI,
     reference: "localnet",
   },
   mainnet: {
     id: "sui:mainnet",
     name: "Sui Mainnet",
     namespace: "sui",
+    nativeCurrency: SUI,
     reference: "mainnet",
   },
-  testnet: { id: "sui:testnet", name: "Sui Testnet", namespace: "sui", reference: "testnet" },
+  testnet: {
+    id: "sui:testnet",
+    name: "Sui Testnet",
+    namespace: "sui",
+    nativeCurrency: SUI,
+    reference: "testnet",
+  },
 } as const satisfies Record<string, ChainBase>;
 
 /** CAIP-2 Bitcoin references are the first 16 bytes of each network's
@@ -73,24 +132,28 @@ const BITCOIN_CHAINS = {
     id: "bip122:000000000019d6689c085ae165831e93",
     name: "Bitcoin",
     namespace: "bip122",
+    nativeCurrency: BITCOIN,
     reference: "000000000019d6689c085ae165831e93",
   },
   signet: {
     id: "bip122:00000008819873e925422c1ff0f99f7c",
     name: "Bitcoin Signet",
     namespace: "bip122",
+    nativeCurrency: BITCOIN,
     reference: "00000008819873e925422c1ff0f99f7c",
   },
   testnet: {
     id: "bip122:000000000933ea01ad0ee984209779ba",
     name: "Bitcoin Testnet",
     namespace: "bip122",
+    nativeCurrency: BITCOIN,
     reference: "000000000933ea01ad0ee984209779ba",
   },
   testnet4: {
     id: "bip122:00000000da84f2bafbbc53dee25a72ae",
     name: "Bitcoin Testnet4",
     namespace: "bip122",
+    nativeCurrency: BITCOIN,
     reference: "00000000da84f2bafbbc53dee25a72ae",
   },
 } as const satisfies Record<string, ChainBase>;
@@ -100,44 +163,42 @@ const POLKADOT_CHAINS = {
     id: "polkadot:b0a8d493285c2df73290dfb7e61f870f",
     name: "Kusama",
     namespace: "polkadot",
+    nativeCurrency: { decimals: 12, symbol: "KSM" },
     reference: "b0a8d493285c2df73290dfb7e61f870f",
   },
   paseo: {
     id: "polkadot:77afd6190f1554ad45fd0d31aee62aac",
     name: "Paseo",
     namespace: "polkadot",
+    nativeCurrency: { decimals: 10, symbol: "PAS" },
     reference: "77afd6190f1554ad45fd0d31aee62aac",
   },
   polkadot: {
     id: "polkadot:91b171bb158e2d3848fa23a9f1c25182",
     name: "Polkadot",
     namespace: "polkadot",
+    nativeCurrency: { decimals: 10, symbol: "DOT" },
     reference: "91b171bb158e2d3848fa23a9f1c25182",
   },
   westend: {
     id: "polkadot:e143f23803ac50e8f6f8e62695d1ce9e",
     name: "Westend",
     namespace: "polkadot",
+    nativeCurrency: { decimals: 12, symbol: "WND" },
     reference: "e143f23803ac50e8f6f8e62695d1ce9e",
   },
 } as const satisfies Record<string, ChainBase>;
-
-const EVM_CHAINS_LIST: ReadonlyArray<ChainBase> = Object.values(EVM_CHAINS);
-const SVM_CHAINS_LIST: ReadonlyArray<ChainBase> = Object.values(SVM_CHAINS);
-const SUI_CHAINS_LIST: ReadonlyArray<ChainBase> = Object.values(SUI_CHAINS);
-const BITCOIN_CHAINS_LIST: ReadonlyArray<ChainBase> = Object.values(BITCOIN_CHAINS);
-const POLKADOT_CHAINS_LIST: ReadonlyArray<ChainBase> = Object.values(POLKADOT_CHAINS);
 
 /** An empty list opts that platform out of the consumer's chain UI. */
 type ChainsByPlatform = Readonly<Record<ChainPlatform, ReadonlyArray<ChainBase>>>;
 
 /** Every registry as a list, keyed by platform: the shape chain pickers want. */
 const CHAINS_BY_PLATFORM: ChainsByPlatform = {
-  bitcoin: BITCOIN_CHAINS_LIST,
-  evm: EVM_CHAINS_LIST,
-  polkadot: POLKADOT_CHAINS_LIST,
-  sui: SUI_CHAINS_LIST,
-  svm: SVM_CHAINS_LIST,
+  bitcoin: Object.values(BITCOIN_CHAINS),
+  evm: Object.values(EVM_CHAINS),
+  polkadot: Object.values(POLKADOT_CHAINS),
+  sui: Object.values(SUI_CHAINS),
+  svm: Object.values(SVM_CHAINS),
 };
 
 /** Each platform's mainnet: where a transport starts when the wallet names no
@@ -154,15 +215,10 @@ export type { ChainsByPlatform };
 
 export {
   BITCOIN_CHAINS,
-  BITCOIN_CHAINS_LIST,
   CHAINS_BY_PLATFORM,
   DEFAULT_CHAINS,
   EVM_CHAINS,
-  EVM_CHAINS_LIST,
   POLKADOT_CHAINS,
-  POLKADOT_CHAINS_LIST,
   SUI_CHAINS,
-  SUI_CHAINS_LIST,
   SVM_CHAINS,
-  SVM_CHAINS_LIST,
 };

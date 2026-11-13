@@ -17,11 +17,11 @@ peer dependency; `loadModule` replaces that import (tests). It is a
 The fallback for wallets that never announce through Wallet Standard. When
 subscribed, it emits an adapter for each provider it finds:
 
-| Provider                                 | Adapter id                | Name                   | Signer kind    |
-| ---------------------------------------- | ------------------------- | ---------------------- | -------------- |
-| `window.unisat`                          | `injected:bitcoin:unisat` | `Unisat`               | `unisat`       |
-| `window.okxwallet.bitcoin`               | `injected:bitcoin:okx`    | `OKX Wallet (Bitcoin)` | `unisat`       |
-| `window.XverseProviders.BitcoinProvider` | `injected:bitcoin:xverse` | `Xverse`               | `sats-connect` |
+| Provider                                 | Adapter id                | Name         | Signer kind    |
+| ---------------------------------------- | ------------------------- | ------------ | -------------- |
+| `window.unisat`                          | `injected:bitcoin:unisat` | `Unisat`     | `unisat`       |
+| `window.okxwallet.bitcoin`               | `injected:bitcoin:okx`    | `OKX Wallet` | `unisat`       |
+| `window.XverseProviders.BitcoinProvider` | `injected:bitcoin:xverse` | `Xverse`     | `sats-connect` |
 
 ### `discoverLegacyBitcoinAdapter(onAdapter): () => void`
 
@@ -93,7 +93,7 @@ Importing the package registers the injected kinds:
 `BitcoinSignPsbtOutput`, `BitcoinSendTransferFeature`,
 `BitcoinSendTransferInput`, `BitcoinSendTransferOutput`.
 
-The Bitcoin chain registry (`BITCOIN_CHAINS`, `BITCOIN_CHAINS_LIST`) lives in
+The Bitcoin chain registry (`BITCOIN_CHAINS`, `CHAINS_BY_PLATFORM.bitcoin`) lives in
 `@usebutr/core`.
 
 **Source:** `packages/bitcoin/src/index.ts`, `packages/bitcoin/src/message.ts`.

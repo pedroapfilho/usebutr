@@ -71,7 +71,10 @@ describeAdapterContract<BitcoinAdapter>({
     };
 
     return Promise.resolve({
-      adapter: buildUnisatAdapter("injected:bitcoin:contract-unisat", "Contract UniSat", provider),
+      adapter: buildUnisatAdapter(
+        { id: "injected:bitcoin:contract-unisat", name: "Contract UniSat", walletKey: "unisat" },
+        provider,
+      ),
       lastCall: () => calls.at(-1),
       reportAccounts: (reported) => {
         emit("accountsChanged", [...reported]);
@@ -159,8 +162,7 @@ describeAdapterContract<BitcoinAdapter>({
     };
 
     const adapter = buildSatsConnectAdapter(
-      "injected:bitcoin:contract-xverse",
-      "Contract Xverse",
+      { id: "injected:bitcoin:contract-xverse", name: "Contract Xverse", walletKey: "xverse" },
       provider,
     );
 

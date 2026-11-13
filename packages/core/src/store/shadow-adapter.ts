@@ -39,6 +39,7 @@ const createShadowAdapter = (entry: StoredPoolEntry): WalletAdapter => {
     icon: entry.icon,
     id: entry.connectorId,
     name: entry.name,
+    walletKey: entry.walletKey,
   };
 
   shadows.add(shadow);

@@ -56,16 +56,16 @@ describe("createWalletConnectAdapters", () => {
     },
   );
 
-  it("returns suffixed adapter ids and names when multiple namespaces are requested", async () => {
+  it("suffixes the ids and links the adapters by one wallet key when several namespaces are requested", async () => {
     const adapters = await createWalletConnectAdapters({
       namespaces: { evm: ["eip155:1"], svm: [SOL_MAINNET_ID] },
       projectId: "test",
       universalProvider: fakeUniversalProvider(createFakeProvider()),
     });
 
-    expect(adapters.map(({ id, name }) => ({ id, name }))).toEqual([
-      { id: "walletconnect-evm", name: "WalletConnect (EVM)" },
-      { id: "walletconnect-svm", name: "WalletConnect (SVM)" },
+    expect(adapters.map(({ id, name, walletKey }) => ({ id, name, walletKey }))).toEqual([
+      { id: "walletconnect-evm", name: "WalletConnect", walletKey: "walletconnect" },
+      { id: "walletconnect-svm", name: "WalletConnect", walletKey: "walletconnect" },
     ]);
   });
 
@@ -159,7 +159,7 @@ describe("createWalletConnectAdapters (one session across namespaces)", () => {
     await svm.connect();
     await evm.disconnect?.();
 
-    await expect(svm.connect({ silent: true })).resolves.toBeUndefined();
+    await expect(svm.restore?.()).resolves.toBeUndefined();
     expect(provider.disconnectCalls()).toBe(0);
 
     await svm.disconnect?.();

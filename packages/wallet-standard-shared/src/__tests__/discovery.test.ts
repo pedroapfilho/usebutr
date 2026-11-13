@@ -12,6 +12,7 @@ const adapter = (id: string): WalletAdapter => ({
   getSigner: () => Promise.resolve({ kind: "wallet-standard", wallet: wallet(id) }),
   id,
   name: id,
+  walletKey: id,
 });
 
 const wallet = (name: string): WalletStandardWallet => ({

@@ -1,31 +1,8 @@
-import type { WalletAdapter } from "@usebutr/core";
+import type { WalletAdapter, WalletGroup } from "@usebutr/core";
+import { groupByWallet } from "@usebutr/core";
 import { useConnect } from "@usebutr/react";
 
-type WalletBrand = {
-  adapters: Array<WalletAdapter>;
-  icon: string | undefined;
-  name: string;
-};
-
-const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand> => {
-  const byName = new Map<string, WalletBrand>();
-
-  for (const wallet of wallets) {
-    const key = wallet.name.toLowerCase();
-    const existing = byName.get(key);
-
-    if (existing) {
-      existing.adapters.push(wallet);
-      existing.icon ??= wallet.icon;
-    } else {
-      byName.set(key, { adapters: [wallet], icon: wallet.icon, name: wallet.name });
-    }
-  }
-
-  return [...byName.values()];
-};
-
-const WalletBrandRow = ({ brand }: { brand: WalletBrand }) => {
+const WalletBrandRow = ({ brand }: { brand: WalletGroup }) => {
   const { connect, connectingId } = useConnect();
 
   return (
@@ -103,7 +80,7 @@ const WalletPicker = ({
     return null;
   }
 
-  const brands = groupByBrand(available);
+  const brands = groupByWallet(available);
 
   return (
     <section>
@@ -112,7 +89,7 @@ const WalletPicker = ({
       </h2>
       <ul className="space-y-2">
         {brands.map((brand) => (
-          <li key={brand.name}>
+          <li key={brand.walletKey}>
             <WalletBrandRow brand={brand} />
           </li>
         ))}

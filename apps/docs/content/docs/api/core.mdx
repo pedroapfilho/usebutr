@@ -138,8 +138,13 @@ const sources = [
 ### `Connector<P>`
 
 What butr itself calls. Every adapter has `chainPlatform`, `id`, `name`,
-`connect(options?: { silent?: boolean })` and `getAccounts()`, plus `icon?`.
-`disconnect`, `requestAccounts` and `subscribe` are optional. `getAccounts()`
+`walletKey`, `connect()` and `getAccounts()`, plus `icon?`. `disconnect`,
+`requestAccounts`, `restore` and `subscribe` are optional. `walletKey` is the
+same on every adapter of one wallet, across platforms and channels
+(`"phantom"` on its EIP-6963, Solana and Sui adapters). `restore()` is
+hydration's silent reconnect: it reopens a session the wallet still authorises
+without showing its UI, and an adapter defines it only where that can succeed,
+so a Ledger has none. `getAccounts()`
 resolves the accounts the wallet exposes, active first; an empty list means
 not connected.
 
@@ -237,77 +242,10 @@ empty list means disconnected. `disconnected` is for signals that end the
 session itself, such as a Wallet Standard unregister or a deleted WalletConnect
 session.
 
-### Chain targets
+### Building an adapter
 
-Every built-in adapter resolves the chain and the account of a call through a
-chain target, so the same rules raise the same `ConnectionError` kinds
-everywhere. Pick the factory that matches how the transport reaches another
-chain:
-
-| Factory                      | Transports                                      | A call naming another chain                             |
-| ---------------------------- | ----------------------------------------------- | ------------------------------------------------------- |
-| `createRoutedChainTarget`    | Wallet Standard, WalletConnect SVM, Sui, BTC    | Routed for that call when `advertised()` lists it.      |
-| `createSwitchingChainTarget` | Injected EVM, WalletConnect EVM, UniSat, Xverse | Moves the wallet with `switchTo` when `canSwitch` lets. |
-| `createFixedChainTarget`     | Ledger                                          | Rejected.                                               |
-| `createAccountTarget`        | Polkadot injectedWeb3                           | Not applicable: no call takes a chain.                  |
-
-Every factory takes `{ platform, wallet }`: the `ChainPlatform` whose CAIP-2
-namespace the transport speaks, and the wallet's name for messages. The routed one adds `advertised()` and `current()`,
-both CAIP-2 ids. The switching one adds `canSwitch(chain)`, `current()`
-resolving the wallet's network, `switchTo(chain)` and an optional
-`unknownChain(error)` that marks a `switchTo` rejection as an unknown chain
-(EIP-3326 `4902`). The fixed one adds the `chain` it signs for. A chain
-named by an alias, requested, advertised or current, counts as the registry
-chain it names, and `chain()` returns the registry id.
-
-Each target has these members, and each throws a `ConnectionError` of a kind
-below when its rule fails:
-
-- `account(exposed, requested?)` returns the exposed entry to act as, an
-  address or a record with an `address`: `requested` when given, rejecting
-  with `AccountNotExposed` when the wallet does not expose it, else the active
-  (first) entry. EVM addresses compare case-insensitively, since EIP-55
-  casing is only a checksum; every other platform compares exactly.
-- `connected(session)` returns the transport's session, or throws when it has
-  none.
-- `chain(requested?)`, except on `createAccountTarget`: the CAIP-2 id the call
-  goes to, or, for a switching target, a promise that settles once the
-  wallet is on `requested`.
-
-| Kind                | Raised for                                                                                                                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ChainMismatch`     | A chain from another namespace, one the wallet does not advertise or the session did not approve, one `canSwitch` refuses or `unknownChain` marks, or a fixed target's other chains. |
-| `AccountNotExposed` | A `requested` account the wallet does not expose.                                                                                                                                    |
-| `NotConnected`      | An empty `exposed` list, or no session.                                                                                                                                              |
-
-A user declining a switch rejects with the wallet's own error; pass it through
-`toConnectionError`.
-
-```ts
-import type { TransactionOptions } from "@usebutr/core";
-import { createRoutedChainTarget } from "@usebutr/core";
-
-const target = createRoutedChainTarget({
-  advertised: () => wallet.chains,
-  current: () => currentChainId,
-  platform: "svm",
-  wallet: wallet.name,
-});
-
-const sendTx = async (tx: Uint8Array, options?: TransactionOptions) => {
-  const chain = target.chain(options?.chain);
-  const account = target.account(wallet.accounts, options?.account);
-  return send(tx, account, chain);
-};
-```
-
-### `createConnectorEmitter(): ConnectorEmitter`
-
-`{ emit(event), listenerCount(), subscribe(listener) }`, the listener set
-behind an adapter's `subscribe`. `subscribe` has the shape of
-`Connector.subscribe`, so an adapter can hand it out as is. Emit the wallet's
-account list as `accountsChanged`, an empty one included, and `disconnected`
-only for a signal that ends the session.
+Chain targets, the connector emitter and the other building blocks adapters
+share live in [`@usebutr/adapter-kit`](/api/adapter-kit).
 
 ## Signers
 
@@ -343,8 +281,10 @@ app that imports neither `@usebutr/evm` nor `@usebutr/wallets` has no
 
 ## Chains and accounts
 
-- `ChainBase`: `{ aliases?; id; name; namespace; reference }`, CAIP-2 shaped.
-  `name` is the chain's name, never the wallet's. `aliases` lists other ids
+- `ChainBase`: `{ aliases?; id; name; namespace; nativeCurrency?; reference }`,
+  CAIP-2 shaped. `name` is the chain's name, never the wallet's.
+  `nativeCurrency` is `{ decimals, symbol }` for the asset fees are paid in;
+  every registry chain carries it. `aliases` lists other ids
   wallets name the chain by: each `SVM_CHAINS` entry lists its genesis-hash
   id first, and mainnet also `solana:mainnet-beta`.
 - `ChainPlatform`: `"evm" | "svm" | "sui" | "bitcoin" | "polkadot"`.
@@ -367,13 +307,13 @@ app that imports neither `@usebutr/evm` nor `@usebutr/wallets` has no
 
 ### Registries
 
-| Record            | List                   | Keys                                                                    |
-| ----------------- | ---------------------- | ----------------------------------------------------------------------- |
-| `EVM_CHAINS`      | `EVM_CHAINS_LIST`      | `arbitrum`, `base`, `bsc`, `ethereum`, `optimism`, `polygon`, `sepolia` |
-| `SVM_CHAINS`      | `SVM_CHAINS_LIST`      | `devnet`, `mainnet`, `testnet` (`solana:devnet`, …)                     |
-| `SUI_CHAINS`      | `SUI_CHAINS_LIST`      | `devnet`, `localnet`, `mainnet`, `testnet`                              |
-| `BITCOIN_CHAINS`  | `BITCOIN_CHAINS_LIST`  | `mainnet`, `signet`, `testnet`, `testnet4` (`bip122:<genesis>`)         |
-| `POLKADOT_CHAINS` | `POLKADOT_CHAINS_LIST` | `kusama`, `paseo`, `polkadot`, `westend`                                |
+| Record            | List                          | Keys                                                                    |
+| ----------------- | ----------------------------- | ----------------------------------------------------------------------- |
+| `EVM_CHAINS`      | `CHAINS_BY_PLATFORM.evm`      | `arbitrum`, `base`, `bsc`, `ethereum`, `optimism`, `polygon`, `sepolia` |
+| `SVM_CHAINS`      | `CHAINS_BY_PLATFORM.svm`      | `devnet`, `mainnet`, `testnet` (`solana:devnet`, …)                     |
+| `SUI_CHAINS`      | `CHAINS_BY_PLATFORM.sui`      | `devnet`, `localnet`, `mainnet`, `testnet`                              |
+| `BITCOIN_CHAINS`  | `CHAINS_BY_PLATFORM.bitcoin`  | `mainnet`, `signet`, `testnet`, `testnet4` (`bip122:<genesis>`)         |
+| `POLKADOT_CHAINS` | `CHAINS_BY_PLATFORM.polkadot` | `kusama`, `paseo`, `polkadot`, `westend`                                |
 
 `CHAINS_BY_PLATFORM` holds every list, keyed by platform: the shape a chain
 picker wants. `DEFAULT_CHAINS` holds each platform's mainnet `ChainBase`
@@ -456,7 +396,8 @@ with the same decoder `load` uses. See
   `activeConnectorId` is the stored id; the manager falls back to the first
   pool entry when it names none or a wallet the pool does not hold.
 - `StoredPoolEntry` is what a connection needs to render before its adapter
-  exists: `account`, `accounts`, `chainPlatform`, `connectorId`, `icon?`, `name`.
+  exists: `account`, `accounts`, `chainPlatform`, `connectorId`, `icon?`, `name`,
+  `walletKey`.
 - `toStoredPoolEntry(wallet: ConnectedWallet): StoredPoolEntry` builds one from
   a connected wallet.
 
@@ -487,8 +428,7 @@ Solana wallets with `signIn` take the Sign In With Solana path unless
 | `groupByPlatform(items, getPlatform)` | Buckets a list into a `Map<ChainPlatform, Array<T>>` in `CHAIN_PLATFORMS` order, empty platforms omitted. |
 | `walletEqual(a, b)`                   | Same adapter object, same active account, same account list.                                              |
 | `accountsEqual(a, b)`                 | Same account ids in the same order.                                                                       |
-| `sanitizeIcon(icon)`                  | Trims a wallet icon; an all-whitespace one becomes `undefined`. Discovery already applies it.             |
-| `logWarn(message, ...details)`        | butr's `console.warn` sink, for adapter authors. Adds the `[butr]` prefix.                                |
+| `groupByWallet(adapters)`             | Lists each wallet once as `{ adapters, icon, name, walletKey }`, in announcement order, by `walletKey`.   |
 
 ### Encoding
 

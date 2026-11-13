@@ -1,5 +1,5 @@
 import type { ChainBase, ConnectedWallet } from "@usebutr/core";
-import { EVM_CHAINS_LIST } from "@usebutr/core";
+import { CHAINS_BY_PLATFORM } from "@usebutr/core";
 import { type ChangeEvent, useState } from "react";
 
 const ChainPicker = ({
@@ -10,7 +10,7 @@ const ChainPicker = ({
   wallet: ConnectedWallet;
 }) => {
   // EVM-only discovery, so every connected wallet is on an EVM chain.
-  const chains = EVM_CHAINS_LIST;
+  const chains = CHAINS_BY_PLATFORM.evm;
   const selectId = `chain-picker-${wallet.connector.id}`;
   const [switchError, setSwitchError] = useState<string | null>(null);
 

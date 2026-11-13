@@ -28,7 +28,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => (
 );
 ```
 
-Every adapter this package builds defines `requestAccounts`, `switchChain`, `signMessage`, `sendTx`, `getBalance`, `getTransactionReceipt` and `subscribe`. `getSigner()` resolves `{ kind: "eip1193", provider }` for your own viem or ethers client. Chain registries (`EVM_CHAINS`, `EVM_CHAINS_LIST`) live in `@usebutr/core`.
+Every adapter this package builds defines `requestAccounts`, `switchChain`, `signMessage`, `sendTx`, `getBalance`, `getTransactionReceipt` and `subscribe`. `getSigner()` resolves `{ kind: "eip1193", provider }` for your own viem or ethers client. Chain registries (`EVM_CHAINS`, `CHAINS_BY_PLATFORM.evm`) live in `@usebutr/core`.
 
 ```ts
 import type { ConnectedWallet } from "@usebutr/core";

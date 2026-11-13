@@ -54,31 +54,13 @@ export type { ChainsByPlatform } from "./chains";
 
 export {
   BITCOIN_CHAINS,
-  BITCOIN_CHAINS_LIST,
   CHAINS_BY_PLATFORM,
   DEFAULT_CHAINS,
   EVM_CHAINS,
-  EVM_CHAINS_LIST,
   POLKADOT_CHAINS,
-  POLKADOT_CHAINS_LIST,
   SUI_CHAINS,
-  SUI_CHAINS_LIST,
   SVM_CHAINS,
-  SVM_CHAINS_LIST,
 } from "./chains";
-
-export type { AccountTarget, ChainTarget } from "./chain-target";
-
-export {
-  createAccountTarget,
-  createFixedChainTarget,
-  createRoutedChainTarget,
-  createSwitchingChainTarget,
-} from "./chain-target";
-
-export type { ConnectorEmitter } from "./connector-emitter";
-
-export { createConnectorEmitter } from "./connector-emitter";
 
 export type { WalletSource } from "./wallet-source";
 
@@ -120,15 +102,15 @@ export {
 
 export { groupByPlatform } from "./group-by-platform";
 
+export type { WalletGroup } from "./group-by-wallet";
+
+export { groupByWallet } from "./group-by-wallet";
+
 export type { SignInFlowOptions, SignInMessageContext, SignInResult } from "./sign-in";
 
 export { SignInUnsupportedError, createSignInFlow } from "./sign-in";
 
 export { accountsEqual, walletEqual } from "./wallet-equal";
-
-export { logWarn } from "./logger";
-
-export { sanitizeIcon } from "./sanitize-icon";
 
 export {
   base58ToBytes,

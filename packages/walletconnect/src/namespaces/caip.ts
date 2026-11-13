@@ -1,20 +1,12 @@
+import { createConnectorEmitter, createRoutedChainTarget, logWarn } from "@usebutr/adapter-kit";
 import type {
-  Account,
   ChainBase,
   ChainPlatform,
   Connector,
   TransactionOptions,
   WalletSigner,
 } from "@usebutr/core";
-import {
-  buildAccount,
-  CHAIN_NAMESPACES,
-  CHAINS_BY_PLATFORM,
-  createConnectorEmitter,
-  createRoutedChainTarget,
-  logWarn,
-  resolveChain,
-} from "@usebutr/core";
+import { CHAIN_NAMESPACES } from "@usebutr/core";
 import type { Eip1193Listener, Eip1193Object, Eip1193Value } from "@usebutr/evm";
 
 import type { NamespaceAdapterInput } from "./types";
@@ -47,8 +39,11 @@ type CaipAdapterCoreInput = NamespaceAdapterInput & {
   platform: ChainPlatform;
 };
 
-type CaipConnector = Pick<Connector, "connect" | "getAccounts" | "icon" | "id" | "name"> &
-  Required<Pick<Connector, "disconnect" | "subscribe">> & {
+type CaipConnector = Pick<
+  Connector,
+  "connect" | "getAccounts" | "icon" | "id" | "name" | "walletKey"
+> &
+  Required<Pick<Connector, "disconnect" | "restore" | "subscribe">> & {
     getSigner: () => Promise<WalletSigner>;
     switchChain?: (chain: ChainBase) => Promise<void>;
   };
@@ -81,10 +76,9 @@ const createCaipAdapterCore = ({
   platform,
   provider,
   session,
+  walletKey,
 }: CaipAdapterCoreInput): CaipAdapterCore => {
   const namespace = CHAIN_NAMESPACES[platform];
-  const knownChains = CHAINS_BY_PLATFORM[platform];
-  let [currentChainId] = chains;
 
   const sessionAccounts = () => {
     const parsed: Array<{ address: string; chainId: string }> = [];
@@ -102,53 +96,36 @@ const createCaipAdapterCore = ({
     return parsed;
   };
 
-  const accountsOn = (chainId: string): Array<Account> => {
-    const chain = resolveChain(chainId, knownChains);
-    const accounts: Array<Account> = [];
-
-    for (const account of sessionAccounts()) {
-      if (account.chainId === chainId) {
-        accounts.push(buildAccount(account.address, chain));
-      }
-    }
-
-    return accounts;
-  };
+  const emitter = createConnectorEmitter();
 
   const target = createRoutedChainTarget({
-    advertised: () => sessionAccounts().map((account) => account.chainId),
-    current: () => currentChainId,
+    accounts: sessionAccounts,
+    // A session approves chains by carrying accounts on them; until one
+    // exists, the chains are those the pairing will ask for.
+    chains: () => {
+      const approved = sessionAccounts().map((account) => account.chainId);
+
+      return approved.length > 0 ? approved : chains;
+    },
+    chainsOf: (account) => [account.chainId],
+    emit: emitter.emit,
     platform,
+    start: chains[0],
     wallet: name,
   });
 
-  // The target speaks registry ids; a call goes out under the id the session
-  // approved that chain by, which may be an alias.
-  const resolveChainId = (chain?: ChainBase) => {
-    const registryId = target.chain(chain);
-
-    return (
-      sessionAccounts().find(
-        (account) => resolveChain(account.chainId, knownChains).id === registryId,
-      )?.chainId ?? registryId
-    );
-  };
-
   const resolveTarget = (options?: TransactionOptions) => {
-    const chainId = resolveChainId(options?.chain);
-    const exposed = accountsOn(chainId).map((account) => account.walletAddress);
+    const { account, chain } = target.resolve(options);
 
-    return { address: target.account(exposed, options?.account), chainId };
+    return { address: account.address, chainId: chain };
   };
-
-  const emitter = createConnectorEmitter();
 
   const base: CaipConnector = {
     ...session.lifecycle(namespace, name),
     // Accounts on other approved chains surface after `switchChain`: the
     // pool keeps one chain per wallet.
-    getAccounts: () => Promise.resolve(accountsOn(currentChainId)),
-    getSigner: () => Promise.resolve({ chainId: currentChainId, kind: "walletconnect", provider }),
+    getAccounts: () => Promise.resolve(target.accounts()),
+    getSigner: () => Promise.resolve({ chainId: target.chain(), kind: "walletconnect", provider }),
     icon,
     id,
     name,
@@ -168,15 +145,8 @@ const createCaipAdapterCore = ({
         provider.removeListener("disconnect", onSessionDeleted);
       };
     },
-    // WalletConnect routes every call by chain, so switching only re-points
-    // butr's calls; with one configured chain there is nowhere to go.
-    ...(chains.length > 1 && {
-      switchChain: async (chain: ChainBase) => {
-        currentChainId = resolveChainId(chain);
-        emitter.emit({ accounts: accountsOn(currentChainId), type: "accountsChanged" });
-        await Promise.resolve();
-      },
-    }),
+    ...(target.switchChain !== undefined && { switchChain: target.switchChain }),
+    walletKey,
   };
 
   return {

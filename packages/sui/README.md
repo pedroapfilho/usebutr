@@ -46,7 +46,7 @@ export const send = async (wallet: ConnectedWallet<"sui">, transaction: SuiTrans
 };
 ```
 
-An `account` the wallet does not expose, or a chain it does not advertise, rejects. `getSigner()` resolves `{ kind: "wallet-standard", wallet }`: reach any other feature with `getFeature` from `@usebutr/wallet-standard-shared` and the feature types this package exports. Chain registries (`SUI_CHAINS`, `SUI_CHAINS_LIST`) come from `@usebutr/core`.
+An `account` the wallet does not expose, or a chain it does not advertise, rejects. `getSigner()` resolves `{ kind: "wallet-standard", wallet }`: reach any other feature with `getFeature` from `@usebutr/wallet-standard-shared` and the feature types this package exports. Chain registries (`SUI_CHAINS`, `CHAINS_BY_PLATFORM.sui`) come from `@usebutr/core`.
 
 `@usebutr/sui/transaction` exports `prepareSuiTransaction(tx)`, which reads
 any `SuiTransactionInput` into the string wallets read with `Transaction.from`

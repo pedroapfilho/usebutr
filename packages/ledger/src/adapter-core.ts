@@ -1,11 +1,10 @@
+import { createFixedChainTarget, logWarn, toWalletKey } from "@usebutr/adapter-kit";
 import type { ChainPlatform, Connector, TransactionOptions, WalletSigner } from "@usebutr/core";
 import {
   buildAccount,
   CHAINS_BY_PLATFORM,
-  createFixedChainTarget,
   DEFAULT_CHAINS,
   hexToBytes,
-  logWarn,
   resolveChain,
 } from "@usebutr/core";
 
@@ -60,7 +59,10 @@ type LedgerAppSpec<TApp> = {
 
 type LedgerAdapterCore<TApp> = {
   /** Spread into the adapter. */
-  base: Pick<Connector, "connect" | "disconnect" | "getAccounts" | "icon" | "id" | "name"> & {
+  base: Pick<
+    Connector,
+    "connect" | "disconnect" | "getAccounts" | "icon" | "id" | "name" | "walletKey"
+  > & {
     getSigner: () => Promise<WalletSigner>;
   };
   /** The device app, derivation path and address a call signs with.
@@ -202,11 +204,7 @@ const createLedgerAdapterCore = <TApp>(
 
   return {
     base: {
-      async connect(connectOptions) {
-        if (connectOptions?.silent === true) {
-          throw new Error("[butr/ledger] a Ledger needs an interactive connect");
-        }
-
+      async connect() {
         if (connecting === null || connecting.generation !== generation) {
           connecting = { generation, promise: openSession() };
         }
@@ -245,6 +243,7 @@ const createLedgerAdapterCore = <TApp>(
       icon: options.icon ?? LEDGER_DEFAULT_ICON,
       id: options.id ?? "ledger",
       name,
+      walletKey: toWalletKey(name),
     },
     resolve: (callOptions) => {
       const { addresses, app } = target.connected(session);

@@ -253,25 +253,18 @@ describe("createWalletStandardCore metadata", () => {
 });
 
 describe("createWalletStandardCore connect", () => {
-  it("forwards { silent: true } to standard:connect", async () => {
+  it("restores through a silent standard:connect", async () => {
     const connectFeature = buildConnectFeature();
     const core = coreFor({ features: { "standard:connect": connectFeature } });
-    await core.base.connect({ silent: true });
+    await core.base.restore?.();
     expect(connectFeature.connect).toHaveBeenCalledWith({ silent: true });
   });
 
-  it("passes no options for a plain connect()", async () => {
+  it("passes no input for connect()", async () => {
     const connectFeature = buildConnectFeature();
     const core = coreFor({ features: { "standard:connect": connectFeature } });
     await core.base.connect();
-    expect(connectFeature.connect).toHaveBeenCalledWith(undefined);
-  });
-
-  it("passes no options when silent is false", async () => {
-    const connectFeature = buildConnectFeature();
-    const core = coreFor({ features: { "standard:connect": connectFeature } });
-    await core.base.connect({ silent: false });
-    expect(connectFeature.connect).toHaveBeenCalledWith(undefined);
+    expect(connectFeature.connect).toHaveBeenCalledWith();
   });
 });
 

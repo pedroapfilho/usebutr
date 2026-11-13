@@ -17,6 +17,7 @@ const INFO: EvmIdentity = {
   icon: "data:image/svg+xml;base64,...",
   id: "io.mock.wallet",
   name: "Mock EIP-6963 Wallet",
+  walletKey: "mock",
 };
 
 /** A wallet on Ethereum mainnet exposing `addresses`, active first. */
@@ -72,12 +73,10 @@ describe("buildEvmAdapter identity and lifecycle", () => {
     expect(provider.methods()).toEqual(["eth_requestAccounts"]);
   });
 
-  it("connect({ silent: true }) reads eth_accounts and rejects without prompting when empty", async () => {
+  it("restore() reads eth_accounts and rejects without prompting when empty", async () => {
     const provider = createMockProvider();
     provider.setHandler("eth_accounts", () => []);
-    await expect(buildEvmAdapter(INFO, provider).connect({ silent: true })).rejects.toThrow(
-      /silent reconnect/v,
-    );
+    await expect(buildEvmAdapter(INFO, provider).restore?.()).rejects.toThrow(/silent reconnect/v);
     expect(provider.methods()).toEqual(["eth_accounts"]);
   });
 

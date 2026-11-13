@@ -5,7 +5,6 @@ import {
   BITCOIN_CHAINS,
   CHAINS_BY_PLATFORM,
   EVM_CHAINS,
-  EVM_CHAINS_LIST,
   POLKADOT_CHAINS,
   SUI_CHAINS,
   SVM_CHAINS,
@@ -17,7 +16,7 @@ import { isPlatformWallet } from "../wallet";
 
 describe("resolveChain", () => {
   it("returns the registry entry for a known id", () => {
-    expect(resolveChain("eip155:8453", EVM_CHAINS_LIST)).toBe(EVM_CHAINS.base);
+    expect(resolveChain("eip155:8453", CHAINS_BY_PLATFORM.evm)).toBe(EVM_CHAINS.base);
   });
 
   it.each(["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "solana:mainnet-beta", "solana:mainnet"])(
@@ -28,7 +27,7 @@ describe("resolveChain", () => {
   );
 
   it("names a chain outside the registry by its CAIP-2 id", () => {
-    expect(resolveChain("eip155:31337", EVM_CHAINS_LIST)).toEqual({
+    expect(resolveChain("eip155:31337", CHAINS_BY_PLATFORM.evm)).toEqual({
       id: "eip155:31337",
       name: "eip155:31337",
       namespace: "eip155",

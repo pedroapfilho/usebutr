@@ -114,7 +114,7 @@ const buildNamespaceAdapter = <A extends WalletAdapter>(
   {
     chains: [first, ...rest],
     ...input
-  }: Omit<NamespaceAdapterInput, "chains" | "session"> & {
+  }: Omit<NamespaceAdapterInput, "chains" | "session" | "walletKey"> & {
     chains: ReadonlyArray<string>;
   },
 ): A => {
@@ -137,6 +137,7 @@ const buildNamespaceAdapter = <A extends WalletAdapter>(
       },
       provider: input.provider,
     }),
+    walletKey: "walletconnect",
   });
 };
 

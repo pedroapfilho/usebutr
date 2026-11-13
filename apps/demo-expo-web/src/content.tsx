@@ -1,5 +1,11 @@
-import type { Account, ChainBase, ConnectedWallet, WalletAdapter } from "@usebutr/core";
-import { CHAINS_BY_PLATFORM } from "@usebutr/core";
+import type {
+  Account,
+  ChainBase,
+  ConnectedWallet,
+  WalletAdapter,
+  WalletGroup,
+} from "@usebutr/core";
+import { CHAINS_BY_PLATFORM, groupByWallet } from "@usebutr/core";
 import {
   useBalance,
   useConnect,
@@ -23,12 +29,6 @@ type SignState =
   | { kind: "ok" }
   | { kind: "error"; message: string };
 
-type WalletBrand = {
-  adapters: Array<WalletAdapter>;
-  icon: string | undefined;
-  name: string;
-};
-
 const SIGN_MESSAGE_TEXT = "Hello from the butr demo";
 
 const getBalanceText = (balance: UseBalanceResult): string => {
@@ -45,28 +45,6 @@ const getBalanceText = (balance: UseBalanceResult): string => {
   }
 
   return "—";
-};
-
-const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand> => {
-  const byName = new Map<string, WalletBrand>();
-
-  for (const wallet of wallets) {
-    const key = wallet.name.toLowerCase();
-    const existing = byName.get(key);
-
-    if (existing) {
-      existing.adapters.push(wallet);
-      existing.icon ??= wallet.icon;
-    } else {
-      byName.set(key, {
-        adapters: [wallet],
-        icon: wallet.icon,
-        name: wallet.name,
-      });
-    }
-  }
-
-  return [...byName.values()];
 };
 
 const AccountRow = ({ account, wallet }: { account: Account; wallet: ConnectedWallet }) => {
@@ -293,7 +271,7 @@ const WalletBrandRow = ({
   brand,
   connect,
 }: {
-  brand: WalletBrand;
+  brand: WalletGroup;
   connect: (id: string) => void;
 }) => (
   <View className="native-wallet-row">
@@ -352,14 +330,14 @@ const WalletPicker = ({
     return null;
   }
 
-  const brands = groupByBrand(available);
+  const brands = groupByWallet(available);
 
   return (
     <View>
       <Text className="native-h2">{hasConnected ? "Connect another" : "Available wallets"}</Text>
       <View className="native-stack-small mt-3">
         {brands.map((brand) => (
-          <WalletBrandRow brand={brand} connect={connect} key={brand.name} />
+          <WalletBrandRow brand={brand} connect={connect} key={brand.walletKey} />
         ))}
       </View>
     </View>

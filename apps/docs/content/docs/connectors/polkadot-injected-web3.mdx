@@ -34,9 +34,9 @@ display names cover Enkrypt, Nova Wallet, `Polkadot{.js}`, SubWallet and
 Talisman; other registry keys get a name derived from the key. The adapter id
 is `injected:polkadot:<kebab-cased extension key>`.
 
-An injected wallet does not reconnect silently after a reload: its silent
-`connect` rejects with `NotConnected` when it holds no session, so a persisted
-connection stays dormant until the user connects again.
+An injected wallet does not reconnect silently after a reload: its adapter
+defines no `restore`, so a persisted connection stays dormant until the user
+connects again.
 
 ## What the adapter defines
 

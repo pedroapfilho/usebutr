@@ -66,11 +66,11 @@ Every chain registry lives in `@usebutr/core` as plain data, so importing only
 the EVM list bundles only the EVM list:
 
 ```tsx
-import { EVM_CHAINS, EVM_CHAINS_LIST } from "@usebutr/core";
+import { CHAINS_BY_PLATFORM, EVM_CHAINS } from "@usebutr/core";
 ```
 
 `EVM_CHAINS` is keyed (`ethereum`, `sepolia`, `arbitrum`, `optimism`, `base`,
-`polygon`, `bsc`) and `EVM_CHAINS_LIST` is the same as an array. butr names a
+`polygon`, `bsc`) and `CHAINS_BY_PLATFORM.evm` is the same as an array. butr names a
 wallet's chain from this list, and a chain outside it by its CAIP-2 id. Use it
 for your chain-switcher UI and for `sendTx`'s `chain` option;
 `switchChain` accepts any `ChainBase`.

@@ -70,7 +70,9 @@ const evmAdapter = (
     getSigner: vi.fn(() => Promise.reject(new Error("core tests register no signer"))),
     id,
     name: `${id} wallet`,
+    restore: vi.fn(() => Promise.resolve()),
     subscribe: events.subscribe,
+    walletKey: id,
     ...overrides,
   };
 
@@ -93,7 +95,9 @@ const svmAdapter = (
     getSigner: vi.fn(() => Promise.reject(new Error("core tests register no signer"))),
     id,
     name: `${id} wallet`,
+    restore: vi.fn(() => Promise.resolve()),
     subscribe: events.subscribe,
+    walletKey: id,
     ...overrides,
   };
 

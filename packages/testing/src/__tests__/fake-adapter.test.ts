@@ -35,9 +35,10 @@ const REQUIRED = [
   "getAccounts",
   "getSigner",
   "requests",
+  "restore",
 ];
 
-const IDENTITY = ["icon", "id", "listenerCount", "name"];
+const IDENTITY = ["icon", "id", "listenerCount", "name", "walletKey"];
 
 describe("createFakeAdapter", () => {
   it("defaults to an EVM wallet with an injected wallet's members", () => {
@@ -270,7 +271,7 @@ describe("createFakeAdapter", () => {
 
       adapter.emit({ type: "disconnected" });
       expect(await adapter.getAccounts()).toEqual([]);
-      await adapter.connect({ silent: true });
+      await adapter.restore?.();
       expect(await adapter.getAccounts()).toBe(next);
 
       expect(adapter.listenerCount()).toBe(1);

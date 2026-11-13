@@ -5,7 +5,8 @@ import type { UniversalProviderLike, WcNamespaceRequest } from "./loader";
 
 type PairingRequest = Readonly<Record<string, WcNamespaceRequest>>;
 
-type SessionLifecycle = Pick<Connector, "connect"> & Required<Pick<Connector, "disconnect">>;
+type SessionLifecycle = Pick<Connector, "connect"> &
+  Required<Pick<Connector, "disconnect" | "restore">>;
 
 type WalletConnectSession = {
   /** `connect` / `disconnect` for the adapter `name` of `namespace`. The
@@ -103,12 +104,8 @@ const createWalletConnectSession = ({
       const member = Symbol(namespace);
 
       return {
-        async connect(options) {
+        async connect() {
           if (!hasNamespace(namespace)) {
-            if (options?.silent === true && !provider.session) {
-              throw new Error("No WalletConnect session for silent reconnect");
-            }
-
             await ensurePaired();
 
             if (!hasNamespace(namespace)) {
@@ -133,6 +130,19 @@ const createWalletConnectSession = ({
           }
 
           await provider.disconnect();
+        },
+
+        async restore() {
+          if (!provider.session) {
+            throw new Error("No WalletConnect session for silent reconnect");
+          }
+
+          if (!hasNamespace(namespace)) {
+            throw missingNamespaceError(namespace, name);
+          }
+
+          connected.add(member);
+          await Promise.resolve();
         },
       };
     },

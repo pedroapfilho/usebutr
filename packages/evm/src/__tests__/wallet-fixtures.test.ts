@@ -8,6 +8,7 @@ const baseInfo = (id: string, name: string): EvmIdentity => ({
   icon: "data:image/svg+xml;base64,Zm9v",
   id,
   name,
+  walletKey: name.toLowerCase(),
 });
 
 type MockResponse = () => Eip1193Value | Promise<never> | undefined;

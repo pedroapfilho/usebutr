@@ -113,11 +113,12 @@ butr deliberately does **not** ship an RPC client, a connect-modal UI, key custo
 
 ## Packages
 
-Twelve published packages, each with a single responsibility.
+Thirteen published packages, each with a single responsibility.
 
 | Package                           | Purpose                                                                                               | Install                                                                               |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `@usebutr/core`                   | Types, wallet manager, storage, chain targets, and the `WalletSource` seam. No React, no protocols.   | `pnpm add @usebutr/core zustand`                                                      |
+| `@usebutr/core`                   | Types, wallet manager, storage, chain registry, and the `WalletSource` seam. No React, no protocols.  | `pnpm add @usebutr/core zustand`                                                      |
+| `@usebutr/adapter-kit`            | Building blocks for adapter authors: chain targets, the connector emitter, wallet keys.               | `pnpm add @usebutr/adapter-kit @usebutr/core zustand`                                 |
 | `@usebutr/react`                  | React provider and hooks on top of `@usebutr/core`.                                                   | `pnpm add @usebutr/react zustand`                                                     |
 | `@usebutr/evm`                    | EIP-1193 / EIP-6963 / injected wallet discovery and adapters.                                         | `pnpm add @usebutr/evm zustand`                                                       |
 | `@usebutr/svm`                    | Wallet Standard adapter for Solana / SVM.                                                             | `pnpm add @usebutr/svm zustand @wallet-standard/app`                                  |
@@ -136,7 +137,8 @@ Twelve published packages, each with a single responsibility.
 
 ```mermaid
 graph TD
-  core["**@usebutr/core**<br>types · wallet manager · storage · chain targets"]
+  core["**@usebutr/core**<br>types · wallet manager · storage · chain registry"]
+  kit["**@usebutr/adapter-kit**<br>chain targets · emitter"]
   react["**@usebutr/react**<br>provider + hooks"]
   wss["**@usebutr/wallet-standard-shared**"]
   evm["**@usebutr/evm**<br>EIP-6963 / EIP-1193"]
@@ -150,9 +152,10 @@ graph TD
   testing["**@usebutr/testing**"]
 
   core --> react
-  core --> wss
-  core --> evm
-  core --> testing
+  core --> kit
+  kit --> wss
+  kit --> evm
+  kit --> testing
   wss --> svm
   wss --> sui
   wss --> btc

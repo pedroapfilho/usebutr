@@ -237,7 +237,7 @@ describeAdapterContract<EvmAdapter>({
         chains: [EVM_CHAINS.ethereum.id, EVM_CHAINS.polygon.id],
         icon: "",
         id: "walletconnect-evm",
-        name: "WalletConnect (EVM)",
+        name: "WalletConnect",
         provider,
       }),
       lastCall: () => calls.at(-1),

@@ -32,7 +32,10 @@ const unisat = (): Transport => {
   };
 
   return {
-    adapter: buildUnisatAdapter("injected:bitcoin:unisat", "Unisat", provider),
+    adapter: buildUnisatAdapter(
+      { id: "injected:bitcoin:unisat", name: "Unisat", walletKey: "unisat" },
+      provider,
+    ),
     signed: () => signMessage.mock.lastCall?.[0],
   };
 };
@@ -47,7 +50,11 @@ const satsConnect = async (): Promise<Transport> => {
     }),
   );
 
-  const adapter = buildSatsConnectAdapter("injected:bitcoin:xverse", "Xverse", { request });
+  const adapter = buildSatsConnectAdapter(
+    { id: "injected:bitcoin:xverse", name: "Xverse", walletKey: "xverse" },
+    { request },
+  );
+
   await adapter.connect();
 
   return {

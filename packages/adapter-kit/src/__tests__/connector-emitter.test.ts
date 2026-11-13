@@ -1,7 +1,7 @@
+import type { ConnectorEvent } from "@usebutr/core";
 import { describe, expect, it, vi } from "vitest";
 
 import { createConnectorEmitter } from "../connector-emitter";
-import type { ConnectorEvent } from "../types";
 
 const listenerFn = () => vi.fn<(event: ConnectorEvent) => void>();
 

@@ -1,10 +1,17 @@
-import { CHAINS_BY_PLATFORM } from "./chains";
-import type { Account } from "./types/account";
-import type { ChainBase } from "./types/chain";
-import { resolveChain } from "./types/chain";
-import { ConnectionError } from "./types/errors";
-import type { ChainPlatform } from "./types/platform";
-import { CHAIN_NAMESPACES } from "./types/platform";
+import type {
+  Account,
+  ChainBase,
+  ChainPlatform,
+  ConnectorEvent,
+  TransactionOptions,
+} from "@usebutr/core";
+import {
+  buildAccount,
+  CHAIN_NAMESPACES,
+  CHAINS_BY_PLATFORM,
+  ConnectionError,
+  resolveChain,
+} from "@usebutr/core";
 
 /** An exposed address, or a transport's account record that carries one. */
 type ExposedAccount = string | { readonly address: string };
@@ -39,13 +46,47 @@ type ChainTarget<Reach> = AccountTarget & {
   chain: (requested?: ChainBase) => Reach;
 };
 
-type RoutedChainTargetInput = ChainTargetInput & {
-  /** CAIP-2 ids a call can name: the chains a Wallet Standard wallet
-   *  advertises, or the chains a WalletConnect session approved. Aliases
-   *  count as the registry chain they name. */
-  advertised: () => ReadonlyArray<string>;
-  /** The chain a call without `chain` goes to, by id or alias. */
-  current: () => string;
+/**
+ * Where one call of a routed transport goes and whom it acts as. It holds the
+ * chain calls go to when they name none, and speaks registry ids to butr and
+ * the transport's own ids to the wallet.
+ */
+type RoutedChainTarget<Exposed extends ExposedAccount> = ChainTarget<string> & {
+  /** `exposed` narrowed to the current chain, as butr accounts. Defaults to
+   *  every account the transport exposes. */
+  accounts: (exposed?: ReadonlyArray<Exposed>) => Array<Account>;
+  /** Whether `account` is valid on the current chain. */
+  covers: (account: Exposed) => boolean;
+  /** The chain a call without `chain` goes to. */
+  current: () => ChainBase;
+  /** Re-points at a chain the wallet moved to by itself. Tells no listener:
+   *  the caller reports the change with the wallet's own event. */
+  follow: (chainId: string) => void;
+  /** The chain one call goes to, as the transport names it, and the account
+   *  it acts as among those valid there that `accepts` keeps. */
+  resolve: (
+    options?: TransactionOptions,
+    accepts?: (account: Exposed) => boolean,
+  ) => { account: Exposed; chain: string };
+  /** Re-points every later call and tells listeners the accounts on the new
+   *  chain. Defined when the transport reaches more than one chain, since the
+   *  wallet itself never moves. */
+  switchChain?: (chain: ChainBase) => Promise<void>;
+};
+
+type RoutedChainTargetInput<Exposed extends ExposedAccount> = ChainTargetInput & {
+  /** Every account the transport exposes, active first. */
+  accounts: () => ReadonlyArray<Exposed>;
+  /** Ids the transport names its reachable chains by: the chains a Wallet
+   *  Standard wallet advertises, or the chains a WalletConnect session
+   *  approved. Aliases count as the registry chain they name. */
+  chains: () => ReadonlyArray<string>;
+  /** The chains `account` is valid on, as the transport names them. */
+  chainsOf: (account: Exposed) => ReadonlyArray<string>;
+  /** Delivers `switchChain`'s `accountsChanged` to the adapter's listeners. */
+  emit: (event: ConnectorEvent) => void;
+  /** The chain calls go to until `switchChain`, by id or alias. */
+  start: string;
 };
 
 type SwitchingChainTargetInput = ChainTargetInput & {
@@ -62,6 +103,9 @@ type SwitchingChainTargetInput = ChainTargetInput & {
 type FixedChainTargetInput = ChainTargetInput & {
   chain: ChainBase;
 };
+
+const addressOf = (exposed: ExposedAccount): string =>
+  typeof exposed === "string" ? exposed : exposed.address;
 
 const mismatch = (message: string, cause?: unknown) =>
   new ConnectionError("ChainMismatch", message, cause === undefined ? undefined : { cause });
@@ -106,9 +150,7 @@ const createAccountTarget = ({ platform, wallet }: ChainTargetInput): AccountTar
         return active;
       }
 
-      const match = exposed.find((entry) =>
-        sameAddress(typeof entry === "string" ? entry : entry.address, requested.walletAddress),
-      );
+      const match = exposed.find((entry) => sameAddress(addressOf(entry), requested.walletAddress));
 
       if (match === undefined) {
         throw new ConnectionError(
@@ -133,33 +175,80 @@ const createAccountTarget = ({ platform, wallet }: ChainTargetInput): AccountTar
  * A transport that takes the chain per call (Wallet Standard, WalletConnect):
  * a call reaches any advertised chain without moving the wallet.
  */
-const createRoutedChainTarget = ({
-  advertised,
-  current,
+const createRoutedChainTarget = <Exposed extends ExposedAccount>({
+  accounts,
+  chains,
+  chainsOf,
+  emit,
+  start,
   ...input
-}: RoutedChainTargetInput): ChainTarget<string> => {
-  return {
-    ...createAccountTarget(input),
-    chain: (requested) => {
-      if (requested === undefined) {
-        return toRegistryId(input.platform, current());
-      }
+}: RoutedChainTargetInput<Exposed>): RoutedChainTarget<Exposed> => {
+  const base = createAccountTarget(input);
+  const registry = CHAINS_BY_PLATFORM[input.platform];
+  const prefix = `${CHAIN_NAMESPACES[input.platform]}:`;
+  const toRegistry = (chainId: string) => toRegistryId(input.platform, chainId);
+  let currentId = start;
 
-      const id = registryId(input, requested);
-      const prefix = `${CHAIN_NAMESPACES[input.platform]}:`;
+  const reachable = () => chains().filter((chain) => chain.startsWith(prefix));
 
-      const chains = advertised().flatMap((chain) =>
-        chain.startsWith(prefix) ? [toRegistryId(input.platform, chain)] : [],
+  /** The id the transport names a registry chain by. */
+  const toTransportId = (id: string) => reachable().find((chain) => toRegistry(chain) === id) ?? id;
+
+  const validOn = (account: Exposed, chainId: string) => {
+    const id = toRegistry(chainId);
+
+    return chainsOf(account).some((chain) => toRegistry(chain) === id);
+  };
+
+  const current = () => resolveChain(currentId, registry);
+
+  const chain = (requested?: ChainBase) => {
+    if (requested === undefined) {
+      return toTransportId(toRegistry(currentId));
+    }
+
+    const id = registryId(input, requested);
+    const advertised = reachable().map(toRegistry);
+
+    if (!advertised.includes(id)) {
+      throw mismatch(
+        `Wallet ${input.wallet} does not advertise chain "${id}". Advertised: ${advertised.join(", ")}`,
       );
+    }
 
-      if (!chains.includes(id)) {
-        throw mismatch(
-          `Wallet ${input.wallet} does not advertise chain "${id}". Advertised: ${chains.join(", ")}`,
-        );
-      }
+    return toTransportId(id);
+  };
 
-      return id;
+  const toAccounts = (exposed: ReadonlyArray<Exposed> = accounts()) => {
+    const on = current();
+
+    return exposed.flatMap((account) =>
+      validOn(account, currentId) ? [buildAccount(addressOf(account), on)] : [],
+    );
+  };
+
+  return {
+    ...base,
+    accounts: toAccounts,
+    chain,
+    covers: (account) => validOn(account, currentId),
+    current,
+    follow: (chainId) => {
+      currentId = chainId;
     },
+    resolve: (options, accepts = () => true) => {
+      const id = chain(options?.chain);
+      const exposed = accounts().filter((account) => validOn(account, id) && accepts(account));
+
+      return { account: base.account(exposed, options?.account), chain: id };
+    },
+    ...(new Set(reachable().map(toRegistry)).size > 1 && {
+      switchChain: async (to: ChainBase) => {
+        currentId = chain(to);
+        emit({ accounts: toAccounts(), type: "accountsChanged" });
+        await Promise.resolve();
+      },
+    }),
   };
 };
 
@@ -231,7 +320,7 @@ const createFixedChainTarget = ({
   };
 };
 
-export type { AccountTarget, ChainTarget };
+export type { AccountTarget, ChainTarget, RoutedChainTarget };
 
 export {
   createAccountTarget,

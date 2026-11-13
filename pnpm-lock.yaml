@@ -1108,8 +1108,30 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  packages/adapter-kit:
+    dependencies:
+      '@usebutr/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@repo/config-vitest':
+        specifier: workspace:*
+        version: link:../config-vitest
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../config-typescript
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.1.0
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@31.0.0(@noble/hashes@2.4.0))(vite@8.3.7(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(yaml@2.9.1))
+
   packages/bitcoin:
     dependencies:
+      '@usebutr/adapter-kit':
+        specifier: workspace:*
+        version: link:../adapter-kit
       '@usebutr/core':
         specifier: workspace:*
         version: link:../core
@@ -1206,6 +1228,9 @@ importers:
 
   packages/evm:
     dependencies:
+      '@usebutr/adapter-kit':
+        specifier: workspace:*
+        version: link:../adapter-kit
       '@usebutr/core':
         specifier: workspace:*
         version: link:../core
@@ -1228,6 +1253,9 @@ importers:
 
   packages/ledger:
     dependencies:
+      '@usebutr/adapter-kit':
+        specifier: workspace:*
+        version: link:../adapter-kit
       '@usebutr/core':
         specifier: workspace:*
         version: link:../core
@@ -1271,6 +1299,9 @@ importers:
 
   packages/polkadot:
     dependencies:
+      '@usebutr/adapter-kit':
+        specifier: workspace:*
+        version: link:../adapter-kit
       '@usebutr/core':
         specifier: workspace:*
         version: link:../core
@@ -1453,6 +1484,9 @@ importers:
 
   packages/testing:
     dependencies:
+      '@usebutr/adapter-kit':
+        specifier: workspace:*
+        version: link:../adapter-kit
       '@usebutr/core':
         specifier: workspace:*
         version: link:../core
@@ -1472,6 +1506,9 @@ importers:
 
   packages/wallet-standard-shared:
     dependencies:
+      '@usebutr/adapter-kit':
+        specifier: workspace:*
+        version: link:../adapter-kit
       '@usebutr/core':
         specifier: workspace:*
         version: link:../core
@@ -1494,6 +1531,9 @@ importers:
 
   packages/walletconnect:
     dependencies:
+      '@usebutr/adapter-kit':
+        specifier: workspace:*
+        version: link:../adapter-kit
       '@usebutr/bitcoin':
         specifier: workspace:*
         version: link:../bitcoin
@@ -1537,6 +1577,9 @@ importers:
 
   packages/wallets:
     dependencies:
+      '@usebutr/adapter-kit':
+        specifier: workspace:*
+        version: link:../adapter-kit
       '@usebutr/bitcoin':
         specifier: workspace:*
         version: link:../bitcoin

@@ -1,5 +1,5 @@
+import { logWarn } from "@usebutr/adapter-kit";
 import type { WalletAdapter } from "@usebutr/core";
-import { logWarn } from "@usebutr/core";
 import type { Wallets as ImportedWallets } from "@wallet-standard/app";
 
 import type {

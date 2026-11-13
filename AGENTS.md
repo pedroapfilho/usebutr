@@ -79,6 +79,7 @@ docs/                 # Repo-level design notes (not the Fumadocs site)
 | Package                           | Published? | Purpose                                                                |
 | --------------------------------- | ---------- | ---------------------------------------------------------------------- |
 | `@usebutr/core`                   | yes        | Types, store, storage, discovery seam. No React, no protocols.         |
+| `@usebutr/adapter-kit`            | yes        | Chain targets, connector emitter and helpers adapters are built from.  |
 | `@usebutr/react`                  | yes        | `WalletManagerProvider`, hooks, persisted connections.                 |
 | `@usebutr/evm`                    | yes        | EIP-6963 discovery + EVM connector.                                    |
 | `@usebutr/svm`                    | yes        | Wallet Standard discovery + Solana connector.                          |

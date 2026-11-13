@@ -50,6 +50,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@usebutr/adapter-kit": "workspace:*",
     "@usebutr/core": "workspace:*"
   },
   "devDependencies": {

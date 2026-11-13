@@ -35,9 +35,10 @@ const config: WalletManagerConfig = {
 };
 ```
 
-With more than one namespace each adapter's id and name carry the platform
-(`walletconnect-evm`, `WalletConnect (EVM)`); with one, they stay
-`options.id ?? "walletconnect"` and `options.name ?? "WalletConnect"`. The
+With more than one namespace each adapter's id carries the platform
+(`walletconnect-evm`); with one, it stays `options.id ?? "walletconnect"`.
+Every adapter is named `options.name ?? "WalletConnect"` and shares one
+`walletKey`. The
 promise rejects for an unknown namespace key or an empty `namespaces`.
 
 The pairing requires one namespace and marks the rest optional. The required

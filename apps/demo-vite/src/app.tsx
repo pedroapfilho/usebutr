@@ -5,7 +5,7 @@ import type {
   ConnectedWallet,
   WalletAdapter,
 } from "@usebutr/core";
-import { CHAINS_BY_PLATFORM } from "@usebutr/core";
+import { CHAINS_BY_PLATFORM, groupByWallet } from "@usebutr/core";
 import {
   useBalance,
   useConnect,
@@ -18,7 +18,6 @@ import {
 } from "@usebutr/react";
 import { type ReactNode, useState } from "react";
 
-import { groupByBrand } from "./group-by-brand";
 import { PairingDialog } from "./pairing-dialog";
 import { SiteFooter, SiteHeader } from "./site-chrome";
 import { WalletBrandRow } from "./wallet-brand-row";
@@ -347,7 +346,7 @@ const WalletPicker = ({
     return null;
   }
 
-  const brands = groupByBrand(available);
+  const brands = groupByWallet(available);
 
   return (
     <section>
@@ -356,7 +355,7 @@ const WalletPicker = ({
       </h2>
       <ul className="space-y-2">
         {brands.map((brand) => (
-          <li key={brand.name}>
+          <li key={brand.walletKey}>
             <div className="border-border-default bg-surface-base rounded-lg border px-4 py-3">
               <WalletBrandRow brand={brand} />
             </div>

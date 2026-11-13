@@ -12,6 +12,7 @@
     "wallets",
     "walletconnect",
     "ledger",
-    "wallet-standard-shared"
+    "wallet-standard-shared",
+    "adapter-kit"
   ]
 }

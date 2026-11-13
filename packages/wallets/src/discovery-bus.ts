@@ -8,13 +8,9 @@ const SETTLE_MS = 150;
 
 type Lane = "anonymousFallback" | "fallback" | "primary";
 
-/**
- * Case, punctuation, a parenthesised suffix and the word "wallet" are
- * ignored, so "OKX Wallet (Bitcoin)" on one channel matches "OKX Wallet" on
- * another.
- */
-const walletKey = ({ chainPlatform, name }: WalletAdapter): string =>
-  `${chainPlatform}:${name.toLowerCase().replaceAll(/\(.*\)|\bwallet\b|[^a-z\d]/gv, "")}`;
+/** One wallet on one platform, whichever channel announced it. */
+const walletOn = ({ chainPlatform, walletKey }: WalletAdapter): string =>
+  `${chainPlatform}:${walletKey}`;
 
 type DiscoveryBus = Readonly<Record<Lane, (adapter: WalletAdapter) => void>> & {
   /** Opens the settle window. Call once every primary channel has read the
@@ -61,7 +57,7 @@ const createDiscoveryBus = (onAdapter: (adapter: WalletAdapter) => void): Discov
       }
     }),
     fallback: afterSettle((adapter) => {
-      const key = walletKey(adapter);
+      const key = walletOn(adapter);
 
       if (!ids.has(adapter.id) && !primaryWallets.has(key) && !fallbackWallets.has(key)) {
         fallbackWallets.add(key);
@@ -69,7 +65,7 @@ const createDiscoveryBus = (onAdapter: (adapter: WalletAdapter) => void): Discov
       }
     }),
     primary: (adapter) => {
-      const key = walletKey(adapter);
+      const key = walletOn(adapter);
 
       if (!ids.has(adapter.id) && !fallbackWallets.has(key)) {
         primaryWallets.add(key);

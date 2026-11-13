@@ -60,7 +60,8 @@ describe("hydration", () => {
     });
 
     const state = manager.getState();
-    expect(metamask.connect).toHaveBeenCalledExactlyOnceWith({ silent: true });
+    expect(metamask.restore).toHaveBeenCalledOnce();
+    expect(metamask.connect).not.toHaveBeenCalled();
     expect(rabby.connect).not.toHaveBeenCalled();
     expect(state.isHydrated).toBe(true);
     expect(state.pool.get("metamask")?.connector).toBe(metamask);
@@ -131,7 +132,7 @@ describe("hydration", () => {
     const gate = createGate();
 
     const metamask = evmAdapter("metamask", {
-      connect: (options) => (options?.silent === true ? gate.promise : Promise.resolve()),
+      restore: () => gate.promise,
     });
 
     const rabby = evmAdapter("rabby");
@@ -159,7 +160,7 @@ describe("hydration", () => {
     const onHydrated = vi.fn<Callbacks["onHydrated"]>();
 
     const metamask = evmAdapter("metamask", {
-      connect: () => Promise.reject(new Error("wallet is locked")),
+      restore: () => Promise.reject(new Error("wallet is locked")),
     });
 
     const { manager, storage } = await startManager({
@@ -180,6 +181,24 @@ describe("hydration", () => {
     expect(outcome?.dropped[0]?.reason.kind).toBe("WalletLocked");
   });
 
+  it("drops a wallet that cannot reconnect without a prompt and never calls connect", async () => {
+    const onHydrated = vi.fn<Callbacks["onHydrated"]>();
+    const ledger = evmAdapter("ledger", { restore: undefined });
+
+    const { manager, storage } = await startManager({
+      config: { onHydrated },
+      persisted: { pool: poolOf(ledger) },
+      sources: [staticSource(ledger)],
+    });
+
+    expect(ledger.connect).not.toHaveBeenCalled();
+    expect(ledger.disconnect).not.toHaveBeenCalled();
+    expect(manager.getState().dormant.has("ledger")).toBe(true);
+    expect(lastSave(storage)?.pool.ledger).toEqual(storedEntry(ledger));
+    const [outcome] = onHydrated.mock.lastCall ?? [];
+    expect(outcome?.dropped[0]?.reason).toMatchObject({ kind: "NotConnected" });
+  });
+
   it("drops a silent reconnect that exposes no accounts as NotConnected and closes it", async () => {
     const onHydrated = vi.fn<Callbacks["onHydrated"]>();
     const metamask = evmAdapter("metamask", { accounts: [] });
@@ -195,7 +214,7 @@ describe("hydration", () => {
 
   it("logs dropped reconnects when no onHydrated is given", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const metamask = evmAdapter("metamask", { connect: () => Promise.reject(new Error("no")) });
+    const metamask = evmAdapter("metamask", { restore: () => Promise.reject(new Error("no")) });
     await startManager({
       persisted: { pool: poolOf(metamask) },
       sources: [staticSource(metamask)],
@@ -210,7 +229,7 @@ describe("hydration", () => {
   it("times out a silent reconnect that never settles, so hydration completes", async () => {
     vi.useFakeTimers();
     const onHydrated = vi.fn<Callbacks["onHydrated"]>();
-    const metamask = evmAdapter("metamask", { connect: () => new Promise(() => {}) });
+    const metamask = evmAdapter("metamask", { restore: () => new Promise(() => {}) });
 
     const manager = createWalletManager({
       onHydrated,
@@ -230,7 +249,7 @@ describe("hydration", () => {
 
   it("closes the session of a silent reconnect that times out", async () => {
     vi.useFakeTimers();
-    const metamask = evmAdapter("metamask", { connect: () => new Promise(() => {}) });
+    const metamask = evmAdapter("metamask", { restore: () => new Promise(() => {}) });
 
     const manager = createWalletManager({
       sources: [staticSource(metamask)],
@@ -249,7 +268,7 @@ describe("hydration", () => {
     vi.useFakeTimers();
 
     const metamask = evmAdapter("metamask", {
-      connect: (options) => (options?.silent === true ? new Promise(() => {}) : Promise.resolve()),
+      restore: () => new Promise(() => {}),
     });
 
     const manager = createWalletManager({
@@ -317,7 +336,7 @@ describe("hydration", () => {
     manual.announce(phantom);
     await flush();
 
-    expect(phantom.connect).toHaveBeenCalledExactlyOnceWith({ silent: true });
+    expect(phantom.restore).toHaveBeenCalledOnce();
     expect(manager.getState().pool.get("phantom")?.connector).toBe(phantom);
     expect(onConnect).toHaveBeenCalledWith(manager.getState().pool.get("phantom"), {
       reconnected: true,
@@ -327,7 +346,7 @@ describe("hydration", () => {
   it("reports a wallet announced mid-hydration as pending, then restores it", async () => {
     const onHydrated = vi.fn<Callbacks["onHydrated"]>();
     const gate = createGate();
-    const metamask = evmAdapter("metamask", { connect: () => gate.promise });
+    const metamask = evmAdapter("metamask", { restore: () => gate.promise });
     const phantom = svmAdapter("phantom");
     const manual = createManualSource();
 
@@ -354,7 +373,7 @@ describe("hydration", () => {
 
   it("closes the session a silent reconnect reopened after the user disconnected it", async () => {
     const gate = createGate();
-    const metamask = evmAdapter("metamask", { connect: () => gate.promise });
+    const metamask = evmAdapter("metamask", { restore: () => gate.promise });
 
     const manager = createWalletManager({
       sources: [staticSource(metamask)],
@@ -377,7 +396,7 @@ describe("hydration", () => {
     const gate = createGate();
 
     const metamask = evmAdapter("metamask", {
-      connect: (options) => (options?.silent === true ? gate.promise : Promise.resolve()),
+      restore: () => gate.promise,
     });
 
     const manager = createWalletManager({
@@ -479,7 +498,7 @@ describe("initialState seeding", () => {
   });
 
   it("evicts a shadow whose silent reconnect fails but keeps it persisted", async () => {
-    const locked = evmAdapter("metamask", { connect: () => Promise.reject(new Error("locked")) });
+    const locked = evmAdapter("metamask", { restore: () => Promise.reject(new Error("locked")) });
     const storage = createMemoryPersistence();
 
     const manager = createWalletManager(
@@ -501,7 +520,7 @@ describe("initialState seeding", () => {
     const gate = createGate();
 
     const live = evmAdapter("metamask", {
-      connect: (options) => (options?.silent === true ? gate.promise : Promise.resolve()),
+      restore: () => gate.promise,
     });
 
     const manager = createWalletManager(

@@ -1,3 +1,9 @@
+import {
+  createConnectorEmitter,
+  createRoutedChainTarget,
+  createSwitchingChainTarget,
+  toWalletKey,
+} from "@usebutr/adapter-kit";
 import type {
   Account,
   AccountOptions,
@@ -25,9 +31,6 @@ import {
   bytesToHex,
   bytesToHexPrefixed,
   CHAINS_BY_PLATFORM,
-  createConnectorEmitter,
-  createRoutedChainTarget,
-  createSwitchingChainTarget,
   DEFAULT_CHAINS,
 } from "@usebutr/core";
 
@@ -81,6 +84,8 @@ type FakeAdapterOptions<P extends ChainPlatform = "evm"> = {
    *  registers no signer kind of its own, so an app's exhaustive
    *  `switch (signer.kind)` never grows a test-only case. */
   signer?: WalletSigner;
+  /** Defaults to the name's key, `"fake"` for "Fake Wallet". */
+  walletKey?: string;
 };
 
 /** One member per platform, so a `switch` on `chainPlatform` narrows it. */
@@ -117,28 +122,35 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
 
   const currentChain = (): ChainBase => accounts[0]?.chain ?? DEFAULT_CHAINS[platform];
 
-  const targetInput = {
-    /** The registry's chains, and whatever chain the accounts are on. */
-    advertised: () => [...CHAINS_BY_PLATFORM[platform].map((chain) => chain.id), currentChain().id],
-    platform,
-    wallet: name,
-  };
+  /** The registry's chains, and whatever chain the accounts are on. */
+  const advertised = () => [
+    ...CHAINS_BY_PLATFORM[platform].map((chain) => chain.id),
+    currentChain().id,
+  ];
 
+  const entries = () =>
+    (exposed ? accounts : []).map((entry) => ({ account: entry, address: entry.walletAddress }));
+
+  /** Per-call routing, as Wallet Standard does: an account acts on every
+   *  advertised chain. */
   const target = createRoutedChainTarget({
-    ...targetInput,
-    current: () => currentChain().id,
+    accounts: entries,
+    chains: advertised,
+    chainsOf: advertised,
+    emit: emitter.emit,
+    platform,
+    start: currentChain().id,
+    wallet: name,
   });
+
+  const setAccounts = (next: ReadonlyArray<Account>) => {
+    accounts = next;
+    target.follow(currentChain().id);
+  };
 
   /** The account to act as: the active one unless `account` names another
    *  exposed account. */
-  const accountFor = (account?: Account): Account => {
-    const entries = (exposed ? accounts : []).map((entry) => ({
-      account: entry,
-      address: entry.walletAddress,
-    }));
-
-    return target.account(entries, account).account;
-  };
+  const accountFor = (account?: Account): Account => target.account(entries(), account).account;
 
   const record = (method: FakeRequest["method"], account: Account, chain?: string) => {
     requests.push({ address: account.walletAddress, chain, method });
@@ -147,7 +159,7 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
   /** Moves every account to `chain`, as a wallet with one global network
    *  does, and tells listeners. */
   const moveTo = (chain: ChainBase) => {
-    accounts = accounts.map((account) => buildAccount(account.walletAddress, chain));
+    setAccounts(accounts.map((account) => buildAccount(account.walletAddress, chain)));
 
     if (exposed) {
       emitter.emit({ accounts, type: "accountsChanged" });
@@ -176,10 +188,9 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
 
   const getBalance = (balanceOptions?: BalanceOptions) => settle(() => balanceOf(balanceOptions));
 
-  /** Per-call routing to an advertised chain, as Wallet Standard does. */
   const route = (method: FakeRequest["method"], txOptions: TransactionOptions | undefined) => {
-    const account = accountFor(txOptions?.account);
-    record(method, account, target.chain(txOptions?.chain));
+    const { account, chain } = target.resolve(txOptions);
+    record(method, account.account, chain);
   };
 
   const base = {
@@ -199,13 +210,18 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
     icon: options.icon,
     id,
     name,
+    restore: () =>
+      settle(() => {
+        exposed = true;
+      }),
     subscribe: emitter.subscribe,
+    walletKey: options.walletKey ?? toWalletKey(name),
   };
 
   const controls: FakeAdapterControls = {
     emit: (event) => {
       if (event.type === "accountsChanged" && event.accounts.length > 0) {
-        accounts = event.accounts;
+        setAccounts(event.accounts);
         exposed = true;
       } else {
         exposed = false;
@@ -239,7 +255,7 @@ const createFakeWallet = <P extends ChainPlatform>(platform: P, options: FakeAda
     record,
     route,
     signMessage,
-    targetInput,
+    switchable: (chain: ChainBase) => advertised().includes(chain.id),
   };
 };
 
@@ -262,16 +278,16 @@ const siwsMessage = (input: SignInInput | undefined, account: Account): string =
  *  switches it first. */
 const buildEvm = (options: FakeAdapterOptions): FakeAdapter<"evm"> => {
   const wallet = createFakeWallet("evm", options);
-  const { advertised, ...input } = wallet.targetInput;
 
   const target = createSwitchingChainTarget({
-    ...input,
-    canSwitch: (chain) => advertised().includes(chain.id),
+    canSwitch: wallet.switchable,
     current: () => Promise.resolve(wallet.currentChain().id),
+    platform: "evm",
     switchTo: (chain) =>
       settle(() => {
         wallet.moveTo(chain);
       }),
+    wallet: wallet.base.name,
   });
 
   const adapter: EvmAdapter = {

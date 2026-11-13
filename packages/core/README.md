@@ -58,19 +58,18 @@ manager.subscribe((state) => console.log(state.pool.size, state.activeConnectorI
 - **Signers.** `connector.getSigner()` resolves a tagged `WalletSigner`; narrow
   it with `switch (signer.kind)`. Each transport package registers its kind.
 - **Chains and accounts.** Every registry lives here (`EVM_CHAINS`,
-  `SVM_CHAINS`, `SUI_CHAINS`, `BITCOIN_CHAINS`, `POLKADOT_CHAINS`, their
-  `*_LIST`, `CHAINS_BY_PLATFORM`), with each platform's CAIP-2 namespace in
+  `SVM_CHAINS`, `SUI_CHAINS`, `BITCOIN_CHAINS`, `POLKADOT_CHAINS`, and
+  `CHAINS_BY_PLATFORM` for each as a list), with each platform's CAIP-2 namespace in
   `CHAIN_NAMESPACES` and its mainnet in `DEFAULT_CHAINS`. Adapters build chains
   with `resolveChain(id, list)`, which also maps a chain's `aliases`, accounts
   with `buildAccount(address, chain)`, and balances with
   `buildBalance(value, decimals, symbol)`.
-- **Adapter building blocks.** Chain targets resolve the chain and account of
-  each call: `createRoutedChainTarget` (Wallet Standard, WalletConnect),
-  `createSwitchingChainTarget` (injected EVM, Unisat, Xverse),
-  `createFixedChainTarget` (Ledger) and `createAccountTarget` (Polkadot
-  injectedWeb3). `createConnectorEmitter` is the listener set behind an
-  adapter's `subscribe`. Run `describeAdapterContract` from
-  `@usebutr/testing/contract` against an adapter you build.
+- **Wallets across platforms.** Every adapter carries a `walletKey`, the same
+  on each platform one wallet speaks; `groupByWallet(adapters)` lists a wallet
+  once for a picker.
+- **Building an adapter.** Chain targets, the connector emitter and the other
+  building blocks live in `@usebutr/adapter-kit`. Run `describeAdapterContract`
+  from `@usebutr/testing/contract` against an adapter you build.
 
 ## Persistence
 

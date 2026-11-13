@@ -17,10 +17,12 @@ Everything below describes the asynchronous default. Jump to
 ## The restore pass
 
 `manager.start()` (the provider calls it in an effect) loads the persisted
-state once and silently reconnects every stored wallet: Wallet Standard's
-`silent` connect, an `eth_accounts` read on EIP-1193. A wallet that would have
-to prompt fails the restore instead. Each silent reconnect gets 15 seconds, so a
-wallet that ignores `silent` and pops a dialog cannot hold the pass open.
+state once and silently reconnects every stored wallet through its adapter's
+`restore()`: Wallet Standard's `silent` connect, an `eth_accounts` read on
+EIP-1193. An adapter that cannot reconnect without a prompt defines no
+`restore`, and its wallet is reported as dropped with `NotConnected`. Each
+silent reconnect gets 15 seconds, so a wallet that ignores `silent` and pops a
+dialog cannot hold the pass open.
 
 A failed silent reconnect closes the session it opened when it timed out or
 when the wallet connected but exposed no accounts. One the wallet declines is

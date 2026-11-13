@@ -76,10 +76,10 @@ Every chain registry lives in `@usebutr/core` as plain data, so importing only
 the Solana list bundles only the Solana list:
 
 ```tsx
-import { SVM_CHAINS, SVM_CHAINS_LIST } from "@usebutr/core";
+import { CHAINS_BY_PLATFORM, SVM_CHAINS } from "@usebutr/core";
 ```
 
-`SVM_CHAINS` is keyed (`mainnet`, `devnet`, `testnet`) and `SVM_CHAINS_LIST` is
+`SVM_CHAINS` is keyed (`mainnet`, `devnet`, `testnet`) and `CHAINS_BY_PLATFORM.svm` is
 the same as an array. These use Wallet Standard shortnames (`solana:mainnet`,
 not the strict CAIP-2 genesis-hash form) because that is what real wallets
 (Phantom, Solflare, Backpack) advertise in `wallet.chains`. Pass one as

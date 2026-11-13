@@ -30,7 +30,12 @@ const discoverInjectedAdapter: WalletSource = (onAdapter) => {
   if (isEip1193Provider(provider)) {
     onAdapter(
       buildEvmAdapter(
-        { icon: GENERIC_INJECTED_ICON, id: "injected:legacy", name: "Browser wallet" },
+        {
+          icon: GENERIC_INJECTED_ICON,
+          id: "injected:legacy",
+          name: "Browser wallet",
+          walletKey: "browser",
+        },
         provider,
       ),
     );

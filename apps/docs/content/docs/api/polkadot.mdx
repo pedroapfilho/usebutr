@@ -35,10 +35,9 @@ wallets that no injectedWeb3 extension matches.
 
 `provider` is the `window.injectedWeb3[extensionName]` entry. The id is
 `injected:polkadot:<kebab-cased extensionName>`. `connect()` calls `enable("butr")`,
-which may prompt; construction does not. `connect({ silent: true })` reuses
-only an existing in-memory session, otherwise it rejects with `NotConnected`
-before calling `enable`. A persisted connection stays dormant until an explicit
-connect grants access again. `signMessage` appears once
+which may prompt; construction does not. The adapter defines no `restore`,
+since `enable` may prompt, so a persisted connection stays dormant until an
+explicit connect grants access again. `signMessage` appears once
 `connect()` has enabled an extension that exposes `signRaw`, and `subscribe`
 once it exposes `accounts.subscribe`. There is no `switchChain`: an injected
 extension has no network to switch. An account pinned to a network through
@@ -79,7 +78,7 @@ Wallet Standard wallet reports it signed; verify against it.
 `PolkadotSignMessageFeature`, `PolkadotSignMessageInput`,
 `PolkadotSignMessageOutput`.
 
-The Polkadot chain registry (`POLKADOT_CHAINS`, `POLKADOT_CHAINS_LIST`) lives
+The Polkadot chain registry (`POLKADOT_CHAINS`, `CHAINS_BY_PLATFORM.polkadot`) lives
 in `@usebutr/core`. Chain ids are `polkadot:` plus the first 32 hex characters
 of the genesis hash.
 

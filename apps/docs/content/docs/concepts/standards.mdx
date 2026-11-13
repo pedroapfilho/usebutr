@@ -48,8 +48,9 @@ Standard](https://github.com/wallet-standard/wallet-standard); EVM goes through
 Eager hydration asks the wallet to restore already-authorized accounts
 **without prompting**: Wallet Standard's `silent` input, the `eth_accounts`
 read on EIP-1193. A wallet that can't reconnect silently fails the restore
-cleanly instead of popping a connect dialog on page load. Ledger adapters,
-which are inherently interactive, always reject a silent reconnect.
+cleanly instead of popping a connect dialog on page load. Ledger and
+injected Polkadot adapters, which cannot reconnect without a prompt, define no
+`restore`.
 WalletConnect restores a session still live on the relay and rejects when
 there is none, rather than showing a pairing prompt.
 

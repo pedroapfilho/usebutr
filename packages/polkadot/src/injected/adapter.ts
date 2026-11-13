@@ -1,3 +1,9 @@
+import {
+  createAccountTarget,
+  createConnectorEmitter,
+  logWarn,
+  toWalletKey,
+} from "@usebutr/adapter-kit";
 import type {
   Account,
   AccountOptions,
@@ -9,12 +15,9 @@ import {
   buildAccount,
   bytesToHexPrefixed,
   CHAIN_NAMESPACES,
-  createAccountTarget,
-  createConnectorEmitter,
+  CHAINS_BY_PLATFORM,
   DEFAULT_CHAINS,
   hexToBytes,
-  logWarn,
-  POLKADOT_CHAINS_LIST,
   resolveChain,
 } from "@usebutr/core";
 
@@ -47,7 +50,7 @@ const chainOf = ({ genesisHash }: InjectedAccount): ChainBase =>
     ? DEFAULT_CHAINS.polkadot
     : resolveChain(
         `${CHAIN_NAMESPACES.polkadot}:${genesisHash.replace(/^0x/v, "").slice(0, 32)}`,
-        POLKADOT_CHAINS_LIST,
+        CHAINS_BY_PLATFORM.polkadot,
       );
 
 const toAccount = (account: InjectedAccount): Account =>
@@ -121,13 +124,7 @@ const buildInjectedPolkadotAdapter = (
   return {
     chainPlatform: "polkadot",
 
-    async connect(options) {
-      if (options?.silent === true) {
-        target.connected(session);
-
-        return;
-      }
-
+    async connect() {
       openSession(await provider.enable(DAPP_NAME));
     },
 
@@ -167,6 +164,8 @@ const buildInjectedPolkadotAdapter = (
     get subscribe() {
       return (session?.unsubscribe ?? null) === null ? undefined : emitter.subscribe;
     },
+
+    walletKey: toWalletKey(displayName),
   };
 };
 

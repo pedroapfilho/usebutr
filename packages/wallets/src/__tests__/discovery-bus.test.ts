@@ -5,10 +5,8 @@ import { SETTLE_MS, createDiscoveryBus } from "../discovery-bus";
 
 import { createAdapter } from "./helpers";
 
-const named = (id: string, name: string, platform: ChainPlatform = "bitcoin"): WalletAdapter => ({
-  ...createAdapter(id, platform),
-  name,
-});
+const keyed = (id: string, walletKey: string, platform: ChainPlatform = "bitcoin"): WalletAdapter =>
+  createAdapter(id, platform, walletKey);
 
 const setup = () => {
   const onAdapter = vi.fn<(adapter: WalletAdapter) => void>();
@@ -40,7 +38,7 @@ describe("createDiscoveryBus", () => {
   it("holds fallbacks until the settle window after ready closes", () => {
     const { bus, listed } = setup();
 
-    bus.fallback(named("injected:unisat", "Unisat"));
+    bus.fallback(keyed("injected:unisat", "unisat"));
     vi.advanceTimersByTime(SETTLE_MS * 10);
     expect(listed()).toEqual([]);
 
@@ -50,16 +48,16 @@ describe("createDiscoveryBus", () => {
     vi.advanceTimersByTime(1);
     expect(listed()).toEqual(["injected:unisat"]);
 
-    bus.fallback(named("injected:okx", "OKX Wallet (Bitcoin)"));
+    bus.fallback(keyed("injected:okx", "okx"));
     expect(listed()).toEqual(["injected:unisat", "injected:okx"]);
   });
 
   it("drops a fallback for a wallet a primary channel listed, and keeps unrelated ones", () => {
     const { bus, listed } = setup();
 
-    bus.primary(named("ws:okx", "OKX Wallet"));
-    bus.fallback(named("injected:okx", "OKX Wallet (Bitcoin)"));
-    bus.fallback(named("injected:unisat", "Unisat"));
+    bus.primary(keyed("ws:okx", "okx"));
+    bus.fallback(keyed("injected:okx", "okx"));
+    bus.fallback(keyed("injected:unisat", "unisat"));
     bus.ready();
     vi.advanceTimersByTime(SETTLE_MS);
 
@@ -71,8 +69,8 @@ describe("createDiscoveryBus", () => {
 
     bus.ready();
     vi.advanceTimersByTime(SETTLE_MS);
-    bus.fallback(named("injected:xverse", "Xverse"));
-    bus.primary(named("ws:xverse", "Xverse"));
+    bus.fallback(keyed("injected:xverse", "xverse"));
+    bus.primary(keyed("ws:xverse", "xverse"));
 
     expect(listed()).toEqual(["injected:xverse"]);
   });
@@ -80,8 +78,8 @@ describe("createDiscoveryBus", () => {
   it("matches wallets within one platform only", () => {
     const { bus, listed } = setup();
 
-    bus.primary(named("svm:phantom", "Phantom", "svm"));
-    bus.fallback(named("btc:phantom", "Phantom", "bitcoin"));
+    bus.primary(keyed("svm:phantom", "phantom", "svm"));
+    bus.fallback(keyed("btc:phantom", "phantom", "bitcoin"));
     bus.ready();
     vi.advanceTimersByTime(SETTLE_MS);
 
@@ -93,7 +91,7 @@ describe("createDiscoveryBus", () => {
 
     bus.primary(createAdapter("io.metamask", "evm"));
     bus.anonymousFallback(createAdapter("injected:legacy", "evm"));
-    bus.anonymousFallback(named("injected:bitcoin:legacy", "Browser Bitcoin wallet"));
+    bus.anonymousFallback(keyed("injected:bitcoin:legacy", "browser"));
     bus.ready();
     vi.advanceTimersByTime(SETTLE_MS);
 
@@ -103,7 +101,7 @@ describe("createDiscoveryBus", () => {
   it("drops held fallbacks on stop", () => {
     const { bus, listed } = setup();
 
-    bus.fallback(named("injected:unisat", "Unisat"));
+    bus.fallback(keyed("injected:unisat", "unisat"));
     bus.ready();
     bus.stop();
     vi.advanceTimersByTime(SETTLE_MS);

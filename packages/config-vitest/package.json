@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./react": "./react.ts",
+    "./library": "./library.ts",
     "./node": "./node.ts",
     "./setup-react": "./setup-react.ts"
   },

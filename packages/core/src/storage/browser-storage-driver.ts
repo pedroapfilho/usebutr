@@ -45,26 +45,12 @@ const createWebStorageDriver = (kind: WebStorageKind): StorageDriver => {
   const storage = kind === "localStorage" ? globalThis.localStorage : globalThis.sessionStorage;
 
   return {
-    getItem(key) {
-      try {
-        return storage.getItem(key);
-      } catch {
-        return null;
-      }
-    },
+    getItem: (key) => storage.getItem(key),
     removeItem(key) {
-      try {
-        storage.removeItem(key);
-      } catch {
-        void 0;
-      }
+      storage.removeItem(key);
     },
     setItem(key, value) {
-      try {
-        storage.setItem(key, value);
-      } catch {
-        void 0;
-      }
+      storage.setItem(key, value);
     },
   };
 };

@@ -1,8 +1,8 @@
-import nodeConfig from "@repo/config-vitest/node";
+import libraryConfig from "@repo/config-vitest/library";
 import { defineConfig, mergeConfig } from "vitest/config";
 
 export default mergeConfig(
-  nodeConfig,
+  libraryConfig,
   defineConfig({
     test: {
       setupFiles: ["./src/__tests__/setup.ts"],

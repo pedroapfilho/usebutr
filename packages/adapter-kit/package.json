@@ -1,6 +1,6 @@
 {
   "name": "@usebutr/adapter-kit",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Building blocks for butr wallet adapters: chain targets, the connector emitter and adapter helpers.",
   "keywords": [
     "adapter",

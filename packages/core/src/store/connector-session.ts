@@ -55,20 +55,35 @@ const closeAfterOpen = async (opening: Promise<void>, close: () => Promise<void>
   await close();
 };
 
+const begin = (connector: WalletAdapter, restore: boolean): Promise<void> => {
+  if (!restore) {
+    return connector.connect();
+  }
+
+  if (connector.restore === undefined) {
+    throw new ConnectionError(
+      "NotConnected",
+      `${connector.name} cannot reconnect without a prompt`,
+    );
+  }
+
+  return connector.restore();
+};
+
 /**
- * The one way a session opens. A failure closes it unless the pool holds
- * it, except a declined silent connect: that opened nothing, and closing
- * would revoke the permission (EVM) or shared session (WalletConnect).
+ * The one way a session opens. A failure closes it unless the pool holds it,
+ * except a rejected `restore`: that opened nothing, and closing would revoke
+ * the permission (EVM) or shared session (WalletConnect).
  */
 const openSession = async (
   connector: WalletAdapter,
-  { close, silent }: { close: () => Promise<void>; silent: boolean },
+  { close, restore }: { close: () => Promise<void>; restore: boolean },
 ): Promise<ConnectedWallet> => {
   let opening: Promise<void> | undefined;
 
   try {
-    opening = silent ? connector.connect({ silent }) : connector.connect();
-    await withTimeout(opening, silent ? RESTORE_TIMEOUT_MS : CONNECT_TIMEOUT_MS);
+    opening = begin(connector, restore);
+    await withTimeout(opening, restore ? RESTORE_TIMEOUT_MS : CONNECT_TIMEOUT_MS);
   } catch (error) {
     const failure = toConnectionError(error);
 
@@ -76,7 +91,7 @@ const openSession = async (
       void closeAfterOpen(opening, close);
     }
 
-    if (!silent || failure.kind === "Timeout") {
+    if (!restore || failure.kind === "Timeout") {
       await close();
     }
 

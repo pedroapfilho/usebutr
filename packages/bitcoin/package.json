@@ -55,6 +55,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@usebutr/adapter-kit": "workspace:*",
     "@usebutr/core": "workspace:*",
     "@usebutr/wallet-standard-shared": "workspace:*",
     "zod": "^4.6.7"

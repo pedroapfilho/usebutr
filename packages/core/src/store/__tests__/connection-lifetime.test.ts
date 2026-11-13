@@ -134,7 +134,7 @@ describe("connection lifetimes", () => {
 
   it("does not resurrect a forgotten restore when a fresh failed attempt leaves it unpooled", async () => {
     const gate = createGate();
-    const adapter = evmAdapter("wallet", { connect: () => gate.promise });
+    const adapter = evmAdapter("wallet", { restore: () => gate.promise });
 
     const storage = createMemoryPersistence({
       pool: { wallet: toStoredPoolEntry(walletOf(adapter)) },

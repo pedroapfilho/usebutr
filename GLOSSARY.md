@@ -14,8 +14,8 @@ One network, named by its CAIP-2 id (`eip155:1`, `solana:mainnet`) and split int
 **Namespace** (`ChainBase.namespace`)
 The CAIP-2 part of a chain id before the colon: `eip155`, `solana`, `sui`, `bip122` or `polkadot`. A call naming a chain from another namespace rejects with `ChainMismatch` on every adapter.
 
-**Chain registry** (`EVM_CHAINS`, `SVM_CHAINS`, `SUI_CHAINS`, `BITCOIN_CHAINS`, `POLKADOT_CHAINS`, their `*_LIST`, `CHAINS_BY_PLATFORM`)
-The known chains of each platform, in `@usebutr/core`. `resolveChain(id, list)` returns the entry for an id or alias, or a chain named by its id when the registry lacks it.
+**Chain registry** (`EVM_CHAINS`, `SVM_CHAINS`, `SUI_CHAINS`, `BITCOIN_CHAINS`, `POLKADOT_CHAINS`, `CHAINS_BY_PLATFORM`)
+The known chains of each platform, in `@usebutr/core`, each with its `nativeCurrency`; `CHAINS_BY_PLATFORM[platform]` is a platform's registry as a list. `resolveChain(id, list)` returns the entry for an id or alias, or a chain named by its id when the registry lacks it.
 
 **Chain alias** (`ChainBase.aliases`)
 Another id a wallet names a registry chain by, such as `solana:mainnet-beta` or the genesis-hash id for `solana:mainnet`. Accounts and calls use the registry id; the adapter hands the wallet the id the wallet advertised.
@@ -44,13 +44,16 @@ What `getSigner()` resolves: the transport's own object, tagged by `kind` (`eip1
 **Connector event** (`ConnectorEvent`)
 What an adapter's `subscribe` delivers. `accountsChanged` carries the wallet's exposed accounts as is, active first; an empty list means disconnected. `disconnected` is for a signal that ends the session itself: a Wallet Standard unregister, a deleted WalletConnect session, an EIP-1193 `disconnect`.
 
+**Adapter kit** (`@usebutr/adapter-kit`)
+The package adapters are built from: chain targets, the connector emitter, `toWalletKey`, `sanitizeIcon` and `logWarn`. Every transport imports it; an app that only connects wallets does not.
+
 **Connector emitter** (`createConnectorEmitter`, `ConnectorEmitter`)
 The listener set behind an adapter's `subscribe`. `emit` delivers an event to every current subscriber, and `subscribe` has the shape of `Connector.subscribe`, so an adapter hands it out as is.
 
 **Chain target** (`ChainTarget`)
 The one place an adapter resolves the chain and the account of a call, before the wallet is asked. A chain the transport cannot reach rejects with `ChainMismatch`, an account the wallet does not expose with `AccountNotExposed`, and a wallet that exposes none with `NotConnected`. Its move policy says how a call reaches another chain:
 
-- **Routed** (`createRoutedChainTarget`): the transport takes the chain per call, so a call reaches any chain the wallet advertises or the session approved without moving the wallet. Wallet Standard and WalletConnect.
+- **Routed** (`createRoutedChainTarget`, `RoutedChainTarget`): the transport takes the chain per call, so a call reaches any chain the wallet advertises or the session approved without moving the wallet. The target holds the chain a call without `chain` goes to, translates between registry ids and the ids the transport names its chains by, and owns `switchChain` and its `accountsChanged` event. Wallet Standard and WalletConnect.
 - **Switching** (`createSwitchingChainTarget`): the wallet has one global network, so a call naming another chain switches the whole wallet first. Injected EVM, Unisat-style providers and Xverse.
 - **Fixed** (`createFixedChainTarget`): the transport is bound to one chain and refuses any other. Ledger device apps.
 
@@ -95,8 +98,9 @@ Merges the channels of every platform into one stream of adapters, each wallet l
 **Settle window** (`SETTLE_MS`)
 The 150 ms the discovery bus waits after `ready()` before it releases the held fallback adapters. `ready()` runs once Wallet Standard has routed the wallets already registered or failed to load, and at once when no requested platform uses Wallet Standard.
 
-**Wallet key** (`walletKey`, internal)
-How the discovery bus matches two channels' adapters for the same wallet: the platform plus the name, ignoring case, punctuation, a parenthesised suffix and the word "wallet".
+**Wallet key** (`Connector.walletKey`, `toWalletKey`, `groupByWallet`)
+What links the adapters of one wallet across platforms and channels: `phantom` on its EIP-6963, Solana and Sui adapters. Each adapter gets it where it is built, from the wallet's name without case, punctuation or the word "wallet". The discovery bus lists a wallet once per platform by it, and `groupByWallet` lists a wallet once across platforms.
+Avoid: brand; matching wallets by name.
 
 **Wallet Standard route** (`WalletStandardRoute`, `discoverWalletStandard`)
 One platform's adapter builder and the callback its adapters go to. `discoverWalletStandard(routes, { loadModule, onReady })` feeds every route from one `@wallet-standard/app` registry subscription.
@@ -140,13 +144,13 @@ A pool entry is reconnecting exactly when its connector is a shadow adapter. `re
 The bridge that subscribes once to each live pool entry's adapter and turns its events into account changes, or into a disconnect for an empty `accountsChanged` or a `disconnected`.
 
 **Session opener** (`openSession`, internal)
-The one path by which `connect` and a silent reconnect open a wallet session. It bounds the call with a timeout, reads the accounts, and closes a session the pool does not hold when the attempt fails, except a declined silent reconnect, which opened nothing.
+The one path by which `connect` and a silent reconnect open a wallet session. It bounds the call with a timeout, reads the accounts, and closes a session the pool does not hold when the attempt fails, except a rejected `restore`, which opened nothing.
 
 **Hydration** (`WalletState.isHydrated`, `useIsHydrated`, `HydrationOutcome`, `onHydrated`)
 The start-up pass of `start()`: load the persisted wallet state, keep its entries dormant, silently reconnect each one whose adapter has announced, then apply the stored active id and selection. Its outcome lists `restoredIds`, `pendingIds` (adapters not announced yet, restored when they arrive) and `dropped`. `isHydrated` turns true when it ends, or from the first render when the manager was seeded from an initial state.
 
-**Silent reconnect** (`connect({ silent: true })`)
-A non-interactive `connect` of a dormant entry, during hydration or when its adapter announces later, bounded to 15 seconds. An adapter that cannot reconnect without prompting rejects. A declined silent reconnect leaves the wallet's permission in place; a timeout or an empty account list closes the session.
+**Silent reconnect** (`Connector.restore`)
+The adapter's `restore()` for a dormant entry, during hydration or when its adapter announces later, bounded to 15 seconds. An adapter that cannot reconnect without prompting defines no `restore`, and its entry is reported as dropped with `NotConnected`. A declined silent reconnect leaves the wallet's permission in place; a timeout or an empty account list closes the session.
 Avoid: silent restore.
 
 **Disconnect intent** (`WalletState.isUserDisconnected`)
@@ -161,7 +165,7 @@ What the manager saves after every change once hydration ends: the dormant and l
 The persistent part of the persisted wallet state: pool, selection and active id. It carries no adapter, so a server can read and render it.
 
 **Stored pool entry** (`StoredPoolEntry`, `StoredPoolRecord`, `toStoredPoolEntry`)
-What a shadow adapter needs to render a connection before its adapter exists: the adapter id, name, icon and platform, the exposed accounts and the active account. `toStoredPoolEntry(wallet)` builds one from a connected wallet.
+What a shadow adapter needs to render a connection before its adapter exists: the adapter id, name, wallet key, icon and platform, the exposed accounts and the active account. `toStoredPoolEntry(wallet)` builds one from a connected wallet.
 
 **Wallet-state codec** (`createWalletStateCodec`, internal)
 The one wire format of the persisted wallet state: `<prefix>-pool`, `<prefix>-selection` and `<prefix>-active` in the persistent slot, `<prefix>-user-disconnected` in the session slot. Decoding drops corrupt entries and never throws, and the client load and the server read share it.

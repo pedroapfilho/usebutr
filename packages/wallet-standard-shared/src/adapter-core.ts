@@ -1,3 +1,9 @@
+import {
+  createConnectorEmitter,
+  createRoutedChainTarget,
+  sanitizeIcon,
+  toWalletKey,
+} from "@usebutr/adapter-kit";
 import type {
   Account,
   ChainBase,
@@ -11,11 +17,8 @@ import {
   buildAccount,
   CHAIN_NAMESPACES,
   CHAINS_BY_PLATFORM,
-  createConnectorEmitter,
-  createRoutedChainTarget,
   DEFAULT_CHAINS,
   resolveChain,
-  sanitizeIcon,
 } from "@usebutr/core";
 
 import { getFeature } from "./primitives";
@@ -51,7 +54,15 @@ type WalletStandardCoreInput = {
 /** The members every Wallet Standard adapter shares, ready to spread. */
 type WalletStandardConnector = Pick<
   Connector,
-  "connect" | "disconnect" | "getAccounts" | "icon" | "id" | "name" | "subscribe"
+  | "connect"
+  | "disconnect"
+  | "getAccounts"
+  | "icon"
+  | "id"
+  | "name"
+  | "restore"
+  | "subscribe"
+  | "walletKey"
 > & {
   getSigner: () => Promise<WalletSigner>;
   switchChain?: (chain: ChainBase) => Promise<void>;
@@ -93,16 +104,10 @@ const createWalletStandardCore = ({
 }: WalletStandardCoreInput): WalletStandardCore | null => {
   const chains = CHAINS_BY_PLATFORM[platform];
   const prefix = `${CHAIN_NAMESPACES[platform]}:`;
-  // Accounts and callers speak registry ids; the wallet hears its own.
-  const toRegistryId = (chainId: string) => resolveChain(chainId, chains).id;
-
-  const toWalletId = (chainId: string) =>
-    wallet.chains.find((c) => toRegistryId(c) === chainId) ?? chainId;
-
   const preferred = new Set(preferredChainIds);
 
   const pickChain = (advertised: ReadonlyArray<string>): string | undefined =>
-    advertised.find((c) => preferred.has(toRegistryId(c))) ??
+    advertised.find((c) => preferred.has(resolveChain(c, chains).id)) ??
     advertised.find((c) => c.startsWith(prefix));
 
   const initialChainId = pickChain(wallet.chains);
@@ -119,34 +124,20 @@ const createWalletStandardCore = ({
   );
 
   const events = getFeature<StandardEventsFeature>(wallet, "standard:events", "on");
-
-  let currentChainId = initialChainId;
-  const currentChain = () => resolveChain(currentChainId, chains);
-
-  const accountsOn = (accounts: ReadonlyArray<WalletStandardWalletAccount>, chainId: string) =>
-    accounts.filter((account) =>
-      account.chains.some((chain) => toRegistryId(chain) === toRegistryId(chainId)),
-    );
-
-  const toAccounts = (accounts: ReadonlyArray<WalletStandardWalletAccount>) => {
-    const chain = currentChain();
-
-    return accountsOn(accounts, currentChainId).map((a) => buildAccount(a.address, chain));
-  };
+  const emitter = createConnectorEmitter();
 
   const target = createRoutedChainTarget({
-    advertised: () => wallet.chains,
-    current: () => currentChainId,
+    accounts: () => wallet.accounts,
+    chains: () => wallet.chains,
+    chainsOf: (account) => account.chains,
+    emit: emitter.emit,
     platform,
+    start: initialChainId,
     wallet: wallet.name,
   });
 
-  const routeChain = (chain?: ChainBase) => toWalletId(target.chain(chain));
-
-  const emitter = createConnectorEmitter();
-
   const toEvent = (accounts: ReadonlyArray<WalletStandardWalletAccount>): ConnectorEvent => ({
-    accounts: toAccounts(accounts),
+    accounts: target.accounts(accounts),
     type: "accountsChanged",
   });
 
@@ -163,7 +154,7 @@ const createWalletStandardCore = ({
       const next = trackChainChanges && changes.chains ? pickChain(changes.chains) : undefined;
 
       if (next !== undefined) {
-        currentChainId = next;
+        target.follow(next);
       }
 
       if (changes.accounts !== undefined) {
@@ -179,19 +170,19 @@ const createWalletStandardCore = ({
     };
   };
 
-  const advertisedInNamespace = new Set(
-    wallet.chains.flatMap((c) => (c.startsWith(prefix) ? [toRegistryId(c)] : [])),
-  );
-
   const base: WalletStandardConnector = {
-    async connect(options) {
-      await connect.connect(options?.silent === true ? { silent: true } : undefined);
+    async connect() {
+      await connect.connect();
     },
-    getAccounts: () => Promise.resolve(toAccounts(wallet.accounts)),
+    getAccounts: () => Promise.resolve(target.accounts()),
     getSigner: () => Promise.resolve({ kind: "wallet-standard", wallet }),
     icon: sanitizeIcon(wallet.icon),
     id,
     name: wallet.name,
+    async restore() {
+      await connect.connect({ silent: true });
+    },
+    walletKey: toWalletKey(wallet.name),
     ...(disconnect !== undefined && {
       async disconnect() {
         await disconnect.disconnect();
@@ -200,40 +191,28 @@ const createWalletStandardCore = ({
     // Discovery wires `unregister` through the same listeners, so a wallet
     // without `standard:events` can still report its removal.
     ...((events !== undefined || registerDisconnector !== undefined) && { subscribe }),
-    // Wallet Standard has no switch-network call: this re-points butr's view
-    // (and every later call's `chain` input), which only means something
-    // when the wallet advertises more than one chain.
-    ...(advertisedInNamespace.size > 1 && {
-      switchChain: async (chain: ChainBase) => {
-        currentChainId = routeChain(chain);
-        emitter.emit(toEvent(wallet.accounts));
-        await Promise.resolve();
-      },
-    }),
-  };
-
-  const resolveTarget = (feature: string, options?: TransactionOptions) => {
-    const chain = routeChain(options?.chain);
-
-    const accounts = accountsOn(wallet.accounts, chain).filter((account) =>
-      account.features.includes(feature),
-    );
-
-    return { account: target.account(accounts, options?.account), chain };
+    ...(target.switchChain !== undefined && { switchChain: target.switchChain }),
   };
 
   return {
     base,
-    currentChain,
+    currentChain: target.current,
     feature: (name, method) => {
       const call = getFeature(wallet, name, method);
 
       return call === undefined
         ? undefined
-        : { call, target: (options) => resolveTarget(name, options) };
+        : {
+            call,
+            target: (options) =>
+              target.resolve(options, (account) => account.features.includes(name)),
+          };
     },
     toAccount: (account) =>
-      buildAccount(target.account(accountsOn([account], currentChainId)).address, currentChain()),
+      buildAccount(
+        target.account(target.covers(account) ? [account] : []).address,
+        target.current(),
+      ),
   };
 };
 

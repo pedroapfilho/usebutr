@@ -1,4 +1,4 @@
-import type { ConnectorEvent } from "./types/connector";
+import type { ConnectorEvent } from "@usebutr/core";
 
 type ConnectorListener = (event: ConnectorEvent) => void;
 

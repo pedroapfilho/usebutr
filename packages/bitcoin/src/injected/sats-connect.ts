@@ -1,3 +1,4 @@
+import { createConnectorEmitter, createSwitchingChainTarget } from "@usebutr/adapter-kit";
 import type {
   Account,
   BitcoinAdapter,
@@ -6,13 +7,11 @@ import type {
   TransactionOptions,
 } from "@usebutr/core";
 import {
-  BITCOIN_CHAINS,
-  BITCOIN_CHAINS_LIST,
   base64ToBytes,
+  BITCOIN_CHAINS,
   buildAccount,
   bytesToBase64,
-  createConnectorEmitter,
-  createSwitchingChainTarget,
+  CHAINS_BY_PLATFORM,
   resolveChain,
 } from "@usebutr/core";
 import { z } from "zod";
@@ -20,6 +19,7 @@ import { z } from "zod";
 import { bitcoinMessageText } from "../message";
 
 import { GENERIC_BITCOIN_ICON } from "./icon";
+import type { InjectedIdentity } from "./identity";
 
 /** sats-connect (Xverse) shape; a JSON-RPC-ish `request(method, params)`. */
 type RpcValue =
@@ -109,8 +109,7 @@ const networkFor = (chain: ChainBase): string | undefined =>
  * with `wallet_changeNetwork` first.
  */
 const buildSatsConnectAdapter = (
-  id: string,
-  name: string,
+  { id, name, walletKey }: InjectedIdentity,
   provider: SatsConnectProvider,
 ): BitcoinAdapter => {
   let chain: ChainBase = BITCOIN_CHAINS.mainnet;
@@ -153,7 +152,7 @@ const buildSatsConnectAdapter = (
   const readChain = async (): Promise<ChainBase> => {
     const result = await callRequest("wallet_getNetwork", networkResultSchema);
 
-    return resolveChain(NETWORK_CHAIN_IDS[result.bitcoin.name], BITCOIN_CHAINS_LIST);
+    return resolveChain(NETWORK_CHAIN_IDS[result.bitcoin.name], CHAINS_BY_PLATFORM.bitcoin);
   };
 
   const exposedAccounts = (): ReadonlyArray<Account> =>
@@ -187,26 +186,25 @@ const buildSatsConnectAdapter = (
     // A Bitcoin address encodes its network, so the session is re-read on
     // the new one before anything is labelled with it.
     await readSession();
-    chain = resolveChain(to.id, BITCOIN_CHAINS_LIST);
+    chain = resolveChain(to.id, CHAINS_BY_PLATFORM.bitcoin);
     emitter.emit({ accounts: exposedAccounts(), type: "accountsChanged" });
+  };
+
+  const labelChain = async (): Promise<void> => {
+    try {
+      chain = await readChain();
+    } catch {
+      // Builds predating `wallet_getNetwork` keep the last known label;
+      // a transaction naming a chain still reads the network strictly.
+    }
   };
 
   return {
     chainPlatform: "bitcoin",
 
-    async connect(options) {
-      // Builds predating `wallet_getAccount` reject a silent connect, which
-      // butr's hydration treats as a clean restore failure.
-      await (options?.silent === true
-        ? readSession()
-        : startSession("getAccounts", { message: CONNECT_MESSAGE, purposes: ACCOUNT_PURPOSES }));
-
-      try {
-        chain = await readChain();
-      } catch {
-        // Builds predating `wallet_getNetwork` keep the last known label;
-        // a transaction naming a chain still reads the network strictly.
-      }
+    async connect() {
+      await startSession("getAccounts", { message: CONNECT_MESSAGE, purposes: ACCOUNT_PURPOSES });
+      await labelChain();
     },
 
     disconnect: () => {
@@ -222,6 +220,13 @@ const buildSatsConnectAdapter = (
     icon: GENERIC_BITCOIN_ICON,
     id,
     name,
+
+    // Builds predating `wallet_getAccount` reject, which hydration treats as
+    // a failed silent reconnect.
+    async restore() {
+      await readSession();
+      await labelChain();
+    },
 
     // The account is matched after the move: its address only exists on the
     // network it was built for.
@@ -263,6 +268,8 @@ const buildSatsConnectAdapter = (
     subscribe: emitter.subscribe,
 
     switchChain: moveTo,
+
+    walletKey,
   };
 };
 

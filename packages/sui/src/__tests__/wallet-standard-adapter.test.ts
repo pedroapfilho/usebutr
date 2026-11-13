@@ -195,10 +195,10 @@ describe("buildSuiAdapter", () => {
 });
 
 describe("buildSuiAdapter session", () => {
-  it("forwards { silent: true } to standard:connect", async () => {
+  it("restores through a silent standard:connect", async () => {
     const connect = connectFeature();
     const adapter = adapterFor({}, { "standard:connect": connect });
-    await adapter.connect({ silent: true });
+    await adapter.restore?.();
     expect(connect.connect).toHaveBeenCalledWith({ silent: true });
   });
 

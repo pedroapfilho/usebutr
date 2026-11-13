@@ -1,3 +1,4 @@
+import { toWalletKey } from "@usebutr/adapter-kit";
 import type { ChainPlatform, WalletAdapter } from "@usebutr/core";
 import { CHAIN_NAMESPACES, CHAIN_PLATFORMS, DEFAULT_CHAINS, isChainPlatform } from "@usebutr/core";
 
@@ -174,9 +175,10 @@ const createWalletConnectAdapters = async (
       chains,
       icon,
       id: multiNamespace ? `${baseId}-${platform}` : baseId,
-      name: multiNamespace ? `${baseName} (${platform.toUpperCase()})` : baseName,
+      name: baseName,
       provider,
       session,
+      walletKey: toWalletKey(baseName),
     }),
   );
 };

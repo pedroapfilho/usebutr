@@ -31,6 +31,7 @@ describe("toStoredPoolEntry", () => {
       connectorId: "metamask",
       icon: "data:image/svg+xml,x",
       name: wallet.connector.name,
+      walletKey: "metamask",
     });
   });
 });
@@ -107,6 +108,7 @@ describe("createWalletStateCodec", () => {
     ["a key that disagrees with connectorId", { other: metamask }],
     ["an unknown platform", { metamask: { ...metamask, chainPlatform: "martian" } }],
     ["an empty name", { metamask: { ...metamask, name: "" } }],
+    ["no wallet key", { metamask: { ...metamask, walletKey: undefined } }],
     [
       "a chain missing fields",
       { metamask: { ...metamask, account: { id: "x", walletAddress: "0x" } } },

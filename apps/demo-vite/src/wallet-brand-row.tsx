@@ -1,8 +1,7 @@
+import type { WalletGroup } from "@usebutr/core";
 import { useConnect } from "@usebutr/react";
 
-import type { WalletBrand } from "./group-by-brand";
-
-const WalletBrandRow = ({ brand }: { brand: WalletBrand }) => {
+const WalletBrandRow = ({ brand }: { brand: WalletGroup }) => {
   const { connect, connectingId } = useConnect();
 
   return (

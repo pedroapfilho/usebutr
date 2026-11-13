@@ -59,7 +59,10 @@ const buildPinnedProvider = (): UnisatProvider => {
 };
 
 const buildAdapter = (provider: UnisatProvider) =>
-  buildUnisatAdapter("injected:bitcoin:unisat", "Unisat", provider);
+  buildUnisatAdapter(
+    { id: "injected:bitcoin:unisat", name: "Unisat", walletKey: "unisat" },
+    provider,
+  );
 
 const chainIdOf = async (adapter: ReturnType<typeof buildAdapter>) => {
   const [account] = await adapter.getAccounts();
@@ -122,22 +125,20 @@ describe("buildUnisatAdapter", () => {
   });
 
   describe("connect", () => {
-    it("silent reconnect reads getAccounts and never prompts", async () => {
+    it("restore reads getAccounts and never prompts", async () => {
       const provider = buildProvider();
 
-      await buildAdapter(provider).connect({ silent: true });
+      await buildAdapter(provider).restore?.();
 
       expect(provider.getAccounts).toHaveBeenCalledTimes(1);
       expect(provider.requestAccounts).not.toHaveBeenCalled();
     });
 
-    it("silent reconnect rejects when no account is authorized", async () => {
+    it("restore rejects when no account is authorized", async () => {
       const provider = buildProvider();
       provider.getAccounts.mockResolvedValue([]);
 
-      await expect(buildAdapter(provider).connect({ silent: true })).rejects.toThrow(
-        /No authorized accounts/v,
-      );
+      await expect(buildAdapter(provider).restore?.()).rejects.toThrow(/No authorized accounts/v);
       expect(provider.requestAccounts).not.toHaveBeenCalled();
     });
 

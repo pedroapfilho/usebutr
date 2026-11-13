@@ -1,10 +1,10 @@
 import type { SvmAdapter } from "@usebutr/core";
 import {
-  SVM_CHAINS_LIST,
   base58ToBytes,
   base64ToBytes,
   bytesToBase58,
   bytesToBase64,
+  CHAINS_BY_PLATFORM,
 } from "@usebutr/core";
 import { prepareSolanaTransaction } from "@usebutr/svm/transaction";
 
@@ -16,7 +16,7 @@ import { readResultString, readStringField } from "./wallet-response";
  *  entry's first alias, so `SVM_CHAINS.devnet` means the same cluster here
  *  as on every other transport, and accounts carry the registry's chains. */
 const GENESIS_IDS: ReadonlyMap<string, string> = new Map(
-  SVM_CHAINS_LIST.map((chain) => [chain.id, chain.aliases?.[0] ?? chain.id]),
+  CHAINS_BY_PLATFORM.svm.map((chain) => [chain.id, chain.aliases?.[0] ?? chain.id]),
 );
 
 const METHODS: ReadonlyArray<string> = [

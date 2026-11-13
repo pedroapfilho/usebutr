@@ -199,13 +199,13 @@ describe("buildSvmAdapter", () => {
 });
 
 describe("buildSvmAdapter session", () => {
-  it("forwards { silent: true } to standard:connect", async () => {
+  it("restores through a silent standard:connect and connects through a plain one", async () => {
     const connect = connectFeature();
     const adapter = adapterFor({}, { "standard:connect": connect });
-    await adapter.connect({ silent: true });
+    await adapter.restore?.();
     expect(connect.connect).toHaveBeenCalledWith({ silent: true });
     await adapter.connect();
-    expect(connect.connect).toHaveBeenLastCalledWith(undefined);
+    expect(connect.connect).toHaveBeenLastCalledWith();
   });
 
   it("calls standard:disconnect", async () => {

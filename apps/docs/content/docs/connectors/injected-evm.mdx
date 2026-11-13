@@ -79,7 +79,7 @@ const pay = async (to: string) => {
 
 butr does not call `wallet_addEthereumChain`, so a chain the wallet does not
 know rejects with the wallet's own error. Chain registries (`EVM_CHAINS`,
-`EVM_CHAINS_LIST`) come from `@usebutr/core`; see
+`CHAINS_BY_PLATFORM.evm`) come from `@usebutr/core`; see
 [multi-chain](/guides/multi-chain).
 
 `account` must be one the wallet exposes, compared case-insensitively; an

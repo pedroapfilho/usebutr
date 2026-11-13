@@ -23,11 +23,11 @@ const EVENTS: ReadonlyArray<string> = ["accountsChanged", "chainChanged", "disco
  * re-pairing), so there is no `requestAccounts`.
  */
 const evmNamespace: WalletConnectNamespaceBuilder<EvmAdapter> = {
-  buildAdapter({ chains, icon, id, name, provider, session }) {
+  buildAdapter({ chains, icon, id, name, provider, session, walletKey }) {
     const eip155 = createEip155Provider(provider, chains[0]);
 
     return {
-      ...createEip1193Core({ icon, id, name }, eip155),
+      ...createEip1193Core({ icon, id, name, walletKey }, eip155),
       ...session.lifecycle(CHAIN_NAMESPACES.evm, name),
     };
   },

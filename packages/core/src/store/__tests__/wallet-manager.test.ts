@@ -104,6 +104,7 @@ describe("createWalletManager", () => {
             chainPlatform: "evm",
             connectorId: "metamask",
             name: "MetaMask",
+            walletKey: "metamask",
           },
         },
       });
@@ -116,7 +117,7 @@ describe("createWalletManager", () => {
 
       expect(source).toHaveBeenCalledTimes(2);
       expect(storage.load).toHaveBeenCalledOnce();
-      expect(adapter.connect).toHaveBeenCalledOnce();
+      expect(adapter.restore).toHaveBeenCalledOnce();
       expect(manager.getState().adapters).toHaveLength(1);
       expect(adapter.listenerCount()).toBe(1);
     });
@@ -576,6 +577,7 @@ describe("createWalletManager", () => {
         getSigner: () => Promise.reject(new Error("unused")),
         id: "polkadot",
         name: "Polkadot",
+        walletKey: "polkadot",
       };
 
       const { manager } = await startManager({ adapters: [adapter] });

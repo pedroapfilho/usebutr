@@ -60,7 +60,10 @@ const buildXverse = (handlers: Record<string, Handler> = {}): MockProvider => {
 };
 
 const buildAdapter = (provider: MockProvider) =>
-  buildSatsConnectAdapter("injected:bitcoin:xverse", "Xverse", provider);
+  buildSatsConnectAdapter(
+    { id: "injected:bitcoin:xverse", name: "Xverse", walletKey: "xverse" },
+    provider,
+  );
 
 const connected = async (provider: MockProvider = buildXverse()) => {
   const adapter = buildAdapter(provider);
@@ -99,21 +102,21 @@ describe("buildSatsConnectAdapter", () => {
   });
 
   describe("connect", () => {
-    it("silent connect reads wallet_getAccount and never prompts via getAccounts", async () => {
+    it("restore reads wallet_getAccount and never prompts via getAccounts", async () => {
       const provider = buildXverse();
       const adapter = buildAdapter(provider);
 
-      await adapter.connect({ silent: true });
+      await adapter.restore?.();
 
       expect(methodsCalled(provider)).toEqual(["wallet_getAccount", "wallet_getNetwork"]);
       expect(await adapter.getAccounts()).toEqual(MAINNET_ACCOUNTS);
     });
 
-    it("silent connect rejects when wallet_getAccount is unavailable", async () => {
+    it("restore rejects when wallet_getAccount is unavailable", async () => {
       const provider = buildProvider({ getAccounts: [PAYMENT] });
       const adapter = buildAdapter(provider);
 
-      await expect(adapter.connect({ silent: true })).rejects.toThrow(/wallet_getAccount/v);
+      await expect(adapter.restore?.()).rejects.toThrow(/wallet_getAccount/v);
       expect(methodsCalled(provider)).not.toContain("getAccounts");
       expect(await adapter.getAccounts()).toEqual([]);
     });

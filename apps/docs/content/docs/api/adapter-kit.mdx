@@ -1,0 +1,138 @@
+---
+title: "@usebutr/adapter-kit"
+description: Chain targets, the connector emitter and the helpers every butr adapter is built from.
+---
+
+For adapter authors. Every built-in transport is built on this package; an app
+that only connects wallets never imports it. No React dependency.
+
+```npm
+npm install @usebutr/adapter-kit @usebutr/core
+```
+
+## Chain targets
+
+Every built-in adapter resolves the chain and the account of a call through a
+chain target, so the same rules raise the same `ConnectionError` kinds
+everywhere. Pick the factory that matches how the transport reaches another
+chain:
+
+| Factory                      | Transports                                      | A call naming another chain                             |
+| ---------------------------- | ----------------------------------------------- | ------------------------------------------------------- |
+| `createRoutedChainTarget`    | Wallet Standard, WalletConnect SVM, Sui, BTC    | Routed for that call when `chains()` lists it.          |
+| `createSwitchingChainTarget` | Injected EVM, WalletConnect EVM, UniSat, Xverse | Moves the wallet with `switchTo` when `canSwitch` lets. |
+| `createFixedChainTarget`     | Ledger                                          | Rejected.                                               |
+| `createAccountTarget`        | Polkadot injectedWeb3                           | Not applicable: no call takes a chain.                  |
+
+Every factory takes `{ platform, wallet }`: the `ChainPlatform` whose CAIP-2
+namespace the transport speaks, and the wallet's name for messages. The
+switching one adds `canSwitch(chain)`, `current()` resolving the wallet's
+network, `switchTo(chain)` and an optional `unknownChain(error)` that marks a
+`switchTo` rejection as an unknown chain (EIP-3326 `4902`). The fixed one adds
+the `chain` it signs for. A chain named by an alias counts as the registry
+chain it names.
+
+Each target has these members, and each throws a `ConnectionError` of a kind
+below when its rule fails:
+
+- `account(exposed, requested?)` returns the exposed entry to act as, an
+  address or a record with an `address`: `requested` when given, rejecting
+  with `AccountNotExposed` when the wallet does not expose it, else the active
+  (first) entry. EVM addresses compare case-insensitively, since EIP-55
+  casing is only a checksum; every other platform compares exactly.
+- `connected(session)` returns the transport's session, or throws when it has
+  none.
+- `chain(requested?)`, except on `createAccountTarget`: the chain the call
+  goes to, or, for a switching target, a promise that settles once the
+  wallet is on `requested`.
+
+| Kind                | Raised for                                                                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ChainMismatch`     | A chain from another namespace, one the wallet does not advertise or the session did not approve, one `canSwitch` refuses or `unknownChain` marks, or a fixed target's other chains. |
+| `AccountNotExposed` | A `requested` account the wallet does not expose.                                                                                                                                    |
+| `NotConnected`      | An empty `exposed` list, or no session.                                                                                                                                              |
+
+A user declining a switch rejects with the wallet's own error; pass it through
+`toConnectionError`.
+
+### The routed target
+
+A routed transport takes the chain per call, so the wallet never moves and
+butr has to remember where a call without `chain` goes. The routed target
+holds that chain. The transport supplies which chains it reaches and which
+accounts it exposes on them:
+
+| Input               | Meaning                                                                                  |
+| ------------------- | ---------------------------------------------------------------------------------------- |
+| `chains()`          | Ids the transport names its reachable chains by: `wallet.chains`, or a session's chains. |
+| `accounts()`        | Every account the transport exposes, active first.                                       |
+| `chainsOf(account)` | The chains an account is valid on, as the transport names them.                          |
+| `start`             | The chain calls go to until `switchChain`.                                               |
+| `emit(event)`       | Where `switchChain` reports the accounts on the new chain: the adapter's emitter.        |
+
+It speaks registry ids to butr and the transport's own ids to the wallet, so a
+Solana cluster a WalletConnect session names by genesis hash is
+`SVM_CHAINS.devnet` in every account and goes out under the session's id.
+
+| Member                        | Returns                                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `current()`                   | The `ChainBase` a call without `chain` goes to.                                                         |
+| `accounts(exposed?)`          | The accounts valid on the current chain, as butr `Account`s.                                            |
+| `chain(requested?)`           | The id the transport names the call's chain by.                                                         |
+| `resolve(options?, accepts?)` | `{ account, chain }` for one call: the chain it names, and an account valid there that `accepts` keeps. |
+| `covers(account)`             | Whether an account is valid on the current chain.                                                       |
+| `follow(chainId)`             | Re-points at a chain the wallet moved to by itself, without telling listeners.                          |
+| `switchChain?(chain)`         | Re-points later calls and emits `accountsChanged`. Defined when more than one chain is reachable.       |
+
+```ts
+import { createConnectorEmitter, createRoutedChainTarget } from "@usebutr/adapter-kit";
+import type { TransactionOptions } from "@usebutr/core";
+
+const emitter = createConnectorEmitter();
+
+const target = createRoutedChainTarget({
+  accounts: () => wallet.accounts,
+  chains: () => wallet.chains,
+  chainsOf: (account) => account.chains,
+  emit: emitter.emit,
+  platform: "svm",
+  start: wallet.chains[0],
+  wallet: wallet.name,
+});
+
+const sendTx = async (tx: Uint8Array, options?: TransactionOptions) => {
+  const { account, chain } = target.resolve(options);
+  return send(tx, account, chain);
+};
+
+const adapter = {
+  getAccounts: () => Promise.resolve(target.accounts()),
+  sendTx,
+  subscribe: emitter.subscribe,
+  ...(target.switchChain !== undefined && { switchChain: target.switchChain }),
+};
+```
+
+## `createConnectorEmitter(): ConnectorEmitter`
+
+`{ emit(event), listenerCount(), subscribe(listener) }`, the listener set
+behind an adapter's `subscribe`. `subscribe` has the shape of
+`Connector.subscribe`, so an adapter can hand it out as is. Emit the wallet's
+account list as `accountsChanged`, an empty one included, and `disconnected`
+only for a signal that ends the session.
+
+## Helpers
+
+| Export                         | Purpose                                                                                            |
+| ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `toWalletKey(name)`            | The `walletKey` for a wallet's name: lower-case letters and digits, without the word "wallet".     |
+| `sanitizeIcon(icon)`           | Trims a wallet icon; an all-whitespace one becomes `undefined`. Every built-in adapter applies it. |
+| `logWarn(message, ...details)` | butr's `console.warn` sink. Adds the `[butr]` prefix.                                              |
+
+Give every adapter of one wallet the same `walletKey`, whichever platform or
+channel it comes from: `toWalletKey("OKX Wallet")` and `toWalletKey("OKX")`
+are both `"okx"`. `autoDiscovery()` lists a wallet once per platform by it, and
+`groupByWallet` groups a picker by it.
+
+Run `describeAdapterContract` from
+[`@usebutr/testing/contract`](/testing) against an adapter you build.

@@ -14,6 +14,8 @@ type NamespaceAdapterInput = {
   /** Pairing state shared with the sibling adapters built in the same
    *  factory call. */
   session: WalletConnectSession;
+  /** The same on every adapter of one factory call. */
+  walletKey: string;
 };
 
 /**

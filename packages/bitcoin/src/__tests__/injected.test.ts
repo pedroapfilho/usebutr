@@ -77,7 +77,7 @@ describe("discoverInjectedBitcoinAdapter", () => {
 
     unsubscribe();
     expect(onAdapter.mock.calls.map((call) => call[0].id)).toEqual(["injected:bitcoin:okx"]);
-    expect(onAdapter.mock.calls[0]?.[0].name).toBe("OKX Wallet (Bitcoin)");
+    expect(onAdapter.mock.calls[0]?.[0]).toMatchObject({ name: "OKX Wallet", walletKey: "okx" });
   });
 
   it("emits one adapter when a wallet aliases itself across several globals", () => {

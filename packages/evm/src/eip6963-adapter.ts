@@ -1,13 +1,12 @@
+import { createSwitchingChainTarget, sanitizeIcon } from "@usebutr/adapter-kit";
 import type { Account, ChainBase, EvmAdapter, EvmTransactionValue } from "@usebutr/core";
 import {
   buildAccount,
   bytesToHexPrefixed,
   CHAIN_NAMESPACES,
-  createSwitchingChainTarget,
-  EVM_CHAINS_LIST,
+  CHAINS_BY_PLATFORM,
   hexToBytes,
   resolveChain,
-  sanitizeIcon,
 } from "@usebutr/core";
 
 import type { Eip1193Listener, Eip1193Object, Eip1193Provider, Eip1193Value } from "./eip1193";
@@ -44,7 +43,7 @@ const evmChainId = (chainIdHex: string): string =>
   `${CHAIN_NAMESPACES.evm}:${chainIdHexToDecimal(chainIdHex)}`;
 
 const evmChainFromHex = (chainIdHex: string): ChainBase =>
-  resolveChain(evmChainId(chainIdHex), EVM_CHAINS_LIST);
+  resolveChain(evmChainId(chainIdHex), CHAINS_BY_PLATFORM.evm);
 
 /** An event may already carry the addresses or the chain; only the missing
  *  half is read back from the wallet. */
@@ -99,11 +98,11 @@ const errorCodes = (cause: unknown): Array<unknown> => {
   );
 };
 
-type EvmIdentity = { icon?: string; id: string; name: string };
+type EvmIdentity = { icon?: string; id: string; name: string; walletKey: string };
 
 /** Every member an EIP-1193 provider backs except the session itself:
  *  `connect`, `disconnect` and `requestAccounts` belong to whoever owns it. */
-type Eip1193Core = Omit<EvmAdapter, "connect" | "disconnect" | "requestAccounts">;
+type Eip1193Core = Omit<EvmAdapter, "connect" | "disconnect" | "requestAccounts" | "restore">;
 
 const createEip1193Core = (identity: EvmIdentity, provider: Eip1193Provider): Eip1193Core => {
   const target = createSwitchingChainTarget({
@@ -245,6 +244,8 @@ const createEip1193Core = (identity: EvmIdentity, provider: Eip1193Provider): Ei
     },
 
     switchChain: target.chain,
+
+    walletKey: identity.walletKey,
   };
 };
 
@@ -256,17 +257,7 @@ const createEip1193Core = (identity: EvmIdentity, provider: Eip1193Provider): Ei
 const buildEvmAdapter = (identity: EvmIdentity, provider: Eip1193Provider): EvmAdapter => ({
   ...createEip1193Core(identity, provider),
 
-  async connect(options) {
-    if (options?.silent === true) {
-      const accounts = await requestStringArray(provider, { method: "eth_accounts" });
-
-      if (accounts.length === 0) {
-        throw new Error("No authorized accounts for silent reconnect");
-      }
-
-      return;
-    }
-
+  async connect() {
     await provider.request({ method: "eth_requestAccounts" });
   },
 
@@ -294,6 +285,14 @@ const buildEvmAdapter = (identity: EvmIdentity, provider: Eip1193Provider): EvmA
       }
 
       await provider.request({ method: "eth_requestAccounts" });
+    }
+  },
+
+  async restore() {
+    const accounts = await requestStringArray(provider, { method: "eth_accounts" });
+
+    if (accounts.length === 0) {
+      throw new Error("No authorized accounts for silent reconnect");
     }
   },
 });

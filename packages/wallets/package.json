@@ -52,6 +52,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@usebutr/adapter-kit": "workspace:*",
     "@usebutr/bitcoin": "workspace:*",
     "@usebutr/core": "workspace:*",
     "@usebutr/evm": "workspace:*",

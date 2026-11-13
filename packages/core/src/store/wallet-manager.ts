@@ -236,7 +236,7 @@ const createWalletManager = (
     try {
       const wallet = await openSession(adapter, {
         close: () => closeUnlessPooled(adapter, lifetime),
-        silent: true,
+        restore: true,
       });
 
       if (!(await commitSession(wallet, lifetime, "ENTRY_RESTORED"))) {
@@ -364,7 +364,7 @@ const createWalletManager = (
 
         const wallet = await openSession(connector, {
           close: () => closeUnlessPooled(connector, lifetime),
-          silent: false,
+          restore: false,
         });
 
         if (!(await commitSession(wallet, lifetime, "CONNECT_SUCCEEDED"))) {

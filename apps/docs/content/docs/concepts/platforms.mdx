@@ -48,19 +48,19 @@ Every registry is plain data in `@usebutr/core`, so any transport names a chain
 the same way, and an app that imports none of them bundles none of them. You
 don't have to use them: any `ChainBase`-shaped object works.
 
-| Export                                    | Contents                                                                   |
-| ----------------------------------------- | -------------------------------------------------------------------------- |
-| `EVM_CHAINS`, `EVM_CHAINS_LIST`           | Ethereum, Sepolia, Arbitrum One, Optimism, Base, Polygon, BNB Smart Chain. |
-| `SVM_CHAINS`, `SVM_CHAINS_LIST`           | Solana mainnet / testnet / devnet.                                         |
-| `SUI_CHAINS`, `SUI_CHAINS_LIST`           | Sui mainnet / testnet / devnet / localnet.                                 |
-| `BITCOIN_CHAINS`, `BITCOIN_CHAINS_LIST`   | Bitcoin mainnet / testnet / testnet4 / signet.                             |
-| `POLKADOT_CHAINS`, `POLKADOT_CHAINS_LIST` | Polkadot, Kusama, Westend, Paseo.                                          |
-| `CHAINS_BY_PLATFORM`                      | Every `*_CHAINS_LIST`, keyed by platform.                                  |
+| Export                                           | Contents                                                                   |
+| ------------------------------------------------ | -------------------------------------------------------------------------- |
+| `EVM_CHAINS`, `CHAINS_BY_PLATFORM.evm`           | Ethereum, Sepolia, Arbitrum One, Optimism, Base, Polygon, BNB Smart Chain. |
+| `SVM_CHAINS`, `CHAINS_BY_PLATFORM.svm`           | Solana mainnet / testnet / devnet.                                         |
+| `SUI_CHAINS`, `CHAINS_BY_PLATFORM.sui`           | Sui mainnet / testnet / devnet / localnet.                                 |
+| `BITCOIN_CHAINS`, `CHAINS_BY_PLATFORM.bitcoin`   | Bitcoin mainnet / testnet / testnet4 / signet.                             |
+| `POLKADOT_CHAINS`, `CHAINS_BY_PLATFORM.polkadot` | Polkadot, Kusama, Westend, Paseo.                                          |
+| `CHAINS_BY_PLATFORM`                             | Every registry as a list, keyed by platform.                               |
 
 `CHAINS_BY_PLATFORM[wallet.connector.chainPlatform]` is the idiomatic way to
 get the right chain list for a connected wallet; see
 [multi-chain switching](/guides/multi-chain). A single-platform app imports
-only its own list, such as `EVM_CHAINS_LIST`.
+only its own list, such as `CHAINS_BY_PLATFORM.evm`.
 
 ## Platform differences
 

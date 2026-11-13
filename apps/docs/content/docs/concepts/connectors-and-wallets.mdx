@@ -17,9 +17,7 @@ touch them directly.
 ```ts
 type Connector<P extends ChainPlatform = ChainPlatform> = {
   chainPlatform: P;
-  /** `silent` is hydration's non-interactive reconnect; an adapter that
-   *  can't honour it rejects instead of prompting. */
-  connect: (options?: { silent?: boolean }) => Promise<void>;
+  connect: () => Promise<void>;
   disconnect?: () => Promise<void>;
   /** Every exposed account, active first. Empty when not connected. */
   getAccounts: () => Promise<ReadonlyArray<Account>>;
@@ -27,7 +25,11 @@ type Connector<P extends ChainPlatform = ChainPlatform> = {
   id: string; // stable key: "io.metamask", "wallet-standard:svm-phantom"
   name: string; // UI-facing: "MetaMask", "Phantom"
   requestAccounts?: () => Promise<void>;
+  /** Hydration's silent reconnect; defined only where it can succeed
+   *  without a prompt. */
+  restore?: () => Promise<void>;
   subscribe?: (listener: (event: ConnectorEvent) => void) => () => void;
+  walletKey: string; // the same on every adapter of one wallet: "phantom"
 };
 
 type ConnectorEvent =

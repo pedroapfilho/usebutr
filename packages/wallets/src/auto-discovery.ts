@@ -1,10 +1,11 @@
+import { logWarn } from "@usebutr/adapter-kit";
 import {
   buildBitcoinAdapter,
   discoverInjectedBitcoinAdapter,
   discoverLegacyBitcoinAdapter,
 } from "@usebutr/bitcoin";
 import type { ChainPlatform, WalletSource } from "@usebutr/core";
-import { CHAIN_PLATFORMS, logWarn } from "@usebutr/core";
+import { CHAIN_PLATFORMS } from "@usebutr/core";
 import { discoverEvmAdapters, discoverInjectedAdapter } from "@usebutr/evm";
 import {
   buildPolkadotWalletStandardAdapter,

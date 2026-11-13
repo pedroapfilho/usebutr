@@ -52,9 +52,10 @@ export const Providers = ({ children }: { children: React.ReactNode }) => (
 ```
 
 The adapters then appear in `useDiscoveredWallets()` next to the browser
-wallets: `walletconnect-evm`, `walletconnect-svm` and so on, named
-`WalletConnect (EVM)`. With a single namespace the id and name stay
-`walletconnect` and `WalletConnect`. An empty array means the platform's
+wallets: `walletconnect-evm`, `walletconnect-svm` and so on, each named
+`WalletConnect` and sharing the `walletKey` `walletconnect`, so
+`groupByWallet` lists them as one wallet. With a single namespace the id stays
+`walletconnect`. An empty array means the platform's
 mainnet (`DEFAULT_CHAINS`); an omitted key skips the namespace. One namespace
 is required at pairing, the first selected platform in `CHAIN_PLATFORMS` order
 (`evm`, `svm`, `sui`, `bitcoin`) rather than the first key you write. The rest

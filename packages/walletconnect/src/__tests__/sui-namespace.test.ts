@@ -16,7 +16,7 @@ const buildAdapter = (
     chains,
     icon: "data:image/svg+xml;base64,Zm9v",
     id: "walletconnect-sui",
-    name: "WalletConnect (SUI)",
+    name: "WalletConnect",
     provider,
   });
 
@@ -47,11 +47,9 @@ describe("suiNamespace", () => {
     expect(adapter.signTransaction).toBeTypeOf("function");
   });
 
-  it("connect({ silent: true }) without a session rejects rather than prompting", async () => {
+  it("restore() without a session rejects rather than prompting", async () => {
     const provider = createFakeProvider();
-    await expect(buildAdapter(provider).connect({ silent: true })).rejects.toThrow(
-      /silent reconnect/v,
-    );
+    await expect(buildAdapter(provider).restore?.()).rejects.toThrow(/silent reconnect/v);
     expect(provider.connectCalls).toHaveLength(0);
   });
 

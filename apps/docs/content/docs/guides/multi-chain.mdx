@@ -103,11 +103,11 @@ chain without switching the UI, pass `chain` to `sendTx` instead; see
 [Send a transaction](/guides/transactions#chain-routing).
 
 <Callout type="info">
-  A single-platform app imports only its own list, such as `EVM_CHAINS_LIST` from `@usebutr/core`;
-  `demo-next` does exactly this.
+  A single-platform app imports only its own list, such as `CHAINS_BY_PLATFORM.evm` from
+  `@usebutr/core`; `demo-next` does exactly this.
 </Callout>
 
 <Callout type="info">
   **Source:** `ChainPicker` in `apps/demo-vite/src/app.tsx` (uses `CHAINS_BY_PLATFORM`) and
-  `apps/demo-next/src/app/page.tsx` (uses `EVM_CHAINS_LIST`).
+  `apps/demo-next/src/app/page.tsx` (uses `CHAINS_BY_PLATFORM.evm`).
 </Callout>

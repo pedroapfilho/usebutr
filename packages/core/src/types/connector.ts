@@ -17,11 +17,8 @@ type ConnectorEvent =
 type Connector<P extends ChainPlatform = ChainPlatform> = {
   /** Discriminant: which chain platform this adapter speaks. */
   chainPlatform: P;
-  /** `options.silent` is hydration's non-interactive reconnect (Wallet
-   *  Standard `standard:connect` silent input, `eth_accounts` on
-   *  EIP-1193). An adapter that cannot honour it must reject instead of
-   *  prompting; hydration reads that as a clean restore failure. */
-  connect: (options?: { silent?: boolean }) => Promise<void>;
+  /** Opens a session; may show the wallet's UI. */
+  connect: () => Promise<void>;
   /** Teardown. butr calls it on disconnect, failed connects and reset. */
   disconnect?: () => Promise<void>;
   /** Every account the wallet exposes, active account first. Empty when
@@ -40,9 +37,19 @@ type Connector<P extends ChainPlatform = ChainPlatform> = {
    *  on EIP-1193). Resolution does not carry the new accounts; the
    *  manager's `requestAccounts` action refreshes the pool entry. */
   requestAccounts?: () => Promise<void>;
+  /** Hydration's silent reconnect: reopens a session the wallet still
+   *  authorises without showing its UI (Wallet Standard's silent
+   *  `standard:connect`, `eth_accounts` on EIP-1193), and rejects when it no
+   *  longer does. A rejection leaves nothing open. Defined only where a
+   *  reconnect can succeed without a prompt, so a Ledger has none. */
+  restore?: () => Promise<void>;
   /** Bridges native wallet events into the reducer. Only the manager's
    *  connector lifecycle calls this, at most once per live connector. */
   subscribe?: (listener: (event: ConnectorEvent) => void) => () => void;
+  /** The wallet this adapter belongs to, the same on every platform and
+   *  channel that wallet is reached through: `"phantom"` on its EIP-6963,
+   *  Solana and Sui adapters. Lower-case letters and digits. */
+  walletKey: string;
 };
 
 export type { Connector, ConnectorEvent };

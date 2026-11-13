@@ -1,21 +1,23 @@
 import type { Balance } from "@usebutr/core";
-import { buildBalance, EVM_CHAINS, hexToBytes } from "@usebutr/core";
+import {
+  buildBalance,
+  CHAIN_NAMESPACES,
+  CHAINS_BY_PLATFORM,
+  hexToBytes,
+  resolveChain,
+} from "@usebutr/core";
 
 import type { Eip1193Provider } from "./eip1193";
 import { requestString } from "./eip1193";
 
 const HEX_PREFIX = "0x";
-const ETH_DECIMALS = 18;
-const ETH_SYMBOL = "ETH";
+
+/** A chain outside the registry is labelled as ether, as wagmi does. */
+const ETHER = { decimals: 18, symbol: "ETH" };
+
 const ERC20_BALANCE_OF_SELECTOR = "0x70a08231";
 const ERC20_DECIMALS_SELECTOR = "0x313ce567";
 const ERC20_SYMBOL_SELECTOR = "0x95d89b41";
-
-// shortcut: only the registry chains whose native asset is not ether are named, read the symbol from the chain definition once the registry carries native assets
-const NATIVE_SYMBOLS = new Map<string, string>([
-  [EVM_CHAINS.bsc.reference, "BNB"],
-  [EVM_CHAINS.polygon.reference, "POL"],
-]);
 
 /** A failed read must not render as a confident zero balance. */
 const requireHex = (hex: string | null, label: string): string => {
@@ -26,7 +28,8 @@ const requireHex = (hex: string | null, label: string): string => {
   return hex;
 };
 
-const formatEther = (wei: bigint): string => buildBalance(wei, ETH_DECIMALS, ETH_SYMBOL).formatted;
+const formatEther = (wei: bigint): string =>
+  buildBalance(wei, ETHER.decimals, ETHER.symbol).formatted;
 
 const padAddressForCall = (address: string): string =>
   address.replace(/^0x/v, "").toLowerCase().padStart(64, "0");
@@ -69,12 +72,10 @@ const readEvmBalance = async (
     ]);
 
     const reference = BigInt(requireHex(chainIdHex, "eth_chainId")).toString(10);
+    const chain = resolveChain(`${CHAIN_NAMESPACES.evm}:${reference}`, CHAINS_BY_PLATFORM.evm);
+    const { decimals, symbol } = chain.nativeCurrency ?? ETHER;
 
-    return buildBalance(
-      BigInt(requireHex(balanceHex, "eth_getBalance")),
-      ETH_DECIMALS,
-      NATIVE_SYMBOLS.get(reference) ?? ETH_SYMBOL,
-    );
+    return buildBalance(BigInt(requireHex(balanceHex, "eth_getBalance")), decimals, symbol);
   }
 
   const [balanceHex, decimalsHex, symbolHex] = await Promise.all([

@@ -1,3 +1,4 @@
+import { createSwitchingChainTarget, logWarn } from "@usebutr/adapter-kit";
 import type {
   Account,
   BitcoinAdapter,
@@ -7,20 +8,19 @@ import type {
   TransactionOptions,
 } from "@usebutr/core";
 import {
-  BITCOIN_CHAINS,
-  BITCOIN_CHAINS_LIST,
   base64ToBytes,
+  BITCOIN_CHAINS,
   buildAccount,
   bytesToHex,
-  createSwitchingChainTarget,
+  CHAINS_BY_PLATFORM,
   hexToBytes,
-  logWarn,
   resolveChain,
 } from "@usebutr/core";
 
 import { bitcoinMessageText } from "../message";
 
 import { GENERIC_BITCOIN_ICON } from "./icon";
+import type { InjectedIdentity } from "./identity";
 
 type UnisatNetwork = "livenet" | "mainnet" | "signet" | "testnet";
 
@@ -78,7 +78,10 @@ const toStringArray = (value: UnisatEventValue | undefined): Array<string> =>
  * The network is wallet-wide, so a call targeting another chain switches it
  * first, or rejects when the provider cannot switch.
  */
-const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider): BitcoinAdapter => {
+const buildUnisatAdapter = (
+  { id, name, walletKey }: InjectedIdentity,
+  provider: UnisatProvider,
+): BitcoinAdapter => {
   // Bound so they keep `this`: they are methods on the wallet's own object.
   const getNetwork = provider.getNetwork?.bind(provider);
   const on = provider.on?.bind(provider);
@@ -133,7 +136,7 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
 
       if (switchNetwork !== undefined && network !== undefined) {
         await switchNetwork(network);
-        chain = resolveChain(to.id, BITCOIN_CHAINS_LIST);
+        chain = resolveChain(to.id, CHAINS_BY_PLATFORM.bitcoin);
       }
     },
     wallet: name,
@@ -155,18 +158,8 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
   return {
     chainPlatform: "bitcoin",
 
-    async connect(options) {
-      if (options?.silent !== true) {
-        await provider.requestAccounts();
-
-        return;
-      }
-
-      const accounts = await provider.getAccounts();
-
-      if (accounts.length === 0) {
-        throw new Error("No authorized accounts for silent reconnect");
-      }
+    async connect() {
+      await provider.requestAccounts();
     },
 
     getAccounts: readAccounts,
@@ -176,6 +169,14 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     icon: GENERIC_BITCOIN_ICON,
     id,
     name,
+
+    async restore() {
+      const accounts = await provider.getAccounts();
+
+      if (accounts.length === 0) {
+        throw new Error("No authorized accounts for silent reconnect");
+      }
+    },
 
     async signMessage(message, options) {
       const text = bitcoinMessageText(message, name);
@@ -233,6 +234,8 @@ const buildUnisatAdapter = (id: string, name: string, provider: UnisatProvider):
     }),
 
     ...(switchNetwork !== undefined && { switchChain: target.chain }),
+
+    walletKey,
   };
 };
 

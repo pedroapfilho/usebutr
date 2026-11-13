@@ -12,6 +12,9 @@ type ChainBase = {
   name: string;
   /** CAIP-2 namespace, e.g. "eip155", "solana" */
   namespace: string;
+  /** The asset fees are paid in. Registry chains carry it; a chain built by
+   *  `resolveChain` from an unknown id does not. */
+  nativeCurrency?: { decimals: number; symbol: string };
   /** CAIP-2 reference, e.g. "1", "mainnet" */
   reference: string;
 };

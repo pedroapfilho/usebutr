@@ -1,0 +1,58 @@
+{
+  "name": "@usebutr/adapter-kit",
+  "version": "0.0.0",
+  "description": "Building blocks for butr wallet adapters: chain targets, the connector emitter and adapter helpers.",
+  "keywords": [
+    "adapter",
+    "butr",
+    "dapp",
+    "typescript",
+    "wallet",
+    "web3"
+  ],
+  "homepage": "https://docs.usebutr.com/api/adapter-kit",
+  "bugs": {
+    "url": "https://github.com/pedroapfilho/usebutr/issues"
+  },
+  "license": "MIT",
+  "author": "Pedro Filho <pedro@filho.me>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pedroapfilho/usebutr.git",
+    "directory": "packages/adapter-kit"
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "rm -rf dist",
+    "dev": "tsdown --watch",
+    "prepack": "pnpm run build",
+    "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@usebutr/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@repo/config-vitest": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

@@ -144,17 +144,14 @@ describe("createEvmLedgerAdapter", () => {
     ).toThrow(expect.objectContaining({ kind: "ChainMismatch" }));
   });
 
-  it("rejects a silent connect instead of prompting", async () => {
-    const fake = buildFakeTransport();
-
+  it("defines no restore: a Ledger needs an interactive connect", () => {
     const adapter = createEvmLedgerAdapter({
       eth: buildFakeEthCtor(),
       platform: "evm",
-      transport: fake.factory,
+      transport: buildFakeTransport().factory,
     });
 
-    await expect(adapter.connect({ silent: true })).rejects.toThrow(/interactive connect/v);
-    expect(fake.created).toHaveLength(0);
+    expect(adapter.restore).toBeUndefined();
   });
 
   it("disconnect() closes the transport and empties the accounts", async () => {

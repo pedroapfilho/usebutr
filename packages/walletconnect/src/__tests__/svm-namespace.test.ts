@@ -28,7 +28,7 @@ const buildAdapter = (
     chains,
     icon: "data:image/svg+xml;base64,Zm9v",
     id: "walletconnect-svm",
-    name: "WalletConnect (SVM)",
+    name: "WalletConnect",
     provider,
   });
 
@@ -87,7 +87,7 @@ describe("solanaNamespace", () => {
     const adapter = buildAdapter(createFakeProvider());
 
     expect(adapter.id).toBe("walletconnect-svm");
-    expect(adapter.name).toBe("WalletConnect (SVM)");
+    expect(adapter.name).toBe("WalletConnect");
     expect(adapter.chainPlatform).toBe("svm");
     expect(adapter.signIn).toBeUndefined();
     expect(adapter.getBalance).toBeUndefined();
@@ -216,6 +216,15 @@ describe("solanaNamespace", () => {
     await expect(
       buildAdapter(provider).signTransaction?.(unsignedTransaction(false)),
     ).rejects.toThrow(/solana_signTransaction returned no signature/v);
+  });
+
+  it("rejects a call with NotConnected before a session exists, even for a configured chain", async () => {
+    const adapter = buildAdapter(createFakeProvider(), [MAINNET_ID, DEVNET_ID]);
+
+    await expect(adapter.sendTx?.(new Uint8Array([1]), { chain: DEVNET })).rejects.toMatchObject({
+      kind: "NotConnected",
+    });
+    await expect(adapter.getAccounts()).resolves.toEqual([]);
   });
 
   it("subscribe() reports the new chain's accounts after switchChain", async () => {

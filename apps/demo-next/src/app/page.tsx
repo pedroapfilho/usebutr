@@ -1,7 +1,13 @@
 "use client";
 
-import type { Account, ChainBase, ConnectedWallet, WalletAdapter } from "@usebutr/core";
-import { EVM_CHAINS_LIST } from "@usebutr/core";
+import type {
+  Account,
+  ChainBase,
+  ConnectedWallet,
+  WalletAdapter,
+  WalletGroup,
+} from "@usebutr/core";
+import { CHAINS_BY_PLATFORM, groupByWallet } from "@usebutr/core";
 import {
   useBalance,
   useConnect,
@@ -104,7 +110,7 @@ const ChainPicker = ({
   wallet: ConnectedWallet;
 }) => {
   // EVM-only discovery, so every connected wallet is on an EVM chain.
-  const chains = EVM_CHAINS_LIST;
+  const chains = CHAINS_BY_PLATFORM.evm;
   const selectId = `chain-picker-${wallet.connector.id}`;
   const [switchError, setSwitchError] = useState<string | null>(null);
 
@@ -286,31 +292,7 @@ const StatusBar = ({ status }: { status: string }) => (
   </div>
 );
 
-type WalletBrand = {
-  adapters: Array<WalletAdapter>;
-  icon: string | undefined;
-  name: string;
-};
-
-const groupByBrand = (wallets: ReadonlyArray<WalletAdapter>): Array<WalletBrand> => {
-  const byName = new Map<string, WalletBrand>();
-
-  for (const wallet of wallets) {
-    const key = wallet.name.toLowerCase();
-    const existing = byName.get(key);
-
-    if (existing) {
-      existing.adapters.push(wallet);
-      existing.icon ??= wallet.icon;
-    } else {
-      byName.set(key, { adapters: [wallet], icon: wallet.icon, name: wallet.name });
-    }
-  }
-
-  return [...byName.values()];
-};
-
-const WalletBrandRow = ({ brand }: { brand: WalletBrand }) => {
+const WalletBrandRow = ({ brand }: { brand: WalletGroup }) => {
   const { connect, connectingId } = useConnect();
 
   return (
@@ -388,7 +370,7 @@ const WalletPicker = ({
     return null;
   }
 
-  const brands = groupByBrand(available);
+  const brands = groupByWallet(available);
 
   return (
     <section>
@@ -397,7 +379,7 @@ const WalletPicker = ({
       </h2>
       <ul className="space-y-2">
         {brands.map((brand) => (
-          <li key={brand.name}>
+          <li key={brand.walletKey}>
             <WalletBrandRow brand={brand} />
           </li>
         ))}

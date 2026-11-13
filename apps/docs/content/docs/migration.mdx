@@ -28,6 +28,29 @@ The reasoning is in
 and
 [ADR 0005](https://github.com/pedroapfilho/usebutr/blob/main/docs/adr/0005-one-wire-format-for-persisted-wallet-state.md).
 
+## Adapter kit, `restore()` and wallet keys
+
+The latest major moves the adapter building blocks out of `@usebutr/core`, so
+an app that only connects wallets no longer takes a major for them.
+
+| Before                                                                                                             | Now                                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `createAccountTarget`, `createRoutedChainTarget`, `createSwitchingChainTarget`, `createFixedChainTarget` from core | the same names from `@usebutr/adapter-kit`                                                                              |
+| `createConnectorEmitter`, `sanitizeIcon`, `logWarn` from core                                                      | the same names from `@usebutr/adapter-kit`                                                                              |
+| `createRoutedChainTarget({ advertised, current, … })`                                                              | `createRoutedChainTarget({ accounts, chains, chainsOf, emit, start, … })`; it holds the current chain and `switchChain` |
+| `connector.connect({ silent: true })`                                                                              | `connector.restore?.()`; `connect()` takes no options                                                                   |
+| an adapter that cannot reconnect silently rejects `connect({ silent: true })`                                      | it defines no `restore`; hydration reports the wallet as dropped with `NotConnected`                                    |
+| wallets matched by name (`groupByBrand` in your picker)                                                            | `adapter.walletKey`, and `groupByWallet(adapters)` from core                                                            |
+| a hand-rolled adapter has `id` and `name`                                                                          | it also has `walletKey`: `toWalletKey(name)` from `@usebutr/adapter-kit`, or a literal                                  |
+| `OKX Wallet (Bitcoin)`, `WalletConnect (EVM)`                                                                      | `OKX Wallet`, `WalletConnect`; tell platforms apart by `chainPlatform`                                                  |
+| `EVM_CHAINS_LIST`, `SVM_CHAINS_LIST`, `SUI_CHAINS_LIST`, `BITCOIN_CHAINS_LIST`, `POLKADOT_CHAINS_LIST`             | `CHAINS_BY_PLATFORM.evm` and so on                                                                                      |
+| the native asset of a chain typed by hand                                                                          | `chain.nativeCurrency` on every registry chain                                                                          |
+| `createBrowserStorageDriver()` swallows storage errors                                                             | it lets them through; the manager reports them to `onStorageError`                                                      |
+
+A `StoredPoolEntry` now carries `walletKey`. Entries persisted by an earlier
+version lack it and are dropped on the first load, so each user reconnects
+once.
+
 ## Provider and discovery
 
 ```tsx

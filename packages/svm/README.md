@@ -46,7 +46,7 @@ export const send = async (wallet: ConnectedWallet<"svm">, serializedTx: Uint8Ar
 };
 ```
 
-An `account` the wallet does not expose, or a chain it does not advertise, rejects. `getSigner()` resolves `{ kind: "wallet-standard", wallet }`: reach any other feature with `getFeature` from `@usebutr/wallet-standard-shared` and the feature types this package exports. Chain registries (`SVM_CHAINS`, `SVM_CHAINS_LIST`) come from `@usebutr/core`.
+An `account` the wallet does not expose, or a chain it does not advertise, rejects. `getSigner()` resolves `{ kind: "wallet-standard", wallet }`: reach any other feature with `getFeature` from `@usebutr/wallet-standard-shared` and the feature types this package exports. Chain registries (`SVM_CHAINS`, `CHAINS_BY_PLATFORM.svm`) come from `@usebutr/core`.
 
 `@usebutr/svm/transaction` exports `prepareSolanaTransaction(tx, signer)` for
 transports returning a bare signature. It exposes the serialized `message`

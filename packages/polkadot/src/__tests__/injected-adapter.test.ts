@@ -129,25 +129,12 @@ describe("buildInjectedPolkadotAdapter", () => {
     expect(extension.provider.enable).toHaveBeenCalledWith("butr");
   });
 
-  it("rejects silent connect without invoking the permission flow", async () => {
+  it("defines no restore, since enable() may prompt", async () => {
     const extension = makeExtension();
-    const adapter = build(extension);
-    await expect(adapter.connect({ silent: true })).rejects.toMatchObject({ kind: "NotConnected" });
-    expect(extension.provider.enable).not.toHaveBeenCalled();
-    await expect(adapter.getAccounts()).resolves.toEqual([]);
-  });
-
-  it("reuses only an existing in-memory session for silent connect", async () => {
-    const extension = makeExtension();
+    expect(build(extension).restore).toBeUndefined();
     const adapter = await connected(extension);
-    await adapter.connect({ silent: true });
-    expect(extension.provider.enable).toHaveBeenCalledOnce();
-    expect(extension.unsubscribeCalls()).toBe(0);
-    await expect(adapter.getAccounts()).resolves.toEqual([
-      buildAccount(ADDRESS, POLKADOT_CHAINS.polkadot),
-    ]);
+    expect(adapter.restore).toBeUndefined();
     await adapter.disconnect?.();
-    await expect(adapter.connect({ silent: true })).rejects.toMatchObject({ kind: "NotConnected" });
     expect(extension.provider.enable).toHaveBeenCalledOnce();
     expect(extension.unsubscribeCalls()).toBe(1);
   });
@@ -164,6 +151,7 @@ describe("buildInjectedPolkadotAdapter", () => {
       chainPlatform: "polkadot" as const,
       connectorId: adapter.id,
       name: adapter.name,
+      walletKey: adapter.walletKey,
     };
 
     const onHydrated = vi.fn<NonNullable<WalletManagerConfig["onHydrated"]>>();

@@ -141,7 +141,8 @@ describe("createFakeAdapter", () => {
       const adapter = createFakeAdapter({ accounts: [first, second] });
       const signed = await adapter.signMessage?.(message);
       expect(signed?.signedMessage).toEqual(message);
-      await expect(adapter.signMessage?.(message, { account: second })).resolves.toBeDefined();
+      await adapter.signMessage?.(message, { account: second });
+      expect(adapter.requests().map((request) => request.address)).toEqual(["0xfirst", "0xsecond"]);
     });
 
     it("rejects an account it does not expose instead of using another", async () => {

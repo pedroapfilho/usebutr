@@ -696,4 +696,49 @@ describe("persistence", () => {
     expect(JSON.parse(localStorage.getItem("butr-pool") ?? "{}")).toHaveProperty("metamask");
     localStorage.clear();
   });
+
+  it("reports a write the default browser storage refuses", async () => {
+    const onStorageError = vi.fn<Callbacks["onStorageError"]>();
+
+    const setItem = vi.spyOn(localStorage, "setItem").mockImplementation(() => {
+      throw new Error("quota");
+    });
+
+    const manager = createWalletManager({
+      onStorageError,
+      sources: [staticSource(evmAdapter("metamask"))],
+    });
+
+    manager.start();
+    await flush();
+    await manager.connect("metamask");
+    await flush();
+    setItem.mockRestore();
+
+    expect(onStorageError).toHaveBeenCalledWith(new Error("quota"));
+    expect(manager.getState().pool.has("metamask")).toBe(true);
+  });
+
+  it("never writes over a key the default browser storage could not read", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const stored = poolOf(evmAdapter("rabby"));
+    localStorage.setItem("butr-pool", JSON.stringify(stored));
+
+    const getItem = vi.spyOn(localStorage, "getItem").mockImplementation(() => {
+      throw new Error("denied");
+    });
+
+    const manager = createWalletManager({
+      sources: [staticSource(evmAdapter("metamask"))],
+    });
+
+    manager.start();
+    await flush();
+    await manager.connect("metamask");
+    await flush();
+    getItem.mockRestore();
+
+    expect(JSON.parse(localStorage.getItem("butr-pool") ?? "{}")).toHaveProperty("rabby");
+    localStorage.clear();
+  });
 });

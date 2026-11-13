@@ -1,5 +1,5 @@
 import type { ConnectedWallet } from "@usebutr/core";
-import { bytesToBase58 } from "@usebutr/core";
+import { base64ToBytes, bytesToBase58, SVM_CHAINS } from "@usebutr/core";
 import {
   useConnect,
   useDiscoveredWallets,
@@ -24,17 +24,6 @@ import { useEffect, useMemo, useState } from "react";
 const BURN_ADDRESS = address("11111111111111111111111111111111");
 
 const { rpc } = createSolanaClient({ urlOrMoniker: "devnet" });
-
-const base64ToBytes = (b64: string): Uint8Array => {
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-
-  for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.codePointAt(i) ?? 0;
-  }
-
-  return bytes;
-};
 
 const formatError = (error: Error | string): string => {
   if (error instanceof Error) {
@@ -187,7 +176,7 @@ const Connected = ({
 
       const outputs = await feature.signAndSendTransaction({
         account,
-        chain: "solana:devnet",
+        chain: SVM_CHAINS.devnet.id,
         transaction: bytes,
       });
 

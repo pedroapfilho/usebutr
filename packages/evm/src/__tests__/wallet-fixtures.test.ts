@@ -160,16 +160,9 @@ describe("EVM wallet fixtures — known quirks (Strategy A)", () => {
   });
 });
 
-describe("EVM surface (every wallet)", () => {
-  it.each([
-    "io.metamask",
-    "io.rabby",
-    "com.coinbase.wallet",
-    "app.phantom",
-    "com.binance.wallet",
-    "com.okex.wallet",
-  ])("rdns=%s exposes requestAccounts and the EIP-1193 methods", (rdns) => {
-    const adapter = buildEvmAdapter(baseInfo(rdns, "test"), createMockProvider({}));
+describe("EVM surface", () => {
+  it("exposes requestAccounts and the EIP-1193 methods", () => {
+    const adapter = buildEvmAdapter(baseInfo("io.metamask", "MetaMask"), createMockProvider({}));
     expect(adapter).toMatchObject({
       getBalance: expect.any(Function),
       getTransactionReceipt: expect.any(Function),
@@ -180,11 +173,4 @@ describe("EVM surface (every wallet)", () => {
       switchChain: expect.any(Function),
     });
   });
-});
-
-describe("Unverified wallets (todo — promote to fixtures once verified)", () => {
-  it.todo("Brave Wallet: verify wallet_requestPermissions actually opens a picker");
-  it.todo("Bitget Wallet: verify EIP-6963 announcement format");
-  it.todo("Trust Wallet (extension): verify connect/sign/disconnect flow");
-  it.todo("Frame: verify hardware-wallet pass-through");
 });

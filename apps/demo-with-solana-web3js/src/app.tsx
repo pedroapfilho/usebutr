@@ -6,7 +6,7 @@ import {
   Transaction,
 } from "@solana/web3.js";
 import type { ConnectedWallet } from "@usebutr/core";
-import { bytesToBase58 } from "@usebutr/core";
+import { bytesToBase58, SVM_CHAINS } from "@usebutr/core";
 import {
   useConnect,
   useDiscoveredWallets,
@@ -171,7 +171,7 @@ const Connected = ({
 
       const outputs = await feature.signAndSendTransaction({
         account,
-        chain: "solana:devnet",
+        chain: SVM_CHAINS.devnet.id,
         transaction: new Uint8Array(serialised),
       });
 
